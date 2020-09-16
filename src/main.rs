@@ -1,3 +1,11 @@
+pub mod app;
+pub mod revaultd;
+pub mod ui;
+
+use iced::{Application, Settings};
+
+use ui::UI;
+
 fn main() {
-    println!("Hello, world!");
+    UI::run(Settings::default());
 }
