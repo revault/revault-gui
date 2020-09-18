@@ -1,0 +1,64 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # We don't have a MSRV (yet?)
+        toolchain:
+          - stable
+          - beta
+          - nightly
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
+      - name: Install Rust ${{ matrix.toolchain }} toolchain
+        uses: actions-rs/toolchain@v1
+        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          profile: minimal
+      - name: Build on Rust ${{ matrix.toolchain }}
+        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
+        env:
+          RUSTFLAGS: "-C link-dead-code"
+        run: cargo build --verbose --color always
+      - name: Test on Rust ${{ matrix.toolchain }}
+        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
+        env:
+          RUSTFLAGS: "-C link-dead-code"
+        run: cargo test --verbose --color always
+
+  rustfmt_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            components: rustfmt
+            override: true
+      - run: cargo fmt -- --check
+
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
