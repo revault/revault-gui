@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use iced::{button, Align, Button, Column, Container, Element, Length, ProgressBar, Text};
-use iced_futures::futures;
+// use iced_futures::futures;
 
 use crate::app::App;
 
+/// SyncingProgress specifies the application syncing progress.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyncingProgress {
     Pending(f32),
@@ -12,6 +13,7 @@ pub enum SyncingProgress {
     Errored,
 }
 
+/// SyncingState is the app syncing state.
 #[derive(Debug)]
 pub struct SyncingState {
     pub app: Arc<App>,
@@ -47,6 +49,7 @@ impl SyncingState {
     }
 }
 
+/// SyncingState is the app running state.
 #[derive(Debug)]
 pub struct RunningState {
     pub app: Arc<App>,

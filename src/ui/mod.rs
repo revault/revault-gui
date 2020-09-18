@@ -4,13 +4,17 @@ use std::sync::Arc;
 pub mod state;
 use crate::app::App;
 
+/// UI is the main iced application.
 #[derive(Debug)]
 pub enum UI {
+    // AppSyncing is the syncing state of the underlying application.
     AppSyncing(state::SyncingState),
+    // AppRunning is the running state of the underlying application.
     AppRunning(state::RunningState),
 }
 
 impl UI {
+    /// start changes the UI application state from syncing to running.
     pub fn start(&mut self) {
         if let UI::AppSyncing(state) = self {
             let app = state.app.clone();
@@ -19,6 +23,7 @@ impl UI {
     }
 }
 
+/// Message is the UI application message.
 #[derive(Debug, Clone)]
 pub enum Message {
     Syncing(state::SyncingProgress),
@@ -40,7 +45,7 @@ impl Application for UI {
 
     fn subscription(&self) -> Subscription<Message> {
         match self {
-            UI::AppSyncing(state) => Subscription::none(),
+            UI::AppSyncing(_state) => Subscription::none(),
             _ => Subscription::none(),
         }
     }
