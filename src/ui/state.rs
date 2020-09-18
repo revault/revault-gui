@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use iced::{button, Align, Button, Column, Container, Element, Length, ProgressBar, Text};
+use iced::{button, Align, Column, Container, Element, Length, ProgressBar, Text};
 use iced_futures::futures;
 
 use crate::app::App;
@@ -45,14 +45,11 @@ impl SyncingManager {
 
     pub fn view(&mut self) -> Element<SyncingProgress> {
         let progress_bar = ProgressBar::new(0.0..=100.0, self.progress);
-        let button = Button::new(&mut self.button_skip, Text::new("Skip"))
-            .on_press(SyncingProgress::Finished);
         let content = Column::new()
             .spacing(10)
             .padding(10)
             .align_items(Align::Center)
-            .push(progress_bar)
-            .push(button);
+            .push(progress_bar);
         Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -94,13 +91,14 @@ where
                         SyncingState::Pending { progress: 00.0 },
                     )),
                     SyncingState::Pending { mut progress } => {
-                        if progress == 100.0 {
+                        if progress > 100.0 as f32 {
                             return Some((SyncingProgress::Finished, SyncingState::Synced));
                         }
+                        std::thread::sleep(std::time::Duration::from_millis(2));
                         progress += 0.1;
                         Some((
                             SyncingProgress::Pending(progress),
-                            SyncingState::Pending { progress: progress },
+                            SyncingState::Pending { progress },
                         ))
                     }
                     SyncingState::Synced => {
