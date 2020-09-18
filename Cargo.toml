@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 iced = "0.1.1"
 iced_futures = "0.1.2"
+iced_native = "0.2.2"

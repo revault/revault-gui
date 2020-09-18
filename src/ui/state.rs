@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use iced::{button, Align, Button, Column, Container, Element, Length, ProgressBar, Text};
-// use iced_futures::futures;
+use iced::{button, Align, Button, Column, Command, Container, Element, Length, ProgressBar, Text};
+use iced_futures::futures;
 
 use crate::app::App;
 
@@ -13,21 +13,34 @@ pub enum SyncingProgress {
     Errored,
 }
 
-/// SyncingState is the app syncing state.
+pub enum SyncingState {
+    Unknown,
+    Pending { progress: f32 },
+    Synced,
+}
+
+/// SyncingManager is the app syncing state.
 #[derive(Debug)]
-pub struct SyncingState {
+pub struct SyncingManager {
     pub app: Arc<App>,
     pub progress: f32,
     pub button_skip: button::State,
 }
 
-impl SyncingState {
-    pub fn new(app: Arc<App>) -> SyncingState {
-        SyncingState {
+impl SyncingManager {
+    pub fn new(app: Arc<App>) -> SyncingManager {
+        SyncingManager {
             app: app,
-            progress: 100.0,
+            progress: 0.0,
             button_skip: button::State::new(),
         }
+    }
+
+    pub fn update(&mut self, message: SyncingProgress) {
+        match message {
+            SyncingProgress::Pending(progress) => self.progress = progress,
+            _ => (),
+        };
     }
 
     pub fn view(&mut self) -> Element<SyncingProgress> {
@@ -49,18 +62,73 @@ impl SyncingState {
     }
 }
 
-/// SyncingState is the app running state.
+pub struct SyncObserver {}
+
+impl SyncObserver {
+    pub fn new() -> SyncObserver {
+        SyncObserver {}
+    }
+}
+
+impl<H, I> iced_native::subscription::Recipe<H, I> for SyncObserver
+where
+    H: std::hash::Hasher,
+{
+    type Output = SyncingProgress;
+
+    fn hash(&self, state: &mut H) {
+        use std::hash::Hash;
+        std::any::TypeId::of::<Self>().hash(state);
+    }
+
+    fn stream(
+        self: Box<Self>,
+        _input: futures::stream::BoxStream<'static, I>,
+    ) -> futures::stream::BoxStream<'static, Self::Output> {
+        Box::pin(futures::stream::unfold(
+            SyncingState::Unknown,
+            |state| async move {
+                match state {
+                    SyncingState::Unknown => Some((
+                        SyncingProgress::Pending(00.0),
+                        SyncingState::Pending { progress: 00.0 },
+                    )),
+                    SyncingState::Pending { mut progress } => {
+                        if progress == 100.0 {
+                            return Some((SyncingProgress::Finished, SyncingState::Synced));
+                        }
+                        progress += 0.1;
+                        Some((
+                            SyncingProgress::Pending(progress),
+                            SyncingState::Pending { progress: progress },
+                        ))
+                    }
+                    SyncingState::Synced => {
+                        // We do not let the stream die, as it would start a
+                        // new download repeatedly if the user is not careful
+                        // in case of errors.
+                        let _: () = iced::futures::future::pending().await;
+
+                        None
+                    }
+                }
+            },
+        ))
+    }
+}
+
+/// Runner is the app running state manager.
 #[derive(Debug)]
-pub struct RunningState {
+pub struct Runner {
     pub app: Arc<App>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {}
 
-impl RunningState {
-    pub fn new(app: Arc<App>) -> RunningState {
-        RunningState { app: app }
+impl Runner {
+    pub fn new(app: Arc<App>) -> Runner {
+        Runner { app }
     }
     pub fn view(&mut self) -> Element<'static, Message> {
         Text::new("Running...").into()

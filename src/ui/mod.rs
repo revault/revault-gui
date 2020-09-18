@@ -8,17 +8,17 @@ use crate::app::App;
 #[derive(Debug)]
 pub enum UI {
     // AppSyncing is the syncing state of the underlying application.
-    AppSyncing(state::SyncingState),
+    AppSyncing(state::SyncingManager),
     // AppRunning is the running state of the underlying application.
-    AppRunning(state::RunningState),
+    AppRunning(state::Runner),
 }
 
 impl UI {
     /// start changes the UI application state from syncing to running.
     pub fn start(&mut self) {
-        if let UI::AppSyncing(state) = self {
-            let app = state.app.clone();
-            *self = UI::AppRunning(state::RunningState::new(app));
+        if let UI::AppSyncing(manager) = self {
+            let app = manager.app.clone();
+            *self = UI::AppRunning(state::Runner::new(app));
         }
     }
 }
@@ -38,14 +38,16 @@ impl Application for UI {
     fn new(_flags: ()) -> (UI, Command<Message>) {
         let app = Arc::new(App::new());
         (
-            UI::AppSyncing(state::SyncingState::new(app)),
+            UI::AppSyncing(state::SyncingManager::new(app)),
             Command::none(),
         )
     }
 
     fn subscription(&self) -> Subscription<Message> {
         match self {
-            UI::AppSyncing(_state) => Subscription::none(),
+            UI::AppSyncing(_state) => {
+                Subscription::from_recipe(state::SyncObserver::new()).map(Message::Syncing)
+            }
             _ => Subscription::none(),
         }
     }
@@ -56,9 +58,14 @@ impl Application for UI {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Syncing(sync) => {
-                if sync == state::SyncingProgress::Finished {
+            Message::Syncing(msg) => {
+                if msg == state::SyncingProgress::Finished {
                     self.start();
+                } else {
+                    match self {
+                        UI::AppSyncing(s) => s.update(msg),
+                        UI::AppRunning(_s) => (),
+                    }
                 }
             }
             Message::Running(_) => (),
