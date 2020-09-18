@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use iced::{button, Align, Button, Column, Command, Container, Element, Length, ProgressBar, Text};
+use iced::{button, Align, Button, Column, Container, Element, Length, ProgressBar, Text};
 use iced_futures::futures;
 
 use crate::app::App;
