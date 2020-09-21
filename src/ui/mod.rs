@@ -1,24 +1,43 @@
 use iced::{executor, Application, Command, Element, Subscription};
 use std::sync::Arc;
 
-pub mod state;
+pub mod view;
 use crate::app::App;
 
 /// UI is the main iced application.
 #[derive(Debug)]
 pub enum UI {
     // AppSyncing is the syncing state of the underlying application.
-    AppSyncing(state::SyncingManager),
+    AppSyncing {
+        app: Arc<App>,
+        progress: view::syncing::Progress,
+    },
     // AppRunning is the running state of the underlying application.
-    AppRunning(state::Runner),
+    AppRunning {
+        app: Arc<App>,
+    },
 }
 
 impl UI {
+    pub fn new_syncing(app: Arc<App>) -> UI {
+        UI::AppSyncing {
+            app,
+            progress: view::syncing::Progress::Pending(0.0),
+        }
+    }
+    pub fn set_progress(&mut self, p: view::syncing::Progress) {
+        match self {
+            UI::AppSyncing {
+                ref mut progress, ..
+            } => *progress = p,
+            _ => (),
+        }
+    }
     /// start changes the UI application state from syncing to running.
     pub fn start(&mut self) {
-        if let UI::AppSyncing(manager) = self {
-            let app = manager.app.clone();
-            *self = UI::AppRunning(state::Runner::new(app));
+        if let UI::AppSyncing { app, .. } = self {
+            let app = app.clone();
+            *self = UI::AppRunning { app };
         }
     }
 }
@@ -26,8 +45,8 @@ impl UI {
 /// Message is the UI application message.
 #[derive(Debug, Clone)]
 pub enum Message {
-    Syncing(state::SyncingProgress),
-    Running(state::Message),
+    Syncing(view::syncing::Progress),
+    Running,
 }
 
 impl Application for UI {
@@ -37,16 +56,13 @@ impl Application for UI {
 
     fn new(_flags: ()) -> (UI, Command<Message>) {
         let app = Arc::new(App::new());
-        (
-            UI::AppSyncing(state::SyncingManager::new(app)),
-            Command::none(),
-        )
+        (UI::new_syncing(app), Command::none())
     }
 
     fn subscription(&self) -> Subscription<Message> {
         match self {
-            UI::AppSyncing(_state) => {
-                Subscription::from_recipe(state::SyncObserver::new()).map(Message::Syncing)
+            UI::AppSyncing { .. } => {
+                Subscription::from_recipe(view::syncing::SyncObserver::new()).map(Message::Syncing)
             }
             _ => Subscription::none(),
         }
@@ -59,24 +75,27 @@ impl Application for UI {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Syncing(msg) => {
-                if msg == state::SyncingProgress::Finished {
+                if msg == view::syncing::Progress::Finished {
                     self.start();
                 } else {
                     match self {
-                        UI::AppSyncing(s) => s.update(msg),
-                        UI::AppRunning(_s) => (),
+                        UI::AppSyncing { .. } => self.set_progress(msg),
+                        UI::AppRunning { .. } => (),
                     }
                 }
             }
-            Message::Running(_) => (),
+            Message::Running => (),
         };
         Command::none()
     }
 
     fn view(&mut self) -> Element<Message> {
         match self {
-            UI::AppSyncing(s) => s.view().map(Message::Syncing),
-            UI::AppRunning(s) => s.view().map(Message::Running),
+            UI::AppSyncing { progress, .. } => view::syncing::view(progress).map(Message::Syncing),
+            UI::AppRunning { .. } => {
+                use iced::Text;
+                Text::new("Application running...").into()
+            }
         }
     }
 }
