@@ -1,5 +1,5 @@
 [package]
-name = "robalo"
+name = "revault-gui"
 version = "0.1.0"
 authors = ["Edouard Paris <m@edouard.paris>"]
 edition = "2018"
