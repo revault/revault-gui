@@ -19,23 +19,15 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v2
-        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
       - name: Install Rust ${{ matrix.toolchain }} toolchain
         uses: actions-rs/toolchain@v1
-        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
           profile: minimal
       - name: Build on Rust ${{ matrix.toolchain }}
-        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
-        env:
-          RUSTFLAGS: "-C link-dead-code"
         run: cargo build --verbose --color always
       - name: Test on Rust ${{ matrix.toolchain }}
-        if: matrix.os != 'windows' && matrix.toolchain != 'nightly'
-        env:
-          RUSTFLAGS: "-C link-dead-code"
         run: cargo test --verbose --color always
 
   rustfmt_check:
