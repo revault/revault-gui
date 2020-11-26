@@ -269,7 +269,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "robalo"
+name = "revault-gui"
 version = "0.1.0"
 dependencies = [
  "chrono",

@@ -27,6 +27,7 @@ use uds_windows::UnixStream;
 #[cfg(not(windows))]
 use std::os::unix::net::UnixStream;
 
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -56,7 +57,7 @@ impl Client {
     }
 
     /// Sends a request to a client
-    pub fn send_request<S: Serialize, D: DeserializeOwned>(
+    pub fn send_request<S: Serialize + Debug, D: DeserializeOwned + Debug>(
         &self,
         method: &str,
         params: S,
@@ -72,6 +73,8 @@ impl Client {
             id: std::process::id(),
             jsonrpc: "2.0",
         };
+
+        log::trace!("Sending to revaultd: {:#?}", request);
 
         to_writer(&mut stream, &request)?;
 
@@ -90,6 +93,8 @@ impl Client {
         if response.id != request.id {
             return Err(Error::NonceMismatch);
         }
+
+        log::trace!("Received from revaultd: {:#?}", response);
 
         Ok(response)
     }

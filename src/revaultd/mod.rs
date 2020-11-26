@@ -1,5 +1,6 @@
+use std::fmt::Debug;
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::Command;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -44,6 +45,8 @@ impl RevaultD {
         let client = Client::new(socket);
         let revaultd = RevaultD { client, config };
 
+        log::debug!("Connecting to revaultd");
+
         revaultd.get_info().map_err(|e| {
             RevaultDError(format!(
                 "Failed to connect to revaultd with socket path: {}",
@@ -51,11 +54,13 @@ impl RevaultD {
             ))
         })?;
 
+        log::info!("Connected to revaultd");
+
         Ok(revaultd)
     }
 
     /// Generic call function for RPC calls.
-    fn call<T: Serialize, U: DeserializeOwned>(
+    fn call<T: Serialize + Debug, U: DeserializeOwned + Debug>(
         &self,
         method: &str,
         input: T,
@@ -87,11 +92,14 @@ pub struct GetInfoResponse {
 
 // RevaultD can start only if a config path is given.
 pub fn start_daemon(config_path: PathBuf) -> Result<(), RevaultDError> {
+    log::debug!("starting revaultd daemon");
     let child = Command::new("revaultd")
         .arg("--conf")
         .arg(config_path.into_os_string().as_os_str())
         .spawn()
         .map_err(|e| RevaultDError(format!("Failed to launched revaultd: {}", e.to_string())))?;
+
+    log::debug!("waiting for revaultd daemon status");
 
     // daemon binary should fork and then terminate.
     let output = child
@@ -105,6 +113,8 @@ pub fn start_daemon(config_path: PathBuf) -> Result<(), RevaultDError> {
             String::from_utf8_lossy(&output.stderr),
         )));
     }
+
+    log::info!("revaultd daemon started");
 
     Ok(())
 }
