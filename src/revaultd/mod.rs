@@ -5,7 +5,7 @@ use std::process::Command;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-mod config;
+pub mod config;
 use config::Config;
 mod client;
 use client::Client;
@@ -30,19 +30,14 @@ impl RevaultD {
             RevaultDError(format!("Failed to read revaultd config: {}", e.to_string()))
         })?;
 
-        let mut socket = if let Some(ref datadir) = config.data_dir {
-            datadir.clone()
-        } else {
-            config::default_datadir().map_err(|e| {
-                RevaultDError(format!(
-                    "Failed to find revaultd datadir: {}",
-                    e.to_string()
-                ))
-            })?
-        };
-        socket.push("revaultd_rpc");
+        let socket_path = config.socket_path().map_err(|e| {
+            RevaultDError(format!(
+                "Failed to find revaultd socket path: {}",
+                e.to_string()
+            ))
+        })?;
 
-        let client = Client::new(socket);
+        let client = Client::new(socket_path);
         let revaultd = RevaultD { client, config };
 
         log::debug!("Connecting to revaultd");

@@ -1,7 +1,9 @@
 use std::env::VarError;
 use std::path::PathBuf;
 use std::str::FromStr;
+
 mod revaultd;
+mod ui;
 
 extern crate serde;
 extern crate serde_json;
@@ -79,7 +81,11 @@ fn main() {
         std::process::exit(1);
     };
 
-    if let Some(p) = path {
-        revaultd::RevaultD::new(p).unwrap();
-    }
+    if let Err(e) = ui::app::run(ui::app::Config {
+        revaultd_config_path: path,
+        debug,
+    }) {
+        println!("Error: failed to launch UI: {}", e.to_string());
+        std::process::exit(1);
+    };
 }

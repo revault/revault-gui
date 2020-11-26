@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    pub bitcoind_config: BitcoindConfig,
     /// An optional custom data directory
     pub data_dir: Option<PathBuf>,
 }
@@ -17,11 +18,39 @@ impl Config {
             })?;
         Ok(config)
     }
+
+    /// default revaultd socket path is .revault/bitcoin/revaultd_rpc
+    pub fn socket_path(&self) -> Result<PathBuf, ConfigError> {
+        let mut path = if let Some(ref datadir) = self.data_dir {
+            datadir.clone()
+        } else {
+            default_datadir()?
+        };
+        path.push(&self.bitcoind_config.network);
+        path.push("revaultd_rpc");
+        Ok(path)
+    }
 }
 
 impl std::default::Default for Config {
     fn default() -> Self {
-        Config { data_dir: None }
+        Config {
+            bitcoind_config: BitcoindConfig::default(),
+            data_dir: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BitcoindConfig {
+    pub network: String,
+}
+
+impl std::default::Default for BitcoindConfig {
+    fn default() -> Self {
+        BitcoindConfig {
+            network: "bitcoin".to_string(),
+        }
     }
 }
 
@@ -53,6 +82,13 @@ pub fn default_datadir() -> Result<PathBuf, ConfigError> {
     Err(ConfigError(
         "Could not locate the configuration directory.".to_owned(),
     ))
+}
+
+/// default_config_path returns the default config location of the revault deamon.
+pub fn default_config_path() -> Result<PathBuf, ConfigError> {
+    let mut datadir = default_datadir()?;
+    datadir.push("revault.toml");
+    Ok(datadir)
 }
 
 #[derive(PartialEq, Eq, Debug)]
