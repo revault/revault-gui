@@ -1,10 +1,12 @@
 [package]
 name = "revault-gui"
-version = "0.1.0"
+version = "0.0.1"
+readme = "README.md"
+description = "Revault GUI"
+repository = "https://github.com/re-vault/revault-gui"
+license = "BSD 3-Clause License"
 authors = ["Edouard Paris <m@edouard.paris>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 iced = { version = "0.2", features = ["svg"]}
