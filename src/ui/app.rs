@@ -1,9 +1,13 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use iced::{executor, Application, Command, Element, Settings, Text};
+use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
 
-use super::state::{charging::StateCharging, Message, State};
+use super::message::Message;
+use super::state::{
+    charging::connect, charging::ChargingState, installing::InstallingState, manager::ManagerState,
+    State,
+};
 
 pub struct App {
     config: Config,
@@ -23,25 +27,40 @@ impl Application for App {
         (
             App {
                 config: config.clone(),
-                state: std::boxed::Box::new(StateCharging::new(
-                    config.revaultd_config_path,
-                    config.debug,
-                )),
+                state: std::boxed::Box::new(ChargingState::Connecting),
             },
-            Command::none(),
+            Command::perform(connect(config.revaultd_config_path), Message::Connected),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        self.state.subscription()
     }
 
     fn title(&self) -> String {
         String::from("Revault GUI")
     }
 
-    fn update(&mut self, _message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+        match message {
+            Message::Install => {
+                self.state = Box::new(InstallingState {});
+            }
+            Message::Synced(revaultd) => {
+                self.state = Box::new(ManagerState::new(revaultd));
+            }
+            _ => return self.state.update(message),
+        }
         Command::none()
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        self.state.view()
+        let content = self.state.view();
+        if self.config.debug {
+            return content.explain(Color::BLACK);
+        }
+
+        content
     }
 }
 

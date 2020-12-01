@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{to_writer, Deserializer};
 
 /// A handle to a remote JSONRPC server
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
     sockpath: PathBuf,
     timeout: Option<Duration>,
@@ -52,6 +52,7 @@ impl Client {
     }
 
     /// Set an optional timeout for requests
+    #[allow(dead_code)]
     pub fn set_timeout(&mut self, timeout: Option<Duration>) {
         self.timeout = timeout;
     }
@@ -60,7 +61,7 @@ impl Client {
     pub fn send_request<S: Serialize + Debug, D: DeserializeOwned + Debug>(
         &self,
         method: &str,
-        params: S,
+        params: Option<S>,
     ) -> Result<Response<D>, Error> {
         // Setup connection
         let mut stream = UnixStream::connect(&self.sockpath)?;
@@ -106,7 +107,7 @@ pub struct Request<'f, T: Serialize> {
     /// The name of the RPC call
     pub method: &'f str,
     /// Parameters to the RPC call
-    pub params: T,
+    pub params: Option<T>,
     /// Identifier for this Request, which should appear in the response
     pub id: u32,
     /// jsonrpc field, MUST be "2.0"
@@ -137,6 +138,7 @@ impl<T> Response<T> {
     }
 
     /// Returns whether or not the `result` field is empty
+    #[allow(dead_code)]
     pub fn is_none(&self) -> bool {
         self.result.is_none()
     }

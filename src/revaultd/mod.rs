@@ -10,28 +10,35 @@ use config::Config;
 mod client;
 use client::Client;
 
-#[derive(Debug)]
-pub struct RevaultDError(std::string::String);
+#[derive(Debug, Clone)]
+pub enum RevaultDError {
+    UnexpectedError(String),
+    StartError(String),
+    RPCError(String),
+    NoAnswerError,
+}
 
 impl std::fmt::Display for RevaultDError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Revauld error: {}", self.0)
+        match self {
+            Self::StartError(e) => write!(f, "Revauld error while starting: {}", e),
+            Self::RPCError(e) => write!(f, "Revauld error rpc call: {}", e),
+            Self::UnexpectedError(e) => write!(f, "Revauld unexpected error: {}", e),
+            Self::NoAnswerError => write!(f, "Revaultd returned no answer"),
+        }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct RevaultD {
     client: Client,
     config: Config,
 }
 
 impl RevaultD {
-    pub fn new(config_path: PathBuf) -> Result<RevaultD, RevaultDError> {
-        let config = Config::from_file(&config_path).map_err(|e| {
-            RevaultDError(format!("Failed to read revaultd config: {}", e.to_string()))
-        })?;
-
+    pub fn new(config: Config) -> Result<RevaultD, RevaultDError> {
         let socket_path = config.socket_path().map_err(|e| {
-            RevaultDError(format!(
+            RevaultDError::UnexpectedError(format!(
                 "Failed to find revaultd socket path: {}",
                 e.to_string()
             ))
@@ -42,12 +49,7 @@ impl RevaultD {
 
         log::debug!("Connecting to revaultd");
 
-        revaultd.get_info().map_err(|e| {
-            RevaultDError(format!(
-                "Failed to connect to revaultd with socket path: {}",
-                e.to_string(),
-            ))
-        })?;
+        revaultd.get_info()?;
 
         log::info!("Connected to revaultd");
 
@@ -58,51 +60,56 @@ impl RevaultD {
     fn call<T: Serialize + Debug, U: DeserializeOwned + Debug>(
         &self,
         method: &str,
-        input: T,
-    ) -> Result<U, client::error::Error> {
+        input: Option<T>,
+    ) -> Result<U, RevaultDError> {
         self.client
             .send_request(method, input)
             .and_then(|res| res.into_result())
+            .map_err(|e| match e {
+                client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
+                _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
+            })
     }
 
-    pub fn get_info(&self) -> Result<GetInfoResponse, client::error::Error> {
-        self.call("getinfo", GetInfoRequest {})
+    pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
+        self.call("getinfo", Option::<Request>::None)
     }
 }
 
-/// getinfo
-
-/// getinfo request
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GetInfoRequest {}
+struct Request {}
+
+/// getinfo
 
 /// getinfo response
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetInfoResponse {
     pub blockheight: u64,
     pub network: String,
-    pub sync: u32,
+    pub sync: f64,
     pub version: String,
 }
 
 // RevaultD can start only if a config path is given.
-pub fn start_daemon(config_path: PathBuf) -> Result<(), RevaultDError> {
+pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
     log::debug!("starting revaultd daemon");
     let child = Command::new("revaultd")
         .arg("--conf")
-        .arg(config_path.into_os_string().as_os_str())
+        .arg(config_path.to_path_buf().into_os_string().as_os_str())
         .spawn()
-        .map_err(|e| RevaultDError(format!("Failed to launched revaultd: {}", e.to_string())))?;
+        .map_err(|e| {
+            RevaultDError::StartError(format!("Failed to launched revaultd: {}", e.to_string()))
+        })?;
 
     log::debug!("waiting for revaultd daemon status");
 
     // daemon binary should fork and then terminate.
-    let output = child
-        .wait_with_output()
-        .map_err(|e| RevaultDError(format!("Child did not terminate: {}", e.to_string())))?;
+    let output = child.wait_with_output().map_err(|e| {
+        RevaultDError::StartError(format!("Child did not terminate: {}", e.to_string()))
+    })?;
 
     if !output.status.success() {
-        return Err(RevaultDError(format!(
+        return Err(RevaultDError::StartError(format!(
             "Error revaultd terminated with status: {} and stderr: {}",
             output.status.to_string(),
             String::from_utf8_lossy(&output.stderr),

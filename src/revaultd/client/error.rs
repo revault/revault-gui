@@ -21,8 +21,8 @@ use std::io;
 use std::{error, fmt};
 
 use serde::{Deserialize, Serialize};
-use serde_json;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub enum RpcErrorCode {
