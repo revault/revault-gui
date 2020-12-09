@@ -1,3 +1,4 @@
+use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use iced::{Command, Element};
@@ -45,7 +46,7 @@ impl ChargingState {
                         };
                     }
                 }
-                Error::RevaultDError(RevaultDError::NoAnswerError) => {
+                Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused)) => {
                     *self = Self::StartingDaemon;
                     return Command::perform(
                         start_daemon_and_connect(revaultd_config_path),
@@ -166,6 +167,8 @@ pub async fn start_daemon_and_connect(
     };
 
     start_daemon(&path).await?;
+
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     let cfg = Config::from_file(&path)?;
     let revaultd = RevaultD::new(cfg)?;

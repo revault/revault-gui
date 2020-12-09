@@ -15,6 +15,7 @@ pub enum RevaultDError {
     UnexpectedError(String),
     StartError(String),
     RPCError(String),
+    IOError(std::io::ErrorKind),
     NoAnswerError,
 }
 
@@ -25,6 +26,7 @@ impl std::fmt::Display for RevaultDError {
             Self::RPCError(e) => write!(f, "Revauld error rpc call: {}", e),
             Self::UnexpectedError(e) => write!(f, "Revauld unexpected error: {}", e),
             Self::NoAnswerError => write!(f, "Revaultd returned no answer"),
+            Self::IOError(kind) => write!(f, "Revaultd io error: {:?}", kind),
         }
     }
 }
@@ -66,6 +68,7 @@ impl RevaultD {
             .send_request(method, input)
             .and_then(|res| res.into_result())
             .map_err(|e| match e {
+                client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
                 client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
                 _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
             })
