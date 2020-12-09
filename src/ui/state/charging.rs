@@ -11,46 +11,54 @@ use crate::revaultd::{
 use crate::ui::{error::Error, message::Message, view::charging::*};
 
 #[derive(Debug, Clone)]
-pub enum ChargingState {
+pub struct ChargingState {
+    revaultd_config_path: Option<PathBuf>,
+    revaultd: Option<RevaultD>,
+    step: ChargingStep,
+}
+
+#[derive(Debug, Clone)]
+enum ChargingStep {
     Connecting,
     StartingDaemon,
-    Syncing { revaultd: RevaultD, progress: f64 },
+    Syncing { progress: f64 },
     Error { error: String },
     AskInstall { view: ChargingAskInstallView },
 }
 
 impl ChargingState {
-    fn on_connect(
-        &mut self,
-        revaultd_config_path: Option<PathBuf>,
-        res: Result<RevaultD, Error>,
-    ) -> Command<Message> {
+    pub fn new(revaultd_config_path: Option<PathBuf>) -> Self {
+        ChargingState {
+            revaultd_config_path,
+            revaultd: None,
+            step: ChargingStep::Connecting,
+        }
+    }
+
+    fn on_connect(&mut self, res: Result<RevaultD, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                let state = Self::Syncing {
-                    revaultd: revaultd.to_owned(),
-                    progress: 0.0,
-                };
-                *self = state;
+                self.step = ChargingStep::Syncing { progress: 0.0 };
+                self.revaultd = Some(revaultd.to_owned());
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
                 Error::ConfigError(ConfigError::NotFound) => {
-                    if let Some(path) = revaultd_config_path {
-                        *self = Self::Error {
+                    if let Some(path) = &self.revaultd_config_path {
+                        self.step = ChargingStep::Error {
                             error: format!("config not found at path: {:?}", path),
                         };
                     } else {
-                        *self = Self::AskInstall {
+                        self.step = ChargingStep::AskInstall {
                             view: ChargingAskInstallView::new(),
                         };
                     }
                 }
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
-                    *self = Self::StartingDaemon;
+                    self.step = ChargingStep::StartingDaemon;
                     return Command::perform(
-                        start_daemon_and_connect(revaultd_config_path),
+                        start_daemon_and_connect(self.revaultd_config_path.to_owned()),
                         Message::DaemonStarted,
                     );
                 }
@@ -63,11 +71,8 @@ impl ChargingState {
     fn on_daemon_started(&mut self, res: Result<RevaultD, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                let state = Self::Syncing {
-                    revaultd: revaultd.to_owned(),
-                    progress: 0.0,
-                };
-                *self = state;
+                self.step = ChargingStep::Syncing { progress: 0.0 };
+                self.revaultd = Some(revaultd.to_owned());
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
             Err(e) => self.on_error(&e),
@@ -75,7 +80,7 @@ impl ChargingState {
     }
 
     fn on_error(&mut self, e: &dyn std::fmt::Display) -> Command<Message> {
-        *self = Self::Error {
+        self.step = ChargingStep::Error {
             error: format!("error: {}", e),
         };
         Command::none()
@@ -83,22 +88,25 @@ impl ChargingState {
 
     #[allow(unused_variables, unused_assignments)]
     fn on_sync(&mut self, res: Result<f64, RevaultDError>) -> Command<Message> {
-        match self {
-            Self::Syncing {
-                revaultd,
-                mut progress,
-            } => {
+        match self.step {
+            ChargingStep::Syncing { mut progress } => {
                 match res {
                     Err(e) => return self.on_error(&e),
                     Ok(p) => {
                         if (p - 1.0_f64).abs() < f64::EPSILON {
-                            return Command::perform(synced(revaultd.to_owned()), Message::Synced);
+                            return Command::perform(
+                                synced(self.revaultd.as_ref().unwrap().to_owned()),
+                                Message::Synced,
+                            );
                         } else {
                             progress = p
                         }
                     }
                 };
-                Command::perform(sync(revaultd.to_owned(), true), Message::Syncing)
+                Command::perform(
+                    sync(self.revaultd.as_ref().unwrap().to_owned(), true),
+                    Message::Syncing,
+                )
             }
             _ => Command::none(),
         }
@@ -108,7 +116,7 @@ impl ChargingState {
 impl State for ChargingState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Connected(res) => self.on_connect(res.0, res.1),
+            Message::Connected(res) => self.on_connect(res),
             Message::Syncing(res) => self.on_sync(res),
             Message::DaemonStarted(res) => self.on_daemon_started(res),
             _ => Command::none(),
@@ -116,12 +124,12 @@ impl State for ChargingState {
     }
 
     fn view(&mut self) -> Element<Message> {
-        match self {
-            Self::StartingDaemon => charging_starting_daemon_view(),
-            Self::Connecting => charging_connect_view(),
-            Self::Syncing { progress, .. } => charging_syncing_view(progress),
-            Self::Error { error } => charging_error_view(error),
-            Self::AskInstall { view } => view.view(),
+        match &mut self.step {
+            ChargingStep::StartingDaemon => charging_starting_daemon_view(),
+            ChargingStep::Connecting => charging_connect_view(),
+            ChargingStep::Syncing { progress, .. } => charging_syncing_view(&progress),
+            ChargingStep::Error { error } => charging_error_view(&error),
+            ChargingStep::AskInstall { view } => view.view(),
         }
     }
 }
@@ -130,24 +138,17 @@ pub async fn synced(revaultd: RevaultD) -> RevaultD {
     revaultd
 }
 
-pub async fn connect(
-    revaultd_config_path: Option<PathBuf>,
-) -> (Option<PathBuf>, Result<RevaultD, Error>) {
-    fn try_connect(revaultd_config_path: &Option<PathBuf>) -> Result<RevaultD, Error> {
-        let path = if let Some(ref p) = revaultd_config_path {
-            p.to_owned()
-        } else {
-            default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
-        };
+pub async fn connect(revaultd_config_path: Option<PathBuf>) -> Result<RevaultD, Error> {
+    let path = if let Some(ref p) = revaultd_config_path {
+        p.to_owned()
+    } else {
+        default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
+    };
 
-        let cfg = Config::from_file(&path)?;
-        let revaultd = RevaultD::new(&cfg)?;
+    let cfg = Config::from_file(&path)?;
+    let revaultd = RevaultD::new(&cfg)?;
 
-        return Ok(revaultd);
-    }
-
-    let res = try_connect(&revaultd_config_path);
-    return (revaultd_config_path, res);
+    Ok(revaultd)
 }
 
 pub async fn sync(revaultd: RevaultD, sleep: bool) -> Result<f64, RevaultDError> {

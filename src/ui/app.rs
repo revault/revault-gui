@@ -27,7 +27,9 @@ impl Application for App {
         (
             App {
                 config: config.clone(),
-                state: std::boxed::Box::new(ChargingState::Connecting),
+                state: std::boxed::Box::new(ChargingState::new(
+                    config.revaultd_config_path.to_owned(),
+                )),
             },
             Command::perform(connect(config.revaultd_config_path), Message::Connected),
         )
