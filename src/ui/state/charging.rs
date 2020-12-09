@@ -46,7 +46,8 @@ impl ChargingState {
                         };
                     }
                 }
-                Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused)) => {
+                Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
+                | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
                     *self = Self::StartingDaemon;
                     return Command::perform(
                         start_daemon_and_connect(revaultd_config_path),
