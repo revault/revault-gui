@@ -133,21 +133,21 @@ pub async fn synced(revaultd: RevaultD) -> RevaultD {
 pub async fn connect(
     revaultd_config_path: Option<PathBuf>,
 ) -> (Option<PathBuf>, Result<RevaultD, Error>) {
-    let res = try_connect(&revaultd_config_path).await;
+    fn try_connect(revaultd_config_path: &Option<PathBuf>) -> Result<RevaultD, Error> {
+        let path = if let Some(ref p) = revaultd_config_path {
+            p.to_owned()
+        } else {
+            default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
+        };
+
+        let cfg = Config::from_file(&path)?;
+        let revaultd = RevaultD::new(&cfg)?;
+
+        return Ok(revaultd);
+    }
+
+    let res = try_connect(&revaultd_config_path);
     return (revaultd_config_path, res);
-}
-
-async fn try_connect(revaultd_config_path: &Option<PathBuf>) -> Result<RevaultD, Error> {
-    let path = if let Some(ref p) = revaultd_config_path {
-        p.to_owned()
-    } else {
-        default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
-    };
-
-    let cfg = Config::from_file(&path)?;
-    let revaultd = RevaultD::new(&cfg)?;
-
-    return Ok(revaultd);
 }
 
 pub async fn sync(revaultd: RevaultD, sleep: bool) -> Result<f64, RevaultDError> {
