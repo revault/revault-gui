@@ -38,7 +38,7 @@ pub struct RevaultD {
 }
 
 impl RevaultD {
-    pub fn new(config: Config) -> Result<RevaultD, RevaultDError> {
+    pub fn new(config: &Config) -> Result<RevaultD, RevaultDError> {
         let socket_path = config.socket_path().map_err(|e| {
             RevaultDError::UnexpectedError(format!(
                 "Failed to find revaultd socket path: {}",
@@ -47,7 +47,10 @@ impl RevaultD {
         })?;
 
         let client = Client::new(socket_path);
-        let revaultd = RevaultD { client, config };
+        let revaultd = RevaultD {
+            client,
+            config: config.to_owned(),
+        };
 
         log::debug!("Connecting to revaultd");
 

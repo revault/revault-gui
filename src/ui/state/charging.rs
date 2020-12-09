@@ -145,7 +145,7 @@ async fn try_connect(revaultd_config_path: &Option<PathBuf>) -> Result<RevaultD,
     };
 
     let cfg = Config::from_file(&path)?;
-    let revaultd = RevaultD::new(cfg)?;
+    let revaultd = RevaultD::new(&cfg)?;
 
     return Ok(revaultd);
 }
@@ -169,9 +169,20 @@ pub async fn start_daemon_and_connect(
 
     start_daemon(&path).await?;
 
-    std::thread::sleep(std::time::Duration::from_secs(5));
-
     let cfg = Config::from_file(&path)?;
-    let revaultd = RevaultD::new(cfg)?;
-    Ok(revaultd)
+
+    fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<RevaultD, Error> {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        RevaultD::new(cfg).map_err(|e| {
+            log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
+            e.into()
+        })
+    };
+
+    try_connect_to_revault(&cfg, 5)
+        .or_else(|_| try_connect_to_revault(&cfg, 4))
+        .or_else(|_| try_connect_to_revault(&cfg, 3))
+        .or_else(|_| try_connect_to_revault(&cfg, 2))
+        .or_else(|_| try_connect_to_revault(&cfg, 1))
+        .or_else(|_| try_connect_to_revault(&cfg, 0))
 }
