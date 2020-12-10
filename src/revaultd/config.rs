@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub bitcoind_config: BitcoindConfig,
     /// An optional custom data directory
@@ -11,10 +11,14 @@ pub struct Config {
 impl Config {
     pub fn from_file(path: &PathBuf) -> Result<Self, ConfigError> {
         let config = std::fs::read(path)
-            .map_err(|e| ConfigError(format!("Reading configuration file: {}", e)))
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => ConfigError::NotFound,
+                _ => ConfigError::ReadingFile(format!("Reading configuration file: {}", e)),
+            })
             .and_then(|file_content| {
-                toml::from_slice::<Config>(&file_content)
-                    .map_err(|e| ConfigError(format!("Parsing configuration file: {}", e)))
+                toml::from_slice::<Config>(&file_content).map_err(|e| {
+                    ConfigError::ReadingFile(format!("Parsing configuration file: {}", e))
+                })
             })?;
         Ok(config)
     }
@@ -41,7 +45,7 @@ impl std::default::Default for Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct BitcoindConfig {
     pub network: String,
 }
@@ -79,7 +83,7 @@ pub fn default_datadir() -> Result<PathBuf, ConfigError> {
         return Ok(path);
     }
 
-    Err(ConfigError(
+    Err(ConfigError::Unexpected(
         "Could not locate the configuration directory.".to_owned(),
     ))
 }
@@ -91,12 +95,20 @@ pub fn default_config_path() -> Result<PathBuf, ConfigError> {
     Ok(datadir)
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct ConfigError(pub String);
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ConfigError {
+    NotFound,
+    ReadingFile(String),
+    Unexpected(String),
+}
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Configuration error: {}", self.0)
+        match self {
+            Self::NotFound => write!(f, "Configuration error: not found"),
+            Self::ReadingFile(e) => write!(f, "Configuration error while reading file: {}", e),
+            Self::Unexpected(e) => write!(f, "Configuration error unexpected: {}", e),
+        }
     }
 }
 
