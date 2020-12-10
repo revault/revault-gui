@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 mod revaultd;
+
 mod ui;
 
 extern crate serde;

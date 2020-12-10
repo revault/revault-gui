@@ -1,6 +1,8 @@
 pub mod app;
-pub mod ds;
+mod color;
+mod component;
 mod error;
+pub mod image;
 mod message;
 mod state;
 mod view;

@@ -1,5 +1,6 @@
 use std::io::ErrorKind;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use iced::{Command, Element};
 
@@ -13,7 +14,7 @@ use crate::ui::{error::Error, message::Message, view::charging::*};
 #[derive(Debug, Clone)]
 pub struct ChargingState {
     revaultd_config_path: Option<PathBuf>,
-    revaultd: Option<RevaultD>,
+    revaultd: Option<Arc<RevaultD>>,
     step: ChargingStep,
 }
 
@@ -27,19 +28,19 @@ enum ChargingStep {
 }
 
 impl ChargingState {
-    pub fn new(revaultd_config_path: Option<PathBuf>) -> Self {
+    pub fn new(revaultd_config_path: &Option<PathBuf>) -> Self {
         ChargingState {
-            revaultd_config_path,
+            revaultd_config_path: revaultd_config_path.to_owned(),
             revaultd: None,
             step: ChargingStep::Connecting,
         }
     }
 
-    fn on_connect(&mut self, res: Result<RevaultD, Error>) -> Command<Message> {
+    fn on_connect(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
                 self.step = ChargingStep::Syncing { progress: 0.0 };
-                self.revaultd = Some(revaultd.to_owned());
+                self.revaultd = Some(revaultd.clone());
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
@@ -68,11 +69,11 @@ impl ChargingState {
         Command::none()
     }
 
-    fn on_daemon_started(&mut self, res: Result<RevaultD, Error>) -> Command<Message> {
+    fn on_daemon_started(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
                 self.step = ChargingStep::Syncing { progress: 0.0 };
-                self.revaultd = Some(revaultd.to_owned());
+                self.revaultd = Some(revaultd.clone());
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
             Err(e) => self.on_error(&e),
@@ -95,7 +96,7 @@ impl ChargingState {
                     Ok(p) => {
                         if (p - 1.0_f64).abs() < f64::EPSILON {
                             return Command::perform(
-                                synced(self.revaultd.as_ref().unwrap().to_owned()),
+                                synced(self.revaultd.as_ref().unwrap().clone()),
                                 Message::Synced,
                             );
                         } else {
@@ -104,7 +105,7 @@ impl ChargingState {
                     }
                 };
                 Command::perform(
-                    sync(self.revaultd.as_ref().unwrap().to_owned(), true),
+                    sync(self.revaultd.as_ref().unwrap().clone(), true),
                     Message::Syncing,
                 )
             }
@@ -132,13 +133,26 @@ impl State for ChargingState {
             ChargingStep::AskInstall { view } => view.view(),
         }
     }
+
+    fn load(&self) -> Command<Message> {
+        Command::perform(
+            connect(self.revaultd_config_path.clone()),
+            Message::Connected,
+        )
+    }
 }
 
-pub async fn synced(revaultd: RevaultD) -> RevaultD {
+impl From<ChargingState> for Box<dyn State> {
+    fn from(s: ChargingState) -> Box<dyn State> {
+        Box::new(s)
+    }
+}
+
+async fn synced(revaultd: Arc<RevaultD>) -> Arc<RevaultD> {
     revaultd
 }
 
-pub async fn connect(revaultd_config_path: Option<PathBuf>) -> Result<RevaultD, Error> {
+async fn connect(revaultd_config_path: Option<PathBuf>) -> Result<Arc<RevaultD>, Error> {
     let path = if let Some(ref p) = revaultd_config_path {
         p.to_owned()
     } else {
@@ -148,10 +162,10 @@ pub async fn connect(revaultd_config_path: Option<PathBuf>) -> Result<RevaultD, 
     let cfg = Config::from_file(&path)?;
     let revaultd = RevaultD::new(&cfg)?;
 
-    Ok(revaultd)
+    Ok(Arc::new(revaultd))
 }
 
-pub async fn sync(revaultd: RevaultD, sleep: bool) -> Result<f64, RevaultDError> {
+async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<f64, RevaultDError> {
     if sleep {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
@@ -159,9 +173,9 @@ pub async fn sync(revaultd: RevaultD, sleep: bool) -> Result<f64, RevaultDError>
     Ok(resp.sync)
 }
 
-pub async fn start_daemon_and_connect(
+async fn start_daemon_and_connect(
     revaultd_config_path: Option<PathBuf>,
-) -> Result<RevaultD, Error> {
+) -> Result<Arc<RevaultD>, Error> {
     let path = if let Some(ref p) = revaultd_config_path {
         p.to_owned()
     } else {
@@ -172,9 +186,9 @@ pub async fn start_daemon_and_connect(
 
     let cfg = Config::from_file(&path)?;
 
-    fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<RevaultD, Error> {
+    fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
-        RevaultD::new(cfg).map_err(|e| {
+        RevaultD::new(cfg).map(Arc::new).map_err(|e| {
             log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })
