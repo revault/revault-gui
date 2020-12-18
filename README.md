@@ -11,8 +11,8 @@ default `revaultd` configuration location is checked.
 
 ## ENV vars:
 
-| Var                   | Description                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `REVAULTD_CONF`       | Path to the revaultd configuration path                                                  |
-| `REVAULTGUI_DEBUG`    | If `true`, the interface will use `iced` debug feature to display current layout         |
-| `REVAULTGUI_LOGLEVEL` | Enable the chosen level for logging, can be `debug`, `trace`, `error`, `warn`, `info`    |
+| Var                   | Description                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `REVAULTD_CONF`       | Path to the [revaultd](https://github.com/re-vault/revaultd) configuration path                                                                                          |
+| `REVAULTGUI_DEBUG`    | If `true`, the interface will use `iced` debug feature to display current layout and set log level to `debug`                                                            |
+| `REVAULTGUI_LOG`      | Enable the [tracing env filter](https://docs.rs/tracing-subscriber/0.2.15/tracing_subscriber/filter/struct.EnvFilter.html) example: `revault_gui::revault::client=debug` |

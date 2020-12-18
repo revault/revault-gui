@@ -2,32 +2,12 @@ use std::env::VarError;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-mod revaultd;
-
-mod ui;
-
+use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
-/// logs everything on stdout
-/// `./revault-gui > log.txt`
-fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
-    let dispatcher = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level);
-
-    dispatcher.chain(std::io::stdout()).apply()?;
-
-    Ok(())
-}
+mod revaultd;
+mod ui;
 
 fn main() {
     let path = match std::env::var("REVAULTD_CONF") {
@@ -54,33 +34,37 @@ fn main() {
         Err(VarError::NotPresent) => false,
     };
 
-    let varloglevel: Option<log::LevelFilter> = match std::env::var("REVAULTGUI_LOGLEVEL") {
-        Ok(var) => match FromStr::from_str(&var) {
-            Ok(v) => Some(v),
+    let logfilter: EnvFilter = match std::env::var("REVAULTGUI_LOG") {
+        Ok(var) => match EnvFilter::try_new(var) {
+            Ok(v) => v,
             Err(_) => {
-                println!("Error: REVAULTGUI_LOGLEVEL must be 'OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'");
+                println!(
+                    "Error: REVAULTGUI_LOG must follow tracing directive like `revaultd=info`"
+                );
                 std::process::exit(1);
             }
         },
         Err(VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTGUI_LOGLEVEL must be 'OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'");
+            println!("Error: REVAULTGUI_LOG unicode only");
             std::process::exit(1);
         }
-        Err(VarError::NotPresent) => None,
-    };
-
-    let loglevel = varloglevel.unwrap_or_else(|| {
-        if debug {
-            log::LevelFilter::Debug
-        } else {
-            log::LevelFilter::Info
+        Err(VarError::NotPresent) => {
+            if debug {
+                EnvFilter::try_new("revault_gui=debug").unwrap()
+            } else {
+                EnvFilter::try_new("revault_gui=info").unwrap()
+            }
         }
-    });
-
-    if let Err(e) = setup_logger(loglevel) {
-        println!("Error: failed to setup logger: {}", e.to_string());
-        std::process::exit(1);
     };
+
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(logfilter)
+        .finish();
+
+    if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
+        println!("unexpected: {}", e);
+        std::process::exit(1);
+    }
 
     if let Err(e) = ui::app::run(ui::app::Config {
         revaultd_config_path: path,
