@@ -1,4 +1,7 @@
-use iced::{Align, Column, Container, Element, HorizontalAlignment, Length, Row, Text};
+use iced::{
+    scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
+    Text,
+};
 
 use crate::ui::{
     color,
@@ -20,12 +23,14 @@ pub enum ManagerView {
 #[derive(Debug, Clone)]
 pub struct ManagerHomeView {
     sidebar: ManagerSidebar,
+    scroll: scrollable::State,
 }
 
 impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
             sidebar: ManagerSidebar::new(),
+            scroll: scrollable::State::new(),
         }
     }
 
@@ -40,11 +45,13 @@ impl ManagerHomeView {
             navbar(navbar_warning(warning)),
             self.sidebar.view(ManagerSidebarCurrent::Home),
             layout::main_section(Container::new(
-                Column::new()
-                    .push(balance_view(balance))
-                    .push(list_vaults(vaults))
-                    .push(bitcoin_core_card(blockheight))
-                    .spacing(20),
+                Scrollable::new(&mut self.scroll).push(Container::new(
+                    Column::new()
+                        .push(balance_view(balance))
+                        .push(list_vaults(vaults))
+                        .push(bitcoin_core_card(blockheight))
+                        .spacing(20),
+                )),
             )),
         )
     }
@@ -139,12 +146,14 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
 #[derive(Debug, Clone)]
 pub struct ManagerHistoryView {
     sidebar: ManagerSidebar,
+    scroll: scrollable::State,
 }
 
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
             sidebar: ManagerSidebar::new(),
+            scroll: scrollable::State::new(),
         }
     }
 
@@ -152,7 +161,9 @@ impl ManagerHistoryView {
         layout::dashboard(
             navbar(None),
             self.sidebar.view(ManagerSidebarCurrent::History),
-            layout::main_section(card::simple(text::paragraph("main"))),
+            layout::main_section(Container::new(
+                Scrollable::new(&mut self.scroll).push(card::simple(text::paragraph("main"))),
+            )),
         )
     }
 }
