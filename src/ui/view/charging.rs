@@ -1,77 +1,24 @@
-use iced::{button, Column, Container, Element, Length, Text};
+use iced::{button, Column, Container, Element, Text};
 
-use crate::ui::{ds::image::revaut_colored_logo, message::Message};
+use crate::ui::{component, message::Message, view::layout};
 
 pub fn charging_connect_view() -> Element<'static, Message> {
-    let svg = revaut_colored_logo()
-        .width(Length::Units(300))
-        .height(Length::Fill);
-
-    let text = Text::new("Connecting to daemon...");
-
-    let content = Column::new().push(svg).push(text);
-
-    Container::new(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(20)
-        .center_x()
-        .center_y()
-        .into()
+    layout::cover(component::text::paragraph("Connecting to daemon..."))
 }
 
 pub fn charging_starting_daemon_view() -> Element<'static, Message> {
-    let svg = revaut_colored_logo()
-        .width(Length::Units(300))
-        .height(Length::Fill);
-
-    let text = Text::new("Starting daemon...");
-
-    let content = Column::new().push(svg).push(text);
-
-    Container::new(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(20)
-        .center_x()
-        .center_y()
-        .into()
+    layout::cover(component::text::paragraph("Starting daemon..."))
 }
 
 pub fn charging_syncing_view(progress: &f64) -> Element<'static, Message> {
-    let svg = revaut_colored_logo()
-        .width(Length::Units(300))
-        .height(Length::Fill);
-
-    let text = Text::new(format!("Syncing... {}%", progress));
-
-    let content = Column::new().push(svg).push(text);
-
-    Container::new(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(20)
-        .center_x()
-        .center_y()
-        .into()
+    layout::cover(component::text::paragraph(&format!(
+        "Syncing... {}%",
+        progress
+    )))
 }
 
 pub fn charging_error_view(error: &str) -> Element<'static, Message> {
-    let svg = revaut_colored_logo()
-        .width(Length::Units(300))
-        .height(Length::Fill);
-
-    let text = Text::new(format!("Error: {}", error));
-
-    let content = Column::new().push(svg).push(text);
-
-    Container::new(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(20)
-        .center_x()
-        .center_y()
-        .into()
+    layout::cover(component::text::paragraph(&format!("Error: {}", error)))
 }
 
 #[derive(Debug, Clone)]
@@ -86,22 +33,10 @@ impl ChargingAskInstallView {
         }
     }
     pub fn view(&mut self) -> Element<Message> {
-        let svg = revaut_colored_logo()
-            .width(Length::Units(300))
-            .height(Length::Fill);
-
-        let text = Text::new("No config do you want to install ?");
+        let text = component::text::paragraph("No config do you want to install ?");
         let button = button::Button::new(&mut self.validate_button, Text::new("Install"))
             .on_press(Message::Install);
 
-        let content = Column::new().push(svg).push(text).push(button);
-
-        Container::new(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .center_x()
-            .center_y()
-            .into()
+        layout::cover(Container::new(Column::new().push(text).push(button)))
     }
 }

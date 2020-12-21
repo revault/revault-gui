@@ -5,10 +5,13 @@ use std::process::Command;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-pub mod config;
-use config::Config;
 mod client;
+pub mod config;
+pub mod model;
+
 use client::Client;
+use config::Config;
+use model::Vault;
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -70,15 +73,22 @@ impl RevaultD {
         self.client
             .send_request(method, input)
             .and_then(|res| res.into_result())
-            .map_err(|e| match e {
-                client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
-                client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
-                _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
+            .map_err(|e| {
+                log::error!("method {} failed: {}", method, e);
+                match e {
+                    client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
+                    client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
+                    _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
+                }
             })
     }
 
     pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
         self.call("getinfo", Option::<Request>::None)
+    }
+
+    pub fn list_vaults(&self) -> Result<ListVaultsResponse, RevaultDError> {
+        self.call("listvaults", Option::<Request>::None)
     }
 }
 
@@ -94,6 +104,14 @@ pub struct GetInfoResponse {
     pub network: String,
     pub sync: f64,
     pub version: String,
+}
+
+/// list_vaults
+
+/// listvaults response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListVaultsResponse {
+    pub vaults: Vec<Vault>,
 }
 
 // RevaultD can start only if a config path is given.

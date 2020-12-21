@@ -5,8 +5,7 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 
 use super::message::Message;
 use super::state::{
-    charging::connect, charging::ChargingState, installing::InstallingState, manager::ManagerState,
-    State,
+    charging::ChargingState, installing::InstallingState, manager::ManagerState, State,
 };
 
 pub struct App {
@@ -18,20 +17,27 @@ pub fn run(config: Config) -> Result<(), iced::Error> {
     App::run(Settings::with_flags(config))
 }
 
+impl App {
+    pub fn load_state(&mut self, s: Box<dyn State>) -> Command<Message> {
+        self.state = s;
+        self.state.load()
+    }
+}
+
 impl Application for App {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = Config;
 
     fn new(config: Config) -> (App, Command<Self::Message>) {
+        let state = ChargingState::new(config.revaultd_config_path.to_owned());
+        let cmd = state.load();
         (
             App {
-                config: config.clone(),
-                state: std::boxed::Box::new(ChargingState::new(
-                    config.revaultd_config_path.to_owned(),
-                )),
+                config,
+                state: std::boxed::Box::new(state),
             },
-            Command::perform(connect(config.revaultd_config_path), Message::Connected),
+            cmd,
         )
     }
 
@@ -45,15 +51,10 @@ impl Application for App {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::Install => {
-                self.state = Box::new(InstallingState {});
-            }
-            Message::Synced(revaultd) => {
-                self.state = Box::new(ManagerState::new(revaultd));
-            }
-            _ => return self.state.update(message),
+            Message::Install => self.load_state(InstallingState::new().into()),
+            Message::Synced(revaultd) => self.load_state(ManagerState::new(revaultd).into()),
+            _ => self.state.update(message),
         }
-        Command::none()
     }
 
     fn view(&mut self) -> Element<Self::Message> {
