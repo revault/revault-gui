@@ -28,9 +28,9 @@ enum ChargingStep {
 }
 
 impl ChargingState {
-    pub fn new(revaultd_config_path: &Option<PathBuf>) -> Self {
+    pub fn new(revaultd_config_path: Option<PathBuf>) -> Self {
         ChargingState {
-            revaultd_config_path: revaultd_config_path.to_owned(),
+            revaultd_config_path,
             revaultd: None,
             step: ChargingStep::Connecting,
         }
