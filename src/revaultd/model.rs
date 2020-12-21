@@ -16,6 +16,9 @@ pub struct Vault {
 /// transactions
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum VaultStatus {
+    /// The deposit transaction is less than 6 blocks deep in the chain.
+    #[serde(rename = "unconfirmed")]
+    Unconfirmed,
     /// The deposit transaction is confirmed
     #[serde(rename = "funded")]
     Funded,
