@@ -4,6 +4,7 @@ use std::process::Command;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error, info, span, Level};
 
 mod client;
 pub mod config;
@@ -42,6 +43,9 @@ pub struct RevaultD {
 
 impl RevaultD {
     pub fn new(config: &Config) -> Result<RevaultD, RevaultDError> {
+        let span = span!(Level::INFO, "revaultd");
+        let _enter = span.enter();
+
         let socket_path = config.socket_path().map_err(|e| {
             RevaultDError::UnexpectedError(format!(
                 "Failed to find revaultd socket path: {}",
@@ -55,11 +59,11 @@ impl RevaultD {
             config: config.to_owned(),
         };
 
-        log::debug!("Connecting to revaultd");
+        debug!("Connecting to revaultd");
 
         revaultd.get_info()?;
 
-        log::info!("Connected to revaultd");
+        info!("Connected to revaultd");
 
         Ok(revaultd)
     }
@@ -70,11 +74,14 @@ impl RevaultD {
         method: &str,
         input: Option<T>,
     ) -> Result<U, RevaultDError> {
+        let span = span!(Level::INFO, "request");
+        let _guard = span.enter();
+        info!(method);
         self.client
             .send_request(method, input)
             .and_then(|res| res.into_result())
             .map_err(|e| {
-                log::error!("method {} failed: {}", method, e);
+                error!("method {} failed: {}", method, e);
                 match e {
                     client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
                     client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
@@ -116,7 +123,7 @@ pub struct ListVaultsResponse {
 
 // RevaultD can start only if a config path is given.
 pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
-    log::debug!("starting revaultd daemon");
+    debug!("starting revaultd daemon");
     let child = Command::new("revaultd")
         .arg("--conf")
         .arg(config_path.to_path_buf().into_os_string().as_os_str())
@@ -125,7 +132,7 @@ pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
             RevaultDError::StartError(format!("Failed to launched revaultd: {}", e.to_string()))
         })?;
 
-    log::debug!("waiting for revaultd daemon status");
+    debug!("waiting for revaultd daemon status");
 
     // daemon binary should fork and then terminate.
     let output = child.wait_with_output().map_err(|e| {
@@ -140,7 +147,7 @@ pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
         )));
     }
 
-    log::info!("revaultd daemon started");
+    info!("revaultd daemon started");
 
     Ok(())
 }

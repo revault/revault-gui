@@ -189,7 +189,7 @@ async fn start_daemon_and_connect(
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
         RevaultD::new(cfg).map(Arc::new).map_err(|e| {
-            log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
+            tracing::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })
     };

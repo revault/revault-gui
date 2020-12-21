@@ -35,6 +35,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_writer, Deserializer};
 
+use tracing::debug;
+
 /// A handle to a remote JSONRPC server
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -75,7 +77,7 @@ impl Client {
             jsonrpc: "2.0",
         };
 
-        log::trace!("Sending to revaultd: {:#?}", request);
+        debug!("Sending to revaultd: {:#?}", request);
 
         to_writer(&mut stream, &request)?;
 
@@ -95,7 +97,7 @@ impl Client {
             return Err(Error::NonceMismatch);
         }
 
-        log::trace!("Received from revaultd: {:#?}", response);
+        debug!("Received from revaultd: {:#?}", response);
 
         Ok(response)
     }
