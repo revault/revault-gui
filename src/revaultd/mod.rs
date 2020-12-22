@@ -12,7 +12,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::Vault;
+use model::{Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -97,6 +97,16 @@ impl RevaultD {
     pub fn list_vaults(&self) -> Result<ListVaultsResponse, RevaultDError> {
         self.call("listvaults", Option::<Request>::None)
     }
+
+    pub fn list_transactions(
+        &self,
+        outpoints: Option<Vec<String>>,
+    ) -> Result<ListTransactionsResponse, RevaultDError> {
+        self.call(
+            "listtransactions",
+            Some(ListTransactionsRequest { outpoints }),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -119,6 +129,20 @@ pub struct GetInfoResponse {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListVaultsResponse {
     pub vaults: Vec<Vault>,
+}
+
+/// list_transactions
+
+/// listtransactions request
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListTransactionsRequest {
+    pub outpoints: Option<Vec<String>>,
+}
+
+/// listtransactions response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListTransactionsResponse {
+    pub transactions: Vec<VaultTransactions>,
 }
 
 // RevaultD can start only if a config path is given.

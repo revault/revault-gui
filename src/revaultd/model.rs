@@ -1,3 +1,4 @@
+use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -10,6 +11,12 @@ pub struct Vault {
     pub txid: String,
     /// Deposit vout of the vault deposit transaction
     pub vout: u32,
+}
+
+impl Vault {
+    pub fn outpoint(&self) -> String {
+        format!("{}:{}", self.txid, self.vout)
+    }
 }
 
 /// The status of a [Vault], depends both on the block chain and the set of pre-signed
@@ -56,4 +63,34 @@ pub enum VaultStatus {
     /// The spend transaction is confirmed
     #[serde(rename = "spent")]
     Spent,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VaultTransactions {
+    pub outpoint: String,
+    pub deposit: VaultTransaction,
+    pub unvault: VaultTransaction,
+    pub spend: VaultTransaction,
+    pub cancel: VaultTransaction,
+    pub emergency: VaultTransaction,
+    pub unvault_emergency: VaultTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum VaultTransaction {
+    Signed {
+        #[serde(rename = "hex")]
+        tx: Transaction,
+    },
+    Broadcasted {
+        /// Height of the block containing the transaction.
+        blockheight: u64,
+        #[serde(rename = "hex")]
+        tx: Transaction,
+        /// reception time as Unix Epoch timestamp
+        received_at: u64,
+    },
+    Unsigned {
+        psbt: PartiallySignedTransaction,
+    },
 }
