@@ -35,6 +35,51 @@ pub mod card {
     use crate::ui::color;
     use iced::{container, Container};
 
+    pub fn rounded<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+        Container::new(content).style(RoundedCardStyle)
+    }
+
+    pub struct RoundedCardStyle;
+    impl container::StyleSheet for RoundedCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                border_width: 1.0,
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn grey<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+        Container::new(content).padding(15).style(GreyCardStyle)
+    }
+
+    pub struct GreyCardStyle;
+    impl container::StyleSheet for GreyCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                background: color::BACKGROUND_LIGHT.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn white<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+        Container::new(content).padding(15).style(WhiteCardStyle)
+    }
+
+    pub struct WhiteCardStyle;
+    impl container::StyleSheet for WhiteCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                background: color::FOREGROUND.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
     pub fn simple<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content).padding(15).style(SimpleCardStyle)
     }

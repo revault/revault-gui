@@ -96,28 +96,16 @@ impl VaultList {
     }
 
     fn load(&mut self, vaults: &Vec<Rc<Vault>>, transactions: &Vec<Rc<VaultTransactions>>) {
+        self.0 = Vec::new();
         for vlt in vaults {
-            let mut append = true;
-            for item in self.0.iter_mut() {
-                if item.vault.txid == vlt.txid {
-                    item.vault = vlt.clone();
-                    append = false;
-                    break;
-                }
-            }
-
-            if append {
-                self.0.push(VaultListItem::new(vlt.clone(), None));
-            }
-        }
-
-        for txs in transactions {
-            for item in self.0.iter_mut() {
+            let mut item = VaultListItem::new(vlt.clone(), None);
+            for txs in transactions {
                 if item.vault.outpoint() == txs.outpoint {
                     item.txs = Some(txs.clone());
                     break;
                 }
             }
+            self.0.push(item);
         }
     }
 
@@ -151,34 +139,43 @@ impl VaultListItem {
     }
 
     pub fn view<'a>(&'a mut self) -> Container<'a, Message> {
-        Container::new(
-            iced::button::Button::new(
-                &mut self.state,
-                card::simple(Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(badge::tx_deposit())
-                                    .push(text::small(&self.vault.txid))
-                                    .spacing(20),
-                            )
-                            .width(Length::Fill),
+        let mut col = Column::new().push(button::transparent(
+            &mut self.state,
+            card::white(Container::new(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(badge::tx_deposit())
+                                .push(text::small(&self.vault.txid))
+                                .spacing(20),
                         )
-                        .push(
-                            Container::new(Text::new(format!(
-                                "{}",
-                                self.vault.amount as f64 / 100000000_f64
-                            )))
-                            .width(Length::Shrink),
-                        )
-                        .spacing(20)
-                        .align_items(Align::Center),
-                )),
-            )
-            .on_press(Message::Install),
-        )
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(Text::new(format!(
+                            "{}",
+                            self.vault.amount as f64 / 100000000_f64
+                        )))
+                        .width(Length::Shrink),
+                    )
+                    .spacing(20)
+                    .align_items(Align::Center),
+            )),
+            Message::SelectVault(self.vault.outpoint()),
+        ));
+        if let Some(txs) = &self.txs {
+            col = col.push(txs_card(txs));
+        }
+        card::rounded(Container::new(col))
     }
+}
+
+fn txs_card<'a, T: 'a>(tx: &Rc<VaultTransactions>) -> Container<'a, T> {
+    let mut col = Column::new();
+    col = col.push(Container::new(Text::new("HELLO")));
+
+    Container::new(col)
 }
 
 fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {

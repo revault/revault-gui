@@ -102,10 +102,13 @@ impl RevaultD {
         &self,
         outpoints: Option<Vec<String>>,
     ) -> Result<ListTransactionsResponse, RevaultDError> {
-        self.call(
-            "listtransactions",
-            Some(ListTransactionsRequest { outpoints }),
-        )
+        match outpoints {
+            Some(list) => self.call(
+                "listtransactions",
+                Some(vec![ListTransactionsRequest(list)]),
+            ),
+            None => self.call("listtransactions", Option::<Request>::None),
+        }
     }
 }
 
@@ -126,7 +129,7 @@ pub struct GetInfoResponse {
 /// list_vaults
 
 /// listvaults response
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ListVaultsResponse {
     pub vaults: Vec<Vault>,
 }
@@ -135,12 +138,10 @@ pub struct ListVaultsResponse {
 
 /// listtransactions request
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ListTransactionsRequest {
-    pub outpoints: Option<Vec<String>>,
-}
+pub struct ListTransactionsRequest(Vec<String>);
 
 /// listtransactions response
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ListTransactionsResponse {
     pub transactions: Vec<VaultTransactions>,
 }

@@ -1,7 +1,7 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Vault {
     /// Amount of the vault in satoshis
     pub amount: u64,
@@ -21,7 +21,7 @@ impl Vault {
 
 /// The status of a [Vault], depends both on the block chain and the set of pre-signed
 /// transactions
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum VaultStatus {
     /// The deposit transaction is less than 6 blocks deep in the chain.
     #[serde(rename = "unconfirmed")]
@@ -65,32 +65,62 @@ pub enum VaultStatus {
     Spent,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct VaultTransactions {
     pub outpoint: String,
     pub deposit: VaultTransaction,
     pub unvault: VaultTransaction,
-    pub spend: VaultTransaction,
+    pub spend: Option<VaultTransaction>,
     pub cancel: VaultTransaction,
     pub emergency: VaultTransaction,
     pub unvault_emergency: VaultTransaction,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
 pub enum VaultTransaction {
-    Signed {
-        #[serde(rename = "hex")]
-        tx: Transaction,
-    },
     Broadcasted {
         /// Height of the block containing the transaction.
         blockheight: u64,
-        #[serde(rename = "hex")]
+        #[serde(rename = "hex", with = "bitcoin_transaction")]
         tx: Transaction,
         /// reception time as Unix Epoch timestamp
         received_at: u64,
     },
+    Signed {
+        #[serde(rename = "hex", with = "bitcoin_transaction")]
+        tx: Transaction,
+    },
     Unsigned {
+        #[serde(with = "bitcoin_psbt")]
         psbt: PartiallySignedTransaction,
     },
+}
+
+mod bitcoin_transaction {
+    use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
+    use serde::{self, Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Transaction, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let bytes = Vec::from_hex(&s).map_err(serde::de::Error::custom)?;
+        encode::deserialize::<Transaction>(&bytes).map_err(serde::de::Error::custom)
+    }
+}
+
+mod bitcoin_psbt {
+    use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction};
+    use serde::{self, Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PartiallySignedTransaction, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let bytes: Vec<u8> = base64::decode(&s).map_err(serde::de::Error::custom)?;
+        encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+    }
 }

@@ -39,6 +39,17 @@ impl ManagerState {
         }
     }
 
+    pub fn update_txs(&mut self, txs: Vec<VaultTransactions>) {
+        self.transactions = Vec::new();
+        for tx in txs {
+            self.transactions.push(Rc::new(tx));
+        }
+        match &mut self.view {
+            ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
+            _ => {}
+        }
+    }
+
     pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
         self.vaults = Vec::new();
         for vlt in vaults {
@@ -48,6 +59,25 @@ impl ManagerState {
             ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
             _ => {}
         }
+    }
+
+    pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
+        if let Some(i) = self
+            .transactions
+            .iter()
+            .position(|txs| txs.outpoint == outpoint)
+        {
+            self.transactions.remove(i);
+            match &mut self.view {
+                ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
+                _ => {}
+            };
+            return Command::none();
+        };
+        Command::perform(
+            get_vaults_txs(self.revaultd.clone(), vec![outpoint]),
+            Message::VaultTransactions,
+        )
     }
 
     pub fn on_tick(&mut self) -> Command<Message> {
@@ -85,6 +115,11 @@ impl State for ManagerState {
                 MessageMenu::History => self.view = ManagerView::History(ManagerHistoryView::new()),
             },
             Message::Tick(_) => return self.on_tick(),
+            Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
+            Message::VaultTransactions(res) => match res {
+                Ok(txs) => self.update_txs(txs),
+                Err(e) => self.warning = Error::from(e).into(),
+            },
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -120,6 +155,15 @@ impl State for ManagerState {
             Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
         ])
     }
+}
+
+async fn get_vaults_txs(
+    revaultd: Arc<RevaultD>,
+    outpoints: Vec<String>,
+) -> Result<Vec<VaultTransactions>, RevaultDError> {
+    revaultd
+        .list_transactions(Some(outpoints))
+        .map(|res| res.transactions)
 }
 
 async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
