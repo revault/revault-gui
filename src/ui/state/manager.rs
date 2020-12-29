@@ -1,10 +1,14 @@
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
 use iced::{time, Command, Element, Subscription};
 
 use super::{util::Watch, State};
-use crate::revaultd::{model::Vault, RevaultD, RevaultDError};
+use crate::revaultd::{
+    model::{Vault, VaultStatus, VaultTransactions},
+    RevaultD, RevaultDError,
+};
 use crate::ui::{
     error::Error,
     message::{Message, MessageMenu},
@@ -17,8 +21,10 @@ pub struct ManagerState {
     view: ManagerView,
 
     blockheight: Watch<u64>,
-    vaults: Watch<Vec<Vault>>,
     warning: Watch<Error>,
+
+    vaults: Vec<Rc<Vault>>,
+    transactions: Vec<Rc<VaultTransactions>>,
 }
 
 impl ManagerState {
@@ -27,8 +33,20 @@ impl ManagerState {
             revaultd,
             view: ManagerView::Home(ManagerHomeView::new()),
             blockheight: Watch::None,
-            vaults: Watch::None,
+            vaults: Vec::new(),
+            transactions: Vec::new(),
             warning: Watch::None,
+        }
+    }
+
+    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+        self.vaults = Vec::new();
+        for vlt in vaults {
+            self.vaults.push(Rc::new(vlt));
+        }
+        match &mut self.view {
+            ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
+            _ => {}
         }
     }
 
@@ -46,8 +64,12 @@ impl ManagerState {
 
     pub fn balance(&self) -> u64 {
         let mut amt: u64 = 0;
-        if let Watch::Some { ref value, .. } = self.vaults {
-            for vlt in value {
+        for vlt in &self.vaults {
+            if vlt.status == VaultStatus::Active
+                || vlt.status == VaultStatus::Secured
+                || vlt.status == VaultStatus::Funded
+                || vlt.status == VaultStatus::Unconfirmed
+            {
                 amt += vlt.amount
             }
         }
@@ -64,7 +86,7 @@ impl State for ManagerState {
             },
             Message::Tick(_) => return self.on_tick(),
             Message::Vaults(res) => match res {
-                Ok(vaults) => self.vaults = vaults.into(),
+                Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
             Message::BlockHeight(b) => match b {
@@ -84,7 +106,6 @@ impl State for ManagerState {
                 b,
                 self.warning.as_ref().into(),
                 self.blockheight.as_ref().into(),
-                self.vaults.as_ref().into(),
             ),
         }
     }

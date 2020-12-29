@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use iced::{
     scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
     Text,
@@ -12,7 +14,7 @@ use crate::ui::{
     view::layout,
 };
 
-use crate::revaultd::model::Vault;
+use crate::revaultd::model::{Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum ManagerView {
@@ -23,15 +25,21 @@ pub enum ManagerView {
 #[derive(Debug, Clone)]
 pub struct ManagerHomeView {
     sidebar: ManagerSidebar,
+    list_vaults: VaultList,
     scroll: scrollable::State,
 }
 
 impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
+            list_vaults: VaultList::new(),
             sidebar: ManagerSidebar::new(),
             scroll: scrollable::State::new(),
         }
+    }
+
+    pub fn load(&mut self, vaults: &Vec<Rc<Vault>>, transactions: &Vec<Rc<VaultTransactions>>) {
+        self.list_vaults.load(vaults, transactions);
     }
 
     pub fn view(
@@ -39,7 +47,6 @@ impl ManagerHomeView {
         balance: u64,
         warning: Option<&Error>,
         blockheight: Option<&u64>,
-        vaults: Option<&Vec<Vault>>,
     ) -> Element<Message> {
         layout::dashboard(
             navbar(navbar_warning(warning)),
@@ -48,7 +55,7 @@ impl ManagerHomeView {
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
                         .push(balance_view(balance))
-                        .push(list_vaults(vaults))
+                        .push(self.list_vaults.view())
                         .push(bitcoin_core_card(blockheight))
                         .spacing(20),
                 )),
@@ -80,41 +87,98 @@ fn balance_view<'a, T: 'a>(balance: u64) -> Container<'a, T> {
     .width(Length::Fill)
 }
 
-fn list_vaults<'a, T: 'a>(vaults: Option<&Vec<Vault>>) -> Container<'a, T> {
-    match vaults {
-        None => Container::new(Text::new("No vaults yet")),
-        Some(vlts) => {
-            let mut col = Column::new();
-            for vlt in vlts {
-                col = col.push(vault_card(vlt));
+#[derive(Debug, Clone)]
+struct VaultList(Vec<VaultListItem>);
+
+impl VaultList {
+    fn new() -> Self {
+        VaultList(Vec::new())
+    }
+
+    fn load(&mut self, vaults: &Vec<Rc<Vault>>, transactions: &Vec<Rc<VaultTransactions>>) {
+        for vlt in vaults {
+            let mut append = true;
+            for item in self.0.iter_mut() {
+                if item.vault.txid == vlt.txid {
+                    item.vault = vlt.clone();
+                    append = false;
+                    break;
+                }
             }
-            Container::new(col.spacing(10))
+
+            if append {
+                self.0.push(VaultListItem::new(vlt.clone(), None));
+            }
         }
+
+        for txs in transactions {
+            for item in self.0.iter_mut() {
+                if item.vault.outpoint() == txs.outpoint {
+                    item.txs = Some(txs.clone());
+                    break;
+                }
+            }
+        }
+    }
+
+    fn view(&mut self) -> Container<Message> {
+        if self.0.len() == 0 {
+            return Container::new(Text::new("No vaults yet"));
+        }
+        let mut col = Column::new();
+        for item in self.0.iter_mut() {
+            col = col.push(item.view());
+        }
+
+        Container::new(col.spacing(10))
     }
 }
 
-fn vault_card<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
-    card::simple(Container::new(
-        Row::new()
-            .push(
-                Container::new(
+#[derive(Debug, Clone)]
+struct VaultListItem {
+    state: iced::button::State,
+    txs: Option<Rc<VaultTransactions>>,
+    vault: Rc<Vault>,
+}
+
+impl VaultListItem {
+    pub fn new(vault: Rc<Vault>, txs: Option<Rc<VaultTransactions>>) -> Self {
+        VaultListItem {
+            state: iced::button::State::new(),
+            txs: txs,
+            vault: vault,
+        }
+    }
+
+    pub fn view<'a>(&'a mut self) -> Container<'a, Message> {
+        Container::new(
+            iced::button::Button::new(
+                &mut self.state,
+                card::simple(Container::new(
                     Row::new()
-                        .push(badge::tx_deposit())
-                        .push(text::small(&vault.txid))
-                        .spacing(20),
-                )
-                .width(Length::Fill),
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(badge::tx_deposit())
+                                    .push(text::small(&self.vault.txid))
+                                    .spacing(20),
+                            )
+                            .width(Length::Fill),
+                        )
+                        .push(
+                            Container::new(Text::new(format!(
+                                "{}",
+                                self.vault.amount as f64 / 100000000_f64
+                            )))
+                            .width(Length::Shrink),
+                        )
+                        .spacing(20)
+                        .align_items(Align::Center),
+                )),
             )
-            .push(
-                Container::new(Text::new(format!(
-                    "{}",
-                    vault.amount as f64 / 100000000_f64
-                )))
-                .width(Length::Shrink),
-            )
-            .spacing(20)
-            .align_items(Align::Center),
-    ))
+            .on_press(Message::Install),
+        )
+    }
 }
 
 fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
