@@ -1,16 +1,16 @@
 use std::rc::Rc;
 
 use iced::{
-    scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
-    Text,
+    pick_list, scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row,
+    Scrollable, Text,
 };
 
 use crate::ui::{
     color,
-    component::{badge, button, card, navbar, separation, text},
+    component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
     image,
-    message::{Message, MessageMenu},
+    message::{Message, MessageMenu, Role},
     view::layout,
 };
 
@@ -33,7 +33,7 @@ impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
             list_vaults: VaultList::new(),
-            sidebar: ManagerSidebar::new(),
+            sidebar: ManagerSidebar::new(Role::Manager, true),
             scroll: scrollable::State::new(),
         }
     }
@@ -213,7 +213,7 @@ pub struct ManagerHistoryView {
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
-            sidebar: ManagerSidebar::new(),
+            sidebar: ManagerSidebar::new(Role::Manager, true),
             scroll: scrollable::State::new(),
         }
     }
@@ -237,6 +237,9 @@ enum ManagerSidebarCurrent {
 
 #[derive(Debug, Clone)]
 struct ManagerSidebar {
+    role: Role,
+    edit: bool,
+    pick_role: pick_list::State<Role>,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
     spend_menu_button: iced::button::State,
@@ -244,16 +247,33 @@ struct ManagerSidebar {
 }
 
 impl ManagerSidebar {
-    fn new() -> Self {
+    fn new(role: Role, edit: bool) -> Self {
         ManagerSidebar {
+            role,
+            edit,
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
             spend_menu_button: iced::button::State::new(),
             settings_menu_button: iced::button::State::new(),
+            pick_role: pick_list::State::default(),
         }
     }
 
     fn view(&mut self, current: ManagerSidebarCurrent) -> Container<Message> {
+        let role = if self.edit {
+            Container::new(
+                pick_list::PickList::new(
+                    &mut self.pick_role,
+                    &Role::ALL[..],
+                    Some(self.role),
+                    Message::ChangeRole,
+                )
+                .width(Length::Units(150))
+                .style(TransparentPickListStyle),
+            )
+        } else {
+            Container::new(Text::new(format!("{}", self.role)))
+        };
         let home_button = if current == ManagerSidebarCurrent::Home {
             button::primary(
                 &mut self.home_menu_button,
@@ -282,9 +302,11 @@ impl ManagerSidebar {
         };
         layout::sidebar(
             layout::sidebar_menu(vec![
-                Container::new(home_button.width(iced::Length::Units(150))),
-                Container::new(history_button.width(iced::Length::Units(150))),
+                role.width(Length::Units(150)),
                 separation().width(iced::Length::Units(150)),
+                Container::new(home_button.width(Length::Units(150))),
+                Container::new(history_button.width(Length::Units(150))),
+                separation().width(Length::Units(150)),
                 Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,

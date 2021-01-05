@@ -49,6 +49,29 @@ impl container::StyleSheet for SepStyle {
     }
 }
 
+pub struct TransparentPickListStyle;
+impl iced::pick_list::StyleSheet for TransparentPickListStyle {
+    fn active(&self) -> iced::pick_list::Style {
+        iced::pick_list::Style {
+            background: color::FOREGROUND.into(),
+            border_width: 0.0,
+            ..iced::pick_list::Style::default()
+        }
+    }
+    fn hovered(&self) -> iced::pick_list::Style {
+        iced::pick_list::Style {
+            background: color::FOREGROUND.into(),
+            ..iced::pick_list::Style::default()
+        }
+    }
+    fn menu(&self) -> iced::pick_list::Menu {
+        iced::pick_list::Menu {
+            background: color::FOREGROUND.into(),
+            ..iced::pick_list::Menu::default()
+        }
+    }
+}
+
 pub mod card {
     use crate::ui::color;
     use iced::{container, Container};
