@@ -52,7 +52,19 @@ pub struct SidebarStyle;
 impl container::StyleSheet for SidebarStyle {
     fn style(&self) -> container::Style {
         container::Style {
-            background: color::BACKGROUND.into(),
+            background: color::FOREGROUND.into(),
+            border_width: 1.0,
+            border_color: color::SECONDARY.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
+pub struct SidebarMenuStyle;
+impl container::StyleSheet for SidebarMenuStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::FOREGROUND.into(),
             ..container::Style::default()
         }
     }
@@ -63,7 +75,7 @@ pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T>
     for i in items {
         col = col.push(i)
     }
-    Container::new(col).style(MainSectionStyle)
+    Container::new(col).style(SidebarMenuStyle)
 }
 
 pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {

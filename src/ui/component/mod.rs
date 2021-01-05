@@ -25,7 +25,25 @@ pub struct NavbarStyle;
 impl container::StyleSheet for NavbarStyle {
     fn style(&self) -> container::Style {
         container::Style {
+            border_width: 1.0,
+            border_color: color::SECONDARY.into(),
             background: color::FOREGROUND.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
+pub fn separation<'a, T: 'a>() -> Container<'a, T> {
+    Container::new(Column::new().push(iced::Text::new(" ")))
+        .style(SepStyle)
+        .height(Length::Units(1))
+}
+
+pub struct SepStyle;
+impl container::StyleSheet for SepStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::SECONDARY.into(),
             ..container::Style::default()
         }
     }

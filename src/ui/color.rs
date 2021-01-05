@@ -14,6 +14,12 @@ pub const BACKGROUND_LIGHT: Color = Color::from_rgb(
 
 pub const FOREGROUND: Color = Color::WHITE;
 
+pub const SECONDARY: Color = Color::from_rgb(
+    0xe1 as f32 / 255.0,
+    0xe4 as f32 / 255.0,
+    0xe8 as f32 / 255.0,
+);
+
 pub const PRIMARY: Color = Color::from_rgb(
     0xF0 as f32 / 255.0,
     0x43 as f32 / 255.0,

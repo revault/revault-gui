@@ -7,7 +7,7 @@ use iced::{
 
 use crate::ui::{
     color,
-    component::{badge, button, card, navbar, text},
+    component::{badge, button, card, navbar, separation, text},
     error::Error,
     image,
     message::{Message, MessageMenu},
@@ -284,6 +284,7 @@ impl ManagerSidebar {
             layout::sidebar_menu(vec![
                 Container::new(home_button.width(iced::Length::Units(150))),
                 Container::new(history_button.width(iced::Length::Units(150))),
+                separation().width(iced::Length::Units(150)),
                 Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
