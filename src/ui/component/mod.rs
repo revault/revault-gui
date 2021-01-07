@@ -54,13 +54,15 @@ impl iced::pick_list::StyleSheet for TransparentPickListStyle {
     fn active(&self) -> iced::pick_list::Style {
         iced::pick_list::Style {
             background: color::FOREGROUND.into(),
-            border_width: 0.0,
+            border_width: 1.0,
+            border_radius: 10.0,
             ..iced::pick_list::Style::default()
         }
     }
     fn hovered(&self) -> iced::pick_list::Style {
         iced::pick_list::Style {
             background: color::FOREGROUND.into(),
+            border_radius: 10.0,
             ..iced::pick_list::Style::default()
         }
     }

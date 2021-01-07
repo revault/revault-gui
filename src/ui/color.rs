@@ -58,3 +58,9 @@ pub const WARNING_LIGHT: Color = Color::from_rgba(
     0x59 as f32 / 255.0,
     0.5f32,
 );
+
+pub const CANCEL: Color = Color::from_rgb(
+    0x34 as f32 / 255.0,
+    0x37 as f32 / 255.0,
+    0x3D as f32 / 255.0,
+);
