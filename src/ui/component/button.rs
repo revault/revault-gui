@@ -30,6 +30,7 @@ macro_rules! button {
 }
 
 button!(primary, PrimaryStyle, color::PRIMARY, color::FOREGROUND);
+button!(cancel, CancelStyle, color::CANCEL, color::FOREGROUND);
 
 button!(
     transparent,

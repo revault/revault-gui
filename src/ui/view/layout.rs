@@ -42,7 +42,7 @@ pub fn dashboard<'a, T: 'a>(
 pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
     Container::new(
         Column::new()
-            .padding(20)
+            .padding(10)
             .push(menu.height(Length::Fill))
             .push(footer.height(Length::Shrink)),
     )
@@ -72,7 +72,7 @@ impl container::StyleSheet for SidebarMenuStyle {
 }
 
 pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T> {
-    let mut col = Column::new().padding(20).spacing(10);
+    let mut col = Column::new().padding(15).spacing(15);
     for i in items {
         col = col.push(i)
     }

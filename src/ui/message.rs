@@ -19,8 +19,8 @@ impl std::fmt::Display for Role {
             f,
             "{}",
             match self {
-                Role::Manager => "manager",
-                Role::Stakeholder => "stakeholder",
+                Role::Manager => "Manager",
+                Role::Stakeholder => "Stakeholder",
             }
         )
     }

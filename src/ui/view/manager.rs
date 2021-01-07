@@ -188,7 +188,8 @@ impl ManagerSidebar {
                     Some(self.role),
                     Message::ChangeRole,
                 )
-                .width(Length::Units(150))
+                .padding(10)
+                .width(Length::Units(200))
                 .style(TransparentPickListStyle),
             )
         } else {
@@ -222,11 +223,11 @@ impl ManagerSidebar {
         };
         layout::sidebar(
             layout::sidebar_menu(vec![
-                role.width(Length::Units(150)),
-                separation().width(iced::Length::Units(150)),
-                Container::new(home_button.width(Length::Units(150))),
-                Container::new(history_button.width(Length::Units(150))),
-                separation().width(Length::Units(150)),
+                role.width(Length::Units(200)),
+                separation().width(iced::Length::Units(200)),
+                Container::new(home_button.width(Length::Units(200))),
+                Container::new(history_button.width(Length::Units(200))),
+                separation().width(Length::Units(200)),
                 Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
