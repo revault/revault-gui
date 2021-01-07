@@ -25,17 +25,18 @@ pub fn dashboard<'a, T: 'a>(
     header: Container<'a, T>,
     sidebar: Container<'a, T>,
     main: Container<'a, T>,
-) -> Element<'a, T> {
-    Column::new()
-        .push(header)
-        .push(
-            Row::new()
-                .push(sidebar.width(Length::Shrink).height(Length::Fill))
-                .push(main.width(Length::Fill).height(Length::Fill)),
-        )
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .into()
+) -> Container<'a, T> {
+    Container::new(
+        Column::new()
+            .push(header)
+            .push(
+                Row::new()
+                    .push(sidebar.width(Length::Shrink).height(Length::Fill))
+                    .push(main.width(Length::Fill).height(Length::Fill)),
+            )
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
+    )
 }
 
 pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {

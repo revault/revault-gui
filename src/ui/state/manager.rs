@@ -15,7 +15,7 @@ use crate::ui::{
     view::manager::{ManagerHistoryView, ManagerHomeView, ManagerView},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ManagerState {
     revaultd: Arc<RevaultD>,
     view: ManagerView,
@@ -24,7 +24,7 @@ pub struct ManagerState {
     warning: Watch<Error>,
 
     vaults: Vec<Rc<Vault>>,
-    transactions: Vec<Rc<VaultTransactions>>,
+    selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
 }
 
 impl ManagerState {
@@ -34,18 +34,14 @@ impl ManagerState {
             view: ManagerView::Home(ManagerHomeView::new()),
             blockheight: Watch::None,
             vaults: Vec::new(),
-            transactions: Vec::new(),
             warning: Watch::None,
+            selected_vault: None,
         }
     }
 
-    pub fn update_txs(&mut self, txs: Vec<VaultTransactions>) {
-        self.transactions = Vec::new();
-        for tx in txs {
-            self.transactions.push(Rc::new(tx));
-        }
+    pub fn reload_view(&mut self) {
         match &mut self.view {
-            ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
+            ManagerView::Home(v) => v.load(&self.vaults, &self.selected_vault),
             _ => {}
         }
     }
@@ -55,25 +51,30 @@ impl ManagerState {
         for vlt in vaults {
             self.vaults.push(Rc::new(vlt));
         }
-        match &mut self.view {
-            ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
-            _ => {}
+
+        self.reload_view();
+    }
+
+    pub fn update_vault_selected(&mut self, txs: Vec<VaultTransactions>) {
+        for vlt in &self.vaults {
+            for tx in &txs {
+                if vlt.outpoint() == tx.outpoint {
+                    self.selected_vault = Some((vlt.clone(), tx.clone()));
+                    break;
+                }
+            }
         }
+        self.reload_view();
     }
 
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
-        if let Some(i) = self
-            .transactions
-            .iter()
-            .position(|txs| txs.outpoint == outpoint)
-        {
-            self.transactions.remove(i);
-            match &mut self.view {
-                ManagerView::Home(v) => v.load(&self.vaults, &self.transactions),
-                _ => {}
-            };
-            return Command::none();
-        };
+        if let Some((vlt, _)) = &self.selected_vault {
+            if vlt.outpoint() == outpoint {
+                self.selected_vault = None;
+                self.reload_view();
+                return Command::none();
+            }
+        }
         Command::perform(
             get_vaults_txs(self.revaultd.clone(), vec![outpoint]),
             Message::VaultTransactions,
@@ -117,7 +118,7 @@ impl State for ManagerState {
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
             Message::VaultTransactions(res) => match res {
-                Ok(txs) => self.update_txs(txs),
+                Ok(txs) => self.update_vault_selected(txs),
                 Err(e) => self.warning = Error::from(e).into(),
             },
             Message::Vaults(res) => match res {
