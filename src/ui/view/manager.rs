@@ -23,48 +23,65 @@ pub enum ManagerView {
     History(ManagerHistoryView),
 }
 
+impl ManagerView {
+    pub fn view(&mut self) -> Element<Message> {
+        match self {
+            ManagerView::History(v) => v.view(),
+            ManagerView::Home(v) => v.view(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ManagerHomeView {
+    balance: u64,
+    blockheight: Option<u64>,
+    list_vaults: VaultList,
     modal: VaultModal,
     sidebar: ManagerSidebar,
-    list_vaults: VaultList,
+    warning: Option<Error>,
+
     scroll: scrollable::State,
 }
 
 impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
+            balance: 0,
+            blockheight: None,
             list_vaults: VaultList::new(),
-            sidebar: ManagerSidebar::new(Role::Manager, true),
-            scroll: scrollable::State::new(),
             modal: VaultModal::new(),
+            scroll: scrollable::State::new(),
+            sidebar: ManagerSidebar::new(Role::Manager, true),
+            warning: None,
         }
     }
 
     pub fn load(
         &mut self,
-        vaults: &Vec<Rc<Vault>>,
-        selected_vault: &Option<(Rc<Vault>, VaultTransactions)>,
+        vaults: Vec<Rc<Vault>>,
+        selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+        balance: u64,
+        blockheight: Option<u64>,
+        warning: Option<Error>,
     ) {
-        self.modal.load(selected_vault.clone());
+        self.modal.load(selected_vault);
         self.list_vaults.load(vaults);
+        self.warning = warning;
+        self.balance = balance;
+        self.blockheight = blockheight;
     }
 
-    pub fn view(
-        &mut self,
-        balance: u64,
-        warning: Option<&Error>,
-        blockheight: Option<&u64>,
-    ) -> Element<Message> {
+    pub fn view(&mut self) -> Element<Message> {
         let background = layout::dashboard(
-            navbar(navbar_warning(warning)),
+            navbar(navbar_warning(self.warning.as_ref())),
             self.sidebar.view(ManagerSidebarCurrent::Home),
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
-                        .push(balance_view(balance))
+                        .push(balance_view(self.balance))
                         .push(self.list_vaults.view())
-                        .push(bitcoin_core_card(blockheight))
+                        .push(bitcoin_core_card(self.blockheight.as_ref()))
                         .spacing(20),
                 )),
             )),
@@ -123,29 +140,47 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
     card::simple(Container::new(col))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ManagerHistoryView {
-    sidebar: ManagerSidebar,
+    list_vaults: VaultList,
+    modal: VaultModal,
     scroll: scrollable::State,
+    sidebar: ManagerSidebar,
+    warning: Option<Error>,
 }
 
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
+            modal: VaultModal::new(),
+            list_vaults: VaultList::new(),
             sidebar: ManagerSidebar::new(Role::Manager, true),
             scroll: scrollable::State::new(),
+            warning: None,
         }
     }
 
+    pub fn load(
+        &mut self,
+        vaults: Vec<Rc<Vault>>,
+        selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+        warning: Option<Error>,
+    ) {
+        self.modal.load(selected_vault);
+        self.list_vaults.load(vaults);
+        self.warning = warning;
+    }
+
     pub fn view(&mut self) -> Element<Message> {
-        layout::dashboard(
-            navbar(None),
+        let background = layout::dashboard(
+            navbar(navbar_warning(self.warning.as_ref())),
             self.sidebar.view(ManagerSidebarCurrent::History),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(card::simple(text::paragraph("main"))),
-            )),
-        )
-        .into()
+            layout::main_section(Container::new(Scrollable::new(&mut self.scroll).push(
+                Container::new(Column::new().push(self.list_vaults.view()).spacing(20)),
+            ))),
+        );
+
+        self.modal.view(background).into()
     }
 }
 

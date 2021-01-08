@@ -1,3 +1,4 @@
+use std::convert::From;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,9 +41,20 @@ impl ManagerState {
     }
 
     pub fn reload_view(&mut self) {
+        let balance = self.balance();
         match &mut self.view {
-            ManagerView::Home(v) => v.load(&self.vaults, &self.selected_vault),
-            _ => {}
+            ManagerView::Home(v) => v.load(
+                self.vaults.clone(),
+                self.selected_vault.clone(),
+                balance,
+                self.blockheight.clone().into(),
+                self.warning.clone().into(),
+            ),
+            ManagerView::History(v) => v.load(
+                self.vaults.clone(),
+                self.selected_vault.clone(),
+                self.warning.clone().into(),
+            ),
         }
     }
 
@@ -112,8 +124,26 @@ impl State for ManagerState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Menu(m) => match m {
-                MessageMenu::Home => self.view = ManagerView::Home(ManagerHomeView::new()),
-                MessageMenu::History => self.view = ManagerView::History(ManagerHistoryView::new()),
+                MessageMenu::Home => {
+                    self.view = ManagerView::Home(ManagerHomeView::new());
+                    return Command::batch(vec![
+                        Command::perform(
+                            get_blockheight(self.revaultd.clone()),
+                            Message::BlockHeight,
+                        ),
+                        Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+                    ]);
+                }
+                MessageMenu::History => {
+                    self.view = ManagerView::History(ManagerHistoryView::new());
+                    return Command::batch(vec![
+                        Command::perform(
+                            get_blockheight(self.revaultd.clone()),
+                            Message::BlockHeight,
+                        ),
+                        Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+                    ]);
+                }
             },
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
@@ -135,15 +165,7 @@ impl State for ManagerState {
     }
 
     fn view<'a>(&'a mut self) -> Element<Message> {
-        let b = self.balance();
-        match &mut self.view {
-            ManagerView::History(v) => v.view(),
-            ManagerView::Home(v) => v.view(
-                b,
-                self.warning.as_ref().into(),
-                self.blockheight.as_ref().into(),
-            ),
-        }
+        self.view.view()
     }
 
     fn subscription(&self) -> Subscription<Message> {
