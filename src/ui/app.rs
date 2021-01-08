@@ -1,15 +1,17 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
 
-use super::message::Message;
-use super::state::{
-    charging::ChargingState, installing::InstallingState, manager::ManagerState, State,
-};
+use super::message::{Message, Role};
+use super::state::{ChargingState, InstallingState, ManagerState, StakeholderState, State};
+
+use crate::revaultd::RevaultD;
 
 pub struct App {
     config: Config,
+    revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
 }
 
@@ -36,6 +38,7 @@ impl Application for App {
             App {
                 config,
                 state: std::boxed::Box::new(state),
+                revaultd: None,
             },
             cmd,
         )
@@ -52,7 +55,18 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::Install => self.load_state(InstallingState::new().into()),
-            Message::Synced(revaultd) => self.load_state(ManagerState::new(revaultd).into()),
+            Message::Synced(revaultd) => {
+                self.revaultd = Some(revaultd);
+                self.load_state(ManagerState::new(self.revaultd.clone().unwrap()).into())
+            }
+            Message::ChangeRole(role) => match role {
+                Role::Manager => {
+                    self.load_state(ManagerState::new(self.revaultd.clone().unwrap()).into())
+                }
+                Role::Stakeholder => {
+                    self.load_state(StakeholderState::new(self.revaultd.clone().unwrap()).into())
+                }
+            },
             _ => self.state.update(message),
         }
     }

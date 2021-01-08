@@ -1,9 +1,15 @@
 pub mod charging;
 pub mod installing;
 pub mod manager;
+pub mod stakeholder;
 mod util;
 
 use iced::{Command, Element, Subscription};
+
+pub use charging::ChargingState;
+pub use installing::InstallingState;
+pub use manager::ManagerState;
+pub use stakeholder::StakeholderState;
 
 use super::message::Message;
 
