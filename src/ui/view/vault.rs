@@ -82,10 +82,10 @@ impl VaultList {
         VaultList(Vec::new())
     }
 
-    pub fn load(&mut self, vaults: &Vec<Rc<Vault>>) {
+    pub fn load(&mut self, vaults: Vec<Rc<Vault>>) {
         self.0 = Vec::new();
         for vlt in vaults {
-            self.0.push(VaultListItem::new(vlt.clone()));
+            self.0.push(VaultListItem::new(vlt));
         }
     }
 
