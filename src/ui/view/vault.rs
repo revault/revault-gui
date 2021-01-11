@@ -13,7 +13,7 @@ use crate::ui::{
     message::Message,
 };
 
-use crate::revaultd::model::{Vault, VaultTransactions};
+use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
 
 #[derive(Debug)]
 pub struct VaultModal {
@@ -39,19 +39,92 @@ impl VaultModal {
     }
 
     pub fn view<'a>(&'a mut self, background: Container<'a, Message>) -> Container<'a, Message> {
-        if let Some((vlt, _)) = &self.vault {
+        if let Some((vlt, txs)) = &self.vault {
+            let tx = txs.last_broadcasted_tx();
             Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
-                    Column::new().push(
-                        Row::new().push(Column::new().width(Length::Fill)).push(
-                            Container::new(button::cancel(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("X Close")).padding(10),
-                                Message::SelectVault(vlt.outpoint()),
+                    Column::new()
+                        .push(
+                            Row::new().push(Column::new().width(Length::Fill)).push(
+                                Container::new(button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(Text::new("X Close")).padding(10),
+                                    Message::SelectVault(vlt.outpoint()),
+                                ))
+                                .width(Length::Shrink),
+                            ),
+                        )
+                        .push(
+                            Container::new(Text::new("Transaction Details"))
+                                .width(Length::Fill)
+                                .align_x(Align::Center),
+                        )
+                        .push(
+                            card::simple(Container::new(
+                                Column::new()
+                                    .push(
+                                        Row::new()
+                                            .push(
+                                                Container::new(
+                                                    Row::new()
+                                                        .push(badge::tx_deposit())
+                                                        .push(
+                                                            Column::new()
+                                                                .push(text::small(&vlt.txid))
+                                                                .push(text::small("datetime")),
+                                                        )
+                                                        .spacing(20),
+                                                )
+                                                .width(Length::Fill),
+                                            )
+                                            .push(
+                                                Container::new(Text::new(format!(
+                                                    "{}",
+                                                    vlt.amount as f64 / 100000000_f64
+                                                )))
+                                                .width(Length::Shrink),
+                                            )
+                                            .spacing(20)
+                                            .align_items(Align::Center),
+                                    )
+                                    .push(separation().width(Length::Fill))
+                                    .push(
+                                        Row::new()
+                                            .push(
+                                                Container::new(
+                                                    Column::new()
+                                                        .push(Text::new("Blockheight"))
+                                                        .push(Text::new(
+                                                            if let Some(blockheight) =
+                                                                &tx.blockheight
+                                                            {
+                                                                format!("{}", blockheight)
+                                                            } else {
+                                                                "Not in a block".to_string()
+                                                            },
+                                                        )),
+                                                )
+                                                .width(Length::FillPortion(2)),
+                                            )
+                                            .push(
+                                                Container::new(
+                                                    Column::new().push(Text::new("Fee")),
+                                                )
+                                                .width(Length::FillPortion(2)),
+                                            ),
+                                    )
+                                    .spacing(20),
                             ))
-                            .width(Length::Shrink),
-                        ),
-                    ),
+                            .width(Length::Fill)
+                            .align_x(Align::Center)
+                            .padding(20),
+                        )
+                        .push(
+                            input_and_outputs(&tx)
+                                .width(Length::Fill)
+                                .align_x(Align::Center),
+                        )
+                        .spacing(20),
                 )),
             )
             .style(VaultModalStyle)
@@ -62,6 +135,25 @@ impl VaultModal {
             background
         }
     }
+}
+
+fn input_and_outputs<'a, T: 'a>(broadcasted: &BroadcastedTransaction) -> Container<'a, T> {
+    let mut col_input = Column::new().push(Text::new("Inputs")).spacing(10);
+    for input in &broadcasted.tx.input {
+        col_input = col_input.push(card::simple(Container::new(text::small(&format!(
+            "{}",
+            input.previous_output
+        )))));
+    }
+    let mut col_output = Column::new().push(Text::new("Outputs")).spacing(10);
+    for output in &broadcasted.tx.output {
+        col_output = col_output.push(card::simple(Container::new(text::small(&format!(
+            "{} {}",
+            output.script_pubkey,
+            output.value as f64 / 100000000_f64,
+        )))));
+    }
+    Container::new(Row::new().push(col_input).push(col_output).spacing(20))
 }
 
 pub struct VaultModalStyle;
@@ -112,7 +204,7 @@ impl VaultListItem {
     pub fn new(vault: Rc<Vault>) -> Self {
         VaultListItem {
             state: iced::button::State::new(),
-            vault: vault,
+            vault,
         }
     }
 
