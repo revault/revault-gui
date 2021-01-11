@@ -68,7 +68,7 @@ pub enum VaultStatus {
 #[derive(Debug, Clone, Deserialize)]
 pub struct VaultTransactions {
     pub outpoint: String,
-    pub deposit: VaultTransaction,
+    pub deposit: BroadcastedTransaction,
     pub unvault: VaultTransaction,
     pub spend: Option<VaultTransaction>,
     pub cancel: VaultTransaction,
@@ -76,25 +76,62 @@ pub struct VaultTransactions {
     pub unvault_emergency: VaultTransaction,
 }
 
+impl VaultTransactions {
+    pub fn last_broadcasted_tx(&self) -> &BroadcastedTransaction {
+        if let Some(spend) = &self.spend {
+            if let VaultTransaction::Broadcasted(tx) = spend {
+                return tx;
+            }
+        }
+
+        if let VaultTransaction::Broadcasted(tx) = &self.cancel {
+            return tx;
+        }
+
+        if let VaultTransaction::Broadcasted(tx) = &self.unvault_emergency {
+            return tx;
+        }
+
+        if let VaultTransaction::Broadcasted(tx) = &self.emergency {
+            return tx;
+        }
+
+        if let VaultTransaction::Broadcasted(tx) = &self.unvault {
+            return tx;
+        }
+
+        &self.deposit
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum VaultTransaction {
-    Broadcasted {
-        /// Height of the block containing the transaction.
-        blockheight: u64,
-        #[serde(rename = "hex", with = "bitcoin_transaction")]
-        tx: Transaction,
-        /// reception time as Unix Epoch timestamp
-        received_at: u64,
-    },
-    Signed {
-        #[serde(rename = "hex", with = "bitcoin_transaction")]
-        tx: Transaction,
-    },
-    Unsigned {
-        #[serde(with = "bitcoin_psbt")]
-        psbt: PartiallySignedTransaction,
-    },
+    Broadcasted(BroadcastedTransaction),
+    Signed(SignedTransaction),
+    Unsigned(UnsignedTransaction),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BroadcastedTransaction {
+    /// Height of the block containing the transaction.
+    pub blockheight: Option<u64>,
+    #[serde(rename = "hex", with = "bitcoin_transaction")]
+    pub tx: Transaction,
+    /// reception time as Unix Epoch timestamp
+    pub received_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SignedTransaction {
+    #[serde(rename = "hex", with = "bitcoin_transaction")]
+    pub tx: Transaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnsignedTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub psbt: PartiallySignedTransaction,
 }
 
 mod bitcoin_transaction {
