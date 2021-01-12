@@ -26,7 +26,7 @@ impl container::StyleSheet for NavbarStyle {
     fn style(&self) -> container::Style {
         container::Style {
             border_width: 1.0,
-            border_color: color::SECONDARY.into(),
+            border_color: color::SECONDARY,
             background: color::FOREGROUND.into(),
             ..container::Style::default()
         }

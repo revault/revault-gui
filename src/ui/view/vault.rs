@@ -1,15 +1,10 @@
 use std::rc::Rc;
 
-use iced::{
-    container, scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row,
-    Scrollable, Text,
-};
+use iced::{container, scrollable, Align, Column, Container, Length, Row, Scrollable, Text};
 
 use crate::ui::{
     color,
-    component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
-    error::Error,
-    image,
+    component::{badge, button, card, separation, text},
     message::Message,
 };
 
@@ -182,7 +177,7 @@ impl VaultList {
     }
 
     pub fn view(&mut self) -> Container<Message> {
-        if self.0.len() == 0 {
+        if self.0.is_empty() {
             return Container::new(Text::new("No vaults yet"));
         }
         let mut col = Column::new();
@@ -208,7 +203,7 @@ impl VaultListItem {
         }
     }
 
-    pub fn view<'a>(&'a mut self) -> Container<'a, Message> {
+    pub fn view(&mut self) -> Container<Message> {
         card::rounded(Container::new(button::transparent(
             &mut self.state,
             card::white(Container::new(

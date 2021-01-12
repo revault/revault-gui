@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use serde::de::DeserializeOwned;
@@ -147,7 +147,7 @@ pub struct ListTransactionsResponse {
 }
 
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
+pub async fn start_daemon(config_path: &Path) -> Result<(), RevaultDError> {
     debug!("starting revaultd daemon");
     let child = Command::new("revaultd")
         .arg("--conf")

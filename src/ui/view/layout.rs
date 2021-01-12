@@ -55,7 +55,7 @@ impl container::StyleSheet for SidebarStyle {
         container::Style {
             background: color::FOREGROUND.into(),
             border_width: 1.0,
-            border_color: color::SECONDARY.into(),
+            border_color: color::SECONDARY,
             ..container::Style::default()
         }
     }
