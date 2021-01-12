@@ -141,7 +141,7 @@ impl State for ManagerHomeState {
         Command::none()
     }
 
-    fn view<'a>(&'a mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<Message> {
         self.view.view()
     }
 
@@ -265,7 +265,7 @@ impl State for ManagerHistoryState {
         Command::none()
     }
 
-    fn view<'a>(&'a mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<Message> {
         self.view.view()
     }
 

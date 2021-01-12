@@ -78,10 +78,8 @@ pub struct VaultTransactions {
 
 impl VaultTransactions {
     pub fn last_broadcasted_tx(&self) -> &BroadcastedTransaction {
-        if let Some(spend) = &self.spend {
-            if let VaultTransaction::Broadcasted(tx) = spend {
-                return tx;
-            }
+        if let Some(VaultTransaction::Broadcasted(tx)) = &self.spend {
+            return tx;
         }
 
         if let VaultTransaction::Broadcasted(tx) = &self.cancel {

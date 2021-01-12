@@ -18,11 +18,11 @@ impl StakeholderState {
 }
 
 impl State for StakeholderState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, _message: Message) -> Command<Message> {
         Command::none()
     }
 
-    fn view<'a>(&'a mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<Message> {
         iced::Container::new(iced::Text::new("hello")).into()
     }
 

@@ -192,7 +192,7 @@ async fn start_daemon_and_connect(
             tracing::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })
-    };
+    }
 
     try_connect_to_revault(&cfg, 5)
         .or_else(|_| try_connect_to_revault(&cfg, 4))

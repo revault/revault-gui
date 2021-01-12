@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use iced::{
-    pick_list, scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row,
+    pick_list, scrollable, Column, Container, Element, HorizontalAlignment, Length, Row,
     Scrollable, Text,
 };
 

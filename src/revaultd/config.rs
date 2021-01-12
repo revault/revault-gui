@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -9,7 +9,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_file(path: &PathBuf) -> Result<Self, ConfigError> {
+    pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let config = std::fs::read(path)
             .map_err(|e| match e.kind() {
                 std::io::ErrorKind::NotFound => ConfigError::NotFound,
