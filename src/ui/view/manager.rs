@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
 use iced::{
-    pick_list, scrollable, Column, Container, Element, HorizontalAlignment, Length, Row,
-    Scrollable, Text,
+    pick_list, scrollable, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
 };
 
 use crate::ui::{
@@ -78,7 +77,7 @@ impl ManagerHomeView {
 
 fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
     if let Some(e) = warning {
-        return Some(card::alert_warning(Container::new(Text::new(format!(
+        return Some(card::alert_warning(Container::new(text::simple(&format!(
             "{}",
             e
         )))));
@@ -103,7 +102,7 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
     let mut col = Column::new()
         .push(
             Row::new()
-                .push(Container::new(Text::new("Bitcoin Core")).width(Length::Fill))
+                .push(Container::new(text::bold("Bitcoin Core")).width(Length::Fill))
                 .push(
                     Container::new(
                         Row::new()
@@ -121,8 +120,8 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
                 .push(badge::block())
                 .push(
                     Column::new()
-                        .push(text::small("Block Height"))
-                        .push(Text::new(&format!("{}", b))),
+                        .push(text::bold("Block Height"))
+                        .push(text::simple(&format!("{}", b))),
                 )
                 .spacing(10),
         );
@@ -218,7 +217,7 @@ impl ManagerSidebar {
                 .style(TransparentPickListStyle),
             )
         } else {
-            Container::new(Text::new(format!("{}", self.role)))
+            Container::new(text::simple(&format!("{}", self.role)))
         };
         let home_button = if current == ManagerSidebarCurrent::Home {
             button::primary(
