@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use iced::{container, scrollable, Align, Column, Container, Length, Row, Scrollable, Text};
+use iced::{container, scrollable, Align, Column, Container, Length, Row, Scrollable};
 
 use crate::ui::{
     color,
@@ -43,14 +43,14 @@ impl VaultModal {
                             Row::new().push(Column::new().width(Length::Fill)).push(
                                 Container::new(button::cancel(
                                     &mut self.cancel_button,
-                                    Container::new(Text::new("X Close")).padding(10),
+                                    Container::new(text::simple("X Close")).padding(10),
                                     Message::SelectVault(vlt.outpoint()),
                                 ))
                                 .width(Length::Shrink),
                             ),
                         )
                         .push(
-                            Container::new(Text::new("Transaction Details"))
+                            Container::new(text::simple("Transaction Details"))
                                 .width(Length::Fill)
                                 .align_x(Align::Center),
                         )
@@ -73,7 +73,7 @@ impl VaultModal {
                                                 .width(Length::Fill),
                                             )
                                             .push(
-                                                Container::new(Text::new(format!(
+                                                Container::new(text::simple(&format!(
                                                     "{}",
                                                     vlt.amount as f64 / 100000000_f64
                                                 )))
@@ -88,22 +88,21 @@ impl VaultModal {
                                             .push(
                                                 Container::new(
                                                     Column::new()
-                                                        .push(Text::new("Blockheight"))
-                                                        .push(Text::new(
-                                                            if let Some(blockheight) =
-                                                                &tx.blockheight
-                                                            {
-                                                                format!("{}", blockheight)
-                                                            } else {
-                                                                "Not in a block".to_string()
-                                                            },
-                                                        )),
+                                                        .push(text::simple("Blockheight"))
+                                                        .push(text::simple(&if let Some(
+                                                            blockheight,
+                                                        ) = &tx.blockheight
+                                                        {
+                                                            format!("{}", blockheight)
+                                                        } else {
+                                                            "Not in a block".to_string()
+                                                        })),
                                                 )
                                                 .width(Length::FillPortion(2)),
                                             )
                                             .push(
                                                 Container::new(
-                                                    Column::new().push(Text::new("Fee")),
+                                                    Column::new().push(text::simple("Fee")),
                                                 )
                                                 .width(Length::FillPortion(2)),
                                             ),
@@ -133,14 +132,14 @@ impl VaultModal {
 }
 
 fn input_and_outputs<'a, T: 'a>(broadcasted: &BroadcastedTransaction) -> Container<'a, T> {
-    let mut col_input = Column::new().push(Text::new("Inputs")).spacing(10);
+    let mut col_input = Column::new().push(text::bold("Inputs")).spacing(10);
     for input in &broadcasted.tx.input {
         col_input = col_input.push(card::simple(Container::new(text::small(&format!(
             "{}",
             input.previous_output
         )))));
     }
-    let mut col_output = Column::new().push(Text::new("Outputs")).spacing(10);
+    let mut col_output = Column::new().push(text::bold("Outputs")).spacing(10);
     for output in &broadcasted.tx.output {
         col_output = col_output.push(card::simple(Container::new(text::small(&format!(
             "{} {}",
@@ -178,7 +177,7 @@ impl VaultList {
 
     pub fn view(&mut self) -> Container<Message> {
         if self.0.is_empty() {
-            return Container::new(Text::new("No vaults yet"));
+            return Container::new(text::simple("No vaults yet"));
         }
         let mut col = Column::new();
         for item in self.0.iter_mut() {
@@ -218,7 +217,7 @@ impl VaultListItem {
                         .width(Length::Fill),
                     )
                     .push(
-                        Container::new(Text::new(format!(
+                        Container::new(text::bold(&format!(
                             "{}",
                             self.vault.amount as f64 / 100000000_f64
                         )))

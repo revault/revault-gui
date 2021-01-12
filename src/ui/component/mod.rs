@@ -156,18 +156,27 @@ pub mod card {
 }
 
 pub mod text {
+    use crate::ui::font;
     use iced::{Container, Text};
 
     pub fn large_title(content: &str) -> Text {
-        Text::new(content).size(50)
+        Text::new(content).font(font::BOLD).size(50)
+    }
+
+    pub fn simple(content: &str) -> Text {
+        Text::new(content).font(font::REGULAR).size(20)
+    }
+
+    pub fn bold(content: &str) -> Text {
+        Text::new(content).font(font::BOLD).size(20)
     }
 
     pub fn small(content: &str) -> Text {
-        Text::new(content).size(15)
+        Text::new(content).font(font::REGULAR).size(15)
     }
 
     pub fn paragraph<'a, T: 'a>(s: &str) -> Container<'a, T> {
-        Container::new(Text::new(s))
+        Container::new(Text::new(s).font(font::REGULAR))
     }
 }
 

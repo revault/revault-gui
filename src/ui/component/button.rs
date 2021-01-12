@@ -1,4 +1,4 @@
-use crate::ui::color;
+use crate::ui::{color, component::text};
 use iced::{button, Color, Container, Row, Text, Vector};
 
 macro_rules! button {
@@ -45,7 +45,7 @@ pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Contai
         Some(i) => Container::new(
             Row::new()
                 .push(i)
-                .push(Text::new(text))
+                .push(text::simple(text))
                 .spacing(10)
                 .align_items(iced::Align::Center),
         )
