@@ -10,27 +10,12 @@ use crate::ui::{
     component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
     image,
-    message::{Message, MessageMenu, Role},
+    message::{Menu, Message, Role},
     view::layout,
     view::vault::{VaultList, VaultModal},
 };
 
 use crate::revaultd::model::{Vault, VaultTransactions};
-
-#[derive(Debug)]
-pub enum ManagerView {
-    Home(ManagerHomeView),
-    History(ManagerHistoryView),
-}
-
-impl ManagerView {
-    pub fn view(&mut self) -> Element<Message> {
-        match self {
-            ManagerView::History(v) => v.view(),
-            ManagerView::Home(v) => v.view(),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct ManagerHomeView {
@@ -234,26 +219,26 @@ impl ManagerSidebar {
             button::primary(
                 &mut self.home_menu_button,
                 button::button_content(Some(image::home_white_icon()), "Home"),
-                Message::Menu(MessageMenu::Home),
+                Message::Menu(Menu::Home),
             )
         } else {
             button::transparent(
                 &mut self.home_menu_button,
                 button::button_content(Some(image::home_icon()), "Home"),
-                Message::Menu(MessageMenu::Home),
+                Message::Menu(Menu::Home),
             )
         };
         let history_button = if current == ManagerSidebarCurrent::History {
             button::primary(
                 &mut self.history_menu_button,
                 button::button_content(Some(image::history_white_icon()), "History"),
-                Message::Menu(MessageMenu::History),
+                Message::Menu(Menu::History),
             )
         } else {
             button::transparent(
                 &mut self.history_menu_button,
                 button::button_content(Some(image::history_icon()), "History"),
-                Message::Menu(MessageMenu::History),
+                Message::Menu(Menu::History),
             )
         };
         layout::sidebar(
