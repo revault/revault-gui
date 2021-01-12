@@ -172,11 +172,14 @@ pub mod text {
 }
 
 pub mod badge {
-    use crate::ui::{color, image};
+    use crate::ui::{
+        color,
+        icon::{block_icon, deposit_icon},
+    };
     use iced::{container, Container, Length};
 
     pub fn block<'a, T: 'a>() -> Container<'a, T> {
-        let icon = image::block_icon().width(Length::Units(20));
+        let icon = block_icon().width(Length::Units(20));
         Container::new(icon)
             .width(Length::Units(40))
             .height(Length::Units(40))
@@ -191,13 +194,14 @@ pub mod badge {
             container::Style {
                 border_radius: 40.0,
                 background: color::PRIMARY_LIGHT.into(),
+                text_color: color::PRIMARY.into(),
                 ..container::Style::default()
             }
         }
     }
 
     pub fn tx_deposit<'a, T: 'a>() -> Container<'a, T> {
-        let icon = image::send_icon().width(Length::Units(20));
+        let icon = deposit_icon().width(Length::Units(20));
         Container::new(icon)
             .width(Length::Units(40))
             .height(Length::Units(40))
@@ -212,6 +216,7 @@ pub mod badge {
             container::Style {
                 border_radius: 40.0,
                 background: color::SUCCESS_LIGHT.into(),
+                text_color: color::SUCCESS.into(),
                 ..container::Style::default()
             }
         }

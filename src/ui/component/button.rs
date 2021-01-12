@@ -39,12 +39,12 @@ button!(
     Color::BLACK
 );
 
-pub fn button_content<'a, T: 'a>(icon: Option<iced::Svg>, text: &str) -> Container<'a, T> {
+pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Container<'a, T> {
     match icon {
         None => Container::new(Text::new(text)).padding(5),
-        Some(svg) => Container::new(
+        Some(i) => Container::new(
             Row::new()
-                .push(Container::new(svg))
+                .push(i)
                 .push(Text::new(text))
                 .spacing(10)
                 .align_items(iced::Align::Center),

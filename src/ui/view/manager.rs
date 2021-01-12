@@ -9,7 +9,7 @@ use crate::ui::{
     color,
     component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
-    image,
+    icon::{dot_icon, history_icon, home_icon, send_icon, settings_icon},
     message::{Menu, Message, Role},
     view::layout,
     view::vault::{VaultList, VaultModal},
@@ -105,8 +105,13 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
             Row::new()
                 .push(Container::new(Text::new("Bitcoin Core")).width(Length::Fill))
                 .push(
-                    Container::new(text::small("* running").color(color::SUCCESS))
-                        .width(Length::Shrink),
+                    Container::new(
+                        Row::new()
+                            .push(dot_icon().size(5).color(color::SUCCESS))
+                            .push(text::small("Running").color(color::SUCCESS))
+                            .align_items(iced::Align::Center),
+                    )
+                    .width(Length::Shrink),
                 ),
         )
         .spacing(10);
@@ -218,26 +223,26 @@ impl ManagerSidebar {
         let home_button = if current == ManagerSidebarCurrent::Home {
             button::primary(
                 &mut self.home_menu_button,
-                button::button_content(Some(image::home_white_icon()), "Home"),
+                button::button_content(Some(home_icon()), "Home"),
                 Message::Menu(Menu::Home),
             )
         } else {
             button::transparent(
                 &mut self.home_menu_button,
-                button::button_content(Some(image::home_icon()), "Home"),
+                button::button_content(Some(home_icon()), "Home"),
                 Message::Menu(Menu::Home),
             )
         };
         let history_button = if current == ManagerSidebarCurrent::History {
             button::primary(
                 &mut self.history_menu_button,
-                button::button_content(Some(image::history_white_icon()), "History"),
+                button::button_content(Some(history_icon()), "History"),
                 Message::Menu(Menu::History),
             )
         } else {
             button::transparent(
                 &mut self.history_menu_button,
-                button::button_content(Some(image::history_icon()), "History"),
+                button::button_content(Some(history_icon()), "History"),
                 Message::Menu(Menu::History),
             )
         };
@@ -251,7 +256,7 @@ impl ManagerSidebar {
                 Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
-                        button::button_content(Some(image::send_icon()), "Spend"),
+                        button::button_content(Some(send_icon()), "Spend"),
                         Message::Install,
                     )
                     .width(iced::Length::Units(150)),
@@ -260,7 +265,7 @@ impl ManagerSidebar {
             Container::new(
                 button::transparent(
                     &mut self.settings_menu_button,
-                    button::button_content(Some(image::settings_icon()), "Settings"),
+                    button::button_content(Some(settings_icon()), "Settings"),
                     Message::Install,
                 )
                 .width(iced::Length::Units(150)),
