@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
 
-use super::message::{Message, Role};
-use super::state::{ChargingState, InstallingState, ManagerState, StakeholderState, State};
+use super::message::{Menu, Message, Role};
+use super::state::{
+    ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, StakeholderState, State,
+};
 
 use crate::revaultd::RevaultD;
 
@@ -13,6 +15,9 @@ pub struct App {
     config: Config,
     revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
+
+    role: Role,
+    menu: Menu,
 }
 
 pub fn run(config: Config) -> Result<(), iced::Error> {
@@ -20,8 +25,16 @@ pub fn run(config: Config) -> Result<(), iced::Error> {
 }
 
 impl App {
-    pub fn load_state(&mut self, s: Box<dyn State>) -> Command<Message> {
-        self.state = s;
+    pub fn load_state(&mut self, role: Role, menu: Menu) -> Command<Message> {
+        self.role = role;
+        self.menu = menu;
+        self.state = match self.role {
+            Role::Manager => match self.menu {
+                Menu::Home => ManagerHomeState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::History => ManagerHistoryState::new(self.revaultd.clone().unwrap()).into(),
+            },
+            Role::Stakeholder => StakeholderState::new(self.revaultd.clone().unwrap()).into(),
+        };
         self.state.load()
     }
 }
@@ -39,6 +52,8 @@ impl Application for App {
                 config,
                 state: std::boxed::Box::new(state),
                 revaultd: None,
+                role: Role::Manager,
+                menu: Menu::Home,
             },
             cmd,
         )
@@ -54,19 +69,16 @@ impl Application for App {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::Install => self.load_state(InstallingState::new().into()),
+            Message::Install => {
+                self.state = InstallingState::new().into();
+                self.state.load()
+            }
             Message::Synced(revaultd) => {
                 self.revaultd = Some(revaultd);
-                self.load_state(ManagerState::new(self.revaultd.clone().unwrap()).into())
+                self.load_state(Role::Manager, Menu::Home)
             }
-            Message::ChangeRole(role) => match role {
-                Role::Manager => {
-                    self.load_state(ManagerState::new(self.revaultd.clone().unwrap()).into())
-                }
-                Role::Stakeholder => {
-                    self.load_state(StakeholderState::new(self.revaultd.clone().unwrap()).into())
-                }
-            },
+            Message::ChangeRole(role) => self.load_state(role, self.menu.to_owned()),
+            Message::Menu(menu) => self.load_state(self.role, menu),
             _ => self.state.update(message),
         }
     }

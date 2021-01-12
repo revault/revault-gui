@@ -43,11 +43,11 @@ pub enum Message {
     SelectVault(String),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
-    Menu(MessageMenu),
+    Menu(Menu),
 }
 
 #[derive(Debug, Clone)]
-pub enum MessageMenu {
+pub enum Menu {
     Home,
     History,
 }
