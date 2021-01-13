@@ -24,8 +24,8 @@ pub struct ManagerHomeState {
     blockheight: Watch<u64>,
     warning: Watch<Error>,
 
-    vaults: Vec<Rc<Vault>>,
-    selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+    selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
 }
 
 impl ManagerHomeState {
@@ -51,7 +51,7 @@ impl ManagerHomeState {
         );
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
         for vlt in vaults {
             self.vaults.push(Rc::new(vlt));
@@ -60,30 +60,24 @@ impl ManagerHomeState {
         self.reload_view();
     }
 
-    pub fn update_vault_selected(&mut self, txs: Vec<VaultTransactions>) {
-        for vlt in &self.vaults {
-            for tx in &txs {
-                if vlt.outpoint() == tx.outpoint {
-                    self.selected_vault = Some((vlt.clone(), tx.clone()));
-                    break;
-                }
-            }
-        }
-        self.reload_view();
-    }
-
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
-        if let Some((vlt, _)) = &self.selected_vault {
-            if vlt.outpoint() == outpoint {
+        if let Some(vlt) = &self.selected_vault {
+            if vlt.0.outpoint() == outpoint {
                 self.selected_vault = None;
                 self.reload_view();
                 return Command::none();
             }
         }
-        Command::perform(
-            get_vaults_txs(self.revaultd.clone(), vec![outpoint]),
-            Message::VaultTransactions,
-        )
+
+        if let Some(i) = self
+            .vaults
+            .iter()
+            .position(|vlt| vlt.0.outpoint() == outpoint)
+        {
+            self.selected_vault = Some(self.vaults[i].clone());
+            self.reload_view();
+        }
+        return Command::none();
     }
 
     pub fn on_tick(&mut self) -> Command<Message> {
@@ -101,12 +95,12 @@ impl ManagerHomeState {
     pub fn balance(&self) -> u64 {
         let mut amt: u64 = 0;
         for vlt in &self.vaults {
-            if vlt.status == VaultStatus::Active
-                || vlt.status == VaultStatus::Secured
-                || vlt.status == VaultStatus::Funded
-                || vlt.status == VaultStatus::Unconfirmed
+            if vlt.0.status == VaultStatus::Active
+                || vlt.0.status == VaultStatus::Secured
+                || vlt.0.status == VaultStatus::Funded
+                || vlt.0.status == VaultStatus::Unconfirmed
             {
-                amt += vlt.amount
+                amt += vlt.0.amount
             }
         }
         amt
@@ -118,10 +112,6 @@ impl State for ManagerHomeState {
         match message {
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::VaultTransactions(res) => match res {
-                Ok(txs) => self.update_vault_selected(txs),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -171,8 +161,8 @@ pub struct ManagerHistoryState {
     blockheight: Watch<u64>,
     warning: Watch<Error>,
 
-    vaults: Vec<Rc<Vault>>,
-    selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+    selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
 }
 
 impl ManagerHistoryState {
@@ -195,7 +185,7 @@ impl ManagerHistoryState {
         );
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
         for vlt in vaults {
             self.vaults.push(Rc::new(vlt));
@@ -204,30 +194,24 @@ impl ManagerHistoryState {
         self.reload_view();
     }
 
-    pub fn update_vault_selected(&mut self, txs: Vec<VaultTransactions>) {
-        for vlt in &self.vaults {
-            for tx in &txs {
-                if vlt.outpoint() == tx.outpoint {
-                    self.selected_vault = Some((vlt.clone(), tx.clone()));
-                    break;
-                }
-            }
-        }
-        self.reload_view();
-    }
-
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
-        if let Some((vlt, _)) = &self.selected_vault {
-            if vlt.outpoint() == outpoint {
+        if let Some(vlt) = &self.selected_vault {
+            if vlt.0.outpoint() == outpoint {
                 self.selected_vault = None;
                 self.reload_view();
                 return Command::none();
             }
         }
-        Command::perform(
-            get_vaults_txs(self.revaultd.clone(), vec![outpoint]),
-            Message::VaultTransactions,
-        )
+
+        if let Some(i) = self
+            .vaults
+            .iter()
+            .position(|vlt| vlt.0.outpoint() == outpoint)
+        {
+            self.selected_vault = Some(self.vaults[i].clone());
+            self.reload_view();
+        }
+        return Command::none();
     }
 
     pub fn on_tick(&mut self) -> Command<Message> {
@@ -248,10 +232,6 @@ impl State for ManagerHistoryState {
         match message {
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::VaultTransactions(res) => match res {
-                Ok(txs) => self.update_vault_selected(txs),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -287,19 +267,26 @@ impl From<ManagerHistoryState> for Box<dyn State> {
     }
 }
 
-async fn get_vaults_txs(
-    revaultd: Arc<RevaultD>,
-    outpoints: Vec<String>,
-) -> Result<Vec<VaultTransactions>, RevaultDError> {
-    revaultd
-        .list_transactions(Some(outpoints))
-        .map(|res| res.transactions)
-}
-
 async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
     revaultd.get_info().map(|res| res.blockheight)
 }
 
-async fn list_vaults(revaultd: Arc<RevaultD>) -> Result<Vec<Vault>, RevaultDError> {
-    revaultd.list_vaults().map(|res| res.vaults)
+async fn list_vaults(
+    revaultd: Arc<RevaultD>,
+) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
+    let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
+    let outpoints = vaults.iter().map(|vlt| vlt.outpoint()).collect();
+    let txs = revaultd.list_transactions(Some(outpoints))?;
+
+    let mut vec = Vec::new();
+    for vlt in vaults {
+        if let Some(i) = txs
+            .transactions
+            .iter()
+            .position(|tx| tx.outpoint == vlt.outpoint())
+        {
+            vec.push((vlt, txs.transactions[i].to_owned()));
+        }
+    }
+    Ok(vec)
 }

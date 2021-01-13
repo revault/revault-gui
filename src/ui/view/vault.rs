@@ -14,7 +14,7 @@ use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
 #[derive(Debug)]
 pub struct VaultModal {
     cancel_button: iced::button::State,
-    vault: Option<(Rc<Vault>, VaultTransactions)>,
+    vault: Option<Rc<(Vault, VaultTransactions)>>,
     scroll: scrollable::State,
 }
 
@@ -27,7 +27,7 @@ impl VaultModal {
         }
     }
 
-    pub fn load(&mut self, vault: Option<(Rc<Vault>, VaultTransactions)>) {
+    pub fn load(&mut self, vault: Option<Rc<(Vault, VaultTransactions)>>) {
         if self.vault.is_none() {
             self.scroll = scrollable::State::new();
         }
@@ -35,7 +35,9 @@ impl VaultModal {
     }
 
     pub fn view<'a>(&'a mut self, background: Container<'a, Message>) -> Container<'a, Message> {
-        if let Some((vlt, txs)) = &self.vault {
+        if let Some(vlt_txs) = &self.vault {
+            let vlt = &vlt_txs.0;
+            let txs = &vlt_txs.1;
             let tx = txs.last_broadcasted_tx();
             Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
@@ -182,7 +184,7 @@ impl VaultList {
         VaultList(Vec::new())
     }
 
-    pub fn load(&mut self, vaults: Vec<Rc<Vault>>) {
+    pub fn load(&mut self, vaults: Vec<Rc<(Vault, VaultTransactions)>>) {
         self.0 = Vec::new();
         for vlt in vaults {
             self.0.push(VaultListItem::new(vlt));
@@ -205,11 +207,11 @@ impl VaultList {
 #[derive(Debug, Clone)]
 struct VaultListItem {
     state: iced::button::State,
-    vault: Rc<Vault>,
+    vault: Rc<(Vault, VaultTransactions)>,
 }
 
 impl VaultListItem {
-    pub fn new(vault: Rc<Vault>) -> Self {
+    pub fn new(vault: Rc<(Vault, VaultTransactions)>) -> Self {
         VaultListItem {
             state: iced::button::State::new(),
             vault,
@@ -225,7 +227,7 @@ impl VaultListItem {
                         Container::new(
                             Row::new()
                                 .push(badge::tx_deposit())
-                                .push(text::small(&self.vault.txid))
+                                .push(text::small(&self.vault.0.txid))
                                 .spacing(20),
                         )
                         .width(Length::Fill),
@@ -235,7 +237,7 @@ impl VaultListItem {
                             Row::new()
                                 .push(text::bold(&format!(
                                     "{}",
-                                    self.vault.amount as f64 / 100000000_f64
+                                    self.vault.0.amount as f64 / 100000000_f64
                                 )))
                                 .push(text::small(" BTC"))
                                 .align_items(Align::Center),
@@ -245,7 +247,7 @@ impl VaultListItem {
                     .spacing(20)
                     .align_items(Align::Center),
             )),
-            Message::SelectVault(self.vault.outpoint()),
+            Message::SelectVault(self.vault.0.outpoint()),
         )))
     }
 }
