@@ -117,7 +117,7 @@ pub struct BroadcastedTransaction {
     #[serde(rename = "hex", with = "bitcoin_transaction")]
     pub tx: Transaction,
     /// reception time as Unix Epoch timestamp
-    pub received_at: u64,
+    pub received_at: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
