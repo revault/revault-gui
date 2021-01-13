@@ -22,7 +22,5 @@ tracing-subscriber = "0.2"
 dirs = "3.0.1"
 toml = "0.5"
 
-rust-embed = "5.6.0"
-
 [target.'cfg(windows)'.dependencies]
 uds_windows = "0.1.5"

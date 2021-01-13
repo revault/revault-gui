@@ -1,11 +1,8 @@
 use iced::widget::svg::{Handle, Svg};
-use rust_embed::RustEmbed;
 
-#[derive(RustEmbed)]
-#[folder = "static/images/"]
-struct Image;
+const LOGO: &'static [u8] = include_bytes!("../../static/images/revault-colored-logo.svg");
 
 pub fn revault_colored_logo() -> Svg {
-    let h = Handle::from_memory(Image::get("revault-colored-logo.svg").unwrap());
+    let h = Handle::from_memory(LOGO.to_vec());
     Svg::new(h)
 }
