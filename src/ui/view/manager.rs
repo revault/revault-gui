@@ -89,8 +89,13 @@ fn balance_view<'a, T: 'a>(balance: u64) -> Container<'a, T> {
     Container::new(
         Row::new().push(Column::new().width(Length::Fill)).push(
             Container::new(
-                text::large_title(&format!("{}", balance as f64 / 100000000_f64))
-                    .horizontal_alignment(HorizontalAlignment::Right),
+                Row::new()
+                    .push(text::large_title(&format!(
+                        "{}",
+                        balance as f64 / 100000000_f64
+                    )))
+                    .push(text::simple(" BTC"))
+                    .align_items(iced::Align::Center),
             )
             .width(Length::Shrink),
         ),
