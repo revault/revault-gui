@@ -43,8 +43,8 @@ impl ManagerHomeView {
 
     pub fn load(
         &mut self,
-        vaults: Vec<Rc<Vault>>,
-        selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+        vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+        selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
         balance: u64,
         blockheight: Option<u64>,
         warning: Option<Error>,
@@ -156,8 +156,8 @@ impl ManagerHistoryView {
 
     pub fn load(
         &mut self,
-        vaults: Vec<Rc<Vault>>,
-        selected_vault: Option<(Rc<Vault>, VaultTransactions)>,
+        vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+        selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
         warning: Option<Error>,
     ) {
         self.modal.load(selected_vault);
