@@ -2189,6 +2189,7 @@ name = "revault-gui"
 version = "0.0.1"
 dependencies = [
  "bitcoin",
+ "chrono",
  "dirs 3.0.1",
  "iced",
  "serde",

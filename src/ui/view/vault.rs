@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use chrono::NaiveDateTime;
 use iced::{container, scrollable, Align, Column, Container, Length, Row, Scrollable};
 
 use crate::ui::{
@@ -66,7 +67,13 @@ impl VaultModal {
                                                         .push(
                                                             Column::new()
                                                                 .push(text::small(&vlt.txid))
-                                                                .push(text::small("datetime")),
+                                                                .push(text::small(&format!(
+                                                                    "{}",
+                                                                    NaiveDateTime::from_timestamp(
+                                                                        tx.received_at,
+                                                                        0
+                                                                    )
+                                                                ))),
                                                         )
                                                         .spacing(20),
                                                 )
