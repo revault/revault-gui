@@ -175,6 +175,10 @@ pub mod text {
         Text::new(content).font(font::REGULAR).size(15)
     }
 
+    pub fn small_bold(content: &str) -> Text {
+        Text::new(content).font(font::BOLD).size(15)
+    }
+
     pub fn paragraph<'a, T: 'a>(s: &str) -> Container<'a, T> {
         Container::new(Text::new(s).font(font::REGULAR))
     }
@@ -224,8 +228,8 @@ pub mod badge {
         fn style(&self) -> container::Style {
             container::Style {
                 border_radius: 40.0,
-                background: color::SUCCESS_LIGHT.into(),
-                text_color: color::SUCCESS.into(),
+                background: color::INFO_LIGHT.into(),
+                text_color: color::INFO.into(),
                 ..container::Style::default()
             }
         }

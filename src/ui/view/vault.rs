@@ -73,10 +73,14 @@ impl VaultModal {
                                                 .width(Length::Fill),
                                             )
                                             .push(
-                                                Container::new(text::simple(&format!(
-                                                    "{}",
-                                                    vlt.amount as f64 / 100000000_f64
-                                                )))
+                                                Container::new(
+                                                    Row::new()
+                                                        .push(text::bold(&format!(
+                                                            "{}",
+                                                            vlt.amount as f64 / 100000000_f64
+                                                        )))
+                                                        .push(text::simple(" BTC")),
+                                                )
                                                 .width(Length::Shrink),
                                             )
                                             .spacing(20)
@@ -88,7 +92,7 @@ impl VaultModal {
                                             .push(
                                                 Container::new(
                                                     Column::new()
-                                                        .push(text::simple("Blockheight"))
+                                                        .push(text::bold("Blockheight"))
                                                         .push(text::simple(&if let Some(
                                                             blockheight,
                                                         ) = &tx.blockheight
@@ -102,7 +106,7 @@ impl VaultModal {
                                             )
                                             .push(
                                                 Container::new(
-                                                    Column::new().push(text::simple("Fee")),
+                                                    Column::new().push(text::bold("Fee")),
                                                 )
                                                 .width(Length::FillPortion(2)),
                                             ),
@@ -141,11 +145,14 @@ fn input_and_outputs<'a, T: 'a>(broadcasted: &BroadcastedTransaction) -> Contain
     }
     let mut col_output = Column::new().push(text::bold("Outputs")).spacing(10);
     for output in &broadcasted.tx.output {
-        col_output = col_output.push(card::simple(Container::new(text::small(&format!(
-            "{} {}",
-            output.script_pubkey,
-            output.value as f64 / 100000000_f64,
-        )))));
+        col_output = col_output.push(card::simple(Container::new(
+            Row::new()
+                .push(text::small(&format!("{}", output.script_pubkey)))
+                .push(text::small_bold(&format!(
+                    "{}",
+                    output.value as f64 / 100000000_f64
+                ))),
+        )));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
 }
@@ -217,10 +224,15 @@ impl VaultListItem {
                         .width(Length::Fill),
                     )
                     .push(
-                        Container::new(text::bold(&format!(
-                            "{}",
-                            self.vault.amount as f64 / 100000000_f64
-                        )))
+                        Container::new(
+                            Row::new()
+                                .push(text::bold(&format!(
+                                    "{}",
+                                    self.vault.amount as f64 / 100000000_f64
+                                )))
+                                .push(text::small(" BTC"))
+                                .align_items(Align::Center),
+                        )
                         .width(Length::Shrink),
                     )
                     .spacing(20)

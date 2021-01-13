@@ -64,3 +64,16 @@ pub const CANCEL: Color = Color::from_rgb(
     0x37 as f32 / 255.0,
     0x3D as f32 / 255.0,
 );
+
+pub const INFO: Color = Color::from_rgb(
+    0x2A as f32 / 255.0,
+    0x98 as f32 / 255.0,
+    0xBD as f32 / 255.0,
+);
+
+pub const INFO_LIGHT: Color = Color::from_rgba(
+    0x2A as f32 / 255.0,
+    0x98 as f32 / 255.0,
+    0xBD as f32 / 255.0,
+    0.5f32,
+);
