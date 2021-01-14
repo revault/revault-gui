@@ -43,10 +43,12 @@ pub enum Message {
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
+    Next,
 }
 
 #[derive(Debug, Clone)]
 pub enum Menu {
     Home,
     History,
+    Send,
 }

@@ -8,7 +8,7 @@ use iced::{Command, Element, Subscription};
 
 pub use charging::ChargingState;
 pub use installing::InstallingState;
-pub use manager::{ManagerHistoryState, ManagerHomeState};
+pub use manager::{ManagerHistoryState, ManagerHomeState, ManagerSendState};
 pub use stakeholder::StakeholderState;
 
 use super::message::Message;
