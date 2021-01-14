@@ -261,7 +261,7 @@ impl ManagerSidebar {
                     button::transparent(
                         &mut self.spend_menu_button,
                         button::button_content(Some(send_icon()), "Spend"),
-                        Message::Install,
+                        Message::Menu(Menu::Send),
                     )
                     .width(iced::Length::Units(150)),
                 ),
@@ -275,5 +275,120 @@ impl ManagerSidebar {
                 .width(iced::Length::Units(150)),
             ),
         )
+    }
+}
+
+#[derive(Debug)]
+pub enum ManagerSendView {
+    SelectOutputs(ManagerSelectOutputsView),
+    SelectInputs(ManagerSelectInputsView),
+}
+
+impl ManagerSendView {
+    pub fn new() -> Self {
+        Self::SelectOutputs(ManagerSelectOutputsView::new())
+    }
+
+    pub fn view(&mut self) -> Element<Message> {
+        match self {
+            Self::SelectOutputs(v) => v.view(),
+            Self::SelectInputs(v) => v.view(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSelectOutputsView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    selected_outputs: Vec<String>,
+}
+
+impl ManagerSelectOutputsView {
+    pub fn new() -> Self {
+        ManagerSelectOutputsView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+            selected_outputs: Vec::new(),
+        }
+    }
+
+    pub fn view(&mut self) -> Element<Message> {
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new().push(Column::new().width(Length::Fill)).push(
+                            Container::new(button::cancel(
+                                &mut self.cancel_button,
+                                Container::new(text::simple("X Close")).padding(10),
+                                Message::Menu(Menu::Home),
+                            ))
+                            .width(Length::Shrink),
+                        ),
+                    )
+                    .push(if !self.selected_outputs.is_empty() {
+                        Container::new(button::primary(
+                            &mut self.next_button,
+                            Container::new(text::simple("Continue")),
+                            Message::Next,
+                        ))
+                    } else {
+                        Container::new(text::simple("Enter outputs"))
+                            .align_x(iced::Align::Center)
+                            .width(Length::Fill)
+                    }),
+            )),
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSelectInputsView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    list_vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+    warning: Option<Error>,
+}
+
+impl ManagerSelectInputsView {
+    pub fn new() -> Self {
+        ManagerSelectInputsView {
+            list_vaults: Vec::new(),
+            cancel_button: iced::button::State::new(),
+            warning: None,
+            scroll: scrollable::State::new(),
+        }
+    }
+    pub fn load(&mut self, vaults: Vec<Rc<(Vault, VaultTransactions)>>, warning: Option<Error>) {
+        self.list_vaults = vaults;
+        self.warning = warning;
+    }
+
+    pub fn view(&mut self) -> Element<Message> {
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new().push(
+                    Row::new().push(Column::new().width(Length::Fill)).push(
+                        Container::new(button::cancel(
+                            &mut self.cancel_button,
+                            Container::new(text::simple("X Close")).padding(10),
+                            Message::Menu(Menu::Home),
+                        ))
+                        .width(Length::Shrink),
+                    ),
+                ),
+            )),
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 }

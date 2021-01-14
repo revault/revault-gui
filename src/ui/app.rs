@@ -6,7 +6,8 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 
 use super::message::{Menu, Message, Role};
 use super::state::{
-    ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, StakeholderState, State,
+    ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, ManagerSendState,
+    StakeholderState, State,
 };
 
 use crate::revaultd::RevaultD;
@@ -32,6 +33,7 @@ impl App {
             Role::Manager => match self.menu {
                 Menu::Home => ManagerHomeState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::History => ManagerHistoryState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::Send => ManagerSendState::new(self.revaultd.clone().unwrap()).into(),
             },
             Role::Stakeholder => StakeholderState::new(self.revaultd.clone().unwrap()).into(),
         };

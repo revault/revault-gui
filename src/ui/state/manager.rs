@@ -13,7 +13,7 @@ use crate::revaultd::{
 use crate::ui::{
     error::Error,
     message::Message,
-    view::manager::{ManagerHistoryView, ManagerHomeView},
+    view::manager::{ManagerHistoryView, ManagerHomeView, ManagerSendView},
 };
 
 #[derive(Debug)]
@@ -263,6 +263,67 @@ impl State for ManagerHistoryState {
 
 impl From<ManagerHistoryState> for Box<dyn State> {
     fn from(s: ManagerHistoryState) -> Box<dyn State> {
+        Box::new(s)
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSendState {
+    revaultd: Arc<RevaultD>,
+    view: ManagerSendView,
+
+    warning: Option<Error>,
+
+    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+}
+
+impl ManagerSendState {
+    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+        ManagerSendState {
+            revaultd,
+            view: ManagerSendView::new(),
+            warning: None,
+            vaults: Vec::new(),
+        }
+    }
+    pub fn reload_view(&mut self) {
+        match &mut self.view {
+            ManagerSendView::SelectInputs(v) => {
+                v.load(self.vaults.clone(), self.warning.clone().into())
+            }
+            _ => {}
+        }
+    }
+
+    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
+        self.vaults = Vec::new();
+        for vlt in vaults {
+            self.vaults.push(Rc::new(vlt));
+        }
+
+        self.reload_view();
+    }
+}
+
+impl State for ManagerSendState {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        Command::none()
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.view()
+    }
+
+    fn load(&self) -> Command<Message> {
+        Command::batch(vec![Command::perform(
+            list_vaults(self.revaultd.clone()),
+            Message::Vaults,
+        )])
+    }
+}
+
+impl From<ManagerSendState> for Box<dyn State> {
+    fn from(s: ManagerSendState) -> Box<dyn State> {
         Box::new(s)
     }
 }
