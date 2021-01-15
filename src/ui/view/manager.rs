@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use iced::{
     pick_list, scrollable, text_input, Column, Container, Element, HorizontalAlignment, Length,
     Row, Scrollable, TextInput,
@@ -12,67 +10,47 @@ use crate::ui::{
     icon::{dot_icon, history_icon, home_icon, send_icon, settings_icon},
     message::{ManagerSendOutputMessage, Menu, Message, Role},
     view::layout,
-    view::vault::{VaultList, VaultModal},
 };
-
-use crate::revaultd::model::{Vault, VaultTransactions};
 
 #[derive(Debug)]
 pub struct ManagerHomeView {
-    balance: u64,
-    blockheight: Option<u64>,
-    list_vaults: VaultList,
-    modal: VaultModal,
     sidebar: ManagerSidebar,
-    warning: Option<Error>,
-
     scroll: scrollable::State,
 }
 
 impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
-            balance: 0,
-            blockheight: None,
-            list_vaults: VaultList::new(),
-            modal: VaultModal::new(),
             scroll: scrollable::State::new(),
             sidebar: ManagerSidebar::new(Role::Manager, true),
-            warning: None,
         }
     }
 
-    pub fn load(
-        &mut self,
-        vaults: Vec<Rc<(Vault, VaultTransactions)>>,
-        selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
-        balance: u64,
-        blockheight: Option<u64>,
-        warning: Option<Error>,
-    ) {
-        self.modal.load(selected_vault);
-        self.list_vaults.load(vaults);
-        self.warning = warning;
-        self.balance = balance;
-        self.blockheight = blockheight;
-    }
-
-    pub fn view(&mut self) -> Element<Message> {
-        let background = layout::dashboard(
-            navbar(navbar_warning(self.warning.as_ref())),
+    pub fn view<'a>(
+        &'a mut self,
+        warning: Option<&Error>,
+        vaults: Vec<Element<'a, Message>>,
+        balance: &u64,
+        blockheight: Option<&u64>,
+    ) -> Element<'a, Message> {
+        let mut vaults_col = Column::new();
+        for vlt in vaults {
+            vaults_col = vaults_col.push(vlt);
+        }
+        layout::dashboard(
+            navbar(navbar_warning(warning)),
             self.sidebar.view(ManagerSidebarCurrent::Home),
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
-                        .push(balance_view(self.balance))
-                        .push(self.list_vaults.view())
-                        .push(bitcoin_core_card(self.blockheight.as_ref()))
+                        .push(balance_view(balance))
+                        .push(vaults_col)
+                        .push(bitcoin_core_card(blockheight))
                         .spacing(20),
                 )),
             )),
-        );
-
-        self.modal.view(background).into()
+        )
+        .into()
     }
 }
 
@@ -86,14 +64,14 @@ fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>
     None
 }
 
-fn balance_view<'a, T: 'a>(balance: u64) -> Container<'a, T> {
+fn balance_view<'a, T: 'a>(balance: &u64) -> Container<'a, T> {
     Container::new(
         Row::new().push(Column::new().width(Length::Fill)).push(
             Container::new(
                 Row::new()
                     .push(text::large_title(&format!(
                         "{}",
-                        balance as f64 / 100000000_f64
+                        *balance as f64 / 100000000_f64
                     )))
                     .push(text::simple(" BTC"))
                     .align_items(iced::Align::Center),
@@ -137,45 +115,36 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
 
 #[derive(Debug)]
 pub struct ManagerHistoryView {
-    list_vaults: VaultList,
-    modal: VaultModal,
     scroll: scrollable::State,
     sidebar: ManagerSidebar,
-    warning: Option<Error>,
 }
 
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
-            modal: VaultModal::new(),
-            list_vaults: VaultList::new(),
             sidebar: ManagerSidebar::new(Role::Manager, true),
             scroll: scrollable::State::new(),
-            warning: None,
         }
     }
 
-    pub fn load(
-        &mut self,
-        vaults: Vec<Rc<(Vault, VaultTransactions)>>,
-        selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
-        warning: Option<Error>,
-    ) {
-        self.modal.load(selected_vault);
-        self.list_vaults.load(vaults);
-        self.warning = warning;
-    }
-
-    pub fn view(&mut self) -> Element<Message> {
-        let background = layout::dashboard(
-            navbar(navbar_warning(self.warning.as_ref())),
+    pub fn view<'a>(
+        &'a mut self,
+        warning: Option<&Error>,
+        vaults: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        let mut vaults_col = Column::new();
+        for vlt in vaults {
+            vaults_col = vaults_col.push(vlt);
+        }
+        layout::dashboard(
+            navbar(navbar_warning(warning)),
             self.sidebar.view(ManagerSidebarCurrent::History),
-            layout::main_section(Container::new(Scrollable::new(&mut self.scroll).push(
-                Container::new(Column::new().push(self.list_vaults.view()).spacing(20)),
-            ))),
-        );
-
-        self.modal.view(background).into()
+            layout::main_section(Container::new(
+                Scrollable::new(&mut self.scroll)
+                    .push(Container::new(Column::new().push(vaults_col).spacing(20))),
+            )),
+        )
+        .into()
     }
 }
 
@@ -282,7 +251,7 @@ impl ManagerSidebar {
 #[derive(Debug)]
 pub enum ManagerSendView {
     SelectOutputs(ManagerSelectOutputsView),
-    SelectInputs(ManagerSelectInputsView),
+    SelectInputs,
 }
 
 impl ManagerSendView {
@@ -369,49 +338,5 @@ impl ManagerSendOutputView {
             }
             _ => Container::new(Column::new()).into(),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct ManagerSelectInputsView {
-    scroll: scrollable::State,
-    cancel_button: iced::button::State,
-    list_vaults: Vec<Rc<(Vault, VaultTransactions)>>,
-    warning: Option<Error>,
-}
-
-impl ManagerSelectInputsView {
-    pub fn new() -> Self {
-        ManagerSelectInputsView {
-            list_vaults: Vec::new(),
-            cancel_button: iced::button::State::new(),
-            warning: None,
-            scroll: scrollable::State::new(),
-        }
-    }
-    pub fn load(&mut self, vaults: Vec<Rc<(Vault, VaultTransactions)>>, warning: Option<Error>) {
-        self.list_vaults = vaults;
-        self.warning = warning;
-    }
-
-    pub fn view(&mut self) -> Element<Message> {
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
-                Column::new().push(
-                    Row::new().push(Column::new().width(Length::Fill)).push(
-                        Container::new(button::cancel(
-                            &mut self.cancel_button,
-                            Container::new(text::simple("X Close")).padding(10),
-                            Message::Menu(Menu::Home),
-                        ))
-                        .width(Length::Shrink),
-                    ),
-                ),
-            )),
-        )
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
     }
 }

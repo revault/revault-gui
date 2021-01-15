@@ -14,6 +14,7 @@ use crate::ui::{
     error::Error,
     message::{ManagerSendOutputMessage, Message},
     view::manager::{ManagerHistoryView, ManagerHomeView, ManagerSendOutputView, ManagerSendView},
+    view::vault::VaultView,
 };
 
 #[derive(Debug)]
@@ -21,17 +22,19 @@ pub struct ManagerHomeState {
     revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
+    balance: u64,
     blockheight: Watch<u64>,
     warning: Watch<Error>,
 
-    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
-    selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
+    vaults: Vec<ManagerVault>,
+    selected_vault: Option<ManagerVault>,
 }
 
 impl ManagerHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerHomeState {
             revaultd,
+            balance: 0,
             view: ManagerHomeView::new(),
             blockheight: Watch::None,
             vaults: Vec::new(),
@@ -40,31 +43,18 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn reload_view(&mut self) {
-        let balance = self.balance();
-        self.view.load(
-            self.vaults.clone(),
-            self.selected_vault.clone(),
-            balance,
-            self.blockheight.clone().into(),
-            self.warning.clone().into(),
-        );
-    }
-
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
         for vlt in vaults {
-            self.vaults.push(Rc::new(vlt));
+            self.vaults.push(ManagerVault::new(vlt.0, vlt.1));
         }
-
-        self.reload_view();
+        self.calculate_balance();
     }
 
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
         if let Some(vlt) = &self.selected_vault {
-            if vlt.0.outpoint() == outpoint {
+            if vlt.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                self.reload_view();
                 return Command::none();
             }
         }
@@ -72,10 +62,12 @@ impl ManagerHomeState {
         if let Some(i) = self
             .vaults
             .iter()
-            .position(|vlt| vlt.0.outpoint() == outpoint)
+            .position(|vlt| vlt.vault.outpoint() == outpoint)
         {
-            self.selected_vault = Some(self.vaults[i].clone());
-            self.reload_view();
+            self.selected_vault = Some(ManagerVault::new_selected(
+                self.vaults[i].vault.clone(),
+                self.vaults[i].txs.clone(),
+            ));
         }
         return Command::none();
     }
@@ -92,18 +84,18 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    pub fn balance(&self) -> u64 {
+    pub fn calculate_balance(&mut self) {
         let mut amt: u64 = 0;
         for vlt in &self.vaults {
-            if vlt.0.status == VaultStatus::Active
-                || vlt.0.status == VaultStatus::Secured
-                || vlt.0.status == VaultStatus::Funded
-                || vlt.0.status == VaultStatus::Unconfirmed
+            if vlt.vault.status == VaultStatus::Active
+                || vlt.vault.status == VaultStatus::Secured
+                || vlt.vault.status == VaultStatus::Funded
+                || vlt.vault.status == VaultStatus::Unconfirmed
             {
-                amt += vlt.0.amount
+                amt += vlt.vault.amount
             }
         }
-        amt
+        self.balance = amt;
     }
 }
 
@@ -119,11 +111,9 @@ impl State for ManagerHomeState {
             Message::BlockHeight(b) => match b {
                 Ok(height) => {
                     self.blockheight = height.into();
-                    self.reload_view();
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();
-                    self.reload_view();
                 }
             },
             _ => {}
@@ -132,7 +122,15 @@ impl State for ManagerHomeState {
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.view()
+        if let Some(v) = &mut self.selected_vault {
+            return v.view();
+        }
+        self.view.view(
+            self.warning.as_ref().into(),
+            self.vaults.iter_mut().map(|v| v.view()).collect(),
+            &self.balance,
+            self.blockheight.as_ref().into(),
+        )
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -161,8 +159,8 @@ pub struct ManagerHistoryState {
     blockheight: Watch<u64>,
     warning: Watch<Error>,
 
-    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
-    selected_vault: Option<Rc<(Vault, VaultTransactions)>>,
+    vaults: Vec<ManagerVault>,
+    selected_vault: Option<ManagerVault>,
 }
 
 impl ManagerHistoryState {
@@ -177,28 +175,17 @@ impl ManagerHistoryState {
         }
     }
 
-    pub fn reload_view(&mut self) {
-        self.view.load(
-            self.vaults.clone(),
-            self.selected_vault.clone(),
-            self.warning.clone().into(),
-        );
-    }
-
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
         for vlt in vaults {
-            self.vaults.push(Rc::new(vlt));
+            self.vaults.push(ManagerVault::new(vlt.0, vlt.1));
         }
-
-        self.reload_view();
     }
 
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
         if let Some(vlt) = &self.selected_vault {
-            if vlt.0.outpoint() == outpoint {
+            if vlt.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                self.reload_view();
                 return Command::none();
             }
         }
@@ -206,10 +193,12 @@ impl ManagerHistoryState {
         if let Some(i) = self
             .vaults
             .iter()
-            .position(|vlt| vlt.0.outpoint() == outpoint)
+            .position(|vlt| vlt.vault.outpoint() == outpoint)
         {
-            self.selected_vault = Some(self.vaults[i].clone());
-            self.reload_view();
+            self.selected_vault = Some(ManagerVault::new_selected(
+                self.vaults[i].vault.clone(),
+                self.vaults[i].txs.clone(),
+            ));
         }
         return Command::none();
     }
@@ -246,7 +235,13 @@ impl State for ManagerHistoryState {
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.view()
+        if let Some(v) = &mut self.selected_vault {
+            return v.view();
+        }
+        self.view.view(
+            self.warning.as_ref().into(),
+            self.vaults.iter_mut().map(|v| v.view()).collect(),
+        )
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -264,6 +259,33 @@ impl State for ManagerHistoryState {
 impl From<ManagerHistoryState> for Box<dyn State> {
     fn from(s: ManagerHistoryState) -> Box<dyn State> {
         Box::new(s)
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerVault {
+    vault: Vault,
+    txs: VaultTransactions,
+    view: VaultView,
+}
+
+impl ManagerVault {
+    pub fn new(vault: Vault, txs: VaultTransactions) -> Self {
+        Self {
+            vault,
+            txs,
+            view: VaultView::new(),
+        }
+    }
+    pub fn new_selected(vault: Vault, txs: VaultTransactions) -> Self {
+        Self {
+            vault,
+            txs,
+            view: VaultView::new_modal(),
+        }
+    }
+    pub fn view(&mut self) -> Element<Message> {
+        self.view.view(&self.vault, &self.txs)
     }
 }
 
@@ -288,22 +310,12 @@ impl ManagerSendState {
             outputs: vec![ManagerSendOutput::new()],
         }
     }
-    pub fn reload_view(&mut self) {
-        match &mut self.view {
-            ManagerSendView::SelectInputs(v) => {
-                v.load(self.vaults.clone(), self.warning.clone().into())
-            }
-            _ => {}
-        }
-    }
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
         for vlt in vaults {
             self.vaults.push(Rc::new(vlt));
         }
-
-        self.reload_view();
     }
 }
 
@@ -329,7 +341,7 @@ impl State for ManagerSendState {
                     .map(|(i, v)| v.view().map(move |msg| Message::ManagerSendOutput(i, msg)))
                     .collect(),
             ),
-            ManagerSendView::SelectInputs(v) => v.view(),
+            ManagerSendView::SelectInputs => iced::Container::new(iced::Column::new()).into(),
         }
     }
 
