@@ -12,8 +12,8 @@ use crate::revaultd::{
 };
 use crate::ui::{
     error::Error,
-    message::Message,
-    view::manager::{ManagerHistoryView, ManagerHomeView, ManagerSendView},
+    message::{ManagerSendOutputMessage, Message},
+    view::manager::{ManagerHistoryView, ManagerHomeView, ManagerSendOutputView, ManagerSendView},
 };
 
 #[derive(Debug)]
@@ -275,6 +275,7 @@ pub struct ManagerSendState {
     warning: Option<Error>,
 
     vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+    outputs: Vec<ManagerSendOutput>,
 }
 
 impl ManagerSendState {
@@ -284,6 +285,7 @@ impl ManagerSendState {
             view: ManagerSendView::new(),
             warning: None,
             vaults: Vec::new(),
+            outputs: vec![ManagerSendOutput::new()],
         }
     }
     pub fn reload_view(&mut self) {
@@ -307,11 +309,28 @@ impl ManagerSendState {
 
 impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::ManagerSendOutput(i, msg) => {
+                if let Some(output) = self.outputs.get_mut(i) {
+                    output.update(msg);
+                }
+            }
+            _ => {}
+        };
         Command::none()
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.view()
+        match &mut self.view {
+            ManagerSendView::SelectOutputs(v) => v.view(
+                self.outputs
+                    .iter_mut()
+                    .enumerate()
+                    .map(|(i, v)| v.view().map(move |msg| Message::ManagerSendOutput(i, msg)))
+                    .collect(),
+            ),
+            ManagerSendView::SelectInputs(v) => v.view(),
+        }
     }
 
     fn load(&self) -> Command<Message> {
@@ -325,6 +344,34 @@ impl State for ManagerSendState {
 impl From<ManagerSendState> for Box<dyn State> {
     fn from(s: ManagerSendState) -> Box<dyn State> {
         Box::new(s)
+    }
+}
+
+#[derive(Debug)]
+struct ManagerSendOutput {
+    address: String,
+    amount: u64,
+
+    view: ManagerSendOutputView,
+}
+
+impl ManagerSendOutput {
+    fn new() -> Self {
+        Self {
+            address: "".to_string(),
+            amount: 0,
+            view: ManagerSendOutputView::new_edit(),
+        }
+    }
+
+    fn update(&mut self, message: ManagerSendOutputMessage) {
+        match message {
+            ManagerSendOutputMessage::AddressEdited(address) => self.address = address,
+        };
+    }
+
+    fn view(&mut self) -> Element<ManagerSendOutputMessage> {
+        self.view.view(&self.address)
     }
 }
 

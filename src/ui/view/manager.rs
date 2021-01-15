@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use iced::{
-    pick_list, scrollable, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
+    pick_list, scrollable, text_input, Column, Container, Element, HorizontalAlignment, Length,
+    Row, Scrollable, TextInput,
 };
 
 use crate::ui::{
@@ -9,7 +10,7 @@ use crate::ui::{
     component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
     icon::{dot_icon, history_icon, home_icon, send_icon, settings_icon},
-    message::{Menu, Message, Role},
+    message::{ManagerSendOutputMessage, Menu, Message, Role},
     view::layout,
     view::vault::{VaultList, VaultModal},
 };
@@ -288,13 +289,6 @@ impl ManagerSendView {
     pub fn new() -> Self {
         Self::SelectOutputs(ManagerSelectOutputsView::new())
     }
-
-    pub fn view(&mut self) -> Element<Message> {
-        match self {
-            Self::SelectOutputs(v) => v.view(),
-            Self::SelectInputs(v) => v.view(),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -302,7 +296,6 @@ pub struct ManagerSelectOutputsView {
     scroll: scrollable::State,
     cancel_button: iced::button::State,
     next_button: iced::button::State,
-    selected_outputs: Vec<String>,
 }
 
 impl ManagerSelectOutputsView {
@@ -311,11 +304,18 @@ impl ManagerSelectOutputsView {
             cancel_button: iced::button::State::new(),
             next_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
-            selected_outputs: Vec::new(),
         }
     }
 
-    pub fn view(&mut self) -> Element<Message> {
+    pub fn view<'a>(
+        &'a mut self,
+        selected_outputs: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        let mut col_outputs = Column::new();
+        for element in selected_outputs {
+            col_outputs = col_outputs.push(element);
+        }
+        let element: Element<_> = col_outputs.into();
         Container::new(
             Scrollable::new(&mut self.scroll).push(Container::new(
                 Column::new()
@@ -329,23 +329,46 @@ impl ManagerSelectOutputsView {
                             .width(Length::Shrink),
                         ),
                     )
-                    .push(if !self.selected_outputs.is_empty() {
-                        Container::new(button::primary(
-                            &mut self.next_button,
-                            Container::new(text::simple("Continue")),
-                            Message::Next,
-                        ))
-                    } else {
-                        Container::new(text::simple("Enter outputs"))
-                            .align_x(iced::Align::Center)
-                            .width(Length::Fill)
-                    }),
+                    .push(element)
+                    .push(Container::new(button::primary(
+                        &mut self.next_button,
+                        Container::new(text::simple("Continue")),
+                        Message::Next,
+                    ))),
             )),
         )
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
+    }
+}
+
+#[derive(Debug)]
+pub enum ManagerSendOutputView {
+    Display,
+    Edit { address_input: text_input::State },
+}
+
+impl ManagerSendOutputView {
+    pub fn new_edit() -> Self {
+        Self::Edit {
+            address_input: text_input::State::focused(),
+        }
+    }
+    pub fn view(&mut self, address: &str) -> Element<ManagerSendOutputMessage> {
+        match self {
+            Self::Edit { address_input } => {
+                let input = TextInput::new(
+                    address_input,
+                    "address",
+                    &address,
+                    ManagerSendOutputMessage::AddressEdited,
+                );
+                Container::new(input).width(Length::Fill).into()
+            }
+            _ => Container::new(Column::new()).into(),
+        }
     }
 }
 
