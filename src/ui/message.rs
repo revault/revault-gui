@@ -44,6 +44,12 @@ pub enum Message {
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
     Next,
+    ManagerSendOutput(usize, ManagerSendOutputMessage),
+}
+
+#[derive(Debug, Clone)]
+pub enum ManagerSendOutputMessage {
+    AddressEdited(String),
 }
 
 #[derive(Debug, Clone)]
