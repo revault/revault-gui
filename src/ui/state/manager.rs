@@ -379,11 +379,16 @@ impl ManagerSendOutput {
     fn update(&mut self, message: ManagerSendOutputMessage) {
         match message {
             ManagerSendOutputMessage::AddressEdited(address) => self.address = address,
+            ManagerSendOutputMessage::AmountEdited(amount) => {
+                if let Ok(a) = amount.parse() {
+                    self.amount = a;
+                }
+            }
         };
     }
 
     fn view(&mut self) -> Element<ManagerSendOutputMessage> {
-        self.view.view(&self.address)
+        self.view.view(&self.address, &self.amount)
     }
 }
 
