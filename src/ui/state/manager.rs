@@ -1,5 +1,5 @@
 use std::convert::From;
-use std::rc::Rc;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,8 +12,11 @@ use crate::revaultd::{
 };
 use crate::ui::{
     error::Error,
-    message::{ManagerSendOutputMessage, Message},
-    view::manager::{ManagerHistoryView, ManagerHomeView, ManagerSendOutputView, ManagerSendView},
+    message::{InputMessage, Message, RecipientMessage},
+    view::manager::{
+        manager_send_input_view, ManagerHistoryView, ManagerHomeView, ManagerSendOutputView,
+        ManagerSendView,
+    },
     view::vault::VaultView,
 };
 
@@ -296,7 +299,7 @@ pub struct ManagerSendState {
 
     warning: Option<Error>,
 
-    vaults: Vec<Rc<(Vault, VaultTransactions)>>,
+    vaults: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
 }
 
@@ -313,16 +316,49 @@ impl ManagerSendState {
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
         self.vaults = Vec::new();
-        for vlt in vaults {
-            self.vaults.push(Rc::new(vlt));
+        for (vlt, txs) in vaults {
+            self.vaults.push(ManagerSendInput::new(vlt, txs));
         }
+    }
+
+    pub fn input_amount(&self) -> u64 {
+        let mut input_amount = 0;
+        for input in &self.vaults {
+            if input.selected {
+                input_amount += input.vault.amount;
+            }
+        }
+        input_amount
+    }
+
+    pub fn output_amount(&self) -> u64 {
+        let mut output_amount = 0;
+        for output in &self.outputs {
+            output_amount += output.amount().unwrap();
+        }
+        output_amount
     }
 }
 
 impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::ManagerSendOutput(i, msg) => {
+            Message::Vaults(res) => match res {
+                Ok(vlts) => self.update_vaults(vlts),
+                Err(e) => self.warning = Some(Error::RevaultDError(e)),
+            },
+            Message::Next => self.view = self.view.next(),
+            Message::Previous => self.view = self.view.previous(),
+            Message::AddRecipient => self.outputs.push(ManagerSendOutput::new()),
+            Message::Recipient(i, RecipientMessage::Delete) => {
+                self.outputs.remove(i);
+            }
+            Message::Input(i, msg) => {
+                if let Some(input) = self.vaults.get_mut(i) {
+                    input.update(msg);
+                }
+            }
+            Message::Recipient(i, msg) => {
                 if let Some(output) = self.outputs.get_mut(i) {
                     output.update(msg);
                 }
@@ -333,15 +369,28 @@ impl State for ManagerSendState {
     }
 
     fn view(&mut self) -> Element<Message> {
+        let input_amount = self.input_amount();
+        let output_amount = self.output_amount();
         match &mut self.view {
-            ManagerSendView::SelectOutputs(v) => v.view(
-                self.outputs
+            ManagerSendView::SelectOutputs(v) => {
+                let valid = !self.outputs.iter().any(|o| !o.valid());
+                v.view(
+                    self.outputs
+                        .iter_mut()
+                        .enumerate()
+                        .map(|(i, v)| v.view().map(move |msg| Message::Recipient(i, msg)))
+                        .collect(),
+                    valid,
+                )
+            }
+            ManagerSendView::SelectInputs(v) => v.view(
+                self.vaults
                     .iter_mut()
                     .enumerate()
-                    .map(|(i, v)| v.view().map(move |msg| Message::ManagerSendOutput(i, msg)))
+                    .map(|(i, v)| v.view().map(move |msg| Message::Input(i, msg)))
                     .collect(),
+                input_amount > output_amount,
             ),
-            ManagerSendView::SelectInputs => iced::Container::new(iced::Column::new()).into(),
         }
     }
 
@@ -362,7 +411,10 @@ impl From<ManagerSendState> for Box<dyn State> {
 #[derive(Debug)]
 struct ManagerSendOutput {
     address: String,
-    amount: u64,
+    amount: String,
+
+    warning_address: bool,
+    warning_amount: bool,
 
     view: ManagerSendOutputView,
 }
@@ -371,24 +423,78 @@ impl ManagerSendOutput {
     fn new() -> Self {
         Self {
             address: "".to_string(),
-            amount: 0,
-            view: ManagerSendOutputView::new_edit(),
+            amount: "".to_string(),
+            warning_address: false,
+            warning_amount: false,
+            view: ManagerSendOutputView::new(),
         }
     }
 
-    fn update(&mut self, message: ManagerSendOutputMessage) {
+    fn amount(&self) -> Result<u64, Error> {
+        let a = f64::from_str(&self.amount)
+            .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
+        Ok((a * 100000000_f64) as u64)
+    }
+
+    fn valid(&self) -> bool {
+        !self.address.is_empty()
+            && !self.warning_address
+            && !self.amount.is_empty()
+            && !self.warning_amount
+    }
+
+    fn update(&mut self, message: RecipientMessage) {
         match message {
-            ManagerSendOutputMessage::AddressEdited(address) => self.address = address,
-            ManagerSendOutputMessage::AmountEdited(amount) => {
-                if let Ok(a) = amount.parse() {
-                    self.amount = a;
+            RecipientMessage::AddressEdited(address) => {
+                self.address = address;
+                if !self.address.is_empty() {
+                    self.warning_address = bitcoin::Address::from_str(&self.address).is_err();
                 }
             }
+            RecipientMessage::AmountEdited(amount) => {
+                self.amount = amount;
+                if !self.amount.is_empty() {
+                    self.warning_amount = f64::from_str(&self.amount).is_err();
+                }
+            }
+            _ => {}
         };
     }
 
-    fn view(&mut self) -> Element<ManagerSendOutputMessage> {
-        self.view.view(&self.address, &self.amount)
+    fn view(&mut self) -> Element<RecipientMessage> {
+        self.view.view(
+            &self.address,
+            &self.amount,
+            &self.warning_address,
+            &self.warning_amount,
+        )
+    }
+}
+
+#[derive(Debug)]
+struct ManagerSendInput {
+    vault: Vault,
+    transactions: VaultTransactions,
+    selected: bool,
+}
+
+impl ManagerSendInput {
+    fn new(vault: Vault, transactions: VaultTransactions) -> Self {
+        Self {
+            vault,
+            transactions,
+            selected: false,
+        }
+    }
+
+    pub fn view(&mut self) -> Element<InputMessage> {
+        manager_send_input_view(&self.vault.outpoint(), &self.vault.amount, self.selected)
+    }
+
+    pub fn update(&mut self, msg: InputMessage) {
+        match msg {
+            InputMessage::Selected(selected) => self.selected = selected,
+        }
     }
 }
 

@@ -44,11 +44,21 @@ pub enum Message {
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
     Next,
-    ManagerSendOutput(usize, ManagerSendOutputMessage),
+    Previous,
+    Recipient(usize, RecipientMessage),
+    Input(usize, InputMessage),
+    None,
+    AddRecipient,
 }
 
 #[derive(Debug, Clone)]
-pub enum ManagerSendOutputMessage {
+pub enum InputMessage {
+    Selected(bool),
+}
+
+#[derive(Debug, Clone)]
+pub enum RecipientMessage {
+    Delete,
     AddressEdited(String),
     AmountEdited(String),
 }

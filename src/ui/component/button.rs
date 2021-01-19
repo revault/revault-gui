@@ -30,6 +30,12 @@ macro_rules! button {
 }
 
 button!(primary, PrimaryStyle, color::PRIMARY, color::FOREGROUND);
+button!(
+    primary_disable,
+    PrimaryDisableStyle,
+    color::PRIMARY_LIGHT,
+    color::FOREGROUND
+);
 button!(cancel, CancelStyle, color::CANCEL, color::FOREGROUND);
 
 button!(
