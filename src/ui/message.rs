@@ -50,6 +50,7 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub enum ManagerSendOutputMessage {
     AddressEdited(String),
+    AmountEdited(String),
 }
 
 #[derive(Debug, Clone)]

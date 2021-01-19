@@ -316,25 +316,40 @@ impl ManagerSelectOutputsView {
 #[derive(Debug)]
 pub enum ManagerSendOutputView {
     Display,
-    Edit { address_input: text_input::State },
+    Edit {
+        address_input: text_input::State,
+        amount_input: text_input::State,
+    },
 }
 
 impl ManagerSendOutputView {
     pub fn new_edit() -> Self {
         Self::Edit {
             address_input: text_input::State::focused(),
+            amount_input: text_input::State::focused(),
         }
     }
-    pub fn view(&mut self, address: &str) -> Element<ManagerSendOutputMessage> {
+    pub fn view(&mut self, address: &str, amount: &u64) -> Element<ManagerSendOutputMessage> {
         match self {
-            Self::Edit { address_input } => {
-                let input = TextInput::new(
+            Self::Edit {
+                address_input,
+                amount_input,
+            } => {
+                let address = TextInput::new(
                     address_input,
                     "address",
                     &address,
                     ManagerSendOutputMessage::AddressEdited,
                 );
-                Container::new(input).width(Length::Fill).into()
+                let amount = TextInput::new(
+                    amount_input,
+                    "amount",
+                    &format!("{}", amount),
+                    ManagerSendOutputMessage::AmountEdited,
+                );
+                Container::new(Column::new().push(address).push(amount))
+                    .width(Length::Units(150))
+                    .into()
             }
             _ => Container::new(Column::new()).into(),
         }
