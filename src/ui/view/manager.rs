@@ -253,6 +253,7 @@ pub enum ManagerSendView {
     SelectOutputs(ManagerSelectOutputsView),
     SelectInputs(ManagerSelectInputsView),
     SelectFee(ManagerSelectFeeView),
+    Sign(ManagerSignView),
 }
 
 impl ManagerSendView {
@@ -264,6 +265,7 @@ impl ManagerSendView {
         match self {
             Self::SelectOutputs(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
             Self::SelectInputs(_) => Self::SelectFee(ManagerSelectFeeView::new()),
+            Self::SelectFee(_) => Self::Sign(ManagerSignView::new()),
             _ => Self::new(),
         }
     }
@@ -272,6 +274,7 @@ impl ManagerSendView {
         match self {
             Self::SelectInputs(_) => Self::SelectOutputs(ManagerSelectOutputsView::new()),
             Self::SelectFee(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
+            Self::Sign(_) => Self::SelectFee(ManagerSelectFeeView::new()),
             _ => Self::new(),
         }
     }
@@ -598,6 +601,83 @@ impl ManagerSelectFeeView {
                     )
                     .push(
                         Container::new(text::simple("Select fee"))
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
+                    )
+                    .push(
+                        Column::new()
+                            .push(footer)
+                            .width(Length::Fill)
+                            .align_items(iced::Align::Center),
+                    )
+                    .spacing(20),
+            )),
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSignView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    back_button: iced::button::State,
+}
+
+impl ManagerSignView {
+    pub fn new() -> Self {
+        ManagerSignView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            back_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+
+    pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
+        let mut footer = Row::new().spacing(20);
+        if valid {
+            footer = footer.push(Container::new(button::primary(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::Next,
+            )));
+        } else {
+            footer = footer.push(Container::new(button::primary_disable(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::None,
+            )));
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(button::transparent(
+                                        &mut self.back_button,
+                                        Container::new(text::simple("Go Back")).padding(10),
+                                        Message::Previous,
+                                    ))
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                    Message::Menu(Menu::Home),
+                                ))
+                                .width(Length::Shrink),
+                            ),
+                    )
+                    .push(
+                        Container::new(text::simple("Sign tx"))
                             .width(Length::Fill)
                             .align_x(iced::Align::Center),
                     )

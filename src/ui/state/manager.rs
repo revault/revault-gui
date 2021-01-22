@@ -334,7 +334,9 @@ impl ManagerSendState {
     pub fn output_amount(&self) -> u64 {
         let mut output_amount = 0;
         for output in &self.outputs {
-            output_amount += output.amount().unwrap();
+            if let Ok(amount) = output.amount() {
+                output_amount += amount;
+            }
         }
         output_amount
     }
@@ -392,6 +394,7 @@ impl State for ManagerSendState {
                 input_amount > output_amount,
             ),
             ManagerSendView::SelectFee(v) => v.view(false),
+            ManagerSendView::Sign(v) => v.view(false),
         }
     }
 
@@ -432,6 +435,9 @@ impl ManagerSendOutput {
     }
 
     fn amount(&self) -> Result<u64, Error> {
+        if self.amount.is_empty() {
+            return Ok(0);
+        }
         let a = f64::from_str(&self.amount)
             .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
         Ok((a * 100000000_f64) as u64)
