@@ -391,6 +391,7 @@ impl State for ManagerSendState {
                     .collect(),
                 input_amount > output_amount,
             ),
+            ManagerSendView::SelectFee(v) => v.view(false),
         }
     }
 
