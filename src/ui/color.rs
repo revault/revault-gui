@@ -39,6 +39,7 @@ pub const SUCCESS: Color = Color::from_rgb(
     0x97 as f32 / 255.0,
 );
 
+#[allow(dead_code)]
 pub const SUCCESS_LIGHT: Color = Color::from_rgba(
     0x29 as f32 / 255.0,
     0xBC as f32 / 255.0,

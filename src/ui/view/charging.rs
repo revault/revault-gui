@@ -1,4 +1,4 @@
-use iced::{button, Column, Container, Element, Text};
+use iced::{button, Column, Container, Element};
 
 use crate::ui::{component, message::Message, view::layout};
 

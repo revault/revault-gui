@@ -11,12 +11,14 @@ use super::state::{
 };
 
 use crate::revaultd::RevaultD;
+use crate::ui::view::Context;
 
 pub struct App {
     config: Config,
     revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
 
+    context: Context,
     role: Role,
     menu: Menu,
 }
@@ -54,6 +56,7 @@ impl Application for App {
                 config,
                 state: std::boxed::Box::new(state),
                 revaultd: None,
+                context: Context::new(),
                 role: Role::Manager,
                 menu: Menu::Home,
             },
@@ -76,6 +79,7 @@ impl Application for App {
                 self.state.load()
             }
             Message::Synced(revaultd) => {
+                self.context.network = revaultd.network();
                 self.revaultd = Some(revaultd);
                 self.load_state(Role::Manager, Menu::Home)
             }
@@ -86,7 +90,7 @@ impl Application for App {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let content = self.state.view();
+        let content = self.state.view(&self.context);
         if self.config.debug {
             return content.explain(Color::BLACK);
         }

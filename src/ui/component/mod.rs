@@ -93,6 +93,7 @@ pub mod card {
         }
     }
 
+    #[allow(dead_code)]
     pub fn grey<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content).padding(15).style(GreyCardStyle)
     }
