@@ -18,6 +18,7 @@ use crate::ui::{
         ManagerSendView,
     },
     view::vault::VaultView,
+    view::Context,
 };
 
 #[derive(Debug)]
@@ -124,13 +125,13 @@ impl State for ManagerHomeState {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
-            return v.view();
+            return v.view(ctx);
         }
         self.view.view(
             self.warning.as_ref().into(),
-            self.vaults.iter_mut().map(|v| v.view()).collect(),
+            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
             self.blockheight.as_ref().into(),
         )
@@ -237,13 +238,13 @@ impl State for ManagerHistoryState {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
-            return v.view();
+            return v.view(ctx);
         }
         self.view.view(
             self.warning.as_ref().into(),
-            self.vaults.iter_mut().map(|v| v.view()).collect(),
+            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
         )
     }
 
@@ -287,8 +288,8 @@ impl ManagerVault {
             view: VaultView::new_modal(),
         }
     }
-    pub fn view(&mut self) -> Element<Message> {
-        self.view.view(&self.vault, &self.txs)
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
+        self.view.view(ctx, &self.vault, &self.txs)
     }
 }
 
@@ -370,7 +371,7 @@ impl State for ManagerSendState {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
         match &mut self.view {

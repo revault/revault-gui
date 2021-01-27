@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use chrono::NaiveDateTime;
 use iced::{container, scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
@@ -7,6 +5,7 @@ use crate::ui::{
     color,
     component::{badge, button, card, separation, text},
     message::Message,
+    view::Context,
 };
 
 use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
@@ -25,10 +24,15 @@ impl VaultView {
         Self::Modal(VaultModal::new())
     }
 
-    pub fn view(&mut self, vault: &Vault, txs: &VaultTransactions) -> Element<Message> {
+    pub fn view(
+        &mut self,
+        ctx: &Context,
+        vault: &Vault,
+        txs: &VaultTransactions,
+    ) -> Element<Message> {
         match self {
             Self::ListItem(v) => v.view(vault),
-            Self::Modal(v) => v.view(vault, txs),
+            Self::Modal(v) => v.view(ctx, vault, txs),
         }
     }
 }
@@ -47,7 +51,12 @@ impl VaultModal {
         }
     }
 
-    pub fn view<'a>(&'a mut self, vlt: &Vault, txs: &VaultTransactions) -> Element<'a, Message> {
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        vlt: &Vault,
+        txs: &VaultTransactions,
+    ) -> Element<'a, Message> {
         let tx = txs.last_broadcasted_tx();
         Container::new(
             Scrollable::new(&mut self.scroll).push(Container::new(
@@ -68,73 +77,79 @@ impl VaultModal {
                             .align_x(Align::Center),
                     )
                     .push(
-                        card::simple(Container::new(
-                            Column::new()
-                                .push(
-                                    Row::new()
-                                        .push(
-                                            Container::new(
-                                                Row::new()
-                                                    .push(badge::tx_deposit())
-                                                    .push(
-                                                        Column::new()
-                                                            .push(text::small(&vlt.txid))
-                                                            .push(text::small(&format!(
-                                                                "{}",
-                                                                NaiveDateTime::from_timestamp(
-                                                                    tx.received_at,
-                                                                    0
-                                                                )
-                                                            ))),
-                                                    )
-                                                    .spacing(20),
+                        Container::new(
+                            card::simple(Container::new(
+                                Column::new()
+                                    .push(
+                                        Row::new()
+                                            .push(
+                                                Container::new(
+                                                    Row::new()
+                                                        .push(badge::tx_deposit())
+                                                        .push(
+                                                            Column::new()
+                                                                .push(text::small(&vlt.txid))
+                                                                .push(text::small(&format!(
+                                                                    "{}",
+                                                                    NaiveDateTime::from_timestamp(
+                                                                        tx.received_at,
+                                                                        0
+                                                                    )
+                                                                ))),
+                                                        )
+                                                        .spacing(20),
+                                                )
+                                                .width(Length::Fill),
                                             )
-                                            .width(Length::Fill),
-                                        )
-                                        .push(
-                                            Container::new(
-                                                Row::new()
-                                                    .push(text::bold(&format!(
-                                                        "{}",
-                                                        vlt.amount as f64 / 100000000_f64
-                                                    )))
-                                                    .push(text::simple(" BTC")),
+                                            .push(
+                                                Container::new(
+                                                    Row::new()
+                                                        .push(text::bold(&format!(
+                                                            "{}",
+                                                            vlt.amount as f64 / 100000000_f64
+                                                        )))
+                                                        .push(text::simple(" BTC")),
+                                                )
+                                                .width(Length::Shrink),
                                             )
-                                            .width(Length::Shrink),
-                                        )
-                                        .spacing(20)
-                                        .align_items(Align::Center),
-                                )
-                                .push(separation().width(Length::Fill))
-                                .push(
-                                    Row::new()
-                                        .push(
-                                            Container::new(
-                                                Column::new().push(text::bold("Blockheight")).push(
-                                                    text::simple(&if let Some(blockheight) =
-                                                        &tx.blockheight
-                                                    {
-                                                        format!("{}", blockheight)
-                                                    } else {
-                                                        "Not in a block".to_string()
-                                                    }),
-                                                ),
-                                            )
-                                            .width(Length::FillPortion(2)),
-                                        )
-                                        .push(
-                                            Container::new(Column::new().push(text::bold("Fee")))
+                                            .spacing(20)
+                                            .align_items(Align::Center),
+                                    )
+                                    .push(separation().width(Length::Fill))
+                                    .push(
+                                        Row::new()
+                                            .push(
+                                                Container::new(
+                                                    Column::new()
+                                                        .push(text::bold("Blockheight"))
+                                                        .push(text::simple(&if let Some(
+                                                            blockheight,
+                                                        ) = &tx.blockheight
+                                                        {
+                                                            format!("{}", blockheight)
+                                                        } else {
+                                                            "Not in a block".to_string()
+                                                        })),
+                                                )
                                                 .width(Length::FillPortion(2)),
-                                        ),
-                                )
-                                .spacing(20),
-                        ))
+                                            )
+                                            .push(
+                                                Container::new(
+                                                    Column::new().push(text::bold("Fee")),
+                                                )
+                                                .width(Length::FillPortion(2)),
+                                            ),
+                                    )
+                                    .spacing(20),
+                            ))
+                            .max_width(1000)
+                            .padding(20),
+                        )
                         .width(Length::Fill)
-                        .align_x(Align::Center)
-                        .padding(20),
+                        .align_x(Align::Center),
                     )
                     .push(
-                        input_and_outputs(&tx)
+                        input_and_outputs(ctx, &tx)
                             .width(Length::Fill)
                             .align_x(Align::Center),
                     )
@@ -145,11 +160,15 @@ impl VaultModal {
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
+        .align_x(Align::Center)
         .into()
     }
 }
 
-fn input_and_outputs<'a, T: 'a>(broadcasted: &BroadcastedTransaction) -> Container<'a, T> {
+fn input_and_outputs<'a, T: 'a>(
+    ctx: &Context,
+    broadcasted: &BroadcastedTransaction,
+) -> Container<'a, T> {
     let mut col_input = Column::new().push(text::bold("Inputs")).spacing(10);
     for input in &broadcasted.tx.input {
         col_input = col_input.push(card::simple(Container::new(text::small(&format!(
@@ -159,14 +178,16 @@ fn input_and_outputs<'a, T: 'a>(broadcasted: &BroadcastedTransaction) -> Contain
     }
     let mut col_output = Column::new().push(text::bold("Outputs")).spacing(10);
     for output in &broadcasted.tx.output {
-        col_output = col_output.push(card::simple(Container::new(
-            Row::new()
-                .push(text::small(&format!("{}", output.script_pubkey)))
-                .push(text::small_bold(&format!(
-                    "{}",
-                    output.value as f64 / 100000000_f64
-                ))),
-        )));
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
+        let mut col = Column::new();
+        if let Some(a) = addr {
+            col = col.push(text::small(&format!("{}", a,)))
+        } else {
+            col = col.push(text::small(&format!("{}", &output.script_pubkey)))
+        }
+        col_output = col_output.push(card::simple(Container::new(col.push(text::small_bold(
+            &format!("{}", output.value as f64 / 100000000_f64),
+        )))));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
 }

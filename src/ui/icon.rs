@@ -25,10 +25,12 @@ pub fn deposit_icon() -> Text {
     icon('\u{F123}')
 }
 
+#[allow(dead_code)]
 pub fn withdrawal_icon() -> Text {
     icon('\u{F144}')
 }
 
+#[allow(dead_code)]
 pub fn turnback_icon() -> Text {
     icon('\u{F133}')
 }
@@ -49,10 +51,12 @@ pub fn dot_icon() -> Text {
     icon('\u{F287}')
 }
 
+#[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')
 }
 
+#[allow(dead_code)]
 pub fn manager_icon() -> Text {
     icon('\u{F4B4}')
 }

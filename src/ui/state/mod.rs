@@ -12,9 +12,10 @@ pub use manager::{ManagerHistoryState, ManagerHomeState, ManagerSendState};
 pub use stakeholder::StakeholderState;
 
 use super::message::Message;
+use super::view::Context;
 
 pub trait State {
-    fn view(&mut self) -> Element<Message>;
+    fn view(&mut self, ctx: &Context) -> Element<Message>;
     fn update(&mut self, message: Message) -> Command<Message>;
     fn subscription(&self) -> Subscription<Message> {
         Subscription::none()

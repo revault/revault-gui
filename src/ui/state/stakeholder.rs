@@ -4,7 +4,7 @@ use iced::{Command, Element};
 
 use super::State;
 use crate::revaultd::RevaultD;
-use crate::ui::message::Message;
+use crate::ui::{message::Message, view::Context};
 
 #[derive(Debug)]
 pub struct StakeholderState {
@@ -22,7 +22,7 @@ impl State for StakeholderState {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
         iced::Container::new(iced::Text::new("hello")).into()
     }
 

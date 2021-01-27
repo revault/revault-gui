@@ -1,6 +1,6 @@
 use super::State;
 use crate::ui::message::Message;
-use crate::ui::view::installing::installing_view;
+use crate::ui::view::{installing::installing_view, Context};
 use iced::{Command, Element};
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ impl State for InstallingState {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
         installing_view()
     }
 }

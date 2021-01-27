@@ -1,6 +1,6 @@
 use iced::{
-    pick_list, scrollable, text_input, Checkbox, Column, Container, Element, HorizontalAlignment,
-    Length, Row, Scrollable, TextInput,
+    pick_list, scrollable, text_input, Checkbox, Column, Container, Element, Length, Row,
+    Scrollable, TextInput,
 };
 
 use crate::ui::{
