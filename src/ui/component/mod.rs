@@ -7,9 +7,16 @@ use crate::ui::image::revault_colored_logo;
 
 pub fn navbar<'a, T: 'a>(notification: Option<Container<'a, T>>) -> Container<'a, T> {
     let svg = revault_colored_logo()
-        .width(Length::Units(150))
+        .width(Length::Units(100))
         .height(Length::Fill);
-    let mut content = Row::new().push(Container::new(svg).center_x().width(Length::Units(200)));
+    let mut content = Row::new()
+        .push(Column::new().width(Length::Units(10)))
+        .push(
+            Container::new(svg)
+                .padding(5)
+                .center_x()
+                .width(Length::Shrink),
+        );
 
     if let Some(n) = notification {
         content = content.push(Container::new(n).width(Length::Fill));
