@@ -12,13 +12,12 @@ use crate::revaultd::{
 };
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage},
+    message::{Context, InputMessage, Message, RecipientMessage},
     view::manager::{
         manager_send_input_view, ManagerHistoryView, ManagerHomeView, ManagerNetworkView,
         ManagerSendOutputView, ManagerSendView,
     },
     view::vault::VaultView,
-    view::Context,
 };
 
 #[derive(Debug)]
@@ -130,6 +129,7 @@ impl State for ManagerHomeState {
             return v.view(ctx);
         }
         self.view.view(
+            ctx,
             self.warning.as_ref().into(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
@@ -242,6 +242,7 @@ impl State for ManagerHistoryState {
             return v.view(ctx);
         }
         self.view.view(
+            ctx,
             self.warning.as_ref().into(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
         )
@@ -581,8 +582,9 @@ impl State for ManagerNetworkState {
         }
     }
 
-    fn view(&mut self, _ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(
+            ctx,
             self.warning.as_ref().into(),
             self.blockheight.as_ref().into(),
         )

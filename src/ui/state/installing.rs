@@ -1,7 +1,10 @@
-use super::State;
-use crate::ui::message::Message;
-use crate::ui::view::{installing::installing_view, Context};
 use iced::{Command, Element};
+
+use crate::ui::{
+    message::{Context, Message},
+    state::State,
+    view::installing::installing_view,
+};
 
 #[derive(Debug, Clone)]
 pub struct InstallingState {}

@@ -8,7 +8,7 @@ use crate::ui::{
     component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
     icon::{dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon},
-    message::{InputMessage, Menu, Message, RecipientMessage, Role},
+    message::{Context, InputMessage, Menu, Message, RecipientMessage, Role},
     view::layout,
 };
 
@@ -22,12 +22,13 @@ impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
             scroll: scrollable::State::new(),
-            sidebar: ManagerSidebar::new(Role::Manager, true, true),
+            sidebar: ManagerSidebar::new(),
         }
     }
 
     pub fn view<'a>(
         &'a mut self,
+        ctx: &Context,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
         balance: &u64,
@@ -38,7 +39,7 @@ impl ManagerHomeView {
         }
         layout::dashboard(
             navbar(navbar_warning(warning)),
-            self.sidebar.view(ManagerSidebarCurrent::Home),
+            self.sidebar.view(ctx),
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
@@ -89,13 +90,14 @@ pub struct ManagerHistoryView {
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
-            sidebar: ManagerSidebar::new(Role::Manager, true, true),
+            sidebar: ManagerSidebar::new(),
             scroll: scrollable::State::new(),
         }
     }
 
     pub fn view<'a>(
         &'a mut self,
+        ctx: &Context,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
     ) -> Element<'a, Message> {
@@ -105,7 +107,7 @@ impl ManagerHistoryView {
         }
         layout::dashboard(
             navbar(navbar_warning(warning)),
-            self.sidebar.view(ManagerSidebarCurrent::History),
+            self.sidebar.view(ctx),
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll)
                     .push(Container::new(Column::new().push(vaults_col).spacing(20))),
@@ -115,18 +117,8 @@ impl ManagerHistoryView {
     }
 }
 
-#[derive(PartialEq)]
-enum ManagerSidebarCurrent {
-    Home,
-    History,
-    Network,
-}
-
 #[derive(Debug, Clone)]
 struct ManagerSidebar {
-    role: Role,
-    edit: bool,
-    network_running: bool,
     pick_role: pick_list::State<Role>,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
@@ -136,11 +128,8 @@ struct ManagerSidebar {
 }
 
 impl ManagerSidebar {
-    fn new(role: Role, edit: bool, network_running: bool) -> Self {
+    fn new() -> Self {
         ManagerSidebar {
-            role,
-            edit,
-            network_running,
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
@@ -150,13 +139,13 @@ impl ManagerSidebar {
         }
     }
 
-    fn view(&mut self, current: ManagerSidebarCurrent) -> Container<Message> {
-        let role = if self.edit {
+    fn view(&mut self, context: &Context) -> Container<Message> {
+        let role = if context.role_edit {
             Container::new(
                 pick_list::PickList::new(
                     &mut self.pick_role,
                     &Role::ALL[..],
-                    Some(self.role),
+                    Some(context.role),
                     Message::ChangeRole,
                 )
                 .padding(10)
@@ -164,9 +153,9 @@ impl ManagerSidebar {
                 .style(TransparentPickListStyle),
             )
         } else {
-            Container::new(text::simple(&format!("{}", self.role)))
+            Container::new(text::simple(&format!("{}", context.role)))
         };
-        let home_button = if current == ManagerSidebarCurrent::Home {
+        let home_button = if context.menu == Menu::Home {
             button::primary(
                 &mut self.home_menu_button,
                 button::button_content(Some(home_icon()), "Home"),
@@ -179,7 +168,7 @@ impl ManagerSidebar {
                 Message::Menu(Menu::Home),
             )
         };
-        let history_button = if current == ManagerSidebarCurrent::History {
+        let history_button = if context.menu == Menu::History {
             button::primary(
                 &mut self.history_menu_button,
                 button::button_content(Some(history_icon()), "History"),
@@ -192,7 +181,7 @@ impl ManagerSidebar {
                 Message::Menu(Menu::History),
             )
         };
-        let network_button = if current == ManagerSidebarCurrent::Network {
+        let network_button = if context.menu == Menu::Network {
             button::primary(
                 &mut self.network_menu_button,
                 button::button_content(Some(network_icon()), "Network"),
@@ -205,7 +194,7 @@ impl ManagerSidebar {
                 .spacing(10)
                 .align_items(iced::Align::Center);
 
-            if self.network_running {
+            if context.network_up {
                 row = row.push(text::success(dot_icon().size(7)))
             } else {
                 row = row.push(text::danger(dot_icon().size(7)))
@@ -213,7 +202,7 @@ impl ManagerSidebar {
 
             button::transparent(
                 &mut self.network_menu_button,
-                Container::new(row),
+                Container::new(row).padding(5),
                 Message::Menu(Menu::Network),
             )
         };
@@ -228,10 +217,10 @@ impl ManagerSidebar {
                 Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
-                        button::button_content(Some(send_icon()), "Spend"),
+                        button::button_content(Some(send_icon()), "Send"),
                         Message::Menu(Menu::Send),
                     )
-                    .width(iced::Length::Units(150)),
+                    .width(iced::Length::Units(200)),
                 ),
             ]),
             Container::new(
@@ -240,7 +229,7 @@ impl ManagerSidebar {
                     button::button_content(Some(settings_icon()), "Settings"),
                     Message::Install,
                 )
-                .width(iced::Length::Units(150)),
+                .width(iced::Length::Units(200)),
             ),
         )
     }
@@ -708,18 +697,19 @@ impl ManagerNetworkView {
     pub fn new() -> Self {
         ManagerNetworkView {
             scroll: scrollable::State::new(),
-            sidebar: ManagerSidebar::new(Role::Manager, true, true),
+            sidebar: ManagerSidebar::new(),
         }
     }
 
     pub fn view<'a>(
         &'a mut self,
+        ctx: &Context,
         warning: Option<&Error>,
         blockheight: Option<&u64>,
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(navbar_warning(warning)),
-            self.sidebar.view(ManagerSidebarCurrent::Network),
+            self.sidebar.view(ctx),
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()

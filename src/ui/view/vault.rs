@@ -4,8 +4,7 @@ use iced::{container, scrollable, Align, Column, Container, Element, Length, Row
 use crate::ui::{
     color,
     component::{badge, button, card, separation, text},
-    message::Message,
-    view::Context,
+    message::{Context, Message},
 };
 
 use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};

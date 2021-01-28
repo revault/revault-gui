@@ -80,7 +80,12 @@ pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T>
 }
 
 pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {
-    Container::new(menu).padding(20).style(MainSectionStyle)
+    Container::new(menu.max_width(1000))
+        .padding(20)
+        .style(MainSectionStyle)
+        .align_x(iced::Align::Center)
+        .width(Length::Fill)
+        .height(Length::Fill)
 }
 
 pub struct MainSectionStyle;

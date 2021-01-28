@@ -1,11 +1,41 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use bitcoin::Network;
+
 use super::error::Error;
 use crate::revaultd::{
     model::{Vault, VaultTransactions},
     RevaultD, RevaultDError,
 };
+
+pub struct Context {
+    pub network: Network,
+    pub network_up: bool,
+    pub menu: Menu,
+    pub role: Role,
+    pub role_edit: bool,
+}
+
+impl Context {
+    pub fn new(role_edit: bool, role: Role, menu: Menu) -> Self {
+        Self {
+            role,
+            role_edit,
+            menu,
+            network: bitcoin::Network::Bitcoin,
+            network_up: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Menu {
+    Home,
+    History,
+    Network,
+    Send,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
@@ -61,12 +91,4 @@ pub enum RecipientMessage {
     Delete,
     AddressEdited(String),
     AmountEdited(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum Menu {
-    Home,
-    History,
-    Network,
-    Send,
 }

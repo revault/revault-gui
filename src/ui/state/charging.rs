@@ -9,7 +9,11 @@ use crate::revaultd::{
     config::{default_config_path, Config, ConfigError},
     start_daemon, RevaultD, RevaultDError,
 };
-use crate::ui::{error::Error, message::Message, view::charging::*, view::Context};
+use crate::ui::{
+    error::Error,
+    message::{Context, Message},
+    view::charging::*,
+};
 
 #[derive(Debug, Clone)]
 pub struct ChargingState {

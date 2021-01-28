@@ -4,7 +4,7 @@ use iced::{Command, Element};
 
 use super::State;
 use crate::revaultd::RevaultD;
-use crate::ui::{message::Message, view::Context};
+use crate::ui::message::{Context, Message};
 
 #[derive(Debug)]
 pub struct StakeholderState {
