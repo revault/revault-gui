@@ -14,8 +14,8 @@ use crate::ui::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage},
     view::manager::{
-        manager_send_input_view, ManagerHistoryView, ManagerHomeView, ManagerSendOutputView,
-        ManagerSendView,
+        manager_send_input_view, ManagerHistoryView, ManagerHomeView, ManagerNetworkView,
+        ManagerSendOutputView, ManagerSendView,
     },
     view::vault::VaultView,
     view::Context,
@@ -133,7 +133,6 @@ impl State for ManagerHomeState {
             self.warning.as_ref().into(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
-            self.blockheight.as_ref().into(),
         )
     }
 
@@ -528,4 +527,81 @@ async fn list_vaults(
         }
     }
     Ok(vec)
+}
+
+#[derive(Debug)]
+pub struct ManagerNetworkState {
+    revaultd: Arc<RevaultD>,
+
+    blockheight: Watch<u64>,
+    warning: Watch<Error>,
+
+    view: ManagerNetworkView,
+}
+
+impl ManagerNetworkState {
+    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+        ManagerNetworkState {
+            revaultd,
+            blockheight: Watch::None,
+            warning: Watch::None,
+            view: ManagerNetworkView::new(),
+        }
+    }
+
+    pub fn on_tick(&mut self) -> Command<Message> {
+        if !self.blockheight.is_recent(Duration::from_secs(5)) {
+            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
+        }
+
+        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
+            self.warning.reset()
+        }
+
+        Command::none()
+    }
+}
+
+impl State for ManagerNetworkState {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::Tick(_) => self.on_tick(),
+            Message::BlockHeight(b) => {
+                match b {
+                    Ok(height) => {
+                        self.blockheight = height.into();
+                    }
+                    Err(e) => {
+                        self.warning = Error::from(e).into();
+                    }
+                };
+                Command::none()
+            }
+            _ => Command::none(),
+        }
+    }
+
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
+        self.view.view(
+            self.warning.as_ref().into(),
+            self.blockheight.as_ref().into(),
+        )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
+    }
+
+    fn load(&self) -> Command<Message> {
+        Command::batch(vec![Command::perform(
+            get_blockheight(self.revaultd.clone()),
+            Message::BlockHeight,
+        )])
+    }
+}
+
+impl From<ManagerNetworkState> for Box<dyn State> {
+    fn from(s: ManagerNetworkState) -> Box<dyn State> {
+        Box::new(s)
+    }
 }

@@ -7,7 +7,7 @@ use crate::ui::{
     color,
     component::{badge, button, card, navbar, separation, text, TransparentPickListStyle},
     error::Error,
-    icon::{dot_icon, history_icon, home_icon, send_icon, settings_icon},
+    icon::{dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon},
     message::{InputMessage, Menu, Message, RecipientMessage, Role},
     view::layout,
 };
@@ -31,7 +31,6 @@ impl ManagerHomeView {
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
         balance: &u64,
-        blockheight: Option<&u64>,
     ) -> Element<'a, Message> {
         let mut vaults_col = Column::new();
         for vlt in vaults {
@@ -45,7 +44,6 @@ impl ManagerHomeView {
                     Column::new()
                         .push(balance_view(balance))
                         .push(vaults_col)
-                        .push(bitcoin_core_card(blockheight))
                         .spacing(20),
                 )),
             )),
@@ -80,37 +78,6 @@ fn balance_view<'a, T: 'a>(balance: &u64) -> Container<'a, T> {
         ),
     )
     .width(Length::Fill)
-}
-
-fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
-    let mut col = Column::new()
-        .push(
-            Row::new()
-                .push(Container::new(text::bold("Bitcoin Core")).width(Length::Fill))
-                .push(
-                    Container::new(
-                        Row::new()
-                            .push(dot_icon().size(5).color(color::SUCCESS))
-                            .push(text::small("Running").color(color::SUCCESS))
-                            .align_items(iced::Align::Center),
-                    )
-                    .width(Length::Shrink),
-                ),
-        )
-        .spacing(10);
-    if let Some(b) = blockheight {
-        col = col.push(
-            Row::new()
-                .push(badge::block())
-                .push(
-                    Column::new()
-                        .push(text::bold("Block Height"))
-                        .push(text::simple(&format!("{}", b))),
-                )
-                .spacing(10),
-        );
-    }
-    card::simple(Container::new(col))
 }
 
 #[derive(Debug)]
@@ -152,6 +119,7 @@ impl ManagerHistoryView {
 enum ManagerSidebarCurrent {
     Home,
     History,
+    Network,
 }
 
 #[derive(Debug, Clone)]
@@ -161,6 +129,7 @@ struct ManagerSidebar {
     pick_role: pick_list::State<Role>,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
+    network_menu_button: iced::button::State,
     spend_menu_button: iced::button::State,
     settings_menu_button: iced::button::State,
 }
@@ -172,6 +141,7 @@ impl ManagerSidebar {
             edit,
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
+            network_menu_button: iced::button::State::new(),
             spend_menu_button: iced::button::State::new(),
             settings_menu_button: iced::button::State::new(),
             pick_role: pick_list::State::default(),
@@ -220,12 +190,26 @@ impl ManagerSidebar {
                 Message::Menu(Menu::History),
             )
         };
+        let network_button = if current == ManagerSidebarCurrent::Network {
+            button::primary(
+                &mut self.network_menu_button,
+                button::button_content(Some(network_icon()), "Network"),
+                Message::Menu(Menu::Network),
+            )
+        } else {
+            button::transparent(
+                &mut self.network_menu_button,
+                button::button_content(Some(network_icon()), "Network"),
+                Message::Menu(Menu::Network),
+            )
+        };
         layout::sidebar(
             layout::sidebar_menu(vec![
                 role.width(Length::Units(200)),
                 separation().width(iced::Length::Units(200)),
                 Container::new(home_button.width(Length::Units(200))),
                 Container::new(history_button.width(Length::Units(200))),
+                Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
                 Container::new(
                     button::transparent(
@@ -695,4 +679,69 @@ impl ManagerSignView {
         .height(Length::Fill)
         .into()
     }
+}
+
+#[derive(Debug)]
+pub struct ManagerNetworkView {
+    sidebar: ManagerSidebar,
+    scroll: scrollable::State,
+}
+
+impl ManagerNetworkView {
+    pub fn new() -> Self {
+        ManagerNetworkView {
+            scroll: scrollable::State::new(),
+            sidebar: ManagerSidebar::new(Role::Manager, true),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        warning: Option<&Error>,
+        blockheight: Option<&u64>,
+    ) -> Element<'a, Message> {
+        layout::dashboard(
+            navbar(navbar_warning(warning)),
+            self.sidebar.view(ManagerSidebarCurrent::Network),
+            layout::main_section(Container::new(
+                Scrollable::new(&mut self.scroll).push(Container::new(
+                    Column::new()
+                        .push(bitcoin_core_card(blockheight))
+                        .spacing(20),
+                )),
+            )),
+        )
+        .into()
+    }
+}
+
+fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
+    let mut col = Column::new()
+        .push(
+            Row::new()
+                .push(Container::new(text::bold("Bitcoin Core")).width(Length::Fill))
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(dot_icon().size(5).color(color::SUCCESS))
+                            .push(text::small("Running").color(color::SUCCESS))
+                            .align_items(iced::Align::Center),
+                    )
+                    .width(Length::Shrink),
+                ),
+        )
+        .spacing(10);
+    if let Some(b) = blockheight {
+        col = col.push(
+            Row::new()
+                .push(badge::block())
+                .push(
+                    Column::new()
+                        .push(text::bold("Block Height"))
+                        .push(text::simple(&format!("{}", b))),
+                )
+                .spacing(10),
+        );
+    }
+    card::simple(Container::new(col))
 }

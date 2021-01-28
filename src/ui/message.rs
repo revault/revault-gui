@@ -67,5 +67,6 @@ pub enum RecipientMessage {
 pub enum Menu {
     Home,
     History,
+    Network,
     Send,
 }
