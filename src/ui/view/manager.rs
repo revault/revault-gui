@@ -22,7 +22,7 @@ impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
             scroll: scrollable::State::new(),
-            sidebar: ManagerSidebar::new(Role::Manager, true),
+            sidebar: ManagerSidebar::new(Role::Manager, true, true),
         }
     }
 
@@ -89,7 +89,7 @@ pub struct ManagerHistoryView {
 impl ManagerHistoryView {
     pub fn new() -> Self {
         ManagerHistoryView {
-            sidebar: ManagerSidebar::new(Role::Manager, true),
+            sidebar: ManagerSidebar::new(Role::Manager, true, true),
             scroll: scrollable::State::new(),
         }
     }
@@ -126,6 +126,7 @@ enum ManagerSidebarCurrent {
 struct ManagerSidebar {
     role: Role,
     edit: bool,
+    network_running: bool,
     pick_role: pick_list::State<Role>,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
@@ -135,10 +136,11 @@ struct ManagerSidebar {
 }
 
 impl ManagerSidebar {
-    fn new(role: Role, edit: bool) -> Self {
+    fn new(role: Role, edit: bool, network_running: bool) -> Self {
         ManagerSidebar {
             role,
             edit,
+            network_running,
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
@@ -197,9 +199,21 @@ impl ManagerSidebar {
                 Message::Menu(Menu::Network),
             )
         } else {
+            let mut row = Row::new()
+                .push(network_icon())
+                .push(text::simple("Network"))
+                .spacing(10)
+                .align_items(iced::Align::Center);
+
+            if self.network_running {
+                row = row.push(text::success(dot_icon().size(7)))
+            } else {
+                row = row.push(text::danger(dot_icon().size(7)))
+            }
+
             button::transparent(
                 &mut self.network_menu_button,
-                button::button_content(Some(network_icon()), "Network"),
+                Container::new(row),
                 Message::Menu(Menu::Network),
             )
         };
@@ -391,7 +405,7 @@ impl ManagerSendOutputView {
                 .width(Length::Fill)
                 .align_x(iced::Align::End),
             )
-            .push(text::bold("Enter address:"))
+            .push(text::bold(text::simple("Enter address:")))
             .push(address);
 
         if *warning_address {
@@ -399,7 +413,7 @@ impl ManagerSendOutputView {
                 "Please enter a valid bitcoin address",
             ))))
         }
-        col = col.push(text::bold("Enter amount:")).push(
+        col = col.push(text::bold(text::simple("Enter amount:"))).push(
             TextInput::new(
                 &mut self.amount_input,
                 "0.0",
@@ -522,7 +536,10 @@ pub fn manager_send_input_view<'a>(
         Checkbox::new(selected, &format!("{}", outpoint), InputMessage::Selected).text_size(15);
     let row = Row::new()
         .push(checkbox)
-        .push(text::bold(&format!("{}", *amount as f64 / 100000000_f64)))
+        .push(text::bold(text::simple(&format!(
+            "{}",
+            *amount as f64 / 100000000_f64
+        ))))
         .spacing(20);
     Container::new(row).width(Length::Fill).into()
 }
@@ -691,7 +708,7 @@ impl ManagerNetworkView {
     pub fn new() -> Self {
         ManagerNetworkView {
             scroll: scrollable::State::new(),
-            sidebar: ManagerSidebar::new(Role::Manager, true),
+            sidebar: ManagerSidebar::new(Role::Manager, true, true),
         }
     }
 
@@ -719,7 +736,7 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
     let mut col = Column::new()
         .push(
             Row::new()
-                .push(Container::new(text::bold("Bitcoin Core")).width(Length::Fill))
+                .push(Container::new(text::bold(text::simple("Bitcoin Core"))).width(Length::Fill))
                 .push(
                     Container::new(
                         Row::new()
@@ -737,7 +754,7 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
                 .push(badge::block())
                 .push(
                     Column::new()
-                        .push(text::bold("Block Height"))
+                        .push(text::bold(text::simple("Block Height")))
                         .push(text::simple(&format!("{}", b))),
                 )
                 .spacing(10),
