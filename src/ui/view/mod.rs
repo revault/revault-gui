@@ -8,7 +8,7 @@ mod network;
 mod sidebar;
 pub mod vault;
 
-pub use history::ManagerHistoryView;
+pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use manager::ManagerSendView;
 pub use network::{ManagerNetworkView, StakeholderNetworkView};

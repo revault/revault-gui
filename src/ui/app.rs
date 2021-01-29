@@ -6,7 +6,7 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 
 use super::message::{Menu, Message, Role};
 use super::state::{
-    ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, ManagerNetworkState,
+    ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
     ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
 };
 
@@ -33,13 +33,14 @@ impl App {
         self.state = match self.context.role {
             Role::Manager => match self.context.menu {
                 Menu::Home => ManagerHomeState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::History => ManagerHistoryState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Network => ManagerNetworkState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Send => ManagerSendState::new(self.revaultd.clone().unwrap()).into(),
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
                 Menu::Home => StakeholderHomeState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Network => {
                     StakeholderNetworkState::new(self.revaultd.clone().unwrap()).into()
                 }
