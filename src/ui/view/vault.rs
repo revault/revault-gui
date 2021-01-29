@@ -4,8 +4,7 @@ use iced::{container, scrollable, Align, Column, Container, Element, Length, Row
 use crate::ui::{
     color,
     component::{badge, button, card, separation, text},
-    message::Message,
-    view::Context,
+    message::{Context, Message},
 };
 
 use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
@@ -104,10 +103,10 @@ impl VaultModal {
                                             .push(
                                                 Container::new(
                                                     Row::new()
-                                                        .push(text::bold(&format!(
+                                                        .push(text::bold(text::simple(&format!(
                                                             "{}",
                                                             vlt.amount as f64 / 100000000_f64
-                                                        )))
+                                                        ))))
                                                         .push(text::simple(" BTC")),
                                                 )
                                                 .width(Length::Shrink),
@@ -121,7 +120,9 @@ impl VaultModal {
                                             .push(
                                                 Container::new(
                                                     Column::new()
-                                                        .push(text::bold("Blockheight"))
+                                                        .push(text::bold(text::simple(
+                                                            "Blockheight",
+                                                        )))
                                                         .push(text::simple(&if let Some(
                                                             blockheight,
                                                         ) = &tx.blockheight
@@ -135,7 +136,8 @@ impl VaultModal {
                                             )
                                             .push(
                                                 Container::new(
-                                                    Column::new().push(text::bold("Fee")),
+                                                    Column::new()
+                                                        .push(text::bold(text::simple("Fee"))),
                                                 )
                                                 .width(Length::FillPortion(2)),
                                             ),
@@ -169,14 +171,18 @@ fn input_and_outputs<'a, T: 'a>(
     ctx: &Context,
     broadcasted: &BroadcastedTransaction,
 ) -> Container<'a, T> {
-    let mut col_input = Column::new().push(text::bold("Inputs")).spacing(10);
+    let mut col_input = Column::new()
+        .push(text::bold(text::simple("Inputs")))
+        .spacing(10);
     for input in &broadcasted.tx.input {
         col_input = col_input.push(card::simple(Container::new(text::small(&format!(
             "{}",
             input.previous_output
         )))));
     }
-    let mut col_output = Column::new().push(text::bold("Outputs")).spacing(10);
+    let mut col_output = Column::new()
+        .push(text::bold(text::simple("Outputs")))
+        .spacing(10);
     for output in &broadcasted.tx.output {
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
         let mut col = Column::new();
@@ -185,8 +191,8 @@ fn input_and_outputs<'a, T: 'a>(
         } else {
             col = col.push(text::small(&format!("{}", &output.script_pubkey)))
         }
-        col_output = col_output.push(card::simple(Container::new(col.push(text::small_bold(
-            &format!("{}", output.value as f64 / 100000000_f64),
+        col_output = col_output.push(card::simple(Container::new(col.push(text::bold(
+            text::small(&format!("{}", output.value as f64 / 100000000_f64)),
         )))));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
@@ -231,10 +237,10 @@ impl VaultListItem {
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(&format!(
+                                .push(text::bold(text::simple(&format!(
                                     "{}",
                                     vault.amount as f64 / 100000000_f64
-                                )))
+                                ))))
                                 .push(text::small(" BTC"))
                                 .align_items(Align::Center),
                         )

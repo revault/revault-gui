@@ -5,20 +5,23 @@ use std::time::Duration;
 
 use iced::{time, Command, Element, Subscription};
 
-use super::{util::Watch, State};
+use super::{
+    cmd::{get_blockheight, list_vaults},
+    util::Watch,
+    State,
+};
+
 use crate::revaultd::{
     model::{Vault, VaultStatus, VaultTransactions},
-    RevaultD, RevaultDError,
+    RevaultD,
 };
+
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage},
-    view::manager::{
-        manager_send_input_view, ManagerHistoryView, ManagerHomeView, ManagerSendOutputView,
-        ManagerSendView,
-    },
+    message::{Context, InputMessage, Message, RecipientMessage},
+    view::manager::{manager_send_input_view, ManagerSendOutputView, ManagerSendView},
     view::vault::VaultView,
-    view::Context,
+    view::{ManagerHomeView, ManagerNetworkView},
 };
 
 #[derive(Debug)]
@@ -130,10 +133,10 @@ impl State for ManagerHomeState {
             return v.view(ctx);
         }
         self.view.view(
+            ctx,
             self.warning.as_ref().into(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
-            self.blockheight.as_ref().into(),
         )
     }
 
@@ -151,117 +154,6 @@ impl State for ManagerHomeState {
 
 impl From<ManagerHomeState> for Box<dyn State> {
     fn from(s: ManagerHomeState) -> Box<dyn State> {
-        Box::new(s)
-    }
-}
-
-#[derive(Debug)]
-pub struct ManagerHistoryState {
-    revaultd: Arc<RevaultD>,
-    view: ManagerHistoryView,
-
-    blockheight: Watch<u64>,
-    warning: Watch<Error>,
-
-    vaults: Vec<ManagerVault>,
-    selected_vault: Option<ManagerVault>,
-}
-
-impl ManagerHistoryState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        ManagerHistoryState {
-            revaultd,
-            view: ManagerHistoryView::new(),
-            blockheight: Watch::None,
-            vaults: Vec::new(),
-            warning: Watch::None,
-            selected_vault: None,
-        }
-    }
-
-    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
-        self.vaults = Vec::new();
-        for vlt in vaults {
-            self.vaults.push(ManagerVault::new(vlt.0, vlt.1));
-        }
-    }
-
-    pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
-        if let Some(vlt) = &self.selected_vault {
-            if vlt.vault.outpoint() == outpoint {
-                self.selected_vault = None;
-                return Command::none();
-            }
-        }
-
-        if let Some(i) = self
-            .vaults
-            .iter()
-            .position(|vlt| vlt.vault.outpoint() == outpoint)
-        {
-            self.selected_vault = Some(ManagerVault::new_selected(
-                self.vaults[i].vault.clone(),
-                self.vaults[i].txs.clone(),
-            ));
-        }
-        return Command::none();
-    }
-
-    pub fn on_tick(&mut self) -> Command<Message> {
-        if !self.blockheight.is_recent(Duration::from_secs(5)) {
-            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
-        }
-
-        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
-            self.warning.reset()
-        }
-
-        Command::none()
-    }
-}
-
-impl State for ManagerHistoryState {
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::Tick(_) => return self.on_tick(),
-            Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::Vaults(res) => match res {
-                Ok(vaults) => self.update_vaults(vaults),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            Message::BlockHeight(b) => match b {
-                Ok(height) => self.blockheight = height.into(),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            _ => {}
-        };
-        Command::none()
-    }
-
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
-        if let Some(v) = &mut self.selected_vault {
-            return v.view(ctx);
-        }
-        self.view.view(
-            self.warning.as_ref().into(),
-            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-        )
-    }
-
-    fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
-    }
-
-    fn load(&self) -> Command<Message> {
-        Command::batch(vec![
-            Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
-        ])
-    }
-}
-
-impl From<ManagerHistoryState> for Box<dyn State> {
-    fn from(s: ManagerHistoryState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -506,26 +398,80 @@ impl ManagerSendInput {
     }
 }
 
-async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
-    revaultd.get_info().map(|res| res.blockheight)
+#[derive(Debug)]
+pub struct ManagerNetworkState {
+    revaultd: Arc<RevaultD>,
+
+    blockheight: Watch<u64>,
+    warning: Watch<Error>,
+
+    view: ManagerNetworkView,
 }
 
-async fn list_vaults(
-    revaultd: Arc<RevaultD>,
-) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
-    let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
-    let outpoints = vaults.iter().map(|vlt| vlt.outpoint()).collect();
-    let txs = revaultd.list_transactions(Some(outpoints))?;
-
-    let mut vec = Vec::new();
-    for vlt in vaults {
-        if let Some(i) = txs
-            .transactions
-            .iter()
-            .position(|tx| tx.outpoint == vlt.outpoint())
-        {
-            vec.push((vlt, txs.transactions[i].to_owned()));
+impl ManagerNetworkState {
+    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+        ManagerNetworkState {
+            revaultd,
+            blockheight: Watch::None,
+            warning: Watch::None,
+            view: ManagerNetworkView::new(),
         }
     }
-    Ok(vec)
+
+    pub fn on_tick(&mut self) -> Command<Message> {
+        if !self.blockheight.is_recent(Duration::from_secs(5)) {
+            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
+        }
+
+        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
+            self.warning.reset()
+        }
+
+        Command::none()
+    }
+}
+
+impl State for ManagerNetworkState {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::Tick(_) => self.on_tick(),
+            Message::BlockHeight(b) => {
+                match b {
+                    Ok(height) => {
+                        self.blockheight = height.into();
+                    }
+                    Err(e) => {
+                        self.warning = Error::from(e).into();
+                    }
+                };
+                Command::none()
+            }
+            _ => Command::none(),
+        }
+    }
+
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
+        self.view.view(
+            ctx,
+            self.warning.as_ref().into(),
+            self.blockheight.as_ref().into(),
+        )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
+    }
+
+    fn load(&self) -> Command<Message> {
+        Command::batch(vec![Command::perform(
+            get_blockheight(self.revaultd.clone()),
+            Message::BlockHeight,
+        )])
+    }
+}
+
+impl From<ManagerNetworkState> for Box<dyn State> {
+    fn from(s: ManagerNetworkState) -> Box<dyn State> {
+        Box::new(s)
+    }
 }

@@ -6,12 +6,12 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 
 use super::message::{Menu, Message, Role};
 use super::state::{
-    ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, ManagerSendState,
-    StakeholderState, State,
+    ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
+    ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
 };
 
 use crate::revaultd::RevaultD;
-use crate::ui::view::Context;
+use crate::ui::message::Context;
 
 pub struct App {
     config: Config,
@@ -19,8 +19,6 @@ pub struct App {
     state: Box<dyn State>,
 
     context: Context,
-    role: Role,
-    menu: Menu,
 }
 
 pub fn run(config: Config) -> Result<(), iced::Error> {
@@ -28,16 +26,26 @@ pub fn run(config: Config) -> Result<(), iced::Error> {
 }
 
 impl App {
+    #[allow(unreachable_patterns)]
     pub fn load_state(&mut self, role: Role, menu: Menu) -> Command<Message> {
-        self.role = role;
-        self.menu = menu;
-        self.state = match self.role {
-            Role::Manager => match self.menu {
+        self.context.role = role;
+        self.context.menu = menu;
+        self.state = match self.context.role {
+            Role::Manager => match self.context.menu {
                 Menu::Home => ManagerHomeState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::History => ManagerHistoryState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::Network => ManagerNetworkState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Send => ManagerSendState::new(self.revaultd.clone().unwrap()).into(),
+                _ => unreachable!(),
             },
-            Role::Stakeholder => StakeholderState::new(self.revaultd.clone().unwrap()).into(),
+            Role::Stakeholder => match self.context.menu {
+                Menu::Home => StakeholderHomeState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::Network => {
+                    StakeholderNetworkState::new(self.revaultd.clone().unwrap()).into()
+                }
+                _ => unreachable!(),
+            },
         };
         self.state.load()
     }
@@ -56,9 +64,7 @@ impl Application for App {
                 config,
                 state: std::boxed::Box::new(state),
                 revaultd: None,
-                context: Context::new(),
-                role: Role::Manager,
-                menu: Menu::Home,
+                context: Context::new(true, Role::Manager, Menu::Home),
             },
             cmd,
         )
@@ -80,11 +86,12 @@ impl Application for App {
             }
             Message::Synced(revaultd) => {
                 self.context.network = revaultd.network();
+                self.context.network_up = true;
                 self.revaultd = Some(revaultd);
                 self.load_state(Role::Manager, Menu::Home)
             }
-            Message::ChangeRole(role) => self.load_state(role, self.menu.to_owned()),
-            Message::Menu(menu) => self.load_state(self.role, menu),
+            Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
+            Message::Menu(menu) => self.load_state(self.context.role, menu),
             _ => self.state.update(message),
         }
     }

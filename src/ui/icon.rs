@@ -47,6 +47,10 @@ pub fn block_icon() -> Text {
     icon('\u{F1C8}')
 }
 
+pub fn network_icon() -> Text {
+    icon('\u{F3ED}')
+}
+
 pub fn dot_icon() -> Text {
     icon('\u{F287}')
 }
