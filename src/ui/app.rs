@@ -30,20 +30,19 @@ impl App {
     pub fn load_state(&mut self, role: Role, menu: Menu) -> Command<Message> {
         self.context.role = role;
         self.context.menu = menu;
+        let revaultd = self.revaultd.clone().unwrap();
         self.state = match self.context.role {
             Role::Manager => match self.context.menu {
-                Menu::Home => ManagerHomeState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::Network => ManagerNetworkState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::Send => ManagerSendState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::Home => ManagerHomeState::new(revaultd).into(),
+                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Network => ManagerNetworkState::new(revaultd).into(),
+                Menu::Send => ManagerSendState::new(revaultd).into(),
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
-                Menu::Home => StakeholderHomeState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::History => HistoryState::new(self.revaultd.clone().unwrap()).into(),
-                Menu::Network => {
-                    StakeholderNetworkState::new(self.revaultd.clone().unwrap()).into()
-                }
+                Menu::Home => StakeholderHomeState::new(revaultd).into(),
+                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Network => StakeholderNetworkState::new(revaultd).into(),
                 _ => unreachable!(),
             },
         };
