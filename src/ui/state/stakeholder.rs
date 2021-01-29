@@ -7,17 +7,17 @@ use crate::revaultd::RevaultD;
 use crate::ui::message::{Context, Message};
 
 #[derive(Debug)]
-pub struct StakeholderState {
+pub struct StakeholderHomeState {
     revaultd: Arc<RevaultD>,
 }
 
-impl StakeholderState {
+impl StakeholderHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        StakeholderState { revaultd }
+        StakeholderHomeState { revaultd }
     }
 }
 
-impl State for StakeholderState {
+impl State for StakeholderHomeState {
     fn update(&mut self, _message: Message) -> Command<Message> {
         Command::none()
     }
@@ -31,8 +31,8 @@ impl State for StakeholderState {
     }
 }
 
-impl From<StakeholderState> for Box<dyn State> {
-    fn from(s: StakeholderState) -> Box<dyn State> {
+impl From<StakeholderHomeState> for Box<dyn State> {
+    fn from(s: StakeholderHomeState) -> Box<dyn State> {
         Box::new(s)
     }
 }

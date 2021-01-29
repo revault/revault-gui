@@ -9,7 +9,7 @@ use iced::{Command, Element, Subscription};
 pub use charging::ChargingState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHistoryState, ManagerHomeState, ManagerNetworkState, ManagerSendState};
-pub use stakeholder::StakeholderState;
+pub use stakeholder::StakeholderHomeState;
 
 use super::message::{Context, Message};
 

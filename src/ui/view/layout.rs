@@ -1,5 +1,21 @@
-use crate::ui::{color, image::revault_colored_logo};
+use crate::ui::{
+    color,
+    component::{card, text},
+    error::Error,
+    image::revault_colored_logo,
+};
+
 use iced::{container, Column, Container, Element, Length, Row};
+
+pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
+    if let Some(e) = warning {
+        return Some(card::alert_warning(Container::new(text::simple(&format!(
+            "{}",
+            e
+        )))));
+    }
+    None
+}
 
 pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
     Column::new()
