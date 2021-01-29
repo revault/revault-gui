@@ -1,4 +1,5 @@
 pub mod charging;
+mod cmd;
 pub mod installing;
 pub mod manager;
 pub mod stakeholder;
@@ -9,7 +10,7 @@ use iced::{Command, Element, Subscription};
 pub use charging::ChargingState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHistoryState, ManagerHomeState, ManagerNetworkState, ManagerSendState};
-pub use stakeholder::StakeholderHomeState;
+pub use stakeholder::{StakeholderHomeState, StakeholderNetworkState};
 
 use super::message::{Context, Message};
 

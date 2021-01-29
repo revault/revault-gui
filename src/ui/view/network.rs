@@ -44,6 +44,41 @@ impl ManagerNetworkView {
     }
 }
 
+#[derive(Debug)]
+pub struct StakeholderNetworkView {
+    sidebar: Sidebar,
+    scroll: scrollable::State,
+}
+
+impl StakeholderNetworkView {
+    pub fn new() -> Self {
+        StakeholderNetworkView {
+            scroll: scrollable::State::new(),
+            sidebar: Sidebar::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        warning: Option<&Error>,
+        blockheight: Option<&u64>,
+    ) -> Element<'a, Message> {
+        layout::dashboard(
+            navbar(layout::navbar_warning(warning)),
+            self.sidebar.view(ctx),
+            layout::main_section(Container::new(
+                Scrollable::new(&mut self.scroll).push(Container::new(
+                    Column::new()
+                        .push(bitcoin_core_card(blockheight))
+                        .spacing(20),
+                )),
+            )),
+        )
+        .into()
+    }
+}
+
 fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
     let mut col = Column::new()
         .push(

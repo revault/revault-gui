@@ -5,11 +5,17 @@ use std::time::Duration;
 
 use iced::{time, Command, Element, Subscription};
 
-use super::{util::Watch, State};
+use super::{
+    cmd::{get_blockheight, list_vaults},
+    util::Watch,
+    State,
+};
+
 use crate::revaultd::{
     model::{Vault, VaultStatus, VaultTransactions},
-    RevaultD, RevaultDError,
+    RevaultD,
 };
+
 use crate::ui::{
     error::Error,
     message::{Context, InputMessage, Message, RecipientMessage},
@@ -502,30 +508,6 @@ impl ManagerSendInput {
             InputMessage::Selected(selected) => self.selected = selected,
         }
     }
-}
-
-async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
-    revaultd.get_info().map(|res| res.blockheight)
-}
-
-async fn list_vaults(
-    revaultd: Arc<RevaultD>,
-) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
-    let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
-    let outpoints = vaults.iter().map(|vlt| vlt.outpoint()).collect();
-    let txs = revaultd.list_transactions(Some(outpoints))?;
-
-    let mut vec = Vec::new();
-    for vlt in vaults {
-        if let Some(i) = txs
-            .transactions
-            .iter()
-            .position(|tx| tx.outpoint == vlt.outpoint())
-        {
-            vec.push((vlt, txs.transactions[i].to_owned()));
-        }
-    }
-    Ok(vec)
 }
 
 #[derive(Debug)]

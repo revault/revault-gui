@@ -1,4 +1,4 @@
-use iced::{pick_list, Container, Length, Row};
+use iced::{pick_list, Column, Container, Length, Row};
 
 use crate::ui::{
     component::{button, separation, text, TransparentPickListStyle},
@@ -96,6 +96,18 @@ impl Sidebar {
                 Message::Menu(Menu::Network),
             )
         };
+        let actions = if context.role == Role::Manager {
+            Container::new(
+                button::transparent(
+                    &mut self.spend_menu_button,
+                    button::button_content(Some(send_icon()), "Send"),
+                    Message::Menu(Menu::Send),
+                )
+                .width(iced::Length::Units(200)),
+            )
+        } else {
+            Container::new(Column::new())
+        };
         layout::sidebar(
             layout::sidebar_menu(vec![
                 role.width(Length::Units(200)),
@@ -104,14 +116,7 @@ impl Sidebar {
                 Container::new(history_button.width(Length::Units(200))),
                 Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
-                Container::new(
-                    button::transparent(
-                        &mut self.spend_menu_button,
-                        button::button_content(Some(send_icon()), "Send"),
-                        Message::Menu(Menu::Send),
-                    )
-                    .width(iced::Length::Units(200)),
-                ),
+                actions,
             ]),
             Container::new(
                 button::transparent(

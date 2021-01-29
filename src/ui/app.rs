@@ -7,7 +7,7 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 use super::message::{Menu, Message, Role};
 use super::state::{
     ChargingState, InstallingState, ManagerHistoryState, ManagerHomeState, ManagerNetworkState,
-    ManagerSendState, StakeholderHomeState, State,
+    ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
 };
 
 use crate::revaultd::RevaultD;
@@ -26,6 +26,7 @@ pub fn run(config: Config) -> Result<(), iced::Error> {
 }
 
 impl App {
+    #[allow(unreachable_patterns)]
     pub fn load_state(&mut self, role: Role, menu: Menu) -> Command<Message> {
         self.context.role = role;
         self.context.menu = menu;
@@ -35,8 +36,15 @@ impl App {
                 Menu::History => ManagerHistoryState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Network => ManagerNetworkState::new(self.revaultd.clone().unwrap()).into(),
                 Menu::Send => ManagerSendState::new(self.revaultd.clone().unwrap()).into(),
+                _ => unreachable!(),
             },
-            Role::Stakeholder => StakeholderHomeState::new(self.revaultd.clone().unwrap()).into(),
+            Role::Stakeholder => match self.context.menu {
+                Menu::Home => StakeholderHomeState::new(self.revaultd.clone().unwrap()).into(),
+                Menu::Network => {
+                    StakeholderNetworkState::new(self.revaultd.clone().unwrap()).into()
+                }
+                _ => unreachable!(),
+            },
         };
         self.state.load()
     }
