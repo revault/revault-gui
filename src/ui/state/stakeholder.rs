@@ -3,7 +3,10 @@ use std::time::Duration;
 
 use iced::{time, Command, Element, Subscription};
 
-use crate::revaultd::RevaultD;
+use crate::revaultd::{
+    model::{Vault, VaultStatus, VaultTransactions},
+    RevaultD,
+};
 
 use crate::ui::{
     error::Error,
@@ -16,7 +19,7 @@ use crate::ui::{
 pub struct StakeholderHomeState {
     revaultd: Arc<RevaultD>,
 
-    balance: u64,
+    balance: (u64, u64),
     view: StakeholderHomeView,
 }
 
@@ -25,8 +28,24 @@ impl StakeholderHomeState {
         StakeholderHomeState {
             revaultd,
             view: StakeholderHomeView::new(),
-            balance: 0,
+            balance: (0, 0),
         }
+    }
+
+    pub fn calculate_balance(&mut self, vaults: &Vec<(Vault, VaultTransactions)>) {
+        let mut active_amount: u64 = 0;
+        let mut inactive_amount: u64 = 0;
+        for (vault, _) in vaults {
+            match vault.status {
+                VaultStatus::Active => active_amount += vault.amount,
+                VaultStatus::Secured | VaultStatus::Funded | VaultStatus::Unconfirmed => {
+                    inactive_amount += vault.amount
+                }
+                _ => {}
+            }
+        }
+
+        self.balance = (active_amount, inactive_amount);
     }
 }
 

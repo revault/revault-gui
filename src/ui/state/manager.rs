@@ -30,7 +30,7 @@ pub struct ManagerHomeState {
     revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
-    balance: u64,
+    balance: (u64, u64),
     blockheight: Watch<u64>,
     warning: Watch<Error>,
 
@@ -42,7 +42,7 @@ impl ManagerHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerHomeState {
             revaultd,
-            balance: 0,
+            balance: (0, 0),
             view: ManagerHomeView::new(),
             blockheight: Watch::None,
             vaults: Vec::new(),
@@ -52,11 +52,11 @@ impl ManagerHomeState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
+        self.calculate_balance(&vaults);
         self.vaults = vaults
             .into_iter()
             .map(|(vlt, txs)| ManagerVault::new(vlt, txs))
             .collect();
-        self.calculate_balance();
     }
 
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
@@ -92,18 +92,20 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    pub fn calculate_balance(&mut self) {
-        let mut amt: u64 = 0;
-        for vlt in &self.vaults {
-            if vlt.vault.status == VaultStatus::Active
-                || vlt.vault.status == VaultStatus::Secured
-                || vlt.vault.status == VaultStatus::Funded
-                || vlt.vault.status == VaultStatus::Unconfirmed
-            {
-                amt += vlt.vault.amount
+    pub fn calculate_balance(&mut self, vaults: &Vec<(Vault, VaultTransactions)>) {
+        let mut active_amount: u64 = 0;
+        let mut inactive_amount: u64 = 0;
+        for (vault, _) in vaults {
+            match vault.status {
+                VaultStatus::Active => active_amount += vault.amount,
+                VaultStatus::Secured | VaultStatus::Funded | VaultStatus::Unconfirmed => {
+                    inactive_amount += vault.amount
+                }
+                _ => {}
             }
         }
-        self.balance = amt;
+
+        self.balance = (active_amount, inactive_amount);
     }
 }
 

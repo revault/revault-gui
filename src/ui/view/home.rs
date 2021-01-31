@@ -1,7 +1,7 @@
 use iced::{scrollable, Column, Container, Element, Length, Row, Scrollable};
 
 use crate::ui::{
-    component::{navbar, text},
+    component::{card, navbar, separation, text},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
@@ -26,7 +26,7 @@ impl ManagerHomeView {
         ctx: &Context,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
-        balance: &u64,
+        balance: &(u64, u64),
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
@@ -34,7 +34,11 @@ impl ManagerHomeView {
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
-                        .push(balance_view(balance))
+                        .push(
+                            Row::new()
+                                .push(Column::new().width(Length::FillPortion(1)))
+                                .push(balance_view(balance).width(Length::FillPortion(1))),
+                        )
                         .push(Column::with_children(vaults))
                         .spacing(20),
                 )),
@@ -63,7 +67,7 @@ impl StakeholderHomeView {
         ctx: &Context,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
-        balance: &u64,
+        balance: &(u64, u64),
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
@@ -71,7 +75,11 @@ impl StakeholderHomeView {
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
-                        .push(balance_view(balance))
+                        .push(
+                            Row::new()
+                                .push(Column::new().width(Length::FillPortion(1)))
+                                .push(balance_view(balance).width(Length::FillPortion(1))),
+                        )
                         .push(Column::with_children(vaults))
                         .spacing(20),
                 )),
@@ -81,20 +89,35 @@ impl StakeholderHomeView {
     }
 }
 
-fn balance_view<'a, T: 'a>(balance: &u64) -> Container<'a, T> {
-    Container::new(
-        Row::new().push(Column::new().width(Length::Fill)).push(
-            Container::new(
-                Row::new()
-                    .push(text::large_title(&format!(
+fn balance_view<'a, T: 'a>(balance: &(u64, u64)) -> Container<'a, T> {
+    let col = Column::new()
+        .push(
+            Row::new()
+                .padding(5)
+                .push(Container::new(text::simple("active")).width(Length::Fill))
+                .push(
+                    Container::new(text::bold(text::simple(&format!(
                         "{}",
-                        *balance as f64 / 100000000_f64
-                    )))
-                    .push(text::simple(" BTC"))
-                    .align_items(iced::Align::Center),
-            )
-            .width(Length::Shrink),
-        ),
-    )
-    .width(Length::Fill)
+                        balance.0 as f64 / 100000000_f64
+                    ))))
+                    .width(Length::Shrink),
+                )
+                .push(text::simple(" BTC")),
+        )
+        .push(separation().width(Length::Fill))
+        .push(
+            Row::new()
+                .padding(5)
+                .push(Container::new(text::simple("inactive")).width(Length::Fill))
+                .push(
+                    Container::new(text::bold(text::simple(&format!(
+                        "{}",
+                        balance.1 as f64 / 100000000_f64
+                    ))))
+                    .width(Length::Shrink),
+                )
+                .push(text::simple(" BTC")),
+        );
+
+    card::simple(Container::new(col))
 }
