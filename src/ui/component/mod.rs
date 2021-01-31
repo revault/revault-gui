@@ -167,10 +167,6 @@ pub mod text {
     use crate::ui::{color, font};
     use iced::{Container, Text};
 
-    pub fn large_title(content: &str) -> Text {
-        Text::new(content).font(font::BOLD).size(50)
-    }
-
     pub fn simple(content: &str) -> Text {
         Text::new(content).font(font::REGULAR).size(20)
     }

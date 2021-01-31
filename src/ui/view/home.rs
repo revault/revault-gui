@@ -3,6 +3,7 @@ use iced::{scrollable, Column, Container, Element, Length, Row, Scrollable};
 use crate::ui::{
     component::{card, navbar, separation, text},
     error::Error,
+    icon,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
 };
@@ -69,6 +70,7 @@ impl StakeholderHomeView {
         vaults: Vec<Element<'a, Message>>,
         balance: &(u64, u64),
     ) -> Element<'a, Message> {
+        let unsecured_found: u64 = 0;
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
@@ -77,8 +79,12 @@ impl StakeholderHomeView {
                     Column::new()
                         .push(
                             Row::new()
-                                .push(Column::new().width(Length::FillPortion(1)))
-                                .push(balance_view(balance).width(Length::FillPortion(1))),
+                                .push(
+                                    unsecured_found_view(&unsecured_found)
+                                        .width(Length::FillPortion(1)),
+                                )
+                                .push(balance_view(balance).width(Length::FillPortion(1)))
+                                .spacing(20),
                         )
                         .push(Column::with_children(vaults))
                         .spacing(20),
@@ -87,6 +93,23 @@ impl StakeholderHomeView {
         )
         .into()
     }
+}
+
+fn unsecured_found_view<'a, T: 'a>(found: &u64) -> Container<'a, T> {
+    card::simple(Container::new(
+        Row::new()
+            .push(Container::new(icon::shield_notif_icon().size(20)).padding(20))
+            .push(
+                Column::new().push(
+                    Row::new()
+                        .push(text::bold(text::simple(&format!(
+                            "{}",
+                            *found as f64 / 100000000_f64
+                        ))))
+                        .push(text::simple("  BTC received since last signing")),
+                ),
+            ),
+    ))
 }
 
 fn balance_view<'a, T: 'a>(balance: &(u64, u64)) -> Container<'a, T> {
