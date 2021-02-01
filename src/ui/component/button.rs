@@ -36,7 +36,10 @@ button!(
     color::PRIMARY_LIGHT,
     color::FOREGROUND
 );
+
 button!(cancel, CancelStyle, color::CANCEL, color::FOREGROUND);
+
+button!(important, ImportantStyle, color::CANCEL, color::FOREGROUND);
 
 button!(
     transparent,

@@ -1,9 +1,8 @@
 use chrono::NaiveDateTime;
-use iced::{container, scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
 use crate::ui::{
-    color,
-    component::{badge, button, card, separation, text},
+    component::{badge, button, card, separation, text, ContainerBackgroundStyle},
     message::Message,
     view::Context,
 };
@@ -174,7 +173,7 @@ impl VaultModal {
                     .spacing(20),
             )),
         )
-        .style(VaultModalStyle)
+        .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -212,16 +211,6 @@ fn input_and_outputs<'a, T: 'a>(
         )))));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
-}
-
-pub struct VaultModalStyle;
-impl container::StyleSheet for VaultModalStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: color::BACKGROUND.into(),
-            ..container::Style::default()
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

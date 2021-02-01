@@ -3,6 +3,8 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Vault {
+    /// Address of the vault deposit
+    pub address: String,
     /// Amount of the vault in satoshis
     pub amount: u64,
     /// Status of the vault
@@ -130,6 +132,18 @@ pub struct SignedTransaction {
 pub struct UnsignedTransaction {
     #[serde(with = "bitcoin_psbt")]
     pub psbt: PartiallySignedTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RevocationTransactions {
+    #[serde(with = "bitcoin_psbt")]
+    pub cancel_tx: PartiallySignedTransaction,
+
+    #[serde(with = "bitcoin_psbt")]
+    pub emergency_tx: PartiallySignedTransaction,
+
+    #[serde(with = "bitcoin_psbt")]
+    pub emergency_unvault_tx: PartiallySignedTransaction,
 }
 
 mod bitcoin_transaction {

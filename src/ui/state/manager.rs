@@ -6,7 +6,7 @@ use std::time::Duration;
 use iced::{time, Command, Element, Subscription};
 
 use super::{
-    cmd::{get_blockheight, list_vaults},
+    cmd::{get_blockheight, list_vaults_with_transactions},
     util::Watch,
     State,
 };
@@ -30,6 +30,7 @@ pub struct ManagerHomeState {
     revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
+    /// balance as active and inactive tuple.
     balance: (u64, u64),
     blockheight: Watch<u64>,
     warning: Watch<Error>,
@@ -97,7 +98,9 @@ impl ManagerHomeState {
         let mut inactive_amount: u64 = 0;
         for (vault, _) in vaults {
             match vault.status {
-                VaultStatus::Active => active_amount += vault.amount,
+                VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
+                    active_amount += vault.amount
+                }
                 VaultStatus::Secured | VaultStatus::Funded | VaultStatus::Unconfirmed => {
                     inactive_amount += vault.amount
                 }
@@ -114,7 +117,7 @@ impl State for ManagerHomeState {
         match message {
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::Vaults(res) => match res {
+            Message::VaultsWithTransactions(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
@@ -150,7 +153,10 @@ impl State for ManagerHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+            Command::perform(
+                list_vaults_with_transactions(self.revaultd.clone()),
+                Message::VaultsWithTransactions,
+            ),
         ])
     }
 }
@@ -241,7 +247,7 @@ impl ManagerSendState {
 impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Vaults(res) => match res {
+            Message::VaultsWithTransactions(res) => match res {
                 Ok(vlts) => self.update_vaults(vlts),
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
@@ -296,8 +302,8 @@ impl State for ManagerSendState {
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone()),
-            Message::Vaults,
+            list_vaults_with_transactions(self.revaultd.clone()),
+            Message::VaultsWithTransactions,
         )])
     }
 }

@@ -5,7 +5,7 @@ use std::time::Duration;
 use iced::{time, Command, Element, Subscription};
 
 use super::{
-    cmd::{get_blockheight, list_vaults},
+    cmd::{get_blockheight, list_vaults_with_transactions},
     util::Watch,
     State,
 };
@@ -91,7 +91,7 @@ impl State for HistoryState {
         match message {
             Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::Vaults(res) => match res {
+            Message::VaultsWithTransactions(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
@@ -122,7 +122,10 @@ impl State for HistoryState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+            Command::perform(
+                list_vaults_with_transactions(self.revaultd.clone()),
+                Message::VaultsWithTransactions,
+            ),
         ])
     }
 }

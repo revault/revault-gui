@@ -4,7 +4,7 @@ use std::time::Instant;
 use super::{error::Error, menu::Menu};
 use crate::revault::Role;
 use crate::revaultd::{
-    model::{Vault, VaultTransactions},
+    model::{RevocationTransactions, Vault, VaultTransactions},
     RevaultD, RevaultDError,
 };
 
@@ -17,17 +17,31 @@ pub enum Message {
     Synced(Arc<RevaultD>),
     Tick(Instant),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
-    Vaults(Result<Vec<(Vault, VaultTransactions)>, RevaultDError>),
+    Vaults(Result<Vec<Vault>, RevaultDError>),
+    VaultsWithTransactions(Result<Vec<(Vault, VaultTransactions)>, RevaultDError>),
     SelectVault(String),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
     Next,
     Previous,
+    Deposit(usize, DepositMessage),
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     None,
     AddRecipient,
+}
+
+#[derive(Debug, Clone)]
+pub enum SignMessage {
+    ChangeMethod,
+    Sign,
+}
+
+#[derive(Debug, Clone)]
+pub enum DepositMessage {
+    RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
+    Sign(SignMessage),
 }
 
 #[derive(Debug, Clone)]

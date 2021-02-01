@@ -10,7 +10,8 @@ use super::menu::Menu;
 use super::message::Message;
 use super::state::{
     ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
-    ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
+    ManagerSendState, StakeholderACKFundsState, StakeholderHomeState, StakeholderNetworkState,
+    State,
 };
 
 use crate::revault::Role;
@@ -47,6 +48,7 @@ impl App {
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::History => HistoryState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
+                Menu::ACKFunds => StakeholderACKFundsState::new(revaultd).into(),
                 _ => unreachable!(),
             },
         };

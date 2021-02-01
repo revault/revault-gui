@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::revaultd::{
-    model::{Vault, VaultTransactions},
+    model::{RevocationTransactions, Vault, VaultTransactions},
     RevaultD, RevaultDError,
 };
 
@@ -9,7 +9,11 @@ pub async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDErr
     revaultd.get_info().map(|res| res.blockheight)
 }
 
-pub async fn list_vaults(
+pub async fn list_vaults(revaultd: Arc<RevaultD>) -> Result<Vec<Vault>, RevaultDError> {
+    revaultd.list_vaults().map(|res| res.vaults)
+}
+
+pub async fn list_vaults_with_transactions(
     revaultd: Arc<RevaultD>,
 ) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
     let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
@@ -27,4 +31,11 @@ pub async fn list_vaults(
         }
     }
     Ok(vec)
+}
+
+pub async fn get_revocation_txs(
+    revaultd: Arc<RevaultD>,
+    outpoint: String,
+) -> Result<RevocationTransactions, RevaultDError> {
+    revaultd.get_revocation_txs(&outpoint)
 }

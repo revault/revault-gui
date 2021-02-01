@@ -12,7 +12,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::{Vault, VaultTransactions};
+use model::{RevocationTransactions, Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -113,6 +113,13 @@ impl RevaultD {
             ),
             None => self.call("listtransactions", Option::<Request>::None),
         }
+    }
+
+    pub fn get_revocation_txs(
+        &self,
+        outpoint: &str,
+    ) -> Result<RevocationTransactions, RevaultDError> {
+        self.call("getrevocationtxs", Some(vec![outpoint]))
     }
 }
 

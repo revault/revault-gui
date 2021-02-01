@@ -20,3 +20,12 @@ impl std::fmt::Display for Role {
 impl Role {
     pub const ALL: [Role; 2] = [Role::Manager, Role::Stakeholder];
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionKind {
+    Emergency,
+    EmergencyUnvault,
+    Unvault,
+    Cancel,
+    Spend,
+}

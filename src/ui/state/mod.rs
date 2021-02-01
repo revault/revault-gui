@@ -3,6 +3,7 @@ mod cmd;
 mod history;
 pub mod installing;
 pub mod manager;
+mod sign;
 pub mod stakeholder;
 mod util;
 
@@ -12,7 +13,7 @@ pub use charging::ChargingState;
 pub use history::HistoryState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
-pub use stakeholder::{StakeholderHomeState, StakeholderNetworkState};
+pub use stakeholder::{StakeholderACKFundsState, StakeholderHomeState, StakeholderNetworkState};
 
 use super::{message::Message, view::Context};
 
