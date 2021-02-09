@@ -157,18 +157,18 @@ impl ManagerSendOutputView {
             RecipientMessage::AddressEdited,
         )
         .padding(10);
-        let mut col = Column::new()
-            .push(
-                Container::new(button::transparent(
-                    &mut self.delete_button,
-                    Container::new(text::simple("X Remove")).padding(10),
-                    RecipientMessage::Delete,
-                ))
-                .width(Length::Fill)
-                .align_x(iced::Align::End),
-            )
-            .push(text::bold(text::simple("Enter address:")))
-            .push(address);
+        let mut col = Column::with_children(vec![
+            Container::new(button::transparent(
+                &mut self.delete_button,
+                Container::new(text::simple("X Remove")).padding(10),
+                RecipientMessage::Delete,
+            ))
+            .width(Length::Fill)
+            .align_x(iced::Align::End)
+            .into(),
+            Container::new(text::bold(text::simple("Enter address:"))).into(),
+            Container::new(address).into(),
+        ]);
 
         if *warning_address {
             col = col.push(card::alert_warning(Container::new(text::simple(

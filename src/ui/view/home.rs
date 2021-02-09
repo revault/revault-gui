@@ -28,10 +28,6 @@ impl ManagerHomeView {
         vaults: Vec<Element<'a, Message>>,
         balance: &u64,
     ) -> Element<'a, Message> {
-        let mut vaults_col = Column::new();
-        for vlt in vaults {
-            vaults_col = vaults_col.push(vlt);
-        }
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
@@ -39,7 +35,7 @@ impl ManagerHomeView {
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
                         .push(balance_view(balance))
-                        .push(vaults_col)
+                        .push(Column::with_children(vaults))
                         .spacing(20),
                 )),
             )),
@@ -69,10 +65,6 @@ impl StakeholderHomeView {
         vaults: Vec<Element<'a, Message>>,
         balance: &u64,
     ) -> Element<'a, Message> {
-        let mut vaults_col = Column::new();
-        for vlt in vaults {
-            vaults_col = vaults_col.push(vlt);
-        }
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
@@ -80,7 +72,7 @@ impl StakeholderHomeView {
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
                         .push(balance_view(balance))
-                        .push(vaults_col)
+                        .push(Column::with_children(vaults))
                         .spacing(20),
                 )),
             )),
