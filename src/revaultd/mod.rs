@@ -69,12 +69,7 @@ impl RevaultD {
     }
 
     pub fn network(&self) -> bitcoin::Network {
-        match self.config.bitcoind_config.network.as_str() {
-            "bitcoin" => bitcoin::Network::Bitcoin,
-            "regtest" => bitcoin::Network::Regtest,
-            "mainnet" => bitcoin::Network::Bitcoin,
-            _ => bitcoin::Network::Bitcoin,
-        }
+        self.config.bitcoind_config.network
     }
 
     /// Generic call function for RPC calls.

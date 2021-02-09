@@ -30,7 +30,7 @@ impl Config {
         } else {
             default_datadir()?
         };
-        path.push(&self.bitcoind_config.network);
+        path.push(&self.bitcoind_config.network.to_string());
         path.push("revaultd_rpc");
         Ok(path)
     }
@@ -47,14 +47,29 @@ impl std::default::Default for Config {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BitcoindConfig {
-    pub network: String,
+    #[serde(with = "bitcoin_network")]
+    pub network: bitcoin::Network,
 }
 
 impl std::default::Default for BitcoindConfig {
     fn default() -> Self {
         BitcoindConfig {
-            network: "bitcoin".to_string(),
+            network: bitcoin::Network::Bitcoin,
         }
+    }
+}
+
+mod bitcoin_network {
+    use bitcoin::Network;
+    use serde::{self, Deserialize, Deserializer};
+    use std::str::FromStr;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Network::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
