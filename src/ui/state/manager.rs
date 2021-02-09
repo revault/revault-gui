@@ -51,10 +51,10 @@ impl ManagerHomeState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
-        self.vaults = Vec::new();
-        for vlt in vaults {
-            self.vaults.push(ManagerVault::new(vlt.0, vlt.1));
-        }
+        self.vaults = vaults
+            .into_iter()
+            .map(|(vlt, txs)| ManagerVault::new(vlt, txs))
+            .collect();
         self.calculate_balance();
     }
 
@@ -208,10 +208,10 @@ impl ManagerSendState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
-        self.vaults = Vec::new();
-        for (vlt, txs) in vaults {
-            self.vaults.push(ManagerSendInput::new(vlt, txs));
-        }
+        self.vaults = vaults
+            .into_iter()
+            .map(|(vlt, txs)| ManagerSendInput::new(vlt, txs))
+            .collect();
     }
 
     pub fn input_amount(&self) -> u64 {

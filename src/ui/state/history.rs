@@ -47,10 +47,10 @@ impl HistoryState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
-        self.vaults = Vec::new();
-        for vlt in vaults {
-            self.vaults.push(HistoryVault::new(vlt.0, vlt.1));
-        }
+        self.vaults = vaults
+            .into_iter()
+            .map(|(vlt, txs)| HistoryVault::new(vlt, txs))
+            .collect();
     }
 
     pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
