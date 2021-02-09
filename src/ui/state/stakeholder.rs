@@ -75,7 +75,7 @@ impl StakeholderNetworkState {
             return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
         }
 
-        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
+        if self.warning.is_some() && !self.warning.is_recent(Duration::from_secs(30)) {
             self.warning.reset()
         }
 

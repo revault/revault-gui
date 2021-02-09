@@ -35,6 +35,10 @@ impl<T> Watch<T> {
         matches!(self, Self::None)
     }
 
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+
     pub fn reset(&mut self) {
         *self = Self::None;
     }
