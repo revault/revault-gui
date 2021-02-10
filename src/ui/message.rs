@@ -62,6 +62,7 @@ impl Role {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Clipboard(String),
     Install,
     ChangeRole(Role),
     Syncing(Result<f64, RevaultDError>),

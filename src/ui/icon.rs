@@ -55,6 +55,10 @@ pub fn dot_icon() -> Text {
     icon('\u{F287}')
 }
 
+pub fn clipboard_icon() -> Text {
+    icon('\u{F28E}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

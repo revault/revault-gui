@@ -1,4 +1,4 @@
-use crate::ui::{color, component::text};
+use crate::ui::{color, component::text, icon::clipboard_icon};
 use iced::{button, Color, Container, Row, Text, Vector};
 
 macro_rules! button {
@@ -56,5 +56,28 @@ pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Contai
                 .align_items(iced::Align::Center),
         )
         .padding(5),
+    }
+}
+
+pub fn clipboard<'a, T: 'a + Clone>(
+    state: &'a mut button::State,
+    message: T,
+) -> button::Button<'a, T> {
+    button::Button::new(state, clipboard_icon().size(15))
+        .on_press(message)
+        .style(ClipboardButtonStyle {})
+}
+
+struct ClipboardButtonStyle {}
+impl button::StyleSheet for ClipboardButtonStyle {
+    fn active(&self) -> button::Style {
+        button::Style {
+            shadow_offset: Vector::default(),
+            background: Color::TRANSPARENT.into(),
+            border_radius: 10.0,
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT.into(),
+            text_color: Color::BLACK.into(),
+        }
     }
 }
