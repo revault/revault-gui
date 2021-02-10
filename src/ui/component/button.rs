@@ -1,4 +1,4 @@
-use crate::ui::color;
+use crate::ui::{color, component::text};
 use iced::{button, Color, Container, Row, Text, Vector};
 
 macro_rules! button {
@@ -30,6 +30,13 @@ macro_rules! button {
 }
 
 button!(primary, PrimaryStyle, color::PRIMARY, color::FOREGROUND);
+button!(
+    primary_disable,
+    PrimaryDisableStyle,
+    color::PRIMARY_LIGHT,
+    color::FOREGROUND
+);
+button!(cancel, CancelStyle, color::CANCEL, color::FOREGROUND);
 
 button!(
     transparent,
@@ -38,13 +45,13 @@ button!(
     Color::BLACK
 );
 
-pub fn button_content<'a, T: 'a>(icon: Option<iced::Svg>, text: &str) -> Container<'a, T> {
+pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Container<'a, T> {
     match icon {
         None => Container::new(Text::new(text)).padding(5),
-        Some(svg) => Container::new(
+        Some(i) => Container::new(
             Row::new()
-                .push(Container::new(svg))
-                .push(Text::new(text))
+                .push(i)
+                .push(text::simple(text))
                 .spacing(10)
                 .align_items(iced::Align::Center),
         )

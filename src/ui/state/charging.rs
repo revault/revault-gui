@@ -9,7 +9,11 @@ use crate::revaultd::{
     config::{default_config_path, Config, ConfigError},
     start_daemon, RevaultD, RevaultDError,
 };
-use crate::ui::{error::Error, message::Message, view::charging::*};
+use crate::ui::{
+    error::Error,
+    message::{Context, Message},
+    view::charging::*,
+};
 
 #[derive(Debug, Clone)]
 pub struct ChargingState {
@@ -124,7 +128,7 @@ impl State for ChargingState {
         }
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
         match &mut self.step {
             ChargingStep::StartingDaemon => charging_starting_daemon_view(),
             ChargingStep::Connecting => charging_connect_view(),
@@ -192,7 +196,7 @@ async fn start_daemon_and_connect(
             tracing::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })
-    };
+    }
 
     try_connect_to_revault(&cfg, 5)
         .or_else(|_| try_connect_to_revault(&cfg, 4))

@@ -1,245 +1,461 @@
 use iced::{
-    scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row, Scrollable,
-    Text,
+    scrollable, text_input, Checkbox, Column, Container, Element, Length, Row, Scrollable,
+    TextInput,
 };
 
 use crate::ui::{
-    color,
-    component::{badge, button, card, navbar, text},
-    error::Error,
-    image,
-    message::{Message, MessageMenu},
-    view::layout,
+    component::{button, card, separation, text},
+    message::{InputMessage, Menu, Message, RecipientMessage},
 };
 
-use crate::revaultd::model::Vault;
-
-#[derive(Debug, Clone)]
-pub enum ManagerView {
-    Home(ManagerHomeView),
-    History(ManagerHistoryView),
+#[derive(Debug)]
+pub enum ManagerSendView {
+    SelectOutputs(ManagerSelectOutputsView),
+    SelectInputs(ManagerSelectInputsView),
+    SelectFee(ManagerSelectFeeView),
+    Sign(ManagerSignView),
 }
 
-#[derive(Debug, Clone)]
-pub struct ManagerHomeView {
-    sidebar: ManagerSidebar,
-    scroll: scrollable::State,
-}
-
-impl ManagerHomeView {
+impl ManagerSendView {
     pub fn new() -> Self {
-        ManagerHomeView {
-            sidebar: ManagerSidebar::new(),
-            scroll: scrollable::State::new(),
+        Self::SelectOutputs(ManagerSelectOutputsView::new())
+    }
+
+    pub fn next(&self) -> ManagerSendView {
+        match self {
+            Self::SelectOutputs(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
+            Self::SelectInputs(_) => Self::SelectFee(ManagerSelectFeeView::new()),
+            Self::SelectFee(_) => Self::Sign(ManagerSignView::new()),
+            _ => Self::new(),
         }
     }
 
+    pub fn previous(&self) -> ManagerSendView {
+        match self {
+            Self::SelectInputs(_) => Self::SelectOutputs(ManagerSelectOutputsView::new()),
+            Self::SelectFee(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
+            Self::Sign(_) => Self::SelectFee(ManagerSelectFeeView::new()),
+            _ => Self::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSelectOutputsView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    new_output_button: iced::button::State,
+}
+
+impl ManagerSelectOutputsView {
+    pub fn new() -> Self {
+        ManagerSelectOutputsView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+            new_output_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        selected_outputs: Vec<Element<'a, Message>>,
+        valid: bool,
+    ) -> Element<'a, Message> {
+        let mut col_outputs = Column::new()
+            .spacing(20)
+            .width(Length::Fill)
+            .align_items(iced::Align::Center);
+        for (i, element) in selected_outputs.into_iter().enumerate() {
+            if i > 0 {
+                col_outputs = col_outputs.push(separation().width(Length::Fill));
+            }
+            col_outputs = col_outputs.push(element);
+        }
+        let element: Element<_> = col_outputs.max_width(500).into();
+
+        let mut footer = Row::new().spacing(20).push(button::cancel(
+            &mut self.new_output_button,
+            Container::new(text::simple("Add recipient")).padding(10),
+            Message::AddRecipient,
+        ));
+
+        if valid {
+            footer = footer.push(Container::new(button::primary(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::Next,
+            )));
+        } else {
+            footer = footer.push(Container::new(button::primary_disable(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::None,
+            )));
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new().push(Column::new().width(Length::Fill)).push(
+                            Container::new(button::cancel(
+                                &mut self.cancel_button,
+                                Container::new(text::simple("X Close")).padding(10),
+                                Message::Menu(Menu::Home),
+                            ))
+                            .width(Length::Shrink),
+                        ),
+                    )
+                    .push(
+                        Container::new(element)
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
+                    )
+                    .push(
+                        Column::new()
+                            .push(footer)
+                            .width(Length::Fill)
+                            .align_items(iced::Align::Center),
+                    )
+                    .spacing(20),
+            )),
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSendOutputView {
+    address_input: text_input::State,
+    amount_input: text_input::State,
+    delete_button: iced::button::State,
+}
+
+impl ManagerSendOutputView {
+    pub fn new() -> Self {
+        Self {
+            address_input: text_input::State::focused(),
+            amount_input: text_input::State::new(),
+            delete_button: iced::button::State::new(),
+        }
+    }
     pub fn view(
         &mut self,
-        balance: u64,
-        warning: Option<&Error>,
-        blockheight: Option<&u64>,
-        vaults: Option<&Vec<Vault>>,
-    ) -> Element<Message> {
-        layout::dashboard(
-            navbar(navbar_warning(warning)),
-            self.sidebar.view(ManagerSidebarCurrent::Home),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
-                    Column::new()
-                        .push(balance_view(balance))
-                        .push(list_vaults(vaults))
-                        .push(bitcoin_core_card(blockheight))
-                        .spacing(20),
-                )),
-            )),
+        address: &str,
+        amount: &str,
+        warning_address: &bool,
+        warning_amount: &bool,
+    ) -> Element<RecipientMessage> {
+        let address = TextInput::new(
+            &mut self.address_input,
+            "Address",
+            &address,
+            RecipientMessage::AddressEdited,
         )
-    }
-}
+        .padding(10);
+        let mut col = Column::with_children(vec![
+            Container::new(button::transparent(
+                &mut self.delete_button,
+                Container::new(text::simple("X Remove")).padding(10),
+                RecipientMessage::Delete,
+            ))
+            .width(Length::Fill)
+            .align_x(iced::Align::End)
+            .into(),
+            Container::new(text::bold(text::simple("Enter address:"))).into(),
+            Container::new(address).into(),
+        ]);
 
-fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
-    if let Some(e) = warning {
-        return Some(card::alert_warning(Container::new(Text::new(format!(
-            "{}",
-            e
-        )))));
-    }
-    None
-}
-
-fn balance_view<'a, T: 'a>(balance: u64) -> Container<'a, T> {
-    Container::new(
-        Row::new().push(Column::new().width(Length::Fill)).push(
-            Container::new(
-                text::large_title(&format!("{}", balance as f64 / 100000000_f64))
-                    .horizontal_alignment(HorizontalAlignment::Right),
+        if *warning_address {
+            col = col.push(card::alert_warning(Container::new(text::simple(
+                "Please enter a valid bitcoin address",
+            ))))
+        }
+        col = col.push(text::bold(text::simple("Enter amount:"))).push(
+            TextInput::new(
+                &mut self.amount_input,
+                "0.0",
+                &format!("{}", amount),
+                RecipientMessage::AmountEdited,
             )
-            .width(Length::Shrink),
-        ),
-    )
-    .width(Length::Fill)
+            .padding(10),
+        );
+
+        if *warning_amount {
+            col = col.push(card::alert_warning(Container::new(text::simple(
+                "Please enter a valid amount",
+            ))))
+        }
+        Container::new(col.spacing(10)).into()
+    }
 }
 
-fn list_vaults<'a, T: 'a>(vaults: Option<&Vec<Vault>>) -> Container<'a, T> {
-    match vaults {
-        None => Container::new(Text::new("No vaults yet")),
-        Some(vlts) => {
-            let mut col = Column::new();
-            for vlt in vlts {
-                col = col.push(vault_card(vlt));
-            }
-            Container::new(col.spacing(10))
+#[derive(Debug)]
+pub struct ManagerSelectInputsView {
+    scroll: scrollable::State,
+    back_button: iced::button::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    new_output_button: iced::button::State,
+}
+
+impl ManagerSelectInputsView {
+    pub fn new() -> Self {
+        ManagerSelectInputsView {
+            cancel_button: iced::button::State::new(),
+            back_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+            new_output_button: iced::button::State::new(),
         }
     }
-}
 
-fn vault_card<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
-    card::simple(Container::new(
-        Row::new()
-            .push(
-                Container::new(
-                    Row::new()
-                        .push(badge::tx_deposit())
-                        .push(text::small(&vault.txid))
-                        .spacing(20),
-                )
-                .width(Length::Fill),
-            )
-            .push(
-                Container::new(Text::new(format!(
-                    "{}",
-                    vault.amount as f64 / 100000000_f64
-                )))
-                .width(Length::Shrink),
-            )
+    pub fn view<'a>(
+        &'a mut self,
+        selected_inputs: Vec<Element<'a, Message>>,
+        valid: bool,
+    ) -> Element<'a, Message> {
+        let mut col_inputs = Column::new()
             .spacing(20)
-            .align_items(Align::Center),
-    ))
-}
+            .width(Length::Fill)
+            .align_items(iced::Align::Center);
+        for (i, element) in selected_inputs.into_iter().enumerate() {
+            if i > 0 {
+                col_inputs = col_inputs.push(separation().width(Length::Fill));
+            }
+            col_inputs = col_inputs.push(element);
+        }
+        let element: Element<_> = col_inputs.max_width(500).into();
 
-fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
-    let mut col = Column::new()
-        .push(
-            Row::new()
-                .push(Container::new(Text::new("Bitcoin Core")).width(Length::Fill))
-                .push(
-                    Container::new(text::small("* running").color(color::SUCCESS))
-                        .width(Length::Shrink),
-                ),
+        let mut footer = Column::new();
+        if valid {
+            footer = footer.push(Container::new(button::primary(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::Next,
+            )));
+        } else {
+            footer = footer.push(Container::new(button::primary_disable(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::None,
+            )));
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(button::transparent(
+                                        &mut self.back_button,
+                                        Container::new(text::simple("Go Back")).padding(10),
+                                        Message::Previous,
+                                    ))
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                    Message::Menu(Menu::Home),
+                                ))
+                                .width(Length::Shrink),
+                            ),
+                    )
+                    .push(
+                        Container::new(element)
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
+                    )
+                    .push(
+                        Column::new()
+                            .push(footer)
+                            .width(Length::Fill)
+                            .align_items(iced::Align::Center),
+                    )
+                    .spacing(20),
+            )),
         )
-        .spacing(10);
-    if let Some(b) = blockheight {
-        col = col.push(
-            Row::new()
-                .push(badge::block())
-                .push(
-                    Column::new()
-                        .push(text::small("Block Height"))
-                        .push(Text::new(&format!("{}", b))),
-                )
-                .spacing(10),
-        );
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
-    card::simple(Container::new(col))
 }
 
-#[derive(Debug, Clone)]
-pub struct ManagerHistoryView {
-    sidebar: ManagerSidebar,
+pub fn manager_send_input_view<'a>(
+    outpoint: &str,
+    amount: &u64,
+    selected: bool,
+) -> Element<'a, InputMessage> {
+    let checkbox =
+        Checkbox::new(selected, &format!("{}", outpoint), InputMessage::Selected).text_size(15);
+    let row = Row::new()
+        .push(checkbox)
+        .push(text::bold(text::simple(&format!(
+            "{}",
+            *amount as f64 / 100000000_f64
+        ))))
+        .spacing(20);
+    Container::new(row).width(Length::Fill).into()
+}
+
+#[derive(Debug)]
+pub struct ManagerSelectFeeView {
     scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    back_button: iced::button::State,
 }
 
-impl ManagerHistoryView {
+impl ManagerSelectFeeView {
     pub fn new() -> Self {
-        ManagerHistoryView {
-            sidebar: ManagerSidebar::new(),
+        ManagerSelectFeeView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            back_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
         }
     }
 
-    pub fn view(&mut self) -> Element<Message> {
-        layout::dashboard(
-            navbar(None),
-            self.sidebar.view(ManagerSidebarCurrent::History),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(card::simple(text::paragraph("main"))),
+    pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
+        let mut footer = Row::new().spacing(20);
+        if valid {
+            footer = footer.push(Container::new(button::primary(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::Next,
+            )));
+        } else {
+            footer = footer.push(Container::new(button::primary_disable(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::None,
+            )));
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(button::transparent(
+                                        &mut self.back_button,
+                                        Container::new(text::simple("Go Back")).padding(10),
+                                        Message::Previous,
+                                    ))
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                    Message::Menu(Menu::Home),
+                                ))
+                                .width(Length::Shrink),
+                            ),
+                    )
+                    .push(
+                        Container::new(text::simple("Select fee"))
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
+                    )
+                    .push(
+                        Column::new()
+                            .push(footer)
+                            .width(Length::Fill)
+                            .align_items(iced::Align::Center),
+                    )
+                    .spacing(20),
             )),
         )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 }
 
-#[derive(PartialEq)]
-enum ManagerSidebarCurrent {
-    Home,
-    History,
+#[derive(Debug)]
+pub struct ManagerSignView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    back_button: iced::button::State,
 }
 
-#[derive(Debug, Clone)]
-struct ManagerSidebar {
-    home_menu_button: iced::button::State,
-    history_menu_button: iced::button::State,
-    spend_menu_button: iced::button::State,
-    settings_menu_button: iced::button::State,
-}
-
-impl ManagerSidebar {
-    fn new() -> Self {
-        ManagerSidebar {
-            home_menu_button: iced::button::State::new(),
-            history_menu_button: iced::button::State::new(),
-            spend_menu_button: iced::button::State::new(),
-            settings_menu_button: iced::button::State::new(),
+impl ManagerSignView {
+    pub fn new() -> Self {
+        ManagerSignView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            back_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
         }
     }
 
-    fn view(&mut self, current: ManagerSidebarCurrent) -> Container<Message> {
-        let home_button = if current == ManagerSidebarCurrent::Home {
-            button::primary(
-                &mut self.home_menu_button,
-                button::button_content(Some(image::home_white_icon()), "Home"),
-                Message::Menu(MessageMenu::Home),
-            )
+    pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
+        let mut footer = Row::new().spacing(20);
+        if valid {
+            footer = footer.push(Container::new(button::primary(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::Next,
+            )));
         } else {
-            button::transparent(
-                &mut self.home_menu_button,
-                button::button_content(Some(image::home_icon()), "Home"),
-                Message::Menu(MessageMenu::Home),
-            )
-        };
-        let history_button = if current == ManagerSidebarCurrent::History {
-            button::primary(
-                &mut self.history_menu_button,
-                button::button_content(Some(image::history_white_icon()), "History"),
-                Message::Menu(MessageMenu::History),
-            )
-        } else {
-            button::transparent(
-                &mut self.history_menu_button,
-                button::button_content(Some(image::history_icon()), "History"),
-                Message::Menu(MessageMenu::History),
-            )
-        };
-        layout::sidebar(
-            layout::sidebar_menu(vec![
-                Container::new(home_button.width(iced::Length::Units(150))),
-                Container::new(history_button.width(iced::Length::Units(150))),
-                Container::new(
-                    button::transparent(
-                        &mut self.spend_menu_button,
-                        button::button_content(Some(image::send_icon()), "Spend"),
-                        Message::Install,
+            footer = footer.push(Container::new(button::primary_disable(
+                &mut self.next_button,
+                Container::new(text::simple("Continue")).padding(10),
+                Message::None,
+            )));
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(button::transparent(
+                                        &mut self.back_button,
+                                        Container::new(text::simple("Go Back")).padding(10),
+                                        Message::Previous,
+                                    ))
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                    Message::Menu(Menu::Home),
+                                ))
+                                .width(Length::Shrink),
+                            ),
                     )
-                    .width(iced::Length::Units(150)),
-                ),
-            ]),
-            Container::new(
-                button::transparent(
-                    &mut self.settings_menu_button,
-                    button::button_content(Some(image::settings_icon()), "Settings"),
-                    Message::Install,
-                )
-                .width(iced::Length::Units(150)),
-            ),
+                    .push(
+                        Container::new(text::simple("Sign tx"))
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
+                    )
+                    .push(
+                        Column::new()
+                            .push(footer)
+                            .width(Length::Fill)
+                            .align_items(iced::Align::Center),
+                    )
+                    .spacing(20),
+            )),
         )
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 }

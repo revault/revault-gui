@@ -1,5 +1,21 @@
-use crate::ui::{color, image::revault_colored_logo};
+use crate::ui::{
+    color,
+    component::{card, text},
+    error::Error,
+    image::revault_colored_logo,
+};
+
 use iced::{container, Column, Container, Element, Length, Row};
+
+pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
+    if let Some(e) = warning {
+        return Some(card::alert_warning(Container::new(text::simple(&format!(
+            "{}",
+            e
+        )))));
+    }
+    None
+}
 
 pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
     Column::new()
@@ -25,23 +41,24 @@ pub fn dashboard<'a, T: 'a>(
     header: Container<'a, T>,
     sidebar: Container<'a, T>,
     main: Container<'a, T>,
-) -> Element<'a, T> {
-    Column::new()
-        .push(header)
-        .push(
-            Row::new()
-                .push(sidebar.width(Length::Shrink).height(Length::Fill))
-                .push(main.width(Length::Fill).height(Length::Fill)),
-        )
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .into()
+) -> Container<'a, T> {
+    Container::new(
+        Column::new()
+            .push(header)
+            .push(
+                Row::new()
+                    .push(sidebar.width(Length::Shrink).height(Length::Fill))
+                    .push(main.width(Length::Fill).height(Length::Fill)),
+            )
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
+    )
 }
 
 pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
     Container::new(
         Column::new()
-            .padding(20)
+            .padding(10)
             .push(menu.height(Length::Fill))
             .push(footer.height(Length::Shrink)),
     )
@@ -52,22 +69,39 @@ pub struct SidebarStyle;
 impl container::StyleSheet for SidebarStyle {
     fn style(&self) -> container::Style {
         container::Style {
-            background: color::BACKGROUND.into(),
+            background: color::FOREGROUND.into(),
+            border_width: 1.0,
+            border_color: color::SECONDARY,
+            ..container::Style::default()
+        }
+    }
+}
+
+pub struct SidebarMenuStyle;
+impl container::StyleSheet for SidebarMenuStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::FOREGROUND.into(),
             ..container::Style::default()
         }
     }
 }
 
 pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T> {
-    let mut col = Column::new().padding(20).spacing(10);
+    let mut col = Column::new().padding(15).spacing(15);
     for i in items {
         col = col.push(i)
     }
-    Container::new(col).style(MainSectionStyle)
+    Container::new(col).style(SidebarMenuStyle)
 }
 
 pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {
-    Container::new(menu).padding(20).style(MainSectionStyle)
+    Container::new(menu.max_width(1000))
+        .padding(20)
+        .style(MainSectionStyle)
+        .align_x(iced::Align::Center)
+        .width(Length::Fill)
+        .height(Length::Fill)
 }
 
 pub struct MainSectionStyle;

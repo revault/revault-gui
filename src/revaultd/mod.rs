@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use serde::de::DeserializeOwned;
@@ -12,7 +12,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::Vault;
+use model::{Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -68,6 +68,10 @@ impl RevaultD {
         Ok(revaultd)
     }
 
+    pub fn network(&self) -> bitcoin::Network {
+        self.config.bitcoind_config.network
+    }
+
     /// Generic call function for RPC calls.
     fn call<T: Serialize + Debug, U: DeserializeOwned + Debug>(
         &self,
@@ -97,6 +101,19 @@ impl RevaultD {
     pub fn list_vaults(&self) -> Result<ListVaultsResponse, RevaultDError> {
         self.call("listvaults", Option::<Request>::None)
     }
+
+    pub fn list_transactions(
+        &self,
+        outpoints: Option<Vec<String>>,
+    ) -> Result<ListTransactionsResponse, RevaultDError> {
+        match outpoints {
+            Some(list) => self.call(
+                "listtransactions",
+                Some(vec![ListTransactionsRequest(list)]),
+            ),
+            None => self.call("listtransactions", Option::<Request>::None),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -116,13 +133,25 @@ pub struct GetInfoResponse {
 /// list_vaults
 
 /// listvaults response
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ListVaultsResponse {
     pub vaults: Vec<Vault>,
 }
 
+/// list_transactions
+
+/// listtransactions request
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListTransactionsRequest(Vec<String>);
+
+/// listtransactions response
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListTransactionsResponse {
+    pub transactions: Vec<VaultTransactions>,
+}
+
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: &PathBuf) -> Result<(), RevaultDError> {
+pub async fn start_daemon(config_path: &Path) -> Result<(), RevaultDError> {
     debug!("starting revaultd daemon");
     let child = Command::new("revaultd")
         .arg("--conf")

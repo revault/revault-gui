@@ -1,16 +1,24 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
 
-use super::message::Message;
+use super::message::{Menu, Message, Role};
 use super::state::{
-    charging::ChargingState, installing::InstallingState, manager::ManagerState, State,
+    ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
+    ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
 };
+
+use crate::revaultd::RevaultD;
+use crate::ui::message::Context;
 
 pub struct App {
     config: Config,
+    revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
+
+    context: Context,
 }
 
 pub fn run(config: Config) -> Result<(), iced::Error> {
@@ -18,8 +26,26 @@ pub fn run(config: Config) -> Result<(), iced::Error> {
 }
 
 impl App {
-    pub fn load_state(&mut self, s: Box<dyn State>) -> Command<Message> {
-        self.state = s;
+    #[allow(unreachable_patterns)]
+    pub fn load_state(&mut self, role: Role, menu: Menu) -> Command<Message> {
+        self.context.role = role;
+        self.context.menu = menu;
+        let revaultd = self.revaultd.clone().unwrap();
+        self.state = match self.context.role {
+            Role::Manager => match self.context.menu {
+                Menu::Home => ManagerHomeState::new(revaultd).into(),
+                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Network => ManagerNetworkState::new(revaultd).into(),
+                Menu::Send => ManagerSendState::new(revaultd).into(),
+                _ => unreachable!(),
+            },
+            Role::Stakeholder => match self.context.menu {
+                Menu::Home => StakeholderHomeState::new(revaultd).into(),
+                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Network => StakeholderNetworkState::new(revaultd).into(),
+                _ => unreachable!(),
+            },
+        };
         self.state.load()
     }
 }
@@ -36,6 +62,8 @@ impl Application for App {
             App {
                 config,
                 state: std::boxed::Box::new(state),
+                revaultd: None,
+                context: Context::new(true, Role::Manager, Menu::Home),
             },
             cmd,
         )
@@ -51,14 +79,24 @@ impl Application for App {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::Install => self.load_state(InstallingState::new().into()),
-            Message::Synced(revaultd) => self.load_state(ManagerState::new(revaultd).into()),
+            Message::Install => {
+                self.state = InstallingState::new().into();
+                self.state.load()
+            }
+            Message::Synced(revaultd) => {
+                self.context.network = revaultd.network();
+                self.context.network_up = true;
+                self.revaultd = Some(revaultd);
+                self.load_state(Role::Manager, Menu::Home)
+            }
+            Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
+            Message::Menu(menu) => self.load_state(self.context.role, menu),
             _ => self.state.update(message),
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let content = self.state.view();
+        let content = self.state.view(&self.context);
         if self.config.debug {
             return content.explain(Color::BLACK);
         }
