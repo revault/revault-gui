@@ -14,7 +14,7 @@ pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
 pub use stakeholder::{StakeholderHomeState, StakeholderNetworkState};
 
-use super::message::{Context, Message};
+use super::{message::Message, view::Context};
 
 pub trait State {
     fn view(&mut self, ctx: &Context) -> Element<Message>;

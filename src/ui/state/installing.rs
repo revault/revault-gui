@@ -1,9 +1,9 @@
 use iced::{Command, Element};
 
 use crate::ui::{
-    message::{Context, Message},
+    message::Message,
     state::State,
-    view::installing::installing_view,
+    view::{installing::installing_view, Context},
 };
 
 #[derive(Debug, Clone)]

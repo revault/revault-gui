@@ -7,9 +7,9 @@ use crate::revaultd::RevaultD;
 
 use crate::ui::{
     error::Error,
-    message::{Context, Message},
+    message::Message,
     state::{cmd::get_blockheight, util::Watch, State},
-    view::{StakeholderHomeView, StakeholderNetworkView},
+    view::{Context, StakeholderHomeView, StakeholderNetworkView},
 };
 
 #[derive(Debug)]

@@ -6,14 +6,16 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
 use tracing::error;
 
-use super::message::{Menu, Message, Role};
+use super::menu::Menu;
+use super::message::Message;
 use super::state::{
     ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
     ManagerSendState, StakeholderHomeState, StakeholderNetworkState, State,
 };
 
+use crate::revault::Role;
 use crate::revaultd::RevaultD;
-use crate::ui::message::Context;
+use crate::ui::view::Context;
 
 pub struct App {
     config: Config,
