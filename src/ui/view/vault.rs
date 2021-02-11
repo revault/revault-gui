@@ -38,6 +38,7 @@ impl VaultView {
 
 #[derive(Debug)]
 pub struct VaultModal {
+    copy_button: iced::button::State,
     cancel_button: iced::button::State,
     scroll: scrollable::State,
 }
@@ -45,6 +46,7 @@ pub struct VaultModal {
 impl VaultModal {
     pub fn new() -> Self {
         VaultModal {
+            copy_button: iced::button::State::default(),
             cancel_button: iced::button::State::default(),
             scroll: scrollable::State::new(),
         }
@@ -87,7 +89,20 @@ impl VaultModal {
                                                         .push(badge::tx_deposit())
                                                         .push(
                                                             Column::new()
-                                                                .push(text::small(&vlt.txid))
+                                                                .push(
+                                                                    Row::new()
+                                                                        .push(text::small(
+                                                                            &vlt.txid,
+                                                                        ))
+                                                                        .push(button::clipboard(
+                                                                            &mut self.copy_button,
+                                                                            Message::Clipboard(
+                                                                                vlt.txid
+                                                                                    .to_string(),
+                                                                            ),
+                                                                        ))
+                                                                        .align_items(Align::Center),
+                                                                )
                                                                 .push(text::small(&format!(
                                                                     "{}",
                                                                     NaiveDateTime::from_timestamp(

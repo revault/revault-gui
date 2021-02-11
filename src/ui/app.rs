@@ -2,7 +2,9 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use copypasta::{ClipboardContext, ClipboardProvider};
 use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
+use tracing::error;
 
 use super::message::{Menu, Message, Role};
 use super::state::{
@@ -17,7 +19,7 @@ pub struct App {
     config: Config,
     revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
-
+    clipboard: ClipboardContext,
     context: Context,
 }
 
@@ -63,6 +65,7 @@ impl Application for App {
                 config,
                 state: std::boxed::Box::new(state),
                 revaultd: None,
+                clipboard: ClipboardContext::new().expect("Failed to get clipboard provider"),
                 context: Context::new(true, Role::Manager, Menu::Home),
             },
             cmd,
@@ -91,6 +94,12 @@ impl Application for App {
             }
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
+            Message::Clipboard(text) => {
+                if let Err(e) = self.clipboard.set_contents(text) {
+                    error!("Failed to set contents to clipboard: {}", e);
+                };
+                Command::none()
+            }
             _ => self.state.update(message),
         }
     }
