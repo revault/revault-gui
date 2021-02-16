@@ -11,8 +11,8 @@ use crate::revaultd::{
 };
 use crate::ui::{
     error::Error,
-    message::{Context, Message},
-    view::charging::*,
+    message::Message,
+    view::{charging::*, Context},
 };
 
 #[derive(Debug, Clone)]

@@ -5,8 +5,8 @@ use crate::ui::{
     component::{badge, card, navbar, text},
     error::Error,
     icon::dot_icon,
-    message::{Context, Message},
-    view::{layout, sidebar::Sidebar},
+    message::Message,
+    view::{layout, sidebar::Sidebar, Context},
 };
 
 #[derive(Debug)]

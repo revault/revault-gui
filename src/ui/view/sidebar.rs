@@ -1,10 +1,12 @@
 use iced::{pick_list, Column, Container, Length, Row};
 
+use crate::revault::Role;
 use crate::ui::{
     component::{button, separation, text, TransparentPickListStyle},
     icon::{dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon},
-    message::{Context, Menu, Message, Role},
-    view::layout,
+    menu::Menu,
+    message::Message,
+    view::{layout, Context},
 };
 
 #[derive(Debug, Clone)]

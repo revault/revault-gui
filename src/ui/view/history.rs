@@ -3,8 +3,8 @@ use iced::{scrollable, Column, Container, Element, Scrollable};
 use crate::ui::{
     component::navbar,
     error::Error,
-    message::{Context, Message},
-    view::{layout, sidebar::Sidebar},
+    message::Message,
+    view::{layout, sidebar::Sidebar, Context},
 };
 
 #[derive(Debug)]

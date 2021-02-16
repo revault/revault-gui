@@ -5,7 +5,8 @@ use iced::{
 
 use crate::ui::{
     component::{button, card, separation, text},
-    message::{InputMessage, Menu, Message, RecipientMessage},
+    menu::Menu,
+    message::{InputMessage, Message, RecipientMessage},
 };
 
 #[derive(Debug)]

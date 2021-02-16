@@ -5,6 +5,7 @@ mod error;
 mod font;
 mod icon;
 pub mod image;
+mod menu;
 mod message;
 mod state;
 mod view;

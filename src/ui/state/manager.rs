@@ -18,9 +18,10 @@ use crate::revaultd::{
 
 use crate::ui::{
     error::Error,
-    message::{Context, InputMessage, Message, RecipientMessage},
+    message::{InputMessage, Message, RecipientMessage},
     view::manager::{manager_send_input_view, ManagerSendOutputView, ManagerSendView},
     view::vault::VaultView,
+    view::Context,
     view::{ManagerHomeView, ManagerNetworkView},
 };
 

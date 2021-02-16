@@ -17,9 +17,8 @@ use crate::revaultd::{
 
 use crate::ui::{
     error::Error,
-    message::{Context, Message},
-    view::vault::VaultView,
-    view::HistoryView,
+    message::Message,
+    view::{vault::VaultView, Context, HistoryView},
 };
 
 #[derive(Debug)]
