@@ -1,5 +1,5 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use iced::{Align, Column, Container, Element, Length, Row};
+use iced::{Align, Column, Container, Element, Length, Row, TextInput};
 
 use crate::{
     revault::TransactionKind,
@@ -50,7 +50,7 @@ impl DirectSignatureView {
                     .push(
                         button::transparent(
                             &mut self.indirect_button,
-                            button::button_content(None, "Use Psbt"),
+                            button::button_content(None, "Use PSBT"),
                             SignMessage::ChangeMethod,
                         )
                         .width(Length::Shrink),
@@ -82,6 +82,8 @@ impl DirectSignatureView {
 pub struct IndirectSignatureView {
     direct_button: iced::button::State,
     sign_button: iced::button::State,
+    copy_button: iced::button::State,
+    psbt_input: iced::text_input::State,
 }
 
 impl IndirectSignatureView {
@@ -89,14 +91,19 @@ impl IndirectSignatureView {
         IndirectSignatureView {
             direct_button: iced::button::State::default(),
             sign_button: iced::button::State::default(),
+            copy_button: iced::button::State::default(),
+            psbt_input: iced::text_input::State::new(),
         }
     }
 
     pub fn view(
         &mut self,
         _ctx: &Context,
+        processing: &bool,
         transaction_kind: &TransactionKind,
         psbt: &Psbt,
+        psbt_input: &str,
+        warning: Option<&String>,
     ) -> Element<SignMessage> {
         let title = match transaction_kind {
             TransactionKind::Emergency => {
@@ -112,7 +119,9 @@ impl IndirectSignatureView {
             }
         };
 
-        let col = Column::new()
+        let psbt_str = bitcoin::base64::encode(&bitcoin::consensus::serialize(psbt));
+
+        let mut col = Column::new()
             .push(
                 Row::new()
                     .push(Container::new(title).width(Length::Fill))
@@ -127,17 +136,59 @@ impl IndirectSignatureView {
                     .align_items(Align::Center),
             )
             .push(separation().width(Length::Fill))
-            .push(Container::new(text::simple(&format!("{:?}", *psbt))).width(Length::Fill))
             .push(
-                Container::new(button::primary(
+                Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(text::small(&format!("{}", &psbt_str)))
+                                .width(Length::Fill),
+                        )
+                        .push(
+                            button::clipboard(
+                                &mut self.copy_button,
+                                SignMessage::Clipboard(psbt_str),
+                            )
+                            .width(Length::Shrink),
+                        )
+                        .align_items(Align::Center),
+                )
+                .width(Length::Fill),
+            );
+        if let Some(message) = warning {
+            col = col.push(card::alert_warning(Container::new(text::simple(message))));
+        }
+
+        if *processing {
+            col = col
+                .push(Container::new(text::small(&format!("{}", &psbt_input))))
+                .push(Container::new(button::primary_disable(
                     &mut self.sign_button,
-                    button::button_content(None, " Sign transaction "),
+                    button::button_content(None, " Processing "),
                     SignMessage::Sign,
-                ))
-                .width(Length::Fill)
-                .align_x(Align::Center),
-            )
-            .spacing(10);
-        Container::new(col).into()
+                )));
+        } else {
+            col = col
+                .push(
+                    TextInput::new(
+                        &mut self.psbt_input,
+                        "Signed PSBT",
+                        &psbt_input,
+                        SignMessage::PsbtEdited,
+                    )
+                    .size(15)
+                    .width(Length::Fill)
+                    .padding(10),
+                )
+                .push(
+                    Container::new(button::primary(
+                        &mut self.sign_button,
+                        button::button_content(None, " Sign transaction "),
+                        SignMessage::Sign,
+                    ))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+                );
+        }
+        Container::new(col.spacing(10)).into()
     }
 }

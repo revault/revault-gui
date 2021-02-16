@@ -2,11 +2,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use super::{error::Error, menu::Menu};
-use crate::revault::Role;
+use crate::revault::{Role, TransactionKind};
 use crate::revaultd::{
     model::{RevocationTransactions, Vault, VaultTransactions},
     RevaultD, RevaultDError,
 };
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -36,12 +37,15 @@ pub enum Message {
 pub enum SignMessage {
     ChangeMethod,
     Sign,
+    Clipboard(String),
+    PsbtEdited(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum DepositMessage {
     RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     Sign(SignMessage),
+    Signed(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

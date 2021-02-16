@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use bitcoin::util::psbt::PartiallySignedTransaction;
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 use iced::{time, Command, Element, Subscription};
 
@@ -14,7 +14,7 @@ use crate::revaultd::{
 
 use crate::ui::{
     error::Error,
-    message::{DepositMessage, Message},
+    message::{DepositMessage, Message, SignMessage},
     state::{
         cmd::{get_blockheight, get_revocation_txs, list_vaults, list_vaults_with_transactions},
         sign::SignState,
@@ -250,7 +250,9 @@ impl State for StakeholderACKFundsState {
         match message {
             Message::Deposit(i, msg) => {
                 if let Some(deposit) = self.deposits.get_mut(i) {
-                    deposit.update(msg);
+                    return deposit
+                        .update(self.revaultd.clone(), msg)
+                        .map(move |msg| Message::Deposit(i, msg));
                 }
                 Command::none()
             }
@@ -271,7 +273,14 @@ impl State for StakeholderACKFundsState {
             self.deposits
                 .iter_mut()
                 .enumerate()
-                .map(|(i, v)| v.view(ctx).map(move |msg| Message::Deposit(i, msg)))
+                .map(|(i, v)| {
+                    v.view(ctx).map(move |msg| {
+                        if let DepositMessage::Sign(SignMessage::Clipboard(psbt)) = msg {
+                            return Message::Clipboard(psbt);
+                        }
+                        Message::Deposit(i, msg)
+                    })
+                })
                 .collect(),
         )
     }
@@ -290,10 +299,11 @@ pub enum Deposit {
         vault: Vault,
     },
     Signing {
+        warning: Option<String>,
         vault: Vault,
-        emergency_tx: (PartiallySignedTransaction, bool),
-        emergency_unvault_tx: (PartiallySignedTransaction, bool),
-        cancel_tx: (PartiallySignedTransaction, bool),
+        emergency_tx: (Psbt, bool),
+        emergency_unvault_tx: (Psbt, bool),
+        cancel_tx: (Psbt, bool),
         view: StakeholderACKDepositView,
         signer: SignState,
     },
@@ -307,25 +317,69 @@ impl Deposit {
         Deposit::Pending { vault }
     }
 
-    fn update(&mut self, message: DepositMessage) {
+    fn update(
+        &mut self,
+        revaultd: Arc<RevaultD>,
+        message: DepositMessage,
+    ) -> Command<DepositMessage> {
         match message {
+            DepositMessage::Signed(res) => {
+                if let Deposit::Signing { vault, warning, .. } = self {
+                    if let Err(e) = res {
+                        *warning = Some(format!("Error: {}", e));
+                    } else {
+                        *self = Deposit::Signed {
+                            vault: vault.clone(),
+                        };
+                    }
+                }
+            }
             DepositMessage::RevocationTransactions(res) => {
                 if let Ok(txs) = res {
                     self.signing(txs)
                 }
             }
             DepositMessage::Sign(msg) => {
-                if let Deposit::Signing { signer, .. } = self {
+                if let Deposit::Signing {
+                    signer,
+                    emergency_tx,
+                    emergency_unvault_tx,
+                    cancel_tx,
+                    ..
+                } = self
+                {
                     signer.update(msg);
+                    if let Some(psbt) = &signer.signed_psbt {
+                        match signer.transaction_kind {
+                            TransactionKind::Emergency => {
+                                *emergency_tx = (psbt.clone(), true);
+                                *signer = SignState::new(
+                                    emergency_unvault_tx.0.clone(),
+                                    TransactionKind::EmergencyUnvault,
+                                );
+                            }
+                            TransactionKind::EmergencyUnvault => {
+                                *emergency_unvault_tx = (psbt.clone(), true);
+                                *signer =
+                                    SignState::new(cancel_tx.0.clone(), TransactionKind::Cancel);
+                            }
+                            TransactionKind::Cancel => {
+                                *cancel_tx = (psbt.clone(), true);
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
+        Command::none()
     }
 
     fn signing(&mut self, txs: RevocationTransactions) {
         if let Deposit::Pending { vault } = self {
             let signer = SignState::new(txs.emergency_tx.clone(), TransactionKind::Emergency);
             *self = Deposit::Signing {
+                warning: None,
                 vault: vault.to_owned(),
                 view: StakeholderACKDepositView::new(),
                 emergency_tx: (txs.emergency_tx, false),
@@ -341,6 +395,7 @@ impl Deposit {
             Self::Signed { vault } => stakeholder_deposit_signed(ctx, vault),
             Self::Pending { vault } => stakeholder_deposit_pending(ctx, vault),
             Self::Signing {
+                warning,
                 vault,
                 view,
                 emergency_tx,
