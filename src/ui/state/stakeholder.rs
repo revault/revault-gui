@@ -16,7 +16,10 @@ use crate::ui::{
     error::Error,
     message::{DepositMessage, Message, SignMessage},
     state::{
-        cmd::{get_blockheight, get_revocation_txs, list_vaults, list_vaults_with_transactions},
+        cmd::{
+            get_blockheight, get_revocation_txs, list_vaults, list_vaults_with_transactions,
+            set_revocation_txs,
+        },
         sign::SignState,
         util::Watch,
         State,
@@ -345,6 +348,7 @@ impl Deposit {
                     emergency_tx,
                     emergency_unvault_tx,
                     cancel_tx,
+                    vault,
                     ..
                 } = self
                 {
@@ -365,6 +369,16 @@ impl Deposit {
                             }
                             TransactionKind::Cancel => {
                                 *cancel_tx = (psbt.clone(), true);
+                                return Command::perform(
+                                    set_revocation_txs(
+                                        revaultd,
+                                        vault.outpoint(),
+                                        emergency_tx.0.clone(),
+                                        emergency_unvault_tx.0.clone(),
+                                        cancel_tx.0.clone(),
+                                    ),
+                                    DepositMessage::Signed,
+                                );
                             }
                             _ => {}
                         }

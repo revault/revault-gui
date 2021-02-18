@@ -1,3 +1,4 @@
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::sync::Arc;
 
 use crate::revaultd::{
@@ -38,4 +39,14 @@ pub async fn get_revocation_txs(
     outpoint: String,
 ) -> Result<RevocationTransactions, RevaultDError> {
     revaultd.get_revocation_txs(&outpoint)
+}
+
+pub async fn set_revocation_txs(
+    revaultd: Arc<RevaultD>,
+    outpoint: String,
+    emergency_tx: Psbt,
+    emergency_unvault_tx: Psbt,
+    cancel_tx: Psbt,
+) -> Result<(), RevaultDError> {
+    revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)
 }

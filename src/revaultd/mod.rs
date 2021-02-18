@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::process::Command;
 
+use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, span, Level};
@@ -120,6 +121,23 @@ impl RevaultD {
         outpoint: &str,
     ) -> Result<RevocationTransactions, RevaultDError> {
         self.call("getrevocationtxs", Some(vec![outpoint]))
+    }
+
+    pub fn set_revocation_txs(
+        &self,
+        outpoint: &str,
+        emergency_tx: &Psbt,
+        emergency_unvault_tx: &Psbt,
+        cancel_tx: &Psbt,
+    ) -> Result<(), RevaultDError> {
+        let emergency = base64::encode(&consensus::serialize(emergency_tx));
+        let emergency_unvault = base64::encode(&consensus::serialize(emergency_unvault_tx));
+        let cancel = base64::encode(&consensus::serialize(cancel_tx));
+        let _res: serde_json::value::Value = self.call(
+            "revocationtxs",
+            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+        )?;
+        Ok(())
     }
 }
 
