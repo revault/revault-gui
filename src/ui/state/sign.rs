@@ -1,5 +1,4 @@
 use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
-use serde::Deserialize;
 
 use iced::{Command, Element};
 

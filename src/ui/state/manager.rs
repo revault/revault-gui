@@ -93,7 +93,7 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    pub fn calculate_balance(&mut self, vaults: &Vec<(Vault, VaultTransactions)>) {
+    pub fn calculate_balance(&mut self, vaults: &[(Vault, VaultTransactions)]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
         for (vault, _) in vaults {

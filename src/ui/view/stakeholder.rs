@@ -1,7 +1,4 @@
-use iced::{
-    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Scrollable,
-    TextInput,
-};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use bitcoin::util::psbt::PartiallySignedTransaction;
 
@@ -11,7 +8,7 @@ use crate::ui::{
     component::{badge, button, card, separation, text, ContainerBackgroundStyle},
     icon,
     menu::Menu,
-    message::{DepositMessage, Message, RecipientMessage},
+    message::{DepositMessage, Message},
     view::Context,
 };
 
@@ -144,16 +141,21 @@ pub fn stakeholder_deposit_pending<'a>(
 }
 
 #[derive(Debug)]
-pub struct StakeholderACKDepositView {}
+pub struct StakeholderACKDepositView {
+    retry_button: iced::button::State,
+}
 
 impl StakeholderACKDepositView {
     pub fn new() -> Self {
-        StakeholderACKDepositView {}
+        StakeholderACKDepositView {
+            retry_button: iced::button::State::default(),
+        }
     }
 
     pub fn view<'a>(
         &'a mut self,
         _ctx: &Context,
+        warning: Option<&String>,
         deposit: &Vault,
         emergency_tx: &(PartiallySignedTransaction, bool),
         emergency_unvault_tx: &(PartiallySignedTransaction, bool),
@@ -244,50 +246,59 @@ impl StakeholderACKDepositView {
             );
         };
 
-        card::white(Container::new(
-            Column::new()
-                .push(Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(badge::shield())
-                                    .push(
-                                        Container::new(text::bold(text::small(&deposit.address)))
-                                            .align_y(Align::Center),
-                                    )
-                                    .spacing(20)
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Fill),
+        let mut col = Column::new()
+            .push(Container::new(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(badge::shield())
+                                .push(
+                                    Container::new(text::bold(text::small(&deposit.address)))
+                                        .align_y(Align::Center),
+                                )
+                                .spacing(20)
+                                .align_items(Align::Center),
                         )
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(text::bold(text::simple(&format!(
-                                        "{}",
-                                        deposit.amount as f64 / 100000000_f64
-                                    ))))
-                                    .push(text::small(" BTC"))
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Shrink),
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(text::bold(text::simple(&format!(
+                                    "{}",
+                                    deposit.amount as f64 / 100000000_f64
+                                ))))
+                                .push(text::small(" BTC"))
+                                .align_items(Align::Center),
                         )
-                        .spacing(20)
-                        .align_items(Align::Center),
-                ))
-                .push(separation().width(Length::Fill))
-                .push(row_transactions.spacing(10))
-                .push(signer)
-                .spacing(20)
-                .push(Column::new()),
-        ))
-        .into()
-    }
-}
+                        .width(Length::Shrink),
+                    )
+                    .spacing(20)
+                    .align_items(Align::Center),
+            ))
+            .push(separation().width(Length::Fill))
+            .push(row_transactions.spacing(10))
+            .push(signer)
+            .spacing(20)
+            .push(Column::new());
 
-fn sign_deposit_txs<'a>(
-    emergency_tx: (PartiallySignedTransaction, bool),
-) -> Container<'a, Message> {
-    Container::new(Column::new())
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(
+                Column::new()
+                    .push(Container::new(text::simple(&format!(
+                        "Failed to connect to revaultd: {}",
+                        error
+                    ))))
+                    .push(button::primary(
+                        &mut self.retry_button,
+                        button::button_content(None, "Retry"),
+                        DepositMessage::Retry,
+                    ))
+                    .spacing(20),
+            )))
+        }
+
+        card::white(Container::new(col)).into()
+    }
 }

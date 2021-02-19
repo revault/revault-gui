@@ -4,7 +4,7 @@ use iced::{Align, Column, Container, Element, Length, Row, TextInput};
 use crate::{
     revault::TransactionKind,
     ui::{
-        component::{badge, button, card, separation, text, ContainerBackgroundStyle},
+        component::{button, card, separation, text},
         message::SignMessage,
         view::Context,
     },
@@ -140,8 +140,7 @@ impl IndirectSignatureView {
                 Container::new(
                     Row::new()
                         .push(
-                            Container::new(text::small(&format!("{}", &psbt_str)))
-                                .width(Length::Fill),
+                            Container::new(text::small(&psbt_str.to_string())).width(Length::Fill),
                         )
                         .push(
                             button::clipboard(
@@ -160,7 +159,7 @@ impl IndirectSignatureView {
 
         if *processing {
             col = col
-                .push(Container::new(text::small(&format!("{}", &psbt_input))))
+                .push(Container::new(text::small(&psbt_input.to_string())))
                 .push(Container::new(button::primary_disable(
                     &mut self.sign_button,
                     button::button_content(None, " Processing "),

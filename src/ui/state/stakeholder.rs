@@ -58,7 +58,7 @@ impl StakeholderHomeState {
         self.calculate_balance(&vaults);
     }
 
-    fn calculate_balance(&mut self, vaults: &Vec<(Vault, VaultTransactions)>) {
+    fn calculate_balance(&mut self, vaults: &[(Vault, VaultTransactions)]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
         let mut unsecured_amount: u64 = 0;
@@ -85,12 +85,11 @@ impl StakeholderHomeState {
 
 impl State for StakeholderHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::VaultsWithTransactions(res) => match res {
+        if let Message::VaultsWithTransactions(res) = message {
+            match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
-            },
-            _ => {}
+            }
         }
         Command::none()
     }
@@ -221,26 +220,27 @@ impl StakeholderACKFundsState {
         }
     }
 
-    fn update_deposits(&mut self, vaults: Vec<Vault>) -> Command<Message> {
-        self.calculate_balance(&vaults);
-        self.deposits = vaults.into_iter().map(|vlt| Deposit::new(vlt)).collect();
-        if let Some(Deposit::Pending { vault }) = self.deposits.first() {
+    fn start_signing_deposit(&mut self, index: usize) -> Command<Message> {
+        if let Some(Deposit::Pending { vault }) = self.deposits.get_mut(index) {
             return Command::perform(
                 get_revocation_txs(self.revaultd.clone(), vault.outpoint()),
-                |res| Message::Deposit(0, DepositMessage::RevocationTransactions(res)),
+                move |res| Message::Deposit(index, DepositMessage::RevocationTransactions(res)),
             );
         }
         Command::none()
     }
 
-    fn calculate_balance(&mut self, vaults: &Vec<Vault>) {
+    fn update_deposits(&mut self, vaults: Vec<Vault>) -> Command<Message> {
+        self.calculate_balance(&vaults);
+        self.deposits = vaults.into_iter().map(Deposit::new).collect();
+        self.start_signing_deposit(0)
+    }
+
+    fn calculate_balance(&mut self, vaults: &[Vault]) {
         let mut balance: u64 = 0;
         for vault in vaults {
-            match vault.status {
-                VaultStatus::Funded => {
-                    balance += vault.amount;
-                }
-                _ => {}
+            if vault.status == VaultStatus::Funded {
+                balance += vault.amount;
             }
         }
 
@@ -253,9 +253,13 @@ impl State for StakeholderACKFundsState {
         match message {
             Message::Deposit(i, msg) => {
                 if let Some(deposit) = self.deposits.get_mut(i) {
-                    return deposit
+                    let cmd = deposit
                         .update(self.revaultd.clone(), msg)
                         .map(move |msg| Message::Deposit(i, msg));
+                    if deposit.signed() {
+                        return Command::batch(vec![cmd, self.start_signing_deposit(i + 1)]);
+                    }
+                    return cmd;
                 }
                 Command::none()
             }
@@ -320,12 +324,39 @@ impl Deposit {
         Deposit::Pending { vault }
     }
 
+    fn signed(&self) -> bool {
+        matches!(self, Self::Signed { .. })
+    }
+
     fn update(
         &mut self,
         revaultd: Arc<RevaultD>,
         message: DepositMessage,
     ) -> Command<DepositMessage> {
         match message {
+            DepositMessage::Retry => {
+                if let Deposit::Signing {
+                    warning,
+                    vault,
+                    emergency_tx,
+                    emergency_unvault_tx,
+                    cancel_tx,
+                    ..
+                } = self
+                {
+                    *warning = None;
+                    return Command::perform(
+                        set_revocation_txs(
+                            revaultd,
+                            vault.outpoint(),
+                            emergency_tx.0.clone(),
+                            emergency_unvault_tx.0.clone(),
+                            cancel_tx.0.clone(),
+                        ),
+                        DepositMessage::Signed,
+                    );
+                }
+            }
             DepositMessage::Signed(res) => {
                 if let Deposit::Signing { vault, warning, .. } = self {
                     if let Err(e) = res {
@@ -418,11 +449,12 @@ impl Deposit {
                 signer,
             } => view.view(
                 ctx,
+                warning.as_ref(),
                 vault,
                 emergency_tx,
                 emergency_unvault_tx,
                 cancel_tx,
-                signer.view(ctx).map(move |msg| DepositMessage::Sign(msg)),
+                signer.view(ctx).map(DepositMessage::Sign),
             ),
         }
     }

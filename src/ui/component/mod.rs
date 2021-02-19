@@ -103,12 +103,11 @@ pub mod card {
     impl container::StyleSheet for SuccessCardStyle {
         fn style(&self) -> container::Style {
             container::Style {
-                border_color: color::SUCCESS.into(),
+                border_color: color::SUCCESS,
                 background: color::SUCCESS_LIGHT.into(),
                 text_color: color::FOREGROUND.into(),
                 border_radius: 10.0,
                 border_width: 1.0,
-                ..container::Style::default()
             }
         }
     }
@@ -139,7 +138,7 @@ pub mod card {
         fn style(&self) -> container::Style {
             container::Style {
                 border_radius: 10.0,
-                border_color: iced::Color::BLACK.into(),
+                border_color: iced::Color::BLACK,
                 border_width: 2.0,
                 background: color::FOREGROUND.into(),
                 ..container::Style::default()
@@ -156,11 +155,10 @@ pub mod card {
         fn style(&self) -> container::Style {
             container::Style {
                 border_radius: 10.0,
-                border_color: color::INFO_LIGHT.into(),
+                border_color: color::INFO_LIGHT,
                 border_width: 2.0,
                 background: color::FOREGROUND.into(),
                 text_color: color::INFO_LIGHT.into(),
-                ..container::Style::default()
             }
         }
     }

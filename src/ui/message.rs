@@ -2,12 +2,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use super::{error::Error, menu::Menu};
-use crate::revault::{Role, TransactionKind};
+use crate::revault::Role;
 use crate::revaultd::{
     model::{RevocationTransactions, Vault, VaultTransactions},
     RevaultD, RevaultDError,
 };
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -46,6 +45,8 @@ pub enum DepositMessage {
     RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     Sign(SignMessage),
     Signed(Result<(), RevaultDError>),
+    /// Message ask for Deposit State to retry connecting to revaultd.
+    Retry,
 }
 
 #[derive(Debug, Clone)]
