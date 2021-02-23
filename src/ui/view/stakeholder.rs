@@ -1,4 +1,4 @@
-use iced::{scrollable, Align, Column, Container, Element, Length, Row};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
 use bitcoin::util::psbt::PartiallySignedTransaction;
 
@@ -14,16 +14,14 @@ use crate::ui::{
 
 #[derive(Debug)]
 pub struct StakeholderACKFundsView {
-    scroll_left: scrollable::State,
-    scroll_right: scrollable::State,
+    scroll: scrollable::State,
     close_button: iced::button::State,
 }
 
 impl StakeholderACKFundsView {
     pub fn new() -> Self {
         StakeholderACKFundsView {
-            scroll_left: scrollable::State::new(),
-            scroll_right: scrollable::State::new(),
+            scroll: scrollable::State::new(),
             close_button: iced::button::State::new(),
         }
     }
@@ -55,7 +53,7 @@ impl StakeholderACKFundsView {
                     .align_x(Align::Center),
             )
             .spacing(50);
-        Container::new(col)
+        Container::new(Scrollable::new(&mut self.scroll).push(col))
             .width(Length::Fill)
             .height(Length::Fill)
             .style(ContainerBackgroundStyle)
