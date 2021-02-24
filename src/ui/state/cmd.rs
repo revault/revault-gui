@@ -19,16 +19,16 @@ pub async fn list_vaults_with_transactions(
 ) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
     let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
     let outpoints = vaults.iter().map(|vlt| vlt.outpoint()).collect();
-    let txs = revaultd.list_transactions(Some(outpoints))?;
+    let txs = revaultd.list_onchain_transactions(Some(outpoints))?;
 
     let mut vec = Vec::new();
     for vlt in vaults {
         if let Some(i) = txs
-            .transactions
+            .onchain_transactions
             .iter()
-            .position(|tx| tx.outpoint == vlt.outpoint())
+            .position(|tx| tx.vault_outpoint == vlt.outpoint())
         {
-            vec.push((vlt, txs.transactions[i].to_owned()));
+            vec.push((vlt, txs.onchain_transactions[i].to_owned()));
         }
     }
     Ok(vec)

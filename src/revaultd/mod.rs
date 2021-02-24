@@ -103,16 +103,16 @@ impl RevaultD {
         self.call("listvaults", Option::<Request>::None)
     }
 
-    pub fn list_transactions(
+    pub fn list_onchain_transactions(
         &self,
         outpoints: Option<Vec<String>>,
-    ) -> Result<ListTransactionsResponse, RevaultDError> {
+    ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
         match outpoints {
             Some(list) => self.call(
-                "listtransactions",
+                "listonchaintransactions",
                 Some(vec![ListTransactionsRequest(list)]),
             ),
-            None => self.call("listtransactions", Option::<Request>::None),
+            None => self.call("listonchaintransactions", Option::<Request>::None),
         }
     }
 
@@ -171,8 +171,8 @@ pub struct ListTransactionsRequest(Vec<String>);
 
 /// listtransactions response
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListTransactionsResponse {
-    pub transactions: Vec<VaultTransactions>,
+pub struct ListOnchainTransactionsResponse {
+    pub onchain_transactions: Vec<VaultTransactions>,
 }
 
 // RevaultD can start only if a config path is given.
