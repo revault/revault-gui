@@ -4,4 +4,5 @@ pub enum Menu {
     History,
     Network,
     Send,
+    ACKFunds,
 }

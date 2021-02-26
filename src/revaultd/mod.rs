@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::process::Command;
 
+use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, span, Level};
@@ -12,7 +13,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::{Vault, VaultTransactions};
+use model::{RevocationTransactions, Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -102,17 +103,41 @@ impl RevaultD {
         self.call("listvaults", Option::<Request>::None)
     }
 
-    pub fn list_transactions(
+    pub fn list_onchain_transactions(
         &self,
         outpoints: Option<Vec<String>>,
-    ) -> Result<ListTransactionsResponse, RevaultDError> {
+    ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
         match outpoints {
             Some(list) => self.call(
-                "listtransactions",
+                "listonchaintransactions",
                 Some(vec![ListTransactionsRequest(list)]),
             ),
-            None => self.call("listtransactions", Option::<Request>::None),
+            None => self.call("listonchaintransactions", Option::<Request>::None),
         }
+    }
+
+    pub fn get_revocation_txs(
+        &self,
+        outpoint: &str,
+    ) -> Result<RevocationTransactions, RevaultDError> {
+        self.call("getrevocationtxs", Some(vec![outpoint]))
+    }
+
+    pub fn set_revocation_txs(
+        &self,
+        outpoint: &str,
+        emergency_tx: &Psbt,
+        emergency_unvault_tx: &Psbt,
+        cancel_tx: &Psbt,
+    ) -> Result<(), RevaultDError> {
+        let emergency = base64::encode(&consensus::serialize(emergency_tx));
+        let emergency_unvault = base64::encode(&consensus::serialize(emergency_unvault_tx));
+        let cancel = base64::encode(&consensus::serialize(cancel_tx));
+        let _res: serde_json::value::Value = self.call(
+            "revocationtxs",
+            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+        )?;
+        Ok(())
     }
 }
 
@@ -146,8 +171,8 @@ pub struct ListTransactionsRequest(Vec<String>);
 
 /// listtransactions response
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListTransactionsResponse {
-    pub transactions: Vec<VaultTransactions>,
+pub struct ListOnchainTransactionsResponse {
+    pub onchain_transactions: Vec<VaultTransactions>,
 }
 
 // RevaultD can start only if a config path is given.

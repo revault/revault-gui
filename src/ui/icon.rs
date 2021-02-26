@@ -59,6 +59,18 @@ pub fn clipboard_icon() -> Text {
     icon('\u{F28E}')
 }
 
+pub fn shield_icon() -> Text {
+    icon('\u{F517}')
+}
+
+pub fn shield_notif_icon() -> Text {
+    icon('\u{F50A}')
+}
+
+pub fn shield_check_icon() -> Text {
+    icon('\u{F509}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

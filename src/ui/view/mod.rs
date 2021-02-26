@@ -6,12 +6,15 @@ mod layout;
 pub mod manager;
 mod network;
 mod sidebar;
+pub mod sign;
+pub mod stakeholder;
 pub mod vault;
 
 pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use manager::ManagerSendView;
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
+pub use stakeholder::{StakeholderACKDepositView, StakeholderACKFundsView};
 
 use bitcoin::Network;
 

@@ -56,6 +56,16 @@ impl container::StyleSheet for SepStyle {
     }
 }
 
+pub struct ContainerBackgroundStyle;
+impl container::StyleSheet for ContainerBackgroundStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::BACKGROUND.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
 pub struct TransparentPickListStyle;
 impl iced::pick_list::StyleSheet for TransparentPickListStyle {
     fn active(&self) -> iced::pick_list::Style {
@@ -85,6 +95,23 @@ pub mod card {
     use crate::ui::color;
     use iced::{container, Container};
 
+    pub fn success<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+        Container::new(content).padding(15).style(SuccessCardStyle)
+    }
+
+    pub struct SuccessCardStyle;
+    impl container::StyleSheet for SuccessCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_color: color::SUCCESS,
+                background: color::SUCCESS_LIGHT.into(),
+                text_color: color::FOREGROUND.into(),
+                border_radius: 10.0,
+                border_width: 1.0,
+            }
+        }
+    }
+
     pub fn rounded<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content).style(RoundedCardStyle)
     }
@@ -100,7 +127,25 @@ pub mod card {
         }
     }
 
-    #[allow(dead_code)]
+    pub fn border_black<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+        Container::new(content)
+            .padding(15)
+            .style(BorderBlackCardStyle)
+    }
+
+    pub struct BorderBlackCardStyle;
+    impl container::StyleSheet for BorderBlackCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                border_color: iced::Color::BLACK,
+                border_width: 2.0,
+                background: color::FOREGROUND.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
     pub fn grey<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content).padding(15).style(GreyCardStyle)
     }
@@ -110,8 +155,10 @@ pub mod card {
         fn style(&self) -> container::Style {
             container::Style {
                 border_radius: 10.0,
-                background: color::BACKGROUND_LIGHT.into(),
-                ..container::Style::default()
+                border_color: color::INFO_LIGHT,
+                border_width: 2.0,
+                background: color::FOREGROUND.into(),
+                text_color: color::INFO_LIGHT.into(),
             }
         }
     }
@@ -167,10 +214,6 @@ pub mod text {
     use crate::ui::{color, font};
     use iced::{Container, Text};
 
-    pub fn large_title(content: &str) -> Text {
-        Text::new(content).font(font::BOLD).size(50)
-    }
-
     pub fn simple(content: &str) -> Text {
         Text::new(content).font(font::REGULAR).size(20)
     }
@@ -199,9 +242,75 @@ pub mod text {
 pub mod badge {
     use crate::ui::{
         color,
-        icon::{block_icon, deposit_icon},
+        icon::{block_icon, deposit_icon, shield_check_icon, shield_icon, shield_notif_icon},
     };
     use iced::{container, Container, Length};
+
+    pub fn shield<'a, T: 'a>() -> Container<'a, T> {
+        let icon = shield_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(ShieldBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct ShieldBadgeStyle;
+    impl container::StyleSheet for ShieldBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::FOREGROUND.into(),
+                text_color: color::CANCEL.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn shield_success<'a, T: 'a>() -> Container<'a, T> {
+        let icon = shield_check_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(ShieldSuccessBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct ShieldSuccessBadgeStyle;
+    impl container::StyleSheet for ShieldSuccessBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::FOREGROUND.into(),
+                text_color: color::SUCCESS.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn shield_notif<'a, T: 'a>() -> Container<'a, T> {
+        let icon = shield_notif_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(ShieldNotifBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct ShieldNotifBadgeStyle;
+    impl container::StyleSheet for ShieldNotifBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::FOREGROUND.into(),
+                text_color: color::CANCEL.into(),
+                ..container::Style::default()
+            }
+        }
+    }
 
     pub fn block<'a, T: 'a>() -> Container<'a, T> {
         let icon = block_icon().width(Length::Units(20));
