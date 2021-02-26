@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Instant;
 
 use super::{error::Error, menu::Menu};
 use crate::revault::Role;
@@ -15,7 +14,6 @@ pub enum Message {
     ChangeRole(Role),
     Syncing(Result<f64, RevaultDError>),
     Synced(Arc<RevaultD>),
-    Tick(Instant),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
     VaultsWithTransactions(Result<Vec<(Vault, VaultTransactions)>, RevaultDError>),
