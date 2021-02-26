@@ -69,47 +69,34 @@ pub enum VaultStatus {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct VaultTransactions {
-    pub outpoint: String,
+    pub vault_outpoint: String,
     pub deposit: BroadcastedTransaction,
-    pub unvault: VaultTransaction,
-    pub spend: Option<VaultTransaction>,
-    pub cancel: VaultTransaction,
-    pub emergency: VaultTransaction,
-    pub unvault_emergency: VaultTransaction,
+    pub unvault: Option<BroadcastedTransaction>,
+    pub spend: Option<BroadcastedTransaction>,
+    pub cancel: Option<BroadcastedTransaction>,
+    pub emergency: Option<BroadcastedTransaction>,
+    pub unvault_emergency: Option<BroadcastedTransaction>,
 }
 
 impl VaultTransactions {
     pub fn last_broadcasted_tx(&self) -> &BroadcastedTransaction {
-        if let Some(VaultTransaction::Broadcasted(tx)) = &self.spend {
+        if let Some(tx) = &self.spend {
             return tx;
         }
-
-        if let VaultTransaction::Broadcasted(tx) = &self.cancel {
+        if let Some(tx) = &self.cancel {
             return tx;
         }
-
-        if let VaultTransaction::Broadcasted(tx) = &self.unvault_emergency {
+        if let Some(tx) = &self.unvault_emergency {
             return tx;
         }
-
-        if let VaultTransaction::Broadcasted(tx) = &self.emergency {
+        if let Some(tx) = &self.emergency {
             return tx;
         }
-
-        if let VaultTransaction::Broadcasted(tx) = &self.unvault {
+        if let Some(tx) = &self.unvault {
             return tx;
         }
-
         &self.deposit
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(untagged)]
-pub enum VaultTransaction {
-    Broadcasted(BroadcastedTransaction),
-    Signed(SignedTransaction),
-    Unsigned(UnsignedTransaction),
 }
 
 #[derive(Debug, Clone, Deserialize)]
