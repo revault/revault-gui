@@ -38,7 +38,7 @@ impl ManagerHomeView {
                         .push(
                             Row::new()
                                 .push(Column::new().width(Length::FillPortion(1)))
-                                .push(balance_view(balance).width(Length::FillPortion(1))),
+                                .push(balance_view(ctx, balance).width(Length::FillPortion(1))),
                         )
                         .push(Column::with_children(vaults))
                         .spacing(20),
@@ -83,13 +83,14 @@ impl StakeholderHomeView {
                             Row::new()
                                 .push(
                                     unsecured_fund_view(
+                                        ctx,
                                         &mut self.ack_fund_button,
                                         &unsecured_fund_balance,
                                     )
                                     .max_width(400)
                                     .width(Length::Fill),
                                 )
-                                .push(balance_view(balance).width(Length::Fill))
+                                .push(balance_view(ctx, balance).width(Length::Fill))
                                 .spacing(20),
                         )
                         .push(Column::with_children(vaults))
@@ -102,6 +103,7 @@ impl StakeholderHomeView {
 }
 
 fn unsecured_fund_view<'a>(
+    ctx: &Context,
     button_state: &'a mut iced::button::State,
     fund: &u64,
 ) -> Container<'a, Message> {
@@ -116,9 +118,12 @@ fn unsecured_fund_view<'a>(
                             Row::new()
                                 .push(text::bold(text::simple(&format!(
                                     "{}",
-                                    *fund as f64 / 100000000_f64
+                                    ctx.converter.converts(*fund),
                                 ))))
-                                .push(text::simple("  BTC received since last signing")),
+                                .push(text::simple(&format!(
+                                    "  {} received since last signing",
+                                    ctx.converter.unit
+                                ))),
                         )
                         .width(Length::Fill)
                         .align_x(iced::Align::End),
@@ -141,7 +146,9 @@ fn unsecured_fund_view<'a>(
 }
 
 /// render balance card from a tuple: (active, inactive)
-fn balance_view<'a, T: 'a>(balance: &(u64, u64)) -> Container<'a, T> {
+fn balance_view<'a, T: 'a>(ctx: &Context, balance: &(u64, u64)) -> Container<'a, T> {
+    let active_balance = ctx.converter.converts(balance.0);
+    let inactive_balance = ctx.converter.converts(balance.1);
     let col = Column::new()
         .push(text::bold(text::simple("Balance:")))
         .push(
@@ -149,13 +156,10 @@ fn balance_view<'a, T: 'a>(balance: &(u64, u64)) -> Container<'a, T> {
                 .padding(5)
                 .push(Container::new(text::simple("active")).width(Length::Fill))
                 .push(
-                    Container::new(text::bold(text::simple(&format!(
-                        "{}",
-                        balance.0 as f64 / 100000000_f64
-                    ))))
-                    .width(Length::Shrink),
+                    Container::new(text::bold(text::simple(&format!("{}", active_balance))))
+                        .width(Length::Shrink),
                 )
-                .push(text::simple(" BTC")),
+                .push(text::simple(&format!(" {}", ctx.converter.unit))),
         )
         .push(separation().width(Length::Fill))
         .push(
@@ -163,13 +167,10 @@ fn balance_view<'a, T: 'a>(balance: &(u64, u64)) -> Container<'a, T> {
                 .padding(5)
                 .push(Container::new(text::simple("inactive")).width(Length::Fill))
                 .push(
-                    Container::new(text::bold(text::simple(&format!(
-                        "{}",
-                        balance.1 as f64 / 100000000_f64
-                    ))))
-                    .width(Length::Shrink),
+                    Container::new(text::bold(text::simple(&format!("{}", inactive_balance))))
+                        .width(Length::Shrink),
                 )
-                .push(text::simple(" BTC")),
+                .push(text::simple(&format!(" {}", ctx.converter.unit))),
         );
 
     card::simple(Container::new(col))

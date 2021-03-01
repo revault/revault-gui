@@ -6,6 +6,7 @@ use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
+mod conversion;
 mod revault;
 mod revaultd;
 mod ui;
