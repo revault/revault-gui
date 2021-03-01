@@ -1,13 +1,11 @@
 use std::convert::From;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 
-use iced::{time, Command, Element, Subscription};
+use iced::{Command, Element};
 
 use super::{
     cmd::{get_blockheight, list_vaults_with_transactions},
-    util::Watch,
     State,
 };
 
@@ -32,8 +30,8 @@ pub struct ManagerHomeState {
 
     /// balance as active and inactive tuple.
     balance: (u64, u64),
-    blockheight: Watch<u64>,
-    warning: Watch<Error>,
+    blockheight: u64,
+    warning: Option<Error>,
 
     vaults: Vec<ManagerVault>,
     selected_vault: Option<ManagerVault>,
@@ -45,9 +43,9 @@ impl ManagerHomeState {
             revaultd,
             balance: (0, 0),
             view: ManagerHomeView::new(),
-            blockheight: Watch::None,
+            blockheight: 0,
             vaults: Vec::new(),
-            warning: Watch::None,
+            warning: None,
             selected_vault: None,
         }
     }
@@ -81,18 +79,6 @@ impl ManagerHomeState {
         return Command::none();
     }
 
-    pub fn on_tick(&mut self) -> Command<Message> {
-        if !self.blockheight.is_recent(Duration::from_secs(5)) {
-            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
-        }
-
-        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
-            self.warning.reset()
-        }
-
-        Command::none()
-    }
-
     pub fn calculate_balance(&mut self, vaults: &[(Vault, VaultTransactions)]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
@@ -115,7 +101,6 @@ impl ManagerHomeState {
 impl State for ManagerHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Tick(_) => return self.on_tick(),
             Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
             Message::VaultsWithTransactions(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
@@ -144,10 +129,6 @@ impl State for ManagerHomeState {
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
         )
-    }
-
-    fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
     }
 
     fn load(&self) -> Command<Message> {
@@ -411,8 +392,8 @@ impl ManagerSendInput {
 pub struct ManagerNetworkState {
     revaultd: Arc<RevaultD>,
 
-    blockheight: Watch<u64>,
-    warning: Watch<Error>,
+    blockheight: Option<u64>,
+    warning: Option<Error>,
 
     view: ManagerNetworkView,
 }
@@ -421,29 +402,16 @@ impl ManagerNetworkState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerNetworkState {
             revaultd,
-            blockheight: Watch::None,
-            warning: Watch::None,
+            blockheight: None,
+            warning: None,
             view: ManagerNetworkView::new(),
         }
-    }
-
-    pub fn on_tick(&mut self) -> Command<Message> {
-        if !self.blockheight.is_recent(Duration::from_secs(5)) {
-            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
-        }
-
-        if !self.warning.is_none() && !self.warning.is_recent(Duration::from_secs(30)) {
-            self.warning.reset()
-        }
-
-        Command::none()
     }
 }
 
 impl State for ManagerNetworkState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Tick(_) => self.on_tick(),
             Message::BlockHeight(b) => {
                 match b {
                     Ok(height) => {
@@ -460,15 +428,8 @@ impl State for ManagerNetworkState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view.view(
-            ctx,
-            self.warning.as_ref().into(),
-            self.blockheight.as_ref().into(),
-        )
-    }
-
-    fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
+        self.view
+            .view(ctx, self.warning.as_ref().into(), self.blockheight.as_ref())
     }
 
     fn load(&self) -> Command<Message> {

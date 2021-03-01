@@ -5,7 +5,6 @@ pub mod installing;
 pub mod manager;
 mod sign;
 pub mod stakeholder;
-mod util;
 
 use iced::{Command, Element, Subscription};
 

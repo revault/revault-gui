@@ -1,9 +1,8 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use iced::{time, Command, Element, Subscription};
+use iced::{Command, Element};
 
 use crate::revault::TransactionKind;
 
@@ -21,7 +20,6 @@ use crate::ui::{
             set_revocation_txs,
         },
         sign::SignState,
-        util::Watch,
         State,
     },
     view::{
@@ -34,7 +32,7 @@ use crate::ui::{
 #[derive(Debug)]
 pub struct StakeholderHomeState {
     revaultd: Arc<RevaultD>,
-    warning: Watch<Error>,
+    warning: Option<Error>,
 
     /// funds without presigned revocation transactions.
     unsecured_fund_balance: u64,
@@ -47,7 +45,7 @@ impl StakeholderHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         StakeholderHomeState {
             revaultd,
-            warning: Watch::None,
+            warning: None,
             view: StakeholderHomeView::new(),
             unsecured_fund_balance: 0,
             balance: (0, 0),
@@ -125,8 +123,8 @@ impl From<StakeholderHomeState> for Box<dyn State> {
 pub struct StakeholderNetworkState {
     revaultd: Arc<RevaultD>,
 
-    blockheight: Watch<u64>,
-    warning: Watch<Error>,
+    blockheight: Option<u64>,
+    warning: Option<Error>,
 
     view: StakeholderNetworkView,
 }
@@ -135,29 +133,16 @@ impl StakeholderNetworkState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         StakeholderNetworkState {
             revaultd,
-            blockheight: Watch::None,
-            warning: Watch::None,
+            blockheight: None,
+            warning: None,
             view: StakeholderNetworkView::new(),
         }
-    }
-
-    pub fn on_tick(&mut self) -> Command<Message> {
-        if !self.blockheight.is_recent(Duration::from_secs(5)) {
-            return Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight);
-        }
-
-        if self.warning.is_some() && !self.warning.is_recent(Duration::from_secs(30)) {
-            self.warning.reset()
-        }
-
-        Command::none()
     }
 }
 
 impl State for StakeholderNetworkState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Tick(_) => self.on_tick(),
             Message::BlockHeight(b) => {
                 match b {
                     Ok(height) => {
@@ -181,10 +166,6 @@ impl State for StakeholderNetworkState {
         )
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_secs(1)).map(Message::Tick)
-    }
-
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
             get_blockheight(self.revaultd.clone()),
@@ -202,7 +183,7 @@ impl From<StakeholderNetworkState> for Box<dyn State> {
 #[derive(Debug)]
 pub struct StakeholderACKFundsState {
     revaultd: Arc<RevaultD>,
-    warning: Watch<Error>,
+    warning: Option<Error>,
 
     balance: u64,
     deposits: Vec<Deposit>,
@@ -213,7 +194,7 @@ impl StakeholderACKFundsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         StakeholderACKFundsState {
             revaultd,
-            warning: Watch::None,
+            warning: None,
             deposits: Vec::new(),
             view: StakeholderACKFundsView::new(),
             balance: 0,
