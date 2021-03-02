@@ -3,7 +3,9 @@ use iced::{pick_list, Column, Container, Length, Row};
 use crate::revault::Role;
 use crate::ui::{
     component::{button, separation, text, TransparentPickListStyle},
-    icon::{dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon},
+    icon::{
+        deposit_icon, dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon,
+    },
     menu::Menu,
     message::Message,
     view::{layout, Context},
@@ -12,6 +14,7 @@ use crate::ui::{
 #[derive(Debug, Clone)]
 pub struct Sidebar {
     pick_role: pick_list::State<Role>,
+    deposit_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
     network_menu_button: iced::button::State,
@@ -22,6 +25,7 @@ pub struct Sidebar {
 impl Sidebar {
     pub fn new() -> Self {
         Sidebar {
+            deposit_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
@@ -98,6 +102,21 @@ impl Sidebar {
             )
             .on_press(Message::Menu(Menu::Network))
         };
+
+        let deposit_button = if context.menu == Menu::Deposit {
+            button::primary(
+                &mut self.deposit_menu_button,
+                button::button_content(Some(deposit_icon()), "Deposit"),
+            )
+            .on_press(Message::Menu(Menu::Deposit))
+        } else {
+            button::transparent(
+                &mut self.deposit_menu_button,
+                button::button_content(Some(deposit_icon()), "Deposit"),
+            )
+            .on_press(Message::Menu(Menu::Deposit))
+        };
+
         let actions = if context.role == Role::Manager {
             Container::new(
                 button::transparent(
@@ -118,6 +137,7 @@ impl Sidebar {
                 Container::new(history_button.width(Length::Units(200))),
                 Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
+                Container::new(deposit_button.width(Length::Units(200))),
                 actions,
             ]),
             Container::new(

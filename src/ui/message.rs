@@ -23,6 +23,7 @@ pub enum Message {
     Menu(Menu),
     Next,
     Previous,
+    DepositAddress(Result<bitcoin::Address, RevaultDError>),
     Deposit(usize, DepositMessage),
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),

@@ -13,7 +13,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::{RevocationTransactions, Vault, VaultTransactions};
+use model::{DepositAddress, RevocationTransactions, Vault, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -93,6 +93,11 @@ impl RevaultD {
                     _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
                 }
             })
+    }
+
+    /// get a new deposit address.
+    pub fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
+        self.call("getdepositaddress", Option::<Request>::None)
     }
 
     pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {

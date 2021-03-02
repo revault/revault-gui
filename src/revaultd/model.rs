@@ -1,6 +1,12 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
 use serde::Deserialize;
 
+/// getdepositaddress response
+#[derive(Debug, Clone, Deserialize)]
+pub struct DepositAddress {
+    pub address: bitcoin::Address,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Vault {
     /// Address of the vault deposit

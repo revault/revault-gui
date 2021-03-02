@@ -9,9 +9,9 @@ use tracing::error;
 use super::menu::Menu;
 use super::message::Message;
 use super::state::{
-    ChargingState, HistoryState, InstallingState, ManagerHomeState, ManagerNetworkState,
-    ManagerSendState, StakeholderACKFundsState, StakeholderHomeState, StakeholderNetworkState,
-    State,
+    ChargingState, DepositState, HistoryState, InstallingState, ManagerHomeState,
+    ManagerNetworkState, ManagerSendState, StakeholderACKFundsState, StakeholderHomeState,
+    StakeholderNetworkState, State,
 };
 
 use crate::revault::Role;
@@ -38,6 +38,7 @@ impl App {
         let revaultd = self.revaultd.clone().unwrap();
         self.state = match self.context.role {
             Role::Manager => match self.context.menu {
+                Menu::Deposit => DepositState::new(revaultd).into(),
                 Menu::Home => ManagerHomeState::new(revaultd).into(),
                 Menu::History => HistoryState::new(revaultd).into(),
                 Menu::Network => ManagerNetworkState::new(revaultd).into(),
@@ -45,6 +46,7 @@ impl App {
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
+                Menu::Deposit => DepositState::new(revaultd).into(),
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::History => HistoryState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
