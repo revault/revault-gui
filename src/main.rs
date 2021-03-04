@@ -11,7 +11,7 @@ mod revaultd;
 mod ui;
 
 fn main() {
-    let path = match std::env::var("REVAULTD_CONF") {
+    let revaultd_config_path = match std::env::var("REVAULTD_CONF") {
         Ok(p) => Some(PathBuf::from(p)),
         Err(VarError::NotPresent) => None,
         Err(VarError::NotUnicode(_)) => {
@@ -58,6 +58,15 @@ fn main() {
         }
     };
 
+    let revaultd_path = match std::env::var("REVAULTD_PATH") {
+        Ok(p) => Some(PathBuf::from(p)),
+        Err(VarError::NotUnicode(_)) => {
+            println!("Error: REVAULTD_PATH unicode only");
+            std::process::exit(1);
+        }
+        Err(VarError::NotPresent) => None,
+    };
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(logfilter)
         .finish();
@@ -68,7 +77,8 @@ fn main() {
     }
 
     if let Err(e) = ui::app::run(ui::app::Config {
-        revaultd_config_path: path,
+        revaultd_config_path,
+        revaultd_path,
         debug,
     }) {
         println!("Error: failed to launch UI: {}", e.to_string());

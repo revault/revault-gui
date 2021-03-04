@@ -16,3 +16,4 @@ default `revaultd` configuration location is checked.
 | `REVAULTD_CONF`       | Path to the [revaultd](https://github.com/revault/revaultd) configuration path                                                                                          |
 | `REVAULTGUI_DEBUG`    | If `true`, the interface will use `iced` debug feature to display current layout and set log level to `debug`                                                            |
 | `REVAULTGUI_LOG`      | Enable the [tracing env filter](https://docs.rs/tracing-subscriber/0.2.15/tracing_subscriber/filter/struct.EnvFilter.html) example: `revault_gui::revault::client=debug` |
+| `REVAULTD_PATH`       | Path to the [revaultd](https://github.com/revault/revaultd) binary                                                                                                      |
