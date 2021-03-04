@@ -1,9 +1,9 @@
 name: CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
-  build:
+  tests:
     strategy:
       matrix:
         # We don't have a MSRV (yet?)
