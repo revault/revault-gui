@@ -27,9 +27,9 @@ pub enum RevaultDError {
 impl std::fmt::Display for RevaultDError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::StartError(e) => write!(f, "Revauld error while starting: {}", e),
-            Self::RPCError(e) => write!(f, "Revauld error rpc call: {}", e),
-            Self::UnexpectedError(e) => write!(f, "Revauld unexpected error: {}", e),
+            Self::StartError(e) => write!(f, "Revaultd error while starting: {}", e),
+            Self::RPCError(e) => write!(f, "Revaultd error rpc call: {}", e),
+            Self::UnexpectedError(e) => write!(f, "Revaultd unexpected error: {}", e),
             Self::NoAnswerError => write!(f, "Revaultd returned no answer"),
             Self::IOError(kind) => write!(f, "Revaultd io error: {:?}", kind),
         }
@@ -181,6 +181,7 @@ pub async fn start_daemon(config_path: &Path) -> Result<(), RevaultDError> {
     let child = Command::new("revaultd")
         .arg("--conf")
         .arg(config_path.to_path_buf().into_os_string().as_os_str())
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| {
             RevaultDError::StartError(format!("Failed to launched revaultd: {}", e.to_string()))
@@ -195,7 +196,7 @@ pub async fn start_daemon(config_path: &Path) -> Result<(), RevaultDError> {
 
     if !output.status.success() {
         return Err(RevaultDError::StartError(format!(
-            "Error revaultd terminated with status: {} and stderr: {}",
+            "Error revaultd terminated with status: {} and stderr:\n{}",
             output.status.to_string(),
             String::from_utf8_lossy(&output.stderr),
         )));
