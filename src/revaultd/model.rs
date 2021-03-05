@@ -11,6 +11,8 @@ pub struct Vault {
     pub status: VaultStatus,
     /// Deposit txid of the vault deposit transaction
     pub txid: String,
+    /// Timestamp of the last vault update.
+    pub updated_at: i64,
     /// Deposit vout of the vault deposit transaction
     pub vout: u32,
 }
