@@ -30,9 +30,8 @@ pub fn withdrawal_icon() -> Text {
     icon('\u{F144}')
 }
 
-#[allow(dead_code)]
 pub fn turnback_icon() -> Text {
-    icon('\u{F133}')
+    icon('\u{F131}')
 }
 
 pub fn history_icon() -> Text {

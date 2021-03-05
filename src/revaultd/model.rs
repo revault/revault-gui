@@ -69,6 +69,26 @@ pub enum VaultStatus {
     Spent,
 }
 
+impl std::fmt::Display for VaultStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Unconfirmed => write!(f, "Deposit unconfirmed"),
+            Self::Funded => write!(f, "Deposit funded"),
+            Self::Secured => write!(f, "Secured"),
+            Self::Active => write!(f, "Active"),
+            Self::Unvaulting => write!(f, "Unvaulting"),
+            Self::Unvaulted => write!(f, "Unvaulted"),
+            Self::Canceling => write!(f, "Canceling"),
+            Self::Canceled => write!(f, "Canceled"),
+            Self::EmergencyVaulting => write!(f, "Emergency vaulting"),
+            Self::EmergencyVaulted => write!(f, "Emergency vaulted"),
+            Self::Spendable => write!(f, "Spendable"),
+            Self::Spending => write!(f, "Spending"),
+            Self::Spent => write!(f, "Spent"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct VaultTransactions {
     pub vault_outpoint: String,
