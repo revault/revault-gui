@@ -106,7 +106,7 @@ impl State for HistoryState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+            Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
         ])
     }
 }

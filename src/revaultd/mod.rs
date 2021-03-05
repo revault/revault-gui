@@ -13,7 +13,7 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::{DepositAddress, RevocationTransactions, Vault, VaultTransactions};
+use model::{DepositAddress, RevocationTransactions, Vault, VaultStatus, VaultTransactions};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -104,8 +104,11 @@ impl RevaultD {
         self.call("getinfo", Option::<Request>::None)
     }
 
-    pub fn list_vaults(&self) -> Result<ListVaultsResponse, RevaultDError> {
-        self.call("listvaults", Option::<Request>::None)
+    pub fn list_vaults(
+        &self,
+        statuses: Option<&[VaultStatus]>,
+    ) -> Result<ListVaultsResponse, RevaultDError> {
+        self.call("listvaults", statuses.map(|s| vec![s]))
     }
 
     pub fn list_onchain_transactions(
