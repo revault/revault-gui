@@ -76,23 +76,26 @@ impl ManagerSelectOutputsView {
         }
         let element: Element<_> = col_outputs.max_width(500).into();
 
-        let mut footer = Row::new().spacing(20).push(button::cancel(
-            &mut self.new_output_button,
-            Container::new(text::simple("Add recipient")).padding(10),
-            Message::AddRecipient,
-        ));
+        let mut footer = Row::new().spacing(20).push(
+            button::cancel(
+                &mut self.new_output_button,
+                Container::new(text::simple("Add recipient")).padding(10),
+            )
+            .on_press(Message::AddRecipient),
+        );
 
         if valid {
-            footer = footer.push(Container::new(button::primary(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-                Message::Next,
-            )));
+            footer = footer.push(Container::new(
+                button::primary(
+                    &mut self.next_button,
+                    Container::new(text::simple("Continue")).padding(10),
+                )
+                .on_press(Message::Next),
+            ));
         } else {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
                 Container::new(text::simple("Continue")).padding(10),
-                Message::None,
             )));
         }
         Container::new(
@@ -100,11 +103,13 @@ impl ManagerSelectOutputsView {
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
-                            Container::new(button::cancel(
-                                &mut self.cancel_button,
-                                Container::new(text::simple("X Close")).padding(10),
-                                Message::Menu(Menu::Home),
-                            ))
+                            Container::new(
+                                button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                )
+                                .on_press(Message::Menu(Menu::Home)),
+                            )
                             .width(Length::Shrink),
                         ),
                     )
@@ -159,11 +164,13 @@ impl ManagerSendOutputView {
         )
         .padding(10);
         let mut col = Column::with_children(vec![
-            Container::new(button::transparent(
-                &mut self.delete_button,
-                Container::new(text::simple("X Remove")).padding(10),
-                RecipientMessage::Delete,
-            ))
+            Container::new(
+                button::transparent(
+                    &mut self.delete_button,
+                    Container::new(text::simple("X Remove")).padding(10),
+                )
+                .on_press(RecipientMessage::Delete),
+            )
             .width(Length::Fill)
             .align_x(iced::Align::End)
             .into(),
@@ -234,16 +241,17 @@ impl ManagerSelectInputsView {
 
         let mut footer = Column::new();
         if valid {
-            footer = footer.push(Container::new(button::primary(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-                Message::Next,
-            )));
+            footer = footer.push(Container::new(
+                button::primary(
+                    &mut self.next_button,
+                    Container::new(text::simple("Continue")).padding(10),
+                )
+                .on_press(Message::Next),
+            ));
         } else {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
                 Container::new(text::simple("Continue")).padding(10),
-                Message::None,
             )));
         }
         Container::new(
@@ -253,19 +261,23 @@ impl ManagerSelectInputsView {
                         Row::new()
                             .push(
                                 Column::new()
-                                    .push(button::transparent(
-                                        &mut self.back_button,
-                                        Container::new(text::simple("Go Back")).padding(10),
-                                        Message::Previous,
-                                    ))
+                                    .push(
+                                        button::transparent(
+                                            &mut self.back_button,
+                                            Container::new(text::simple("Go Back")).padding(10),
+                                        )
+                                        .on_press(Message::Previous),
+                                    )
                                     .width(Length::Fill),
                             )
                             .push(
-                                Container::new(button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                    Message::Menu(Menu::Home),
-                                ))
+                                Container::new(
+                                    button::cancel(
+                                        &mut self.cancel_button,
+                                        Container::new(text::simple("X Close")).padding(10),
+                                    )
+                                    .on_press(Message::Menu(Menu::Home)),
+                                )
                                 .width(Length::Shrink),
                             ),
                     )
@@ -328,16 +340,17 @@ impl ManagerSelectFeeView {
     pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
         let mut footer = Row::new().spacing(20);
         if valid {
-            footer = footer.push(Container::new(button::primary(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-                Message::Next,
-            )));
+            footer = footer.push(Container::new(
+                button::primary(
+                    &mut self.next_button,
+                    Container::new(text::simple("Continue")).padding(10),
+                )
+                .on_press(Message::Next),
+            ));
         } else {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
                 Container::new(text::simple("Continue")).padding(10),
-                Message::None,
             )));
         }
         Container::new(
@@ -347,19 +360,23 @@ impl ManagerSelectFeeView {
                         Row::new()
                             .push(
                                 Column::new()
-                                    .push(button::transparent(
-                                        &mut self.back_button,
-                                        Container::new(text::simple("Go Back")).padding(10),
-                                        Message::Previous,
-                                    ))
+                                    .push(
+                                        button::transparent(
+                                            &mut self.back_button,
+                                            Container::new(text::simple("Go Back")).padding(10),
+                                        )
+                                        .on_press(Message::Previous),
+                                    )
                                     .width(Length::Fill),
                             )
                             .push(
-                                Container::new(button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                    Message::Menu(Menu::Home),
-                                ))
+                                Container::new(
+                                    button::cancel(
+                                        &mut self.cancel_button,
+                                        Container::new(text::simple("X Close")).padding(10),
+                                    )
+                                    .on_press(Message::Menu(Menu::Home)),
+                                )
                                 .width(Length::Shrink),
                             ),
                     )
@@ -405,16 +422,17 @@ impl ManagerSignView {
     pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
         let mut footer = Row::new().spacing(20);
         if valid {
-            footer = footer.push(Container::new(button::primary(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-                Message::Next,
-            )));
+            footer = footer.push(Container::new(
+                button::primary(
+                    &mut self.next_button,
+                    Container::new(text::simple("Continue")).padding(10),
+                )
+                .on_press(Message::Next),
+            ));
         } else {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
                 Container::new(text::simple("Continue")).padding(10),
-                Message::None,
             )));
         }
         Container::new(
@@ -424,19 +442,23 @@ impl ManagerSignView {
                         Row::new()
                             .push(
                                 Column::new()
-                                    .push(button::transparent(
-                                        &mut self.back_button,
-                                        Container::new(text::simple("Go Back")).padding(10),
-                                        Message::Previous,
-                                    ))
+                                    .push(
+                                        button::transparent(
+                                            &mut self.back_button,
+                                            Container::new(text::simple("Go Back")).padding(10),
+                                        )
+                                        .on_press(Message::Previous),
+                                    )
                                     .width(Length::Fill),
                             )
                             .push(
-                                Container::new(button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                    Message::Menu(Menu::Home),
-                                ))
+                                Container::new(
+                                    button::cancel(
+                                        &mut self.cancel_button,
+                                        Container::new(text::simple("X Close")).padding(10),
+                                    )
+                                    .on_press(Message::Menu(Menu::Home)),
+                                )
                                 .width(Length::Shrink),
                             ),
                     )

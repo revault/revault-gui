@@ -26,7 +26,6 @@ pub enum Message {
     Deposit(usize, DepositMessage),
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
-    None,
     AddRecipient,
 }
 

@@ -6,11 +6,8 @@ macro_rules! button {
         pub fn $name<'a, T: 'a + Clone>(
             state: &'a mut button::State,
             content: Container<'a, T>,
-            message: T,
         ) -> button::Button<'a, T> {
-            button::Button::new(state, content)
-                .on_press(message)
-                .style($style_name {})
+            button::Button::new(state, content).style($style_name {})
         }
 
         struct $style_name {}

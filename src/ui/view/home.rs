@@ -124,11 +124,13 @@ fn unsecured_fund_view<'a>(
                         .align_x(iced::Align::End),
                     )
                     .push(
-                        Container::new(button::important(
-                            button_state,
-                            button::button_content(None, "Acknowledge funds"),
-                            Message::Menu(Menu::ACKFunds),
-                        ))
+                        Container::new(
+                            button::important(
+                                button_state,
+                                button::button_content(None, "Acknowledge funds"),
+                            )
+                            .on_press(Message::Menu(Menu::ACKFunds)),
+                        )
                         .width(Length::Fill)
                         .align_x(iced::Align::End),
                     )
