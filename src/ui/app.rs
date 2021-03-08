@@ -62,7 +62,10 @@ impl Application for App {
     type Flags = Config;
 
     fn new(config: Config) -> (App, Command<Self::Message>) {
-        let state = ChargingState::new(config.revaultd_config_path.to_owned());
+        let state = ChargingState::new(
+            config.revaultd_config_path.to_owned(),
+            config.revaultd_path.to_owned(),
+        );
         let cmd = state.load();
         (
             App {
@@ -121,5 +124,6 @@ impl Application for App {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub revaultd_config_path: Option<PathBuf>,
+    pub revaultd_path: Option<PathBuf>,
     pub debug: bool,
 }

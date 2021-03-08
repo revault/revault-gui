@@ -18,6 +18,7 @@ use crate::ui::{
 #[derive(Debug, Clone)]
 pub struct ChargingState {
     revaultd_config_path: Option<PathBuf>,
+    revaultd_path: Option<PathBuf>,
     revaultd: Option<Arc<RevaultD>>,
     step: ChargingStep,
 }
@@ -32,9 +33,10 @@ enum ChargingStep {
 }
 
 impl ChargingState {
-    pub fn new(revaultd_config_path: Option<PathBuf>) -> Self {
+    pub fn new(revaultd_config_path: Option<PathBuf>, revaultd_path: Option<PathBuf>) -> Self {
         ChargingState {
             revaultd_config_path,
+            revaultd_path,
             revaultd: None,
             step: ChargingStep::Connecting,
         }
@@ -63,7 +65,10 @@ impl ChargingState {
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
                     self.step = ChargingStep::StartingDaemon;
                     return Command::perform(
-                        start_daemon_and_connect(self.revaultd_config_path.to_owned()),
+                        start_daemon_and_connect(
+                            self.revaultd_config_path.to_owned(),
+                            self.revaultd_path.to_owned(),
+                        ),
                         Message::DaemonStarted,
                     );
                 }
@@ -179,16 +184,19 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<f64, RevaultDError
 
 async fn start_daemon_and_connect(
     revaultd_config_path: Option<PathBuf>,
+    revaultd_path: Option<PathBuf>,
 ) -> Result<Arc<RevaultD>, Error> {
-    let path = if let Some(ref p) = revaultd_config_path {
+    let revaultd_config_path = if let Some(ref p) = revaultd_config_path {
         p.to_owned()
     } else {
         default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
     };
 
-    start_daemon(&path).await?;
+    let revaultd_path = revaultd_path.unwrap_or_else(|| PathBuf::from("revaultd"));
 
-    let cfg = Config::from_file(&path)?;
+    start_daemon(&revaultd_config_path, &revaultd_path).await?;
+
+    let cfg = Config::from_file(&revaultd_config_path)?;
 
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));

@@ -176,9 +176,9 @@ pub struct ListOnchainTransactionsResponse {
 }
 
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: &Path) -> Result<(), RevaultDError> {
+pub async fn start_daemon(config_path: &Path, revaultd_path: &Path) -> Result<(), RevaultDError> {
     debug!("starting revaultd daemon");
-    let child = Command::new("revaultd")
+    let child = Command::new(revaultd_path)
         .arg("--conf")
         .arg(config_path.to_path_buf().into_os_string().as_os_str())
         .stderr(std::process::Stdio::piped())
