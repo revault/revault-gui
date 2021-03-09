@@ -178,7 +178,7 @@ pub struct ListOnchainTransactionsResponse {
 // RevaultD can start only if a config path is given.
 pub async fn start_daemon(config_path: &Path, revaultd_path: &Path) -> Result<(), RevaultDError> {
     debug!("starting revaultd daemon");
-    let child = Command::new(revaultd_path)
+    let mut child = Command::new(revaultd_path)
         .arg("--conf")
         .arg(config_path.to_path_buf().into_os_string().as_os_str())
         .stderr(std::process::Stdio::piped())
@@ -189,20 +189,36 @@ pub async fn start_daemon(config_path: &Path, revaultd_path: &Path) -> Result<()
 
     debug!("waiting for revaultd daemon status");
 
-    // daemon binary should fork and then terminate.
-    let output = child.wait_with_output().map_err(|e| {
-        RevaultDError::StartError(format!("Child did not terminate: {}", e.to_string()))
-    })?;
+    let tries_timeout = std::time::Duration::from_secs(1);
+    let start = std::time::Instant::now();
 
-    if !output.status.success() {
-        return Err(RevaultDError::StartError(format!(
-            "Error revaultd terminated with status: {} and stderr:\n{}",
-            output.status.to_string(),
-            String::from_utf8_lossy(&output.stderr),
-        )));
+    while start.elapsed() < tries_timeout {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                if !status.success() {
+                    // FIXME: there should be a better way to collect the output...
+                    let output = child.wait_with_output().unwrap();
+                    return Err(RevaultDError::StartError(format!(
+                        "Error revaultd terminated with status: {} and stderr:\n{:?}",
+                        status.to_string(),
+                        String::from_utf8_lossy(&output.stderr),
+                    )));
+                } else {
+                    info!("revaultd daemon started");
+                    return Ok(());
+                }
+            }
+            Ok(None) => continue,
+            Err(e) => {
+                return Err(RevaultDError::StartError(format!(
+                    "Child did not terminate: {}",
+                    e.to_string()
+                )));
+            }
+        }
     }
 
-    info!("revaultd daemon started");
-
-    Ok(())
+    return Err(RevaultDError::StartError(
+        "Child did not terminate, do you have `daemon=false` in Revault conf?".to_string(),
+    ));
 }
