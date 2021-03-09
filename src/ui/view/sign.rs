@@ -51,8 +51,8 @@ impl DirectSignatureView {
                         button::transparent(
                             &mut self.indirect_button,
                             button::button_content(None, "Use PSBT"),
-                            SignMessage::ChangeMethod,
                         )
+                        .on_press(SignMessage::ChangeMethod)
                         .width(Length::Shrink),
                     )
                     .align_items(Align::Center),
@@ -65,11 +65,13 @@ impl DirectSignatureView {
                     .align_x(Align::Center),
             )
             .push(
-                Container::new(button::primary(
-                    &mut self.sign_button,
-                    button::button_content(None, " Sign transaction "),
-                    SignMessage::ChangeMethod,
-                ))
+                Container::new(
+                    button::primary(
+                        &mut self.sign_button,
+                        button::button_content(None, " Sign transaction "),
+                    )
+                    .on_press(SignMessage::ChangeMethod),
+                )
                 .width(Length::Fill)
                 .align_x(Align::Center),
             )
@@ -129,8 +131,8 @@ impl IndirectSignatureView {
                         button::transparent(
                             &mut self.direct_button,
                             button::button_content(None, "Use hardware module"),
-                            SignMessage::ChangeMethod,
                         )
+                        .on_press(SignMessage::ChangeMethod)
                         .width(Length::Shrink),
                     )
                     .align_items(Align::Center),
@@ -160,11 +162,13 @@ impl IndirectSignatureView {
         if *processing {
             col = col
                 .push(Container::new(text::small(&psbt_input.to_string())))
-                .push(Container::new(button::primary_disable(
-                    &mut self.sign_button,
-                    button::button_content(None, " Processing "),
-                    SignMessage::Sign,
-                )));
+                .push(Container::new(
+                    button::primary_disable(
+                        &mut self.sign_button,
+                        button::button_content(None, " Processing "),
+                    )
+                    .on_press(SignMessage::Sign),
+                ));
         } else {
             col = col
                 .push(
@@ -179,11 +183,13 @@ impl IndirectSignatureView {
                     .padding(10),
                 )
                 .push(
-                    Container::new(button::primary(
-                        &mut self.sign_button,
-                        button::button_content(None, " Sign transaction "),
-                        SignMessage::Sign,
-                    ))
+                    Container::new(
+                        button::primary(
+                            &mut self.sign_button,
+                            button::button_content(None, " Sign transaction "),
+                        )
+                        .on_press(SignMessage::Sign),
+                    )
                     .width(Length::Fill)
                     .align_x(Align::Center),
                 );

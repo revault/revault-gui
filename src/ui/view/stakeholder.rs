@@ -39,11 +39,13 @@ impl StakeholderACKFundsView {
         let col = Column::new()
             .push(
                 Row::new().push(Column::new().width(Length::Fill)).push(
-                    Container::new(button::cancel(
-                        &mut self.close_button,
-                        Container::new(text::simple("X Close")).padding(10),
-                        Message::Menu(Menu::Home),
-                    ))
+                    Container::new(
+                        button::cancel(
+                            &mut self.close_button,
+                            Container::new(text::simple("X Close")).padding(10),
+                        )
+                        .on_press(Message::Menu(Menu::Home)),
+                    )
                     .width(Length::Shrink),
                 ),
             )
@@ -288,11 +290,13 @@ impl StakeholderACKDepositView {
                         "Failed to connect to revaultd: {}",
                         error
                     ))))
-                    .push(button::primary(
-                        &mut self.retry_button,
-                        button::button_content(None, "Retry"),
-                        DepositMessage::Retry,
-                    ))
+                    .push(
+                        button::primary(
+                            &mut self.retry_button,
+                            button::button_content(None, "Retry"),
+                        )
+                        .on_press(DepositMessage::Retry),
+                    )
                     .spacing(20),
             )))
         }

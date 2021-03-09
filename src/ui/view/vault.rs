@@ -64,11 +64,13 @@ impl VaultModal {
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
-                            Container::new(button::cancel(
-                                &mut self.cancel_button,
-                                Container::new(text::simple("X Close")).padding(10),
-                                Message::SelectVault(vlt.outpoint()),
-                            ))
+                            Container::new(
+                                button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                )
+                                .on_press(Message::SelectVault(vlt.outpoint())),
+                            )
                             .width(Length::Shrink),
                         ),
                     )
@@ -226,36 +228,38 @@ impl VaultListItem {
     }
 
     pub fn view(&mut self, vault: &Vault) -> iced::Element<Message> {
-        card::rounded(Container::new(button::transparent(
-            &mut self.state,
-            card::white(Container::new(
-                Row::new()
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(badge::tx_deposit())
-                                .push(text::small(&vault.txid))
-                                .spacing(20),
+        card::rounded(Container::new(
+            button::transparent(
+                &mut self.state,
+                card::white(Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(badge::tx_deposit())
+                                    .push(text::small(&vault.txid))
+                                    .spacing(20),
+                            )
+                            .width(Length::Fill),
                         )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    vault.amount as f64 / 100000000_f64
-                                ))))
-                                .push(text::small(" BTC"))
-                                .align_items(Align::Center),
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(text::bold(text::simple(&format!(
+                                        "{}",
+                                        vault.amount as f64 / 100000000_f64
+                                    ))))
+                                    .push(text::small(" BTC"))
+                                    .align_items(Align::Center),
+                            )
+                            .width(Length::Shrink),
                         )
-                        .width(Length::Shrink),
-                    )
-                    .spacing(20)
-                    .align_items(Align::Center),
-            )),
-            Message::SelectVault(vault.outpoint()),
-        )))
+                        .spacing(20)
+                        .align_items(Align::Center),
+                )),
+            )
+            .on_press(Message::SelectVault(vault.outpoint())),
+        ))
         .into()
     }
 }
