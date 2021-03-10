@@ -16,7 +16,7 @@ pub enum Message {
     Synced(Arc<RevaultD>),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    VaultsWithTransactions(Result<Vec<(Vault, VaultTransactions)>, RevaultDError>),
+    VaultOnChainTransactions(Result<VaultTransactions, RevaultDError>),
     SelectVault(String),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),

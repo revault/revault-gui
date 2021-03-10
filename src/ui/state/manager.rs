@@ -5,7 +5,8 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{get_blockheight, list_vaults_with_transactions},
+    cmd::{get_blockheight, get_onchain_txs, list_vaults},
+    vault::{SelectedVault, VaultListItem},
     State,
 };
 
@@ -18,7 +19,6 @@ use crate::ui::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage},
     view::manager::{manager_send_input_view, ManagerSendOutputView, ManagerSendView},
-    view::vault::VaultView,
     view::Context,
     view::{ManagerHomeView, ManagerNetworkView},
 };
@@ -33,8 +33,8 @@ pub struct ManagerHomeState {
     blockheight: u64,
     warning: Option<Error>,
 
-    vaults: Vec<ManagerVault>,
-    selected_vault: Option<ManagerVault>,
+    vaults: Vec<VaultListItem>,
+    selected_vault: Option<SelectedVault>,
 }
 
 impl ManagerHomeState {
@@ -50,39 +50,42 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
+    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
         self.calculate_balance(&vaults);
         self.vaults = vaults
             .into_iter()
-            .map(|(vlt, txs)| ManagerVault::new(vlt, txs))
+            .map(|vlt| VaultListItem::new(vlt))
             .collect();
     }
 
-    pub fn on_vault_selected(&mut self, outpoint: String) -> Command<Message> {
-        if let Some(vlt) = &self.selected_vault {
-            if vlt.vault.outpoint() == outpoint {
+    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+        if let Some(selected) = &self.selected_vault {
+            if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
                 return Command::none();
             }
         }
 
+        return Command::perform(
+            get_onchain_txs(self.revaultd.clone(), outpoint),
+            Message::VaultOnChainTransactions,
+        );
+    }
+
+    pub fn update_selected_vault(&mut self, vault_txs: VaultTransactions) {
         if let Some(i) = self
             .vaults
             .iter()
-            .position(|vlt| vlt.vault.outpoint() == outpoint)
+            .position(|vlt| vlt.vault.outpoint() == vault_txs.vault_outpoint)
         {
-            self.selected_vault = Some(ManagerVault::new_selected(
-                self.vaults[i].vault.clone(),
-                self.vaults[i].txs.clone(),
-            ));
-        }
-        return Command::none();
+            self.selected_vault = Some(SelectedVault::new(self.vaults[i].vault.clone(), vault_txs));
+        };
     }
 
-    pub fn calculate_balance(&mut self, vaults: &[(Vault, VaultTransactions)]) {
+    pub fn calculate_balance(&mut self, vaults: &[Vault]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
-        for (vault, _) in vaults {
+        for vault in vaults {
             match vault.status {
                 VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
                     active_amount += vault.amount
@@ -101,9 +104,13 @@ impl ManagerHomeState {
 impl State for ManagerHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::SelectVault(outpoint) => return self.on_vault_selected(outpoint),
-            Message::VaultsWithTransactions(res) => match res {
+            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
+                Err(e) => self.warning = Error::from(e).into(),
+            },
+            Message::VaultOnChainTransactions(res) => match res {
+                Ok(txs) => self.update_selected_vault(txs),
                 Err(e) => self.warning = Error::from(e).into(),
             },
             Message::BlockHeight(b) => match b {
@@ -134,10 +141,7 @@ impl State for ManagerHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(
-                list_vaults_with_transactions(self.revaultd.clone()),
-                Message::VaultsWithTransactions,
-            ),
+            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
         ])
     }
 }
@@ -145,33 +149,6 @@ impl State for ManagerHomeState {
 impl From<ManagerHomeState> for Box<dyn State> {
     fn from(s: ManagerHomeState) -> Box<dyn State> {
         Box::new(s)
-    }
-}
-
-#[derive(Debug)]
-pub struct ManagerVault {
-    vault: Vault,
-    txs: VaultTransactions,
-    view: VaultView,
-}
-
-impl ManagerVault {
-    pub fn new(vault: Vault, txs: VaultTransactions) -> Self {
-        Self {
-            vault,
-            txs,
-            view: VaultView::new(),
-        }
-    }
-    pub fn new_selected(vault: Vault, txs: VaultTransactions) -> Self {
-        Self {
-            vault,
-            txs,
-            view: VaultView::new_modal(),
-        }
-    }
-    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view.view(ctx, &self.vault, &self.txs)
     }
 }
 
@@ -197,10 +174,10 @@ impl ManagerSendState {
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
+    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
         self.vaults = vaults
             .into_iter()
-            .map(|(vlt, txs)| ManagerSendInput::new(vlt, txs))
+            .map(|vlt| ManagerSendInput::new(vlt))
             .collect();
     }
 
@@ -228,7 +205,7 @@ impl ManagerSendState {
 impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::VaultsWithTransactions(res) => match res {
+            Message::Vaults(res) => match res {
                 Ok(vlts) => self.update_vaults(vlts),
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
@@ -283,8 +260,8 @@ impl State for ManagerSendState {
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults_with_transactions(self.revaultd.clone()),
-            Message::VaultsWithTransactions,
+            list_vaults(self.revaultd.clone()),
+            Message::Vaults,
         )])
     }
 }
@@ -365,15 +342,13 @@ impl ManagerSendOutput {
 #[derive(Debug)]
 struct ManagerSendInput {
     vault: Vault,
-    transactions: VaultTransactions,
     selected: bool,
 }
 
 impl ManagerSendInput {
-    fn new(vault: Vault, transactions: VaultTransactions) -> Self {
+    fn new(vault: Vault) -> Self {
         Self {
             vault,
-            transactions,
             selected: false,
         }
     }

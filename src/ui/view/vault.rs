@@ -10,33 +10,6 @@ use crate::ui::{
 use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
 
 #[derive(Debug)]
-pub enum VaultView {
-    Modal(VaultModal),
-    ListItem(VaultListItem),
-}
-
-impl VaultView {
-    pub fn new() -> Self {
-        Self::ListItem(VaultListItem::new())
-    }
-    pub fn new_modal() -> Self {
-        Self::Modal(VaultModal::new())
-    }
-
-    pub fn view(
-        &mut self,
-        ctx: &Context,
-        vault: &Vault,
-        txs: &VaultTransactions,
-    ) -> Element<Message> {
-        match self {
-            Self::ListItem(v) => v.view(ctx, vault),
-            Self::Modal(v) => v.view(ctx, vault, txs),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct VaultModal {
     copy_button: iced::button::State,
     cancel_button: iced::button::State,
@@ -219,13 +192,13 @@ fn input_and_outputs<'a, T: 'a>(
 }
 
 #[derive(Debug, Clone)]
-pub struct VaultListItem {
+pub struct VaultListItemView {
     state: iced::button::State,
 }
 
-impl VaultListItem {
+impl VaultListItemView {
     pub fn new() -> Self {
-        VaultListItem {
+        VaultListItemView {
             state: iced::button::State::new(),
         }
     }
