@@ -65,7 +65,7 @@ impl StakeholderACKFundsView {
 }
 
 pub fn stakeholder_deposit_signed<'a>(
-    _ctx: &Context,
+    ctx: &Context,
     deposit: &Vault,
 ) -> Element<'a, DepositMessage> {
     card::white(Container::new(
@@ -90,9 +90,9 @@ pub fn stakeholder_deposit_signed<'a>(
                     Row::new()
                         .push(text::success(text::bold(text::simple(&format!(
                             "{}",
-                            deposit.amount as f64 / 100000000_f64
+                            ctx.converter.converts(deposit.amount),
                         )))))
-                        .push(text::small(" BTC"))
+                        .push(text::small(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
                 )
                 .width(Length::Shrink),
@@ -104,7 +104,7 @@ pub fn stakeholder_deposit_signed<'a>(
 }
 
 pub fn stakeholder_deposit_pending<'a>(
-    _ctx: &Context,
+    ctx: &Context,
     deposit: &Vault,
 ) -> Element<'a, DepositMessage> {
     card::white(Container::new(
@@ -127,9 +127,9 @@ pub fn stakeholder_deposit_pending<'a>(
                     Row::new()
                         .push(text::bold(text::simple(&format!(
                             "{}",
-                            deposit.amount as f64 / 100000000_f64
+                            ctx.converter.converts(deposit.amount),
                         ))))
-                        .push(text::small(" BTC"))
+                        .push(text::small(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
                 )
                 .width(Length::Shrink),
@@ -154,7 +154,7 @@ impl StakeholderACKDepositView {
 
     pub fn view<'a>(
         &'a mut self,
-        _ctx: &Context,
+        ctx: &Context,
         warning: Option<&String>,
         deposit: &Vault,
         emergency_tx: &(PartiallySignedTransaction, bool),
@@ -267,9 +267,9 @@ impl StakeholderACKDepositView {
                             Row::new()
                                 .push(text::bold(text::simple(&format!(
                                     "{}",
-                                    deposit.amount as f64 / 100000000_f64
+                                    ctx.converter.converts(deposit.amount)
                                 ))))
-                                .push(text::small(" BTC"))
+                                .push(text::small(&format!(" {}", ctx.converter.unit)))
                                 .align_items(Align::Center),
                         )
                         .width(Length::Shrink),

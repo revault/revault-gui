@@ -253,7 +253,7 @@ impl State for ManagerSendState {
         Command::none()
     }
 
-    fn view(&mut self, _ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
         match &mut self.view {
@@ -272,7 +272,7 @@ impl State for ManagerSendState {
                 self.vaults
                     .iter_mut()
                     .enumerate()
-                    .map(|(i, v)| v.view().map(move |msg| Message::Input(i, msg)))
+                    .map(|(i, v)| v.view(ctx).map(move |msg| Message::Input(i, msg)))
                     .collect(),
                 input_amount > output_amount,
             ),
@@ -321,9 +321,10 @@ impl ManagerSendOutput {
         if self.amount.is_empty() {
             return Ok(0);
         }
-        let a = f64::from_str(&self.amount)
+
+        let amount = bitcoin::Amount::from_str_in(&self.amount, bitcoin::Denomination::Bitcoin)
             .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
-        Ok((a * 100000000_f64) as u64)
+        Ok(amount.as_sat())
     }
 
     fn valid(&self) -> bool {
@@ -344,7 +345,7 @@ impl ManagerSendOutput {
             RecipientMessage::AmountEdited(amount) => {
                 self.amount = amount;
                 if !self.amount.is_empty() {
-                    self.warning_amount = f64::from_str(&self.amount).is_err();
+                    self.warning_amount = self.amount().is_err();
                 }
             }
             _ => {}
@@ -377,8 +378,13 @@ impl ManagerSendInput {
         }
     }
 
-    pub fn view(&mut self) -> Element<InputMessage> {
-        manager_send_input_view(&self.vault.outpoint(), &self.vault.amount, self.selected)
+    pub fn view(&mut self, ctx: &Context) -> Element<InputMessage> {
+        manager_send_input_view(
+            ctx,
+            &self.vault.outpoint(),
+            &self.vault.amount,
+            self.selected,
+        )
     }
 
     pub fn update(&mut self, msg: InputMessage) {

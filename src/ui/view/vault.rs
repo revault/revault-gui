@@ -30,7 +30,7 @@ impl VaultView {
         txs: &VaultTransactions,
     ) -> Element<Message> {
         match self {
-            Self::ListItem(v) => v.view(vault),
+            Self::ListItem(v) => v.view(ctx, vault),
             Self::Modal(v) => v.view(ctx, vault, txs),
         }
     }
@@ -122,9 +122,12 @@ impl VaultModal {
                                                     Row::new()
                                                         .push(text::bold(text::simple(&format!(
                                                             "{}",
-                                                            vlt.amount as f64 / 100000000_f64
+                                                            ctx.converter.converts(vlt.amount),
                                                         ))))
-                                                        .push(text::simple(" BTC")),
+                                                        .push(text::simple(&format!(
+                                                            "{}",
+                                                            ctx.converter.unit,
+                                                        ))),
                                                 )
                                                 .width(Length::Shrink),
                                             )
@@ -209,7 +212,7 @@ fn input_and_outputs<'a, T: 'a>(
             col = col.push(text::small(&format!("{}", &output.script_pubkey)))
         }
         col_output = col_output.push(card::simple(Container::new(col.push(text::bold(
-            text::small(&format!("{}", output.value as f64 / 100000000_f64)),
+            text::small(&format!("{}", ctx.converter.converts(output.value))),
         )))));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
@@ -227,7 +230,7 @@ impl VaultListItem {
         }
     }
 
-    pub fn view(&mut self, vault: &Vault) -> iced::Element<Message> {
+    pub fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         card::rounded(Container::new(
             button::transparent(
                 &mut self.state,
@@ -242,18 +245,15 @@ impl VaultListItem {
                             )
                             .width(Length::Fill),
                         )
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(text::bold(text::simple(&format!(
-                                        "{}",
-                                        vault.amount as f64 / 100000000_f64
-                                    ))))
-                                    .push(text::small(" BTC"))
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Shrink),
-                        )
+                        .push(Container::new(
+                            Row::new()
+                                .push(text::bold(text::simple(&format!(
+                                    "{}",
+                                    ctx.converter.converts(vault.amount)
+                                ))))
+                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .align_items(Align::Center),
+                        ))
                         .spacing(20)
                         .align_items(Align::Center),
                 )),

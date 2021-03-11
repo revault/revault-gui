@@ -14,9 +14,7 @@ use super::state::{
     State,
 };
 
-use crate::revault::Role;
-use crate::revaultd::RevaultD;
-use crate::ui::view::Context;
+use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
 
 pub struct App {
     config: Config,
@@ -73,7 +71,7 @@ impl Application for App {
                 state: std::boxed::Box::new(state),
                 revaultd: None,
                 clipboard: ClipboardContext::new().expect("Failed to get clipboard provider"),
-                context: Context::new(true, Role::Manager, Menu::Home),
+                context: Context::default(),
             },
             cmd,
         )
@@ -94,7 +92,13 @@ impl Application for App {
                 self.state.load()
             }
             Message::Synced(revaultd) => {
-                self.context.network = revaultd.network();
+                self.context = Context::new(
+                    Converter::new(revaultd.network()),
+                    revaultd.network(),
+                    true,
+                    Role::Manager,
+                    Menu::Home,
+                );
                 self.context.network_up = true;
                 self.revaultd = Some(revaultd);
                 self.load_state(Role::Manager, Menu::Home)

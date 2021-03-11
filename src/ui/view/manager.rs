@@ -7,6 +7,7 @@ use crate::ui::{
     component::{button, card, separation, text},
     menu::Menu,
     message::{InputMessage, Message, RecipientMessage},
+    view::Context,
 };
 
 #[derive(Debug)]
@@ -303,6 +304,7 @@ impl ManagerSelectInputsView {
 }
 
 pub fn manager_send_input_view<'a>(
+    ctx: &Context,
     outpoint: &str,
     amount: &u64,
     selected: bool,
@@ -313,7 +315,7 @@ pub fn manager_send_input_view<'a>(
         .push(checkbox)
         .push(text::bold(text::simple(&format!(
             "{}",
-            *amount as f64 / 100000000_f64
+            ctx.converter.converts(*amount)
         ))))
         .spacing(20);
     Container::new(row).width(Length::Fill).into()
