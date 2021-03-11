@@ -6,6 +6,13 @@ use crate::revaultd::{
     RevaultD, RevaultDError,
 };
 
+/// retrieves a bitcoin address for deposit.
+pub async fn get_deposit_address(
+    revaultd: Arc<RevaultD>,
+) -> Result<bitcoin::Address, RevaultDError> {
+    revaultd.get_deposit_address().map(|res| res.address)
+}
+
 pub async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
     revaultd.get_info().map(|res| res.blockheight)
 }

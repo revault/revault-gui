@@ -1,4 +1,5 @@
 pub mod charging;
+mod deposit;
 mod history;
 mod home;
 pub mod installing;
@@ -10,6 +11,7 @@ pub mod sign;
 pub mod stakeholder;
 pub mod vault;
 
+pub use deposit::DepositView;
 pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use manager::ManagerSendView;

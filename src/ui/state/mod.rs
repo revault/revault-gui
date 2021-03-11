@@ -1,5 +1,6 @@
 pub mod charging;
 mod cmd;
+mod deposit;
 mod history;
 pub mod installing;
 pub mod manager;
@@ -9,6 +10,7 @@ pub mod stakeholder;
 use iced::{Command, Element, Subscription};
 
 pub use charging::ChargingState;
+pub use deposit::DepositState;
 pub use history::HistoryState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
