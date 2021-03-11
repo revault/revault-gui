@@ -21,24 +21,18 @@ pub async fn list_vaults(revaultd: Arc<RevaultD>) -> Result<Vec<Vault>, RevaultD
     revaultd.list_vaults().map(|res| res.vaults)
 }
 
-pub async fn list_vaults_with_transactions(
+pub async fn get_onchain_txs(
     revaultd: Arc<RevaultD>,
-) -> Result<Vec<(Vault, VaultTransactions)>, RevaultDError> {
-    let vaults = revaultd.list_vaults().map(|res| res.vaults)?;
-    let outpoints = vaults.iter().map(|vlt| vlt.outpoint()).collect();
-    let txs = revaultd.list_onchain_transactions(Some(outpoints))?;
-
-    let mut vec = Vec::new();
-    for vlt in vaults {
-        if let Some(i) = txs
-            .onchain_transactions
-            .iter()
-            .position(|tx| tx.vault_outpoint == vlt.outpoint())
-        {
-            vec.push((vlt, txs.onchain_transactions[i].to_owned()));
-        }
+    outpoint: String,
+) -> Result<VaultTransactions, RevaultDError> {
+    let list = revaultd.list_onchain_transactions(Some(vec![outpoint]))?;
+    if list.onchain_transactions.len() == 0 {
+        return Err(RevaultDError::UnexpectedError(
+            "vault has no onchain_transactions".to_string(),
+        ));
     }
-    Ok(vec)
+
+    Ok(list.onchain_transactions[0].to_owned())
 }
 
 pub async fn get_revocation_txs(

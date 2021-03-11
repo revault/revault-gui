@@ -7,7 +7,7 @@ use iced::{Command, Element};
 use crate::revault::TransactionKind;
 
 use crate::revaultd::{
-    model::{RevocationTransactions, Vault, VaultStatus, VaultTransactions},
+    model::{RevocationTransactions, Vault, VaultStatus},
     RevaultD,
 };
 
@@ -15,10 +15,7 @@ use crate::ui::{
     error::Error,
     message::{DepositMessage, Message, SignMessage},
     state::{
-        cmd::{
-            get_blockheight, get_revocation_txs, list_vaults, list_vaults_with_transactions,
-            set_revocation_txs,
-        },
+        cmd::{get_blockheight, get_revocation_txs, list_vaults, set_revocation_txs},
         sign::SignState,
         State,
     },
@@ -52,15 +49,15 @@ impl StakeholderHomeState {
         }
     }
 
-    fn update_vaults(&mut self, vaults: Vec<(Vault, VaultTransactions)>) {
+    fn update_vaults(&mut self, vaults: Vec<Vault>) {
         self.calculate_balance(&vaults);
     }
 
-    fn calculate_balance(&mut self, vaults: &[(Vault, VaultTransactions)]) {
+    fn calculate_balance(&mut self, vaults: &[Vault]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
         let mut unsecured_amount: u64 = 0;
-        for (vault, _) in vaults {
+        for vault in vaults {
             match vault.status {
                 VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
                     active_amount += vault.amount
@@ -83,7 +80,7 @@ impl StakeholderHomeState {
 
 impl State for StakeholderHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
-        if let Message::VaultsWithTransactions(res) = message {
+        if let Message::Vaults(res) = message {
             match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -105,10 +102,7 @@ impl State for StakeholderHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(
-                list_vaults_with_transactions(self.revaultd.clone()),
-                Message::VaultsWithTransactions,
-            ),
+            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
         ])
     }
 }
