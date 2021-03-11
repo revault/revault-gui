@@ -112,21 +112,6 @@ pub mod card {
         }
     }
 
-    pub fn rounded<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
-        Container::new(content).style(RoundedCardStyle)
-    }
-
-    pub struct RoundedCardStyle;
-    impl container::StyleSheet for RoundedCardStyle {
-        fn style(&self) -> container::Style {
-            container::Style {
-                border_radius: 10.0,
-                border_width: 1.0,
-                ..container::Style::default()
-            }
-        }
-    }
-
     pub fn border_black<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content)
             .padding(15)
@@ -242,7 +227,10 @@ pub mod text {
 pub mod badge {
     use crate::ui::{
         color,
-        icon::{block_icon, deposit_icon, shield_check_icon, shield_icon, shield_notif_icon},
+        icon::{
+            block_icon, deposit_icon, send_icon, shield_check_icon, shield_icon, shield_notif_icon,
+            turnback_icon,
+        },
     };
     use iced::{container, Container, Length};
 
@@ -351,6 +339,102 @@ pub mod badge {
                 border_radius: 40.0,
                 background: color::INFO_LIGHT.into(),
                 text_color: color::INFO.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn vault_unconfirmed<'a, T: 'a>() -> Container<'a, T> {
+        let icon = deposit_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(WarningBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    pub fn vault_unvaulting<'a, T: 'a>() -> Container<'a, T> {
+        let icon = send_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(WarningBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    pub fn vault_canceling<'a, T: 'a>() -> Container<'a, T> {
+        let icon = turnback_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(WarningBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    pub fn vault_spending<'a, T: 'a>() -> Container<'a, T> {
+        let icon = send_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(WarningBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct WarningBadgeStyle;
+    impl container::StyleSheet for WarningBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::WARNING_LIGHT.into(),
+                text_color: color::WARNING.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn vault_canceled<'a, T: 'a>() -> Container<'a, T> {
+        let icon = turnback_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(AlertBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct AlertBadgeStyle;
+    impl container::StyleSheet for AlertBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::WARNING_LIGHT.into(),
+                text_color: color::WARNING.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    pub fn vault_spent<'a, T: 'a>() -> Container<'a, T> {
+        let icon = send_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(SuccessBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct SuccessBadgeStyle;
+    impl container::StyleSheet for SuccessBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::SUCCESS_LIGHT.into(),
+                text_color: color::SUCCESS.into(),
                 ..container::Style::default()
             }
         }

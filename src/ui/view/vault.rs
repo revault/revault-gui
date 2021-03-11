@@ -7,7 +7,7 @@ use crate::ui::{
     view::Context,
 };
 
-use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultTransactions};
+use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions};
 
 #[derive(Debug)]
 pub enum VaultView {
@@ -88,7 +88,7 @@ impl VaultModal {
                                             .push(
                                                 Container::new(
                                                     Row::new()
-                                                        .push(badge::tx_deposit())
+                                                        .push(vault_badge(&vlt))
                                                         .push(
                                                             Column::new()
                                                                 .push(
@@ -106,7 +106,8 @@ impl VaultModal {
                                                                         .align_items(Align::Center),
                                                                 )
                                                                 .push(text::small(&format!(
-                                                                    "{}",
+                                                                    "{} ( {} )",
+                                                                    &vlt.status,
                                                                     NaiveDateTime::from_timestamp(
                                                                         tx.received_at,
                                                                         0
@@ -218,6 +219,19 @@ fn input_and_outputs<'a, T: 'a>(
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))
 }
 
+/// vault_badge returns a badge headlining the vault status.
+fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
+    match &vault.status {
+        VaultStatus::Unconfirmed => badge::vault_unconfirmed(),
+        VaultStatus::Funded | VaultStatus::Secured | VaultStatus::Active => badge::tx_deposit(),
+        VaultStatus::Unvaulting | VaultStatus::Unvaulted => badge::vault_unvaulting(),
+        VaultStatus::Canceling | VaultStatus::EmergencyVaulting => badge::vault_canceling(),
+        VaultStatus::Canceled | VaultStatus::EmergencyVaulted => badge::vault_canceled(),
+        VaultStatus::Spendable | VaultStatus::Spending => badge::vault_spending(),
+        VaultStatus::Spent => badge::vault_spent(),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VaultListItem {
     state: iced::button::State,
@@ -231,35 +245,45 @@ impl VaultListItem {
     }
 
     pub fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
-        card::rounded(Container::new(
-            button::transparent(
-                &mut self.state,
-                card::white(Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(badge::tx_deposit())
-                                    .push(text::small(&vault.txid))
-                                    .spacing(20),
-                            )
-                            .width(Length::Fill),
+        let updated_at = NaiveDateTime::from_timestamp(vault.updated_at, 0);
+        button::white_card_button(
+            &mut self.state,
+            Container::new(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(vault_badge(&vault))
+                                .push(
+                                    Column::new()
+                                        .push(text::bold(text::small(&vault.address)))
+                                        .push(text::small(&format!(
+                                            "{} ( {} )",
+                                            &vault.status, updated_at
+                                        ))),
+                                )
+                                .spacing(20),
                         )
-                        .push(Container::new(
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
                             Row::new()
                                 .push(text::bold(text::simple(&format!(
                                     "{}",
-                                    ctx.converter.converts(vault.amount)
+                                    ctx.converter.converts(vault.amount),
                                 ))))
                                 .push(text::small(&format!(" {}", ctx.converter.unit)))
                                 .align_items(Align::Center),
-                        ))
-                        .spacing(20)
-                        .align_items(Align::Center),
-                )),
-            )
-            .on_press(Message::SelectVault(vault.outpoint())),
-        ))
+                        )
+                        .width(Length::Shrink),
+                    )
+                    .spacing(20)
+                    .align_items(Align::Center),
+            ),
+        )
+        .on_press(Message::SelectVault(vault.outpoint()))
+        .width(Length::Fill)
         .into()
     }
 }

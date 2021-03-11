@@ -81,3 +81,30 @@ impl button::StyleSheet for ClipboardButtonStyle {
         }
     }
 }
+
+pub fn white_card_button<'a, T: 'a + Clone>(
+    state: &'a mut button::State,
+    content: Container<'a, T>,
+) -> button::Button<'a, T> {
+    button::Button::new(state, content.padding(10)).style(WhiteCardButtonStyle {})
+}
+
+struct WhiteCardButtonStyle {}
+impl button::StyleSheet for WhiteCardButtonStyle {
+    fn active(&self) -> button::Style {
+        button::Style {
+            border_radius: 10.0,
+            background: color::FOREGROUND.into(),
+            ..button::Style::default()
+        }
+    }
+    fn hovered(&self) -> button::Style {
+        button::Style {
+            border_radius: 10.0,
+            background: color::FOREGROUND.into(),
+            border_color: color::SECONDARY,
+            border_width: 1.0,
+            ..button::Style::default()
+        }
+    }
+}

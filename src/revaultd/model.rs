@@ -17,6 +17,8 @@ pub struct Vault {
     pub status: VaultStatus,
     /// Deposit txid of the vault deposit transaction
     pub txid: String,
+    /// Timestamp of the last vault update.
+    pub updated_at: i64,
     /// Deposit vout of the vault deposit transaction
     pub vout: u32,
 }
@@ -71,6 +73,26 @@ pub enum VaultStatus {
     /// The spend transaction is confirmed
     #[serde(rename = "spent")]
     Spent,
+}
+
+impl std::fmt::Display for VaultStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Unconfirmed => write!(f, "Deposit unconfirmed"),
+            Self::Funded => write!(f, "Deposit funded"),
+            Self::Secured => write!(f, "Secured"),
+            Self::Active => write!(f, "Active"),
+            Self::Unvaulting => write!(f, "Unvaulting"),
+            Self::Unvaulted => write!(f, "Unvaulted"),
+            Self::Canceling => write!(f, "Canceling"),
+            Self::Canceled => write!(f, "Canceled"),
+            Self::EmergencyVaulting => write!(f, "Emergency vaulting"),
+            Self::EmergencyVaulted => write!(f, "Emergency vaulted"),
+            Self::Spendable => write!(f, "Spendable"),
+            Self::Spending => write!(f, "Spending"),
+            Self::Spent => write!(f, "Spent"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
