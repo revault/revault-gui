@@ -2,7 +2,8 @@ use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
 use crate::ui::{
-    component::{badge, button, card, separation, text, ContainerBackgroundStyle},
+    component::{badge, button, card, text, ContainerBackgroundStyle},
+    error::Error,
     message::Message,
     view::Context,
 };
@@ -29,128 +30,56 @@ impl VaultModal {
         &'a mut self,
         ctx: &Context,
         vlt: &Vault,
-        txs: &VaultTransactions,
+        warning: Option<&Error>,
+        panel: Element<'a, Message>,
     ) -> Element<'a, Message> {
-        let tx = txs.last_broadcasted_tx();
+        let mut col = Column::new();
+        if let Some(error) = warning {
+            col = col.push(
+                Container::new(card::alert_warning(Container::new(text::small(
+                    &error.to_string(),
+                ))))
+                .padding(20),
+            )
+        }
+        let header = Row::new().push(col.width(Length::Fill)).push(
+            Container::new(
+                button::cancel(
+                    &mut self.cancel_button,
+                    Container::new(text::simple("X Close")).padding(10),
+                )
+                .on_press(Message::SelectVault(vlt.outpoint())),
+            )
+            .width(Length::Shrink),
+        );
         Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
-                Column::new()
-                    .push(
-                        Row::new().push(Column::new().width(Length::Fill)).push(
+            Scrollable::new(&mut self.scroll).push(
+                Container::new(
+                    Column::new()
+                        .push(header)
+                        .push(
                             Container::new(
-                                button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                )
-                                .on_press(Message::SelectVault(vlt.outpoint())),
-                            )
-                            .width(Length::Shrink),
-                        ),
-                    )
-                    .push(
-                        Container::new(text::simple("Transaction Details"))
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
-                    )
-                    .push(
-                        Container::new(
-                            card::simple(Container::new(
                                 Column::new()
                                     .push(
-                                        Row::new()
-                                            .push(
-                                                Container::new(
-                                                    Row::new()
-                                                        .push(vault_badge(&vlt))
-                                                        .push(
-                                                            Column::new()
-                                                                .push(
-                                                                    Row::new()
-                                                                        .push(text::small(
-                                                                            &vlt.txid,
-                                                                        ))
-                                                                        .push(button::clipboard(
-                                                                            &mut self.copy_button,
-                                                                            Message::Clipboard(
-                                                                                vlt.txid
-                                                                                    .to_string(),
-                                                                            ),
-                                                                        ))
-                                                                        .align_items(Align::Center),
-                                                                )
-                                                                .push(text::small(&format!(
-                                                                    "{} ( {} )",
-                                                                    &vlt.status,
-                                                                    NaiveDateTime::from_timestamp(
-                                                                        tx.received_at,
-                                                                        0
-                                                                    )
-                                                                ))),
-                                                        )
-                                                        .spacing(20),
-                                                )
-                                                .width(Length::Fill),
-                                            )
-                                            .push(
-                                                Container::new(
-                                                    Row::new()
-                                                        .push(text::bold(text::simple(&format!(
-                                                            "{}",
-                                                            ctx.converter.converts(vlt.amount),
-                                                        ))))
-                                                        .push(text::simple(&format!(
-                                                            "{}",
-                                                            ctx.converter.unit,
-                                                        ))),
-                                                )
-                                                .width(Length::Shrink),
-                                            )
-                                            .spacing(20)
-                                            .align_items(Align::Center),
+                                        Container::new(text::simple("Vault Detail"))
+                                            .width(Length::Fill)
+                                            .align_x(Align::Center),
                                     )
-                                    .push(separation().width(Length::Fill))
-                                    .push(
-                                        Row::new()
-                                            .push(
-                                                Container::new(
-                                                    Column::new()
-                                                        .push(text::bold(text::simple(
-                                                            "Blockheight",
-                                                        )))
-                                                        .push(text::simple(&if let Some(
-                                                            blockheight,
-                                                        ) = &tx.blockheight
-                                                        {
-                                                            format!("{}", blockheight)
-                                                        } else {
-                                                            "Not in a block".to_string()
-                                                        })),
-                                                )
-                                                .width(Length::FillPortion(2)),
-                                            )
-                                            .push(
-                                                Container::new(
-                                                    Column::new()
-                                                        .push(text::bold(text::simple("Fee"))),
-                                                )
-                                                .width(Length::FillPortion(2)),
-                                            ),
-                                    )
+                                    .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
+                                    .push(Container::new(panel))
                                     .spacing(20),
-                            ))
+                            )
                             .max_width(1000)
-                            .padding(20),
+                            .align_x(Align::Center)
+                            .width(Length::Fill),
                         )
                         .width(Length::Fill)
-                        .align_x(Align::Center),
-                    )
-                    .push(
-                        input_and_outputs(ctx, &tx)
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
-                    )
-                    .spacing(20),
-            )),
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .width(Length::Fill)
+                .align_x(Align::Center),
+            ),
         )
         .style(ContainerBackgroundStyle)
         .padding(20)
@@ -159,6 +88,131 @@ impl VaultModal {
         .align_x(Align::Center)
         .into()
     }
+}
+
+fn vault<'a>(
+    ctx: &Context,
+    copy_button: &'a mut iced::button::State,
+    vlt: &Vault,
+) -> Container<'a, Message> {
+    card::simple(Container::new(
+        Column::new()
+            .push(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(vault_badge(&vlt))
+                                .push(
+                                    Column::new()
+                                        .push(
+                                            Row::new()
+                                                .push(text::small(&vlt.txid))
+                                                .push(button::clipboard(
+                                                    copy_button,
+                                                    Message::Clipboard(vlt.txid.to_string()),
+                                                ))
+                                                .align_items(Align::Center),
+                                        )
+                                        .push(text::small(&format!(
+                                            "{} ( {} )",
+                                            &vlt.status,
+                                            NaiveDateTime::from_timestamp(vlt.updated_at, 0)
+                                        ))),
+                                )
+                                .spacing(20),
+                        )
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(text::bold(text::simple(&format!(
+                                    "{}",
+                                    ctx.converter.converts(vlt.amount),
+                                ))))
+                                .push(text::simple(&format!("{}", ctx.converter.unit,))),
+                        )
+                        .width(Length::Shrink),
+                    )
+                    .spacing(20)
+                    .align_items(Align::Center),
+            )
+            .spacing(20),
+    ))
+}
+
+#[derive(Debug)]
+pub struct VaultOnChainTransactionsPanel {}
+
+impl VaultOnChainTransactionsPanel {
+    pub fn new() -> Self {
+        VaultOnChainTransactionsPanel {}
+    }
+    pub fn view(&mut self, ctx: &Context, txs: &VaultTransactions) -> Element<Message> {
+        let mut col_txs = Column::new();
+        if let Some(tx) = &txs.spend {
+            col_txs = col_txs.push(transaction(ctx, "Spend transaction", &tx));
+        }
+        if let Some(tx) = &txs.cancel {
+            col_txs = col_txs.push(transaction(ctx, "Cancel transaction", &tx));
+        }
+        if let Some(tx) = &txs.unvault_emergency {
+            col_txs = col_txs.push(transaction(ctx, "Unvault Emergency transaction", &tx));
+        }
+        if let Some(tx) = &txs.emergency {
+            col_txs = col_txs.push(transaction(ctx, "Emergency transaction", &tx));
+        }
+        if let Some(tx) = &txs.unvault {
+            col_txs = col_txs.push(transaction(ctx, "Unvault transaction", &tx));
+        }
+        col_txs = col_txs.push(transaction(ctx, "Deposit transaction", &txs.deposit));
+        Container::new(Column::new().push(col_txs))
+            .padding(20)
+            .into()
+    }
+}
+
+fn transaction<'a, T: 'a>(
+    ctx: &Context,
+    title: &str,
+    transaction: &BroadcastedTransaction,
+) -> Container<'a, T> {
+    Container::new(
+        Column::new()
+            .push(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Container::new(text::bold(text::simple(title))).width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(text::bold(text::small(
+                                    &transaction.tx.txid().to_string(),
+                                )))
+                                .width(Length::Shrink),
+                            ),
+                    )
+                    .push(text::small(&format!(
+                        "Received at {}",
+                        NaiveDateTime::from_timestamp(transaction.received_at, 0)
+                    )))
+                    .push(text::small(
+                        &if let Some(blockheight) = &transaction.blockheight {
+                            format!("Blockheight: {}", blockheight)
+                        } else {
+                            "Not in a block".to_string()
+                        },
+                    )),
+            )
+            .push(
+                Container::new(input_and_outputs(ctx, &transaction))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .spacing(20),
+    )
 }
 
 fn input_and_outputs<'a, T: 'a>(

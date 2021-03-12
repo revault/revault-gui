@@ -5,13 +5,13 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{get_blockheight, get_onchain_txs, list_vaults},
+    cmd::{get_blockheight, list_vaults},
     vault::{SelectedVault, VaultListItem},
     State,
 };
 
 use crate::revaultd::{
-    model::{Vault, VaultStatus, VaultTransactions},
+    model::{Vault, VaultStatus},
     RevaultD,
 };
 
@@ -66,20 +66,17 @@ impl ManagerHomeState {
             }
         }
 
-        return Command::perform(
-            get_onchain_txs(self.revaultd.clone(), outpoint),
-            Message::VaultOnChainTransactions,
-        );
-    }
-
-    pub fn update_selected_vault(&mut self, vault_txs: VaultTransactions) {
-        if let Some(i) = self
+        if let Some(selected) = self
             .vaults
             .iter()
-            .position(|vlt| vlt.vault.outpoint() == vault_txs.vault_outpoint)
+            .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
-            self.selected_vault = Some(SelectedVault::new(self.vaults[i].vault.clone(), vault_txs));
+            let selected_vault = SelectedVault::new(selected.vault.clone());
+            let cmd = selected_vault.load(self.revaultd.clone());
+            self.selected_vault = Some(selected_vault);
+            return cmd;
         };
+        Command::none()
     }
 
     pub fn calculate_balance(&mut self, vaults: &[Vault]) {
@@ -109,10 +106,11 @@ impl State for ManagerHomeState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::VaultOnChainTransactions(res) => match res {
-                Ok(txs) => self.update_selected_vault(txs),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
+            Message::Vault(msg) => {
+                if let Some(vault) = &mut self.selected_vault {
+                    return vault.update(msg);
+                }
+            }
             Message::BlockHeight(b) => match b {
                 Ok(height) => {
                     self.blockheight = height.into();
