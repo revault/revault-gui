@@ -161,6 +161,12 @@ pub struct RevocationTransactions {
     pub emergency_unvault_tx: PartiallySignedTransaction,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnvaultTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub unvault_tx: PartiallySignedTransaction,
+}
+
 mod bitcoin_transaction {
     use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
     use serde::{self, Deserialize, Deserializer};
