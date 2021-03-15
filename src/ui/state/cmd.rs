@@ -2,7 +2,7 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::sync::Arc;
 
 use crate::revaultd::{
-    model::{RevocationTransactions, Vault, VaultStatus, VaultTransactions},
+    model::{RevocationTransactions, UnvaultTransaction, Vault, VaultStatus, VaultTransactions},
     RevaultD, RevaultDError,
 };
 
@@ -53,4 +53,19 @@ pub async fn set_revocation_txs(
     cancel_tx: Psbt,
 ) -> Result<(), RevaultDError> {
     revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)
+}
+
+pub async fn get_unvault_tx(
+    revaultd: Arc<RevaultD>,
+    outpoint: String,
+) -> Result<UnvaultTransaction, RevaultDError> {
+    revaultd.get_unvault_tx(&outpoint)
+}
+
+pub async fn set_unvault_tx(
+    revaultd: Arc<RevaultD>,
+    outpoint: String,
+    unvault_tx: Psbt,
+) -> Result<(), RevaultDError> {
+    revaultd.set_unvault_tx(&outpoint, &unvault_tx)
 }

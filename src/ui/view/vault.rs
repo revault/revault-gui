@@ -2,18 +2,21 @@ use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
 use crate::ui::{
-    component::{badge, button, card, text, ContainerBackgroundStyle},
+    component::{badge, button, card, separation, text, ContainerBackgroundStyle},
     error::Error,
-    message::Message,
+    message::{Message, SignMessage, VaultMessage},
     view::Context,
 };
 
-use crate::revaultd::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions};
+use crate::{
+    revault::Role,
+    revaultd::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
+};
 
 #[derive(Debug)]
 pub struct VaultModal {
-    copy_button: iced::button::State,
     cancel_button: iced::button::State,
+    copy_button: iced::button::State,
     scroll: scrollable::State,
 }
 
@@ -48,7 +51,7 @@ impl VaultModal {
                     &mut self.cancel_button,
                     Container::new(text::simple("X Close")).padding(10),
                 )
-                .on_press(Message::SelectVault(vlt.outpoint())),
+                .on_press(Message::Vault(VaultMessage::Select(vlt.outpoint()))),
             )
             .width(Length::Shrink),
         );
@@ -143,33 +146,74 @@ fn vault<'a>(
 }
 
 #[derive(Debug)]
-pub struct VaultOnChainTransactionsPanel {}
+pub struct VaultOnChainTransactionsPanel {
+    /// button used for ack fund panel or delegate vault panel or cancel spending panel
+    /// depending of vault status.
+    action_button: iced::button::State,
+}
 
 impl VaultOnChainTransactionsPanel {
     pub fn new() -> Self {
-        VaultOnChainTransactionsPanel {}
+        VaultOnChainTransactionsPanel {
+            action_button: iced::button::State::new(),
+        }
     }
-    pub fn view(&mut self, ctx: &Context, txs: &VaultTransactions) -> Element<Message> {
-        let mut col_txs = Column::new();
+    pub fn view(
+        &mut self,
+        ctx: &Context,
+        vault: &Vault,
+        txs: &VaultTransactions,
+    ) -> Element<Message> {
+        let mut col = Column::new().spacing(20);
+        if ctx.role == Role::Stakeholder {
+            match vault.status {
+                VaultStatus::Secured => {
+                    col = col.push(card::white(Container::new(
+                        Row::new()
+                            .push(
+                                Container::new(text::simple(
+                                    "Do you want to delegate vault to manager ? ",
+                                ))
+                                .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(
+                                    button::important(
+                                        &mut self.action_button,
+                                        button::button_content(None, "Delegate vault"),
+                                    )
+                                    .on_press(Message::Vault(
+                                        VaultMessage::Delegate(vault.outpoint()),
+                                    )),
+                                )
+                                .width(Length::Shrink),
+                            )
+                            .align_items(Align::Center),
+                    )))
+                }
+                _ => {}
+            };
+        }
+        col = col.push(Container::new(text::bold(text::simple(
+            "Onchain transactions:",
+        ))));
         if let Some(tx) = &txs.spend {
-            col_txs = col_txs.push(transaction(ctx, "Spend transaction", &tx));
+            col = col.push(transaction(ctx, "Spend transaction", &tx));
         }
         if let Some(tx) = &txs.cancel {
-            col_txs = col_txs.push(transaction(ctx, "Cancel transaction", &tx));
+            col = col.push(transaction(ctx, "Cancel transaction", &tx));
         }
         if let Some(tx) = &txs.unvault_emergency {
-            col_txs = col_txs.push(transaction(ctx, "Unvault Emergency transaction", &tx));
+            col = col.push(transaction(ctx, "Unvault Emergency transaction", &tx));
         }
         if let Some(tx) = &txs.emergency {
-            col_txs = col_txs.push(transaction(ctx, "Emergency transaction", &tx));
+            col = col.push(transaction(ctx, "Emergency transaction", &tx));
         }
         if let Some(tx) = &txs.unvault {
-            col_txs = col_txs.push(transaction(ctx, "Unvault transaction", &tx));
+            col = col.push(transaction(ctx, "Unvault transaction", &tx));
         }
-        col_txs = col_txs.push(transaction(ctx, "Deposit transaction", &txs.deposit));
-        Container::new(Column::new().push(col_txs))
-            .padding(20)
-            .into()
+        col = col.push(transaction(ctx, "Deposit transaction", &txs.deposit));
+        Container::new(Column::new().push(col)).into()
     }
 }
 
@@ -180,6 +224,7 @@ fn transaction<'a, T: 'a>(
 ) -> Container<'a, T> {
     Container::new(
         Column::new()
+            .push(separation().width(Length::Fill))
             .push(
                 Column::new()
                     .push(
@@ -259,19 +304,24 @@ fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
     }
 }
 
+pub trait VaultView {
+    fn new() -> Self;
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> Element<Message>;
+}
+
 #[derive(Debug, Clone)]
 pub struct VaultListItemView {
     state: iced::button::State,
 }
 
-impl VaultListItemView {
-    pub fn new() -> Self {
+impl VaultView for VaultListItemView {
+    fn new() -> Self {
         VaultListItemView {
             state: iced::button::State::new(),
         }
     }
 
-    pub fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         let updated_at = NaiveDateTime::from_timestamp(vault.updated_at, 0);
         button::white_card_button(
             &mut self.state,
@@ -309,8 +359,114 @@ impl VaultListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::SelectVault(vault.outpoint()))
+        .on_press(Message::Vault(VaultMessage::Select(vault.outpoint())))
         .width(Length::Fill)
         .into()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DelegateVaultListItemView {
+    select_button: iced::button::State,
+    delegate_button: iced::button::State,
+}
+
+impl VaultView for DelegateVaultListItemView {
+    fn new() -> Self {
+        DelegateVaultListItemView {
+            select_button: iced::button::State::new(),
+            delegate_button: iced::button::State::new(),
+        }
+    }
+
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+        let updated_at = NaiveDateTime::from_timestamp(vault.updated_at, 0);
+        let mut row = Row::new()
+            .push(
+                Container::new(
+                    Row::new()
+                        .push(text::bold(text::simple(&format!(
+                            "{}",
+                            ctx.converter.converts(vault.amount),
+                        ))))
+                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                        .align_items(Align::Center),
+                )
+                .width(Length::Shrink),
+            )
+            .push(
+                Container::new(
+                    Row::new()
+                        .push(Container::new(text::small(&format!("{}", updated_at))))
+                        .push(Container::new(text::bold(text::small(&vault.address))))
+                        .spacing(10),
+                )
+                .width(Length::Fill),
+            )
+            .spacing(20)
+            .align_items(Align::Center);
+        if vault.status == VaultStatus::Secured {
+            row = row.push(
+                Container::new(
+                    button::important(
+                        &mut self.delegate_button,
+                        button::button_content(None, "delegate"),
+                    )
+                    .on_press(Message::Vault(VaultMessage::Delegate(vault.outpoint()))),
+                )
+                .width(Length::Shrink),
+            )
+        }
+        row.push(
+            button::transparent(
+                &mut self.select_button,
+                button::button_content(None, "view"),
+            )
+            .on_press(Message::Vault(VaultMessage::Select(vault.outpoint()))),
+        )
+        .into()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DelegateVaultView {
+    back_button: iced::button::State,
+}
+
+impl DelegateVaultView {
+    pub fn new() -> Self {
+        Self {
+            back_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        _ctx: &Context,
+        _vault: &Vault,
+        warning: Option<&Error>,
+        signer: Element<'a, SignMessage>,
+    ) -> Element<'a, Message> {
+        let mut col = Column::new();
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
+        col.push(button::transparent(
+                &mut self.back_button,
+                Container::new(text::small("< vault transactions")),
+            ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
+            .push(card::white(Container::new(
+                Column::new()
+                    .push(
+                        Column::new()
+                            .push(text::bold(text::simple("Delegate vault to manager")))
+                            .push(text::simple("the unvault transaction must be signed in order to delegate the fund to the managers.")),
+                    )
+                    .push(signer.map(|msg| Message::Vault(VaultMessage::Sign(msg))))
+                    .spacing(20),
+            )))
+            .into()
     }
 }

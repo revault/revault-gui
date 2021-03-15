@@ -5,7 +5,7 @@ use crate::{
     revault::TransactionKind,
     ui::{
         component::{button, card, separation, text},
-        message::SignMessage,
+        message::{SignMessage, SignatureSharingStatus},
         view::Context,
     },
 };
@@ -30,17 +30,13 @@ impl DirectSignatureView {
         transaction_kind: &TransactionKind,
     ) -> Element<SignMessage> {
         let title = match transaction_kind {
-            TransactionKind::Emergency => {
-                text::bold(text::simple("Sign emergency transaction").size(25))
-            }
+            TransactionKind::Emergency => text::bold(text::simple("Sign emergency transaction")),
             TransactionKind::EmergencyUnvault => {
-                text::bold(text::simple("Sign emergency unvault transaction").size(25))
+                text::bold(text::simple("Sign emergency unvault transaction"))
             }
-            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction").size(25)),
-            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction").size(25)),
-            TransactionKind::Unvault => {
-                text::bold(text::simple("Sign unvault transaction").size(25))
-            }
+            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction")),
+            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction")),
+            TransactionKind::Unvault => text::bold(text::simple("Sign unvault transaction")),
         };
 
         let col = Column::new()
@@ -101,24 +97,20 @@ impl IndirectSignatureView {
     pub fn view(
         &mut self,
         _ctx: &Context,
-        processing: &bool,
+        sharing_status: &SignatureSharingStatus,
         transaction_kind: &TransactionKind,
         psbt: &Psbt,
         psbt_input: &str,
         warning: Option<&String>,
     ) -> Element<SignMessage> {
         let title = match transaction_kind {
-            TransactionKind::Emergency => {
-                text::bold(text::simple("Sign emergency transaction").size(25))
-            }
+            TransactionKind::Emergency => text::bold(text::simple("Sign emergency transaction")),
             TransactionKind::EmergencyUnvault => {
-                text::bold(text::simple("Sign emergency unvault transaction").size(25))
+                text::bold(text::simple("Sign emergency unvault transaction"))
             }
-            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction").size(25)),
-            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction").size(25)),
-            TransactionKind::Unvault => {
-                text::bold(text::simple("Sign unvault transaction").size(25))
-            }
+            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction")),
+            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction")),
+            TransactionKind::Unvault => text::bold(text::simple("Sign unvault transaction")),
         };
 
         let psbt_str = bitcoin::base64::encode(&bitcoin::consensus::serialize(psbt));
@@ -159,41 +151,54 @@ impl IndirectSignatureView {
             col = col.push(card::alert_warning(Container::new(text::simple(message))));
         }
 
-        if *processing {
-            col = col
-                .push(Container::new(text::small(&psbt_input.to_string())))
-                .push(Container::new(
-                    button::primary_disable(
-                        &mut self.sign_button,
-                        button::button_content(None, " Processing "),
-                    )
-                    .on_press(SignMessage::Sign),
-                ));
-        } else {
-            col = col
-                .push(
-                    TextInput::new(
-                        &mut self.psbt_input,
-                        "Signed PSBT",
-                        &psbt_input,
-                        SignMessage::PsbtEdited,
-                    )
-                    .size(15)
-                    .width(Length::Fill)
-                    .padding(10),
-                )
-                .push(
-                    Container::new(
-                        button::primary(
+        match sharing_status {
+            SignatureSharingStatus::Success => {
+                col = col
+                    .push(Container::new(text::small(&psbt_input.to_string())))
+                    .push(
+                        Container::new(card::success(Container::new(text::simple("success"))))
+                            .width(Length::Fill)
+                            .align_x(Align::Center),
+                    );
+            }
+            SignatureSharingStatus::Processing => {
+                col = col
+                    .push(Container::new(text::small(&psbt_input.to_string())))
+                    .push(Container::new(
+                        button::primary_disable(
                             &mut self.sign_button,
-                            button::button_content(None, " Sign transaction "),
+                            button::button_content(None, " Processing "),
                         )
                         .on_press(SignMessage::Sign),
+                    ));
+            }
+            SignatureSharingStatus::Unshared => {
+                col = col
+                    .push(
+                        TextInput::new(
+                            &mut self.psbt_input,
+                            "Signed PSBT",
+                            &psbt_input,
+                            SignMessage::PsbtEdited,
+                        )
+                        .size(15)
+                        .width(Length::Fill)
+                        .padding(10),
                     )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                );
-        }
+                    .push(
+                        Container::new(
+                            button::primary(
+                                &mut self.sign_button,
+                                button::button_content(None, " Sign transaction "),
+                            )
+                            .on_press(SignMessage::Sign),
+                        )
+                        .width(Length::Fill)
+                        .align_x(Align::Center),
+                    );
+            }
+        };
+
         Container::new(col.spacing(10)).into()
     }
 }
