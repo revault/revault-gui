@@ -2,7 +2,7 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::sync::Arc;
 
 use crate::revaultd::{
-    model::{RevocationTransactions, Vault, VaultTransactions},
+    model::{RevocationTransactions, Vault, VaultStatus, VaultTransactions},
     RevaultD, RevaultDError,
 };
 
@@ -17,8 +17,11 @@ pub async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDErr
     revaultd.get_info().map(|res| res.blockheight)
 }
 
-pub async fn list_vaults(revaultd: Arc<RevaultD>) -> Result<Vec<Vault>, RevaultDError> {
-    revaultd.list_vaults().map(|res| res.vaults)
+pub async fn list_vaults(
+    revaultd: Arc<RevaultD>,
+    statuses: Option<&[VaultStatus]>,
+) -> Result<Vec<Vault>, RevaultDError> {
+    revaultd.list_vaults(statuses).map(|res| res.vaults)
 }
 
 pub async fn get_onchain_txs(

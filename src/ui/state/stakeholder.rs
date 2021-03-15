@@ -102,7 +102,7 @@ impl State for StakeholderHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone()), Message::Vaults),
+            Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
         ])
     }
 }
@@ -269,7 +269,7 @@ impl State for StakeholderACKFundsState {
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone()),
+            list_vaults(self.revaultd.clone(), None),
             Message::Vaults,
         )])
     }

@@ -1,5 +1,5 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// getdepositaddress response
 #[derive(Debug, Clone, Deserialize)]
@@ -31,7 +31,7 @@ impl Vault {
 
 /// The status of a [Vault], depends both on the block chain and the set of pre-signed
 /// transactions
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum VaultStatus {
     /// The deposit transaction is less than 6 blocks deep in the chain.
     #[serde(rename = "unconfirmed")]
@@ -159,6 +159,12 @@ pub struct RevocationTransactions {
 
     #[serde(with = "bitcoin_psbt")]
     pub emergency_unvault_tx: PartiallySignedTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnvaultTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub unvault_tx: PartiallySignedTransaction,
 }
 
 mod bitcoin_transaction {

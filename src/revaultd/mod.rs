@@ -13,7 +13,10 @@ pub mod model;
 
 use client::Client;
 use config::Config;
-use model::{DepositAddress, RevocationTransactions, Vault, VaultTransactions};
+use model::{
+    DepositAddress, RevocationTransactions, UnvaultTransaction, Vault, VaultStatus,
+    VaultTransactions,
+};
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -104,8 +107,11 @@ impl RevaultD {
         self.call("getinfo", Option::<Request>::None)
     }
 
-    pub fn list_vaults(&self) -> Result<ListVaultsResponse, RevaultDError> {
-        self.call("listvaults", Option::<Request>::None)
+    pub fn list_vaults(
+        &self,
+        statuses: Option<&[VaultStatus]>,
+    ) -> Result<ListVaultsResponse, RevaultDError> {
+        self.call("listvaults", statuses.map(|s| vec![s]))
     }
 
     pub fn list_onchain_transactions(
@@ -142,6 +148,17 @@ impl RevaultD {
             "revocationtxs",
             Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
         )?;
+        Ok(())
+    }
+
+    pub fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
+        self.call("getunvaulttx", Some(vec![outpoint]))
+    }
+
+    pub fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+        let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
+        let _res: serde_json::value::Value =
+            self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
         Ok(())
     }
 }
