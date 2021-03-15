@@ -464,7 +464,10 @@ impl DelegateVaultView {
                             .push(text::bold(text::simple("Delegate vault to manager")))
                             .push(text::simple("the unvault transaction must be signed in order to delegate the fund to the managers.")),
                     )
-                    .push(signer.map(|msg| Message::Vault(VaultMessage::Sign(msg))))
+                    .push(signer.map(move |msg| match msg {
+                        SignMessage::Clipboard(s) => Message::Clipboard(s),
+                        _ => Message::Vault(VaultMessage::Sign(msg)),
+                    }))
                     .spacing(20),
             )))
             .into()

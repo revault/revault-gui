@@ -1,5 +1,5 @@
 use crate::ui::{color, component::text, icon::clipboard_icon};
-use iced::{button, Color, Container, Row, Text, Vector};
+use iced::{button, Color, Container, Row, Vector};
 
 macro_rules! button {
     ($name:ident, $style_name:ident, $bg_color:expr, $text_color:expr) => {
@@ -47,7 +47,7 @@ button!(
 
 pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Container<'a, T> {
     match icon {
-        None => Container::new(Text::new(text)).padding(5),
+        None => Container::new(text::simple(text)).padding(5),
         Some(i) => Container::new(
             Row::new()
                 .push(i)

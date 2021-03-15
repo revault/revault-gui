@@ -70,6 +70,10 @@ pub fn shield_check_icon() -> Text {
     icon('\u{F509}')
 }
 
+pub fn person_check_icon() -> Text {
+    icon('\u{F4AF}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')
