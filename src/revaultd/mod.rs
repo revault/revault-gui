@@ -1,3 +1,5 @@
+use serde_json::json;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::Path;
 use std::process::Command;
@@ -14,8 +16,8 @@ pub mod model;
 use client::Client;
 use config::Config;
 use model::{
-    DepositAddress, RevocationTransactions, UnvaultTransaction, Vault, VaultStatus,
-    VaultTransactions,
+    DepositAddress, RevocationTransactions, SpendTransaction, UnvaultTransaction, Vault,
+    VaultStatus, VaultTransactions,
 };
 
 #[derive(Debug, Clone)]
@@ -159,6 +161,28 @@ impl RevaultD {
         let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
         let _res: serde_json::value::Value =
             self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
+        Ok(())
+    }
+
+    pub fn get_spend_tx(
+        &self,
+        inputs: &[String],
+        outputs: &HashMap<String, u64>,
+        feerate: &u32,
+    ) -> Result<SpendTransaction, RevaultDError> {
+        self.call(
+            "getspendtx",
+            Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
+        )
+        .map(|mut res: SpendTransaction| {
+            res.feerate = *feerate;
+            res
+        })
+    }
+
+    pub fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
+        let spend_tx = base64::encode(&consensus::serialize(psbt));
+        let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
         Ok(())
     }
 }
