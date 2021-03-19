@@ -102,7 +102,7 @@ fn bitcoin_core_card<'a, T: 'a>(blockheight: Option<&u64>) -> Container<'a, T> {
                 .push(
                     Column::new()
                         .push(text::bold(text::simple("Block Height")))
-                        .push(text::simple(&format!("{}", b))),
+                        .push(text::simple(&b.to_string())),
                 )
                 .spacing(10),
         );

@@ -188,7 +188,7 @@ impl ManagerSendOutputView {
             TextInput::new(
                 &mut self.amount_input,
                 "0.0",
-                &format!("{}", amount),
+                &amount.to_string(),
                 RecipientMessage::AmountEdited,
             )
             .padding(10),
@@ -310,7 +310,7 @@ pub fn manager_send_input_view<'a>(
     selected: bool,
 ) -> Element<'a, InputMessage> {
     let checkbox =
-        Checkbox::new(selected, &format!("{}", outpoint), InputMessage::Selected).text_size(15);
+        Checkbox::new(selected, &outpoint.to_string(), InputMessage::Selected).text_size(15);
     let row = Row::new()
         .push(checkbox)
         .push(text::bold(text::simple(&format!(

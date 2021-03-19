@@ -156,7 +156,7 @@ fn balance_view<'a, T: 'a>(ctx: &Context, balance: &(u64, u64)) -> Container<'a,
                 .padding(5)
                 .push(Container::new(text::simple("active")).width(Length::Fill))
                 .push(
-                    Container::new(text::bold(text::simple(&format!("{}", active_balance))))
+                    Container::new(text::bold(text::simple(&active_balance.to_string())))
                         .width(Length::Shrink),
                 )
                 .push(text::simple(&format!(" {}", ctx.converter.unit))),
@@ -167,7 +167,7 @@ fn balance_view<'a, T: 'a>(ctx: &Context, balance: &(u64, u64)) -> Container<'a,
                 .padding(5)
                 .push(Container::new(text::simple("inactive")).width(Length::Fill))
                 .push(
-                    Container::new(text::bold(text::simple(&format!("{}", inactive_balance))))
+                    Container::new(text::bold(text::simple(&inactive_balance.to_string())))
                         .width(Length::Shrink),
                 )
                 .push(text::simple(&format!(" {}", ctx.converter.unit))),

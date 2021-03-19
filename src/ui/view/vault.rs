@@ -134,7 +134,7 @@ fn vault<'a>(
                                     "{}",
                                     ctx.converter.converts(vlt.amount),
                                 ))))
-                                .push(text::simple(&format!("{}", ctx.converter.unit,))),
+                                .push(text::simple(&ctx.converter.unit.to_string())),
                         )
                         .width(Length::Shrink),
                     )
@@ -280,12 +280,12 @@ fn input_and_outputs<'a, T: 'a>(
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
         let mut col = Column::new();
         if let Some(a) = addr {
-            col = col.push(text::small(&format!("{}", a,)))
+            col = col.push(text::small(&a.to_string()))
         } else {
-            col = col.push(text::small(&format!("{}", &output.script_pubkey)))
+            col = col.push(text::small(&output.script_pubkey.to_string()))
         }
         col_output = col_output.push(card::simple(Container::new(col.push(text::bold(
-            text::small(&format!("{}", ctx.converter.converts(output.value))),
+            text::small(&ctx.converter.converts(output.value).to_string()),
         )))));
     }
     Container::new(Row::new().push(col_input).push(col_output).spacing(20))

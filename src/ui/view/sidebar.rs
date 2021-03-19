@@ -52,7 +52,7 @@ impl Sidebar {
                 .style(TransparentPickListStyle),
             )
         } else {
-            Container::new(text::simple(&format!("{}", context.role)))
+            Container::new(text::simple(&context.role.to_string()))
         };
         let home_button = if context.menu == Menu::Home {
             button::primary(
