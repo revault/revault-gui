@@ -5,18 +5,24 @@ use std::sync::Arc;
 use crate::{
     revault::TransactionKind,
     revaultd::{
-        model::{self, VaultTransactions},
+        model::{self, RevocationTransactions, VaultTransactions},
         RevaultD,
     },
     ui::{
         error::Error,
         message::{Message, SignMessage, VaultMessage},
         state::{
-            cmd::{get_onchain_txs, get_unvault_tx, set_unvault_tx},
+            cmd::{
+                get_onchain_txs, get_revocation_txs, get_unvault_tx, set_revocation_txs,
+                set_unvault_tx,
+            },
             sign::SignState,
         },
         view::{
-            vault::{DelegateVaultView, VaultModal, VaultOnChainTransactionsPanel, VaultView},
+            vault::{
+                AcknowledgeVaultView, DelegateVaultView, VaultModal, VaultOnChainTransactionsPanel,
+                VaultView,
+            },
             Context,
         },
     },
@@ -77,11 +83,23 @@ impl Vault {
                 Ok(tx) => self.section = VaultSection::new_delegate_section(tx.unvault_tx),
                 Err(e) => self.warning = Error::from(e).into(),
             },
+            VaultMessage::RevocationTransactions(res) => match res {
+                Ok(tx) => self.section = VaultSection::new_ack_section(tx),
+                Err(e) => self.warning = Error::from(e).into(),
+            },
             VaultMessage::Delegate(outpoint) => {
                 if outpoint == self.vault.outpoint() {
                     return Command::perform(
                         get_unvault_tx(revaultd.clone(), self.vault.outpoint()),
                         |res| Message::Vault(VaultMessage::UnvaultTransaction(res)),
+                    );
+                }
+            }
+            VaultMessage::Acknowledge(outpoint) => {
+                if outpoint == self.vault.outpoint() {
+                    return Command::perform(
+                        get_revocation_txs(revaultd.clone(), self.vault.outpoint()),
+                        |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
                     );
                 }
             }
@@ -124,6 +142,14 @@ pub enum VaultSection {
         view: DelegateVaultView,
         warning: Option<Error>,
     },
+    Acknowledge {
+        emergency_tx: (Psbt, bool),
+        emergency_unvault_tx: (Psbt, bool),
+        cancel_tx: (Psbt, bool),
+        warning: Option<Error>,
+        view: AcknowledgeVaultView,
+        signer: SignState,
+    },
 }
 
 impl VaultSection {
@@ -138,6 +164,17 @@ impl VaultSection {
         Self::Delegate {
             signer: SignState::new(unvault_tx, TransactionKind::Unvault),
             view: DelegateVaultView::new(),
+            warning: None,
+        }
+    }
+
+    pub fn new_ack_section(txs: RevocationTransactions) -> Self {
+        Self::Acknowledge {
+            emergency_tx: (txs.emergency_tx.clone(), false),
+            emergency_unvault_tx: (txs.emergency_unvault_tx.clone(), false),
+            cancel_tx: (txs.cancel_tx.clone(), false),
+            signer: SignState::new(txs.emergency_tx, TransactionKind::Emergency),
+            view: AcknowledgeVaultView::new(),
             warning: None,
         }
     }
@@ -160,6 +197,16 @@ impl VaultSection {
                         *warning = Some(Error::RevaultDError(e));
                     }
                 },
+                VaultSection::Acknowledge {
+                    warning, signer, ..
+                } => match res {
+                    Ok(()) => {
+                        signer.update(SignMessage::Success);
+                    }
+                    Err(e) => {
+                        *warning = Some(Error::RevaultDError(e));
+                    }
+                },
                 _ => {}
             },
             VaultMessage::Sign(msg) => match self {
@@ -170,6 +217,45 @@ impl VaultSection {
                             set_unvault_tx(revaultd.clone(), vault.outpoint(), psbt.clone()),
                             VaultMessage::Signed,
                         );
+                    }
+                }
+                VaultSection::Acknowledge {
+                    signer,
+                    emergency_tx,
+                    emergency_unvault_tx,
+                    cancel_tx,
+                    ..
+                } => {
+                    signer.update(msg);
+                    if let Some(psbt) = &signer.signed_psbt {
+                        match signer.transaction_kind {
+                            TransactionKind::Emergency => {
+                                *emergency_tx = (psbt.clone(), true);
+                                *signer = SignState::new(
+                                    emergency_unvault_tx.0.clone(),
+                                    TransactionKind::EmergencyUnvault,
+                                );
+                            }
+                            TransactionKind::EmergencyUnvault => {
+                                *emergency_unvault_tx = (psbt.clone(), true);
+                                *signer =
+                                    SignState::new(cancel_tx.0.clone(), TransactionKind::Cancel);
+                            }
+                            TransactionKind::Cancel => {
+                                *cancel_tx = (psbt.clone(), true);
+                                return Command::perform(
+                                    set_revocation_txs(
+                                        revaultd,
+                                        vault.outpoint(),
+                                        emergency_tx.0.clone(),
+                                        emergency_unvault_tx.0.clone(),
+                                        cancel_tx.0.clone(),
+                                    ),
+                                    VaultMessage::Signed,
+                                );
+                            }
+                            _ => {}
+                        }
                     }
                 }
                 _ => {}
@@ -189,6 +275,24 @@ impl VaultSection {
                 warning,
                 ..
             } => view.view(ctx, &vault, warning.as_ref(), signer.view(ctx)),
+            Self::Acknowledge {
+                emergency_tx,
+                emergency_unvault_tx,
+                cancel_tx,
+                warning,
+                view,
+                signer,
+            } => view
+                .view(
+                    ctx,
+                    warning.as_ref(),
+                    vault,
+                    &emergency_tx,
+                    &emergency_unvault_tx,
+                    &cancel_tx,
+                    signer.view(ctx).map(VaultMessage::Sign),
+                )
+                .map(Message::Vault),
         }
     }
 }
