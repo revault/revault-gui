@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::{error::Error, menu::Menu};
 use crate::revault::Role;
 use crate::revaultd::{
-    model::{RevocationTransactions, Vault, VaultTransactions},
+    model::{RevocationTransactions, UnvaultTransaction, Vault, VaultStatus, VaultTransactions},
     RevaultD, RevaultDError,
 };
 
@@ -16,8 +16,8 @@ pub enum Message {
     Synced(Arc<RevaultD>),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    SelectVault(String),
     Vault(VaultMessage),
+    FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
@@ -32,15 +32,35 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum VaultMessage {
+    ListOnchainTransaction,
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
+    UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
+    Sign(SignMessage),
+    Signed(Result<(), RevaultDError>),
+    Select(String),
+    Delegate(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum VaultFilterMessage {
+    Status(Vec<VaultStatus>),
 }
 
 #[derive(Debug, Clone)]
 pub enum SignMessage {
     ChangeMethod,
     Sign,
+    Success,
+    SharingStatus(SignatureSharingStatus),
     Clipboard(String),
     PsbtEdited(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum SignatureSharingStatus {
+    Unshared,
+    Processing,
+    Success,
 }
 
 #[derive(Debug, Clone)]

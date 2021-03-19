@@ -10,8 +10,8 @@ use super::menu::Menu;
 use super::message::Message;
 use super::state::{
     ChargingState, DepositState, HistoryState, InstallingState, ManagerHomeState,
-    ManagerNetworkState, ManagerSendState, StakeholderACKFundsState, StakeholderHomeState,
-    StakeholderNetworkState, State,
+    ManagerNetworkState, ManagerSendState, StakeholderACKFundsState, StakeholderDelegateFundsState,
+    StakeholderHomeState, StakeholderNetworkState, State,
 };
 
 use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
@@ -41,6 +41,8 @@ impl App {
                 Menu::History => HistoryState::new(revaultd).into(),
                 Menu::Network => ManagerNetworkState::new(revaultd).into(),
                 Menu::Send => ManagerSendState::new(revaultd).into(),
+                // Manager cannot delegate funds, the user is redirected to the home.
+                Menu::DelegateFunds => ManagerHomeState::new(revaultd).into(),
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
@@ -49,6 +51,7 @@ impl App {
                 Menu::History => HistoryState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
                 Menu::ACKFunds => StakeholderACKFundsState::new(revaultd).into(),
+                Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
                 _ => unreachable!(),
             },
         };

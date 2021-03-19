@@ -16,7 +16,10 @@ pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use manager::ManagerSendView;
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
-pub use stakeholder::{StakeholderACKDepositView, StakeholderACKFundsView};
+pub use stakeholder::{
+    StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
+};
+pub use vault::VaultView;
 
 use bitcoin::Network;
 

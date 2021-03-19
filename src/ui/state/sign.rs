@@ -5,7 +5,7 @@ use iced::{Command, Element};
 use crate::{
     revault::TransactionKind,
     ui::{
-        message::SignMessage,
+        message::{SignMessage, SignatureSharingStatus},
         view::{
             sign::{DirectSignatureView, IndirectSignatureView},
             Context,
@@ -19,6 +19,7 @@ pub struct SignState {
     pub original_psbt: Psbt,
     pub signed_psbt: Option<Psbt>,
     pub transaction_kind: TransactionKind,
+    sharing_status: SignatureSharingStatus,
     method: SignMethod,
 }
 
@@ -31,7 +32,6 @@ pub enum SignMethod {
     /// IndirectSignature means that the PSBT is exported and
     /// then imported once signed on a air gapped device for example.
     IndirectSignature {
-        processing: bool,
         warning: Option<String>,
         psbt_input: String,
         view: IndirectSignatureView,
@@ -44,6 +44,7 @@ impl SignState {
             original_psbt,
             transaction_kind,
             signed_psbt: None,
+            sharing_status: SignatureSharingStatus::Unshared,
             method: SignMethod::DirectSignature {
                 view: DirectSignatureView::new(),
             },
@@ -52,6 +53,9 @@ impl SignState {
 
     pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
         match message {
+            SignMessage::Success => {
+                self.sharing_status = SignatureSharingStatus::Success;
+            }
             SignMessage::PsbtEdited(psbt) => {
                 if let SignMethod::IndirectSignature {
                     psbt_input,
@@ -67,7 +71,6 @@ impl SignState {
                 if let SignMethod::IndirectSignature {
                     psbt_input,
                     warning,
-                    processing,
                     ..
                 } = &mut self.method
                 {
@@ -75,9 +78,7 @@ impl SignState {
                         self.signed_psbt = base64::decode(&psbt_input)
                             .ok()
                             .and_then(|bytes| encode::deserialize(&bytes).ok());
-                        if self.signed_psbt.is_some() {
-                            *processing = true;
-                        } else {
+                        if self.signed_psbt.is_none() {
                             *warning = Some("Please enter valid PSBT".to_string());
                         }
                     }
@@ -86,7 +87,6 @@ impl SignState {
             SignMessage::ChangeMethod => {
                 if let SignMethod::DirectSignature { .. } = self.method {
                     self.method = SignMethod::IndirectSignature {
-                        processing: false,
                         warning: None,
                         psbt_input: "".to_string(),
                         view: IndirectSignatureView::new(),
@@ -106,13 +106,12 @@ impl SignState {
         match &mut self.method {
             SignMethod::DirectSignature { view } => view.view(ctx, &self.transaction_kind),
             SignMethod::IndirectSignature {
-                processing,
                 psbt_input,
                 view,
                 warning,
             } => view.view(
                 ctx,
-                &processing,
+                &self.sharing_status,
                 &self.transaction_kind,
                 &self.original_psbt,
                 &psbt_input,

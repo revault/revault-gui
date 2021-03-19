@@ -6,4 +6,5 @@ pub enum Menu {
     Network,
     Send,
     ACKFunds,
+    DelegateFunds,
 }

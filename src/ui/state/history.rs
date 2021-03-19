@@ -5,16 +5,16 @@ use iced::{Command, Element};
 
 use super::{
     cmd::{get_blockheight, list_vaults},
-    vault::{SelectedVault, VaultListItem},
+    vault::{Vault, VaultListItem},
     State,
 };
 
-use crate::revaultd::{model::Vault, RevaultD};
+use crate::revaultd::{model, RevaultD};
 
 use crate::ui::{
     error::Error,
-    message::Message,
-    view::{Context, HistoryView},
+    message::{Message, VaultMessage},
+    view::{vault::VaultListItemView, Context, HistoryView},
 };
 
 #[derive(Debug)]
@@ -25,8 +25,8 @@ pub struct HistoryState {
     blockheight: u64,
     warning: Option<Error>,
 
-    vaults: Vec<VaultListItem>,
-    selected_vault: Option<SelectedVault>,
+    vaults: Vec<VaultListItem<VaultListItemView>>,
+    selected_vault: Option<Vault>,
 }
 
 impl HistoryState {
@@ -41,7 +41,7 @@ impl HistoryState {
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.vaults = vaults
             .into_iter()
             .map(|vlt| VaultListItem::new(vlt))
@@ -61,7 +61,7 @@ impl HistoryState {
             .iter()
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
-            let selected_vault = SelectedVault::new(selected.vault.clone());
+            let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
             return cmd;
@@ -73,14 +73,16 @@ impl HistoryState {
 impl State for HistoryState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
+            Message::Vault(VaultMessage::Select(outpoint)) => {
+                return self.on_vault_select(outpoint)
+            }
             Message::Vault(msg) => {
                 if let Some(vault) = &mut self.selected_vault {
-                    return vault.update(msg);
+                    return vault.update(self.revaultd.clone(), msg);
                 }
             }
             Message::BlockHeight(b) => match b {

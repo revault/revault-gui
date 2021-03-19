@@ -15,7 +15,10 @@ pub use deposit::DepositState;
 pub use history::HistoryState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
-pub use stakeholder::{StakeholderACKFundsState, StakeholderHomeState, StakeholderNetworkState};
+pub use stakeholder::{
+    StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
+    StakeholderNetworkState,
+};
 
 use super::{message::Message, view::Context};
 

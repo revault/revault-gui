@@ -1,10 +1,11 @@
-use iced::{pick_list, Column, Container, Length, Row};
+use iced::{pick_list, Container, Length, Row};
 
 use crate::revault::Role;
 use crate::ui::{
     component::{button, separation, text, TransparentPickListStyle},
     icon::{
-        deposit_icon, dot_icon, history_icon, home_icon, network_icon, send_icon, settings_icon,
+        deposit_icon, dot_icon, history_icon, home_icon, network_icon, person_check_icon,
+        send_icon, settings_icon,
     },
     menu::Menu,
     message::Message,
@@ -15,6 +16,7 @@ use crate::ui::{
 pub struct Sidebar {
     pick_role: pick_list::State<Role>,
     deposit_menu_button: iced::button::State,
+    delegate_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
     network_menu_button: iced::button::State,
@@ -26,6 +28,7 @@ impl Sidebar {
     pub fn new() -> Self {
         Sidebar {
             deposit_menu_button: iced::button::State::new(),
+            delegate_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
             history_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
@@ -126,8 +129,24 @@ impl Sidebar {
                 .on_press(Message::Menu(Menu::Send))
                 .width(iced::Length::Units(200)),
             )
+        } else if context.menu == Menu::DelegateFunds {
+            Container::new(
+                button::primary(
+                    &mut self.delegate_menu_button,
+                    button::button_content(Some(person_check_icon()), "Delegate funds"),
+                )
+                .on_press(Message::Menu(Menu::DelegateFunds))
+                .width(iced::Length::Units(200)),
+            )
         } else {
-            Container::new(Column::new())
+            Container::new(
+                button::transparent(
+                    &mut self.delegate_menu_button,
+                    button::button_content(Some(person_check_icon()), "Delegate funds"),
+                )
+                .on_press(Message::Menu(Menu::DelegateFunds))
+                .width(iced::Length::Units(200)),
+            )
         };
         layout::sidebar(
             layout::sidebar_menu(vec![

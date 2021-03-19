@@ -6,21 +6,20 @@ use iced::{Command, Element};
 
 use super::{
     cmd::{get_blockheight, list_vaults},
-    vault::{SelectedVault, VaultListItem},
+    vault::{Vault, VaultListItem},
     State,
 };
 
 use crate::revaultd::{
-    model::{Vault, VaultStatus},
+    model::{self, VaultStatus},
     RevaultD,
 };
 
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage},
+    message::{InputMessage, Message, RecipientMessage, VaultMessage},
     view::manager::{manager_send_input_view, ManagerSendOutputView, ManagerSendView},
-    view::Context,
-    view::{ManagerHomeView, ManagerNetworkView},
+    view::{vault::VaultListItemView, Context, ManagerHomeView, ManagerNetworkView},
 };
 
 #[derive(Debug)]
@@ -33,8 +32,8 @@ pub struct ManagerHomeState {
     blockheight: u64,
     warning: Option<Error>,
 
-    vaults: Vec<VaultListItem>,
-    selected_vault: Option<SelectedVault>,
+    vaults: Vec<VaultListItem<VaultListItemView>>,
+    selected_vault: Option<Vault>,
 }
 
 impl ManagerHomeState {
@@ -50,7 +49,7 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.calculate_balance(&vaults);
         self.vaults = vaults
             .into_iter()
@@ -71,7 +70,7 @@ impl ManagerHomeState {
             .iter()
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
-            let selected_vault = SelectedVault::new(selected.vault.clone());
+            let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
             return cmd;
@@ -79,7 +78,7 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    pub fn calculate_balance(&mut self, vaults: &[Vault]) {
+    pub fn calculate_balance(&mut self, vaults: &[model::Vault]) {
         let mut active_amount: u64 = 0;
         let mut inactive_amount: u64 = 0;
         for vault in vaults {
@@ -101,14 +100,16 @@ impl ManagerHomeState {
 impl State for ManagerHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
+            Message::Vault(VaultMessage::Select(outpoint)) => {
+                return self.on_vault_select(outpoint)
+            }
             Message::Vault(msg) => {
                 if let Some(vault) = &mut self.selected_vault {
-                    return vault.update(msg);
+                    return vault.update(self.revaultd.clone(), msg);
                 }
             }
             Message::BlockHeight(b) => match b {
@@ -172,7 +173,7 @@ impl ManagerSendState {
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<Vault>) {
+    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.vaults = vaults
             .into_iter()
             .map(|vlt| ManagerSendInput::new(vlt))
@@ -339,12 +340,12 @@ impl ManagerSendOutput {
 
 #[derive(Debug)]
 struct ManagerSendInput {
-    vault: Vault,
+    vault: model::Vault,
     selected: bool,
 }
 
 impl ManagerSendInput {
-    fn new(vault: Vault) -> Self {
+    fn new(vault: model::Vault) -> Self {
         Self {
             vault,
             selected: false,
