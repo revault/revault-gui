@@ -4,6 +4,7 @@ mod deposit;
 mod history;
 pub mod installing;
 pub mod manager;
+mod settings;
 mod sign;
 pub mod stakeholder;
 mod vault;
@@ -15,6 +16,7 @@ pub use deposit::DepositState;
 pub use history::HistoryState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
+pub use settings::SettingsState;
 pub use stakeholder::{
     StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
     StakeholderNetworkState,
