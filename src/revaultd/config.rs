@@ -1,11 +1,83 @@
+use bitcoin::{util::bip32, Network, PublicKey};
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
+
+// This file is adapted from github.com/re-vault/revaultd:
+
+/// Everything we need to know for talking to bitcoind serenely
+#[derive(Debug, Clone, Deserialize)]
+pub struct BitcoindConfig {
+    /// The network we are operating on, one of "bitcoin", "testnet", "regtest"
+    pub network: Network,
+    /// Path to bitcoind's cookie file, to authenticate the RPC connection
+    pub cookie_path: PathBuf,
+    /// The IP:port bitcoind's RPC is listening on
+    pub addr: SocketAddr,
+    /// The poll interval for bitcoind
+    pub poll_interval_secs: u64,
+}
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct WatchtowerConfig {
+    pub host: String,
+    pub noise_key: String,
+}
+
+/// If we are a stakeholder, we need to connect to our watchtower(s)
+#[derive(Debug, Clone, Deserialize)]
+pub struct StakeholderConfig {
+    pub xpub: bip32::ExtendedPubKey,
+    pub watchtowers: Vec<WatchtowerConfig>,
+    pub emergency_address: String,
+}
+
+// Same fields as the WatchtowerConfig struct for now, but leave them separate.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CosignerConfig {
+    pub host: String,
+    pub noise_key: String,
+}
+
+/// If we are a manager, we need to connect to cosigning servers
+#[derive(Debug, Clone, Deserialize)]
+pub struct ManagerConfig {
+    pub xpub: bip32::ExtendedPubKey,
+    pub cosigners: Vec<CosignerConfig>,
+}
+
+/// Static informations we require to operate
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
+    /// Everything we need to know to talk to bitcoind
     pub bitcoind_config: BitcoindConfig,
+    /// Some() if we are a stakeholder
+    pub stakeholder_config: Option<StakeholderConfig>,
+    /// Some() if we are a manager
+    pub manager_config: Option<ManagerConfig>,
+    /// The stakeholders' xpubs
+    pub stakeholders_xpubs: Vec<bip32::ExtendedPubKey>,
+    /// The cosigners' static public keys (must be as many as stakeholders'
+    /// xpubs)
+    pub cosigners_keys: Vec<PublicKey>,
+    /// The managers' xpubs
+    pub managers_xpubs: Vec<bip32::ExtendedPubKey>,
+    /// The unvault output scripts relative timelock
+    pub unvault_csv: u32,
+    /// The host of the sync server (may be an IP or a hidden service)
+    pub coordinator_host: String,
+    /// The Noise static public key of the sync server
+    pub coordinator_noise_key: String,
+    /// The poll intervals for signature fetching (default: 1min)
+    pub coordinator_poll_seconds: Option<u64>,
     /// An optional custom data directory
     pub data_dir: Option<PathBuf>,
+    /// Whether to daemonize the process
+    pub daemon: Option<bool>,
+    /// What messages to log
+    pub log_level: Option<String>,
 }
 
 impl Config {
@@ -33,43 +105,6 @@ impl Config {
         path.push(&self.bitcoind_config.network.to_string());
         path.push("revaultd_rpc");
         Ok(path)
-    }
-}
-
-impl std::default::Default for Config {
-    fn default() -> Self {
-        Config {
-            bitcoind_config: BitcoindConfig::default(),
-            data_dir: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct BitcoindConfig {
-    #[serde(with = "bitcoin_network")]
-    pub network: bitcoin::Network,
-}
-
-impl std::default::Default for BitcoindConfig {
-    fn default() -> Self {
-        BitcoindConfig {
-            network: bitcoin::Network::Bitcoin,
-        }
-    }
-}
-
-mod bitcoin_network {
-    use bitcoin::Network;
-    use serde::{self, Deserialize, Deserializer};
-    use std::str::FromStr;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Network::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 

@@ -42,7 +42,7 @@ impl std::fmt::Display for RevaultDError {
 #[derive(Debug, Clone)]
 pub struct RevaultD {
     client: Client,
-    config: Config,
+    pub config: Config,
 }
 
 impl RevaultD {

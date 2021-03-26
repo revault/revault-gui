@@ -120,6 +120,22 @@ impl Sidebar {
             .on_press(Message::Menu(Menu::Deposit))
         };
 
+        let settings_button = if context.menu == Menu::Settings {
+            button::primary(
+                &mut self.settings_menu_button,
+                button::button_content(Some(settings_icon()), "Settings"),
+            )
+            .on_press(Message::Menu(Menu::Settings))
+            .width(iced::Length::Units(200))
+        } else {
+            button::transparent(
+                &mut self.settings_menu_button,
+                button::button_content(Some(settings_icon()), "Settings"),
+            )
+            .on_press(Message::Menu(Menu::Settings))
+            .width(iced::Length::Units(200))
+        };
+
         let actions = if context.role == Role::Manager {
             Container::new(
                 button::transparent(
@@ -159,14 +175,7 @@ impl Sidebar {
                 Container::new(deposit_button.width(Length::Units(200))),
                 actions,
             ]),
-            Container::new(
-                button::transparent(
-                    &mut self.settings_menu_button,
-                    button::button_content(Some(settings_icon()), "Settings"),
-                )
-                .on_press(Message::Install)
-                .width(iced::Length::Units(200)),
-            ),
+            Container::new(settings_button),
         )
     }
 }

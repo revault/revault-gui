@@ -6,6 +6,7 @@ pub mod installing;
 mod layout;
 pub mod manager;
 mod network;
+mod settings;
 mod sidebar;
 pub mod sign;
 pub mod stakeholder;
@@ -16,6 +17,7 @@ pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use manager::ManagerSendView;
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
+pub use settings::SettingsView;
 pub use stakeholder::{
     StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
 };
