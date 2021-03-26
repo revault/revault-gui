@@ -7,7 +7,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{get_blockheight, get_spend_tx, list_vaults, update_spend_tx},
+    cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
     vault::{Vault, VaultListItem},
     State,
 };
@@ -21,12 +21,12 @@ use crate::revault::TransactionKind;
 
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, SignMessage, VaultMessage},
-    state::sign::SignState,
+    message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
+    state::{sign::SignState, SpendTransactionState},
     view::manager::{
-        manager_send_input_view, ManagerSelectFeeView, ManagerSelectInputsView,
-        ManagerSelectOutputsView, ManagerSendOutputView, ManagerSignView,
-        ManagerSpendTransactionCreatedView,
+        manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
+        ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
+        ManagerSendWelcomeView, ManagerSignView, ManagerSpendTransactionCreatedView,
     },
     view::{vault::VaultListItemView, Context, ManagerHomeView, ManagerNetworkView},
 };
@@ -160,8 +160,135 @@ impl From<ManagerHomeState> for Box<dyn State> {
     }
 }
 
+pub enum ManagerSendState {
+    SendTransactionDetail(SpendTransactionState),
+    ImportSendTransaction(ManagerImportSendTransactionState),
+    CreateSendTransaction(ManagerCreateSendTransactionState),
+}
+
+impl ManagerSendState {
+    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+        Self::CreateSendTransaction(ManagerCreateSendTransactionState::new(revaultd))
+    }
+}
+
+impl State for ManagerSendState {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match self {
+            Self::CreateSendTransaction(state) => match message {
+                Message::SpendTx(SpendTxMessage::Import) => {
+                    *self = ManagerSendState::ImportSendTransaction(
+                        ManagerImportSendTransactionState::new(state.revaultd.clone()),
+                    );
+                    self.load()
+                }
+                _ => state.update(message),
+            },
+            Self::ImportSendTransaction(state) => match message {
+                Message::SpendTx(SpendTxMessage::Select(psbt)) => {
+                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
+                        state.revaultd.clone(),
+                        psbt,
+                    ));
+                    self.load()
+                }
+                _ => state.update(message),
+            },
+            Self::SendTransactionDetail(state) => state.update(message),
+        }
+    }
+
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
+        match self {
+            Self::CreateSendTransaction(state) => state.view(ctx),
+            Self::ImportSendTransaction(state) => state.view(ctx),
+            Self::SendTransactionDetail(state) => state.view(ctx),
+        }
+    }
+
+    fn load(&self) -> Command<Message> {
+        match self {
+            Self::CreateSendTransaction(state) => state.load(),
+            Self::ImportSendTransaction(state) => state.load(),
+            Self::SendTransactionDetail(state) => state.load(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerImportSendTransactionState {
+    revaultd: Arc<RevaultD>,
+    psbt_imported: Option<Psbt>,
+    psbt_input: String,
+    warning: Option<String>,
+
+    view: ManagerImportTransactionView,
+}
+
+impl ManagerImportSendTransactionState {
+    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+        Self {
+            revaultd,
+            psbt_imported: None,
+            psbt_input: "".to_string(),
+            warning: None,
+            view: ManagerImportTransactionView::new(),
+        }
+    }
+
+    pub fn parse_pbst(&self) -> Option<Psbt> {
+        bitcoin::base64::decode(&self.psbt_input)
+            .ok()
+            .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok())
+    }
+}
+
+impl State for ManagerImportSendTransactionState {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::SpendTx(SpendTxMessage::Updated(res)) => match res {
+                Ok(()) => self.psbt_imported = self.parse_pbst(),
+                Err(e) => self.warning = Some(e.to_string()),
+            },
+            Message::SpendTx(SpendTxMessage::PsbtEdited(psbt)) => {
+                self.warning = None;
+                self.psbt_input = psbt;
+            }
+            Message::SpendTx(SpendTxMessage::Import) => {
+                if !self.psbt_input.is_empty() {
+                    if let Some(psbt) = self.parse_pbst() {
+                        return Command::perform(
+                            update_spend_tx(self.revaultd.clone(), psbt),
+                            |res| Message::SpendTx(SpendTxMessage::Updated(res)),
+                        );
+                    } else {
+                        self.warning = Some("Please enter valid PSBT".to_string());
+                    }
+                } else {
+                    self.warning = Some("Please enter valid PSBT".to_string());
+                }
+            }
+            _ => {}
+        }
+        Command::none()
+    }
+
+    fn view(&mut self, _ctx: &Context) -> Element<Message> {
+        self.view.view(
+            &self.psbt_input,
+            self.psbt_imported.as_ref(),
+            self.warning.as_ref(),
+        )
+    }
+
+    fn load(&self) -> Command<Message> {
+        Command::none()
+    }
+}
+
 #[derive(Debug)]
 enum ManagerSendStep {
+    WelcomeUser(ManagerSendWelcomeView),
     SelectOutputs(ManagerSelectOutputsView),
     SelectInputs(ManagerSelectInputsView),
     SelectFee(ManagerSelectFeeView),
@@ -173,7 +300,7 @@ enum ManagerSendStep {
 }
 
 #[derive(Debug)]
-pub struct ManagerSendState {
+pub struct ManagerCreateSendTransactionState {
     revaultd: Arc<RevaultD>,
 
     warning: Option<Error>,
@@ -187,11 +314,11 @@ pub struct ManagerSendState {
     step: ManagerSendStep,
 }
 
-impl ManagerSendState {
+impl ManagerCreateSendTransactionState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        ManagerSendState {
+        Self {
             revaultd,
-            step: ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new()),
+            step: ManagerSendStep::WelcomeUser(ManagerSendWelcomeView::new()),
             warning: None,
             vaults: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
@@ -243,7 +370,7 @@ impl ManagerSendState {
     }
 }
 
-impl State for ManagerSendState {
+impl State for ManagerCreateSendTransactionState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::SpendTransaction(res) => {
@@ -255,7 +382,7 @@ impl State for ManagerSendState {
                     Err(e) => self.warning = Some(Error::RevaultDError(e)),
                 }
             }
-            Message::GenerateTransaction => {
+            Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
                 self.warning = None;
                 let inputs = self
@@ -275,7 +402,7 @@ impl State for ManagerSendState {
                     Message::SpendTransaction,
                 );
             }
-            Message::Feerate(feerate) => {
+            Message::SpendTx(SpendTxMessage::FeerateEdited(feerate)) => {
                 if !self.processing {
                     self.feerate = feerate;
                     self.psbt = None;
@@ -285,7 +412,7 @@ impl State for ManagerSendState {
                 Ok(vlts) => self.update_vaults(vlts),
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
-            Message::Signed(res) => match res {
+            Message::SpendTx(SpendTxMessage::Signed(res)) => match res {
                 Ok(_) => {
                     if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
                         // During this step state has a generated psbt
@@ -301,19 +428,24 @@ impl State for ManagerSendState {
                 }
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
-            Message::Sign(msg) => match &mut self.step {
+            Message::SpendTx(SpendTxMessage::Sign(msg)) => match &mut self.step {
                 ManagerSendStep::Sign { signer, .. } => {
-                    signer.update(msg).map(Message::Sign);
+                    signer
+                        .update(msg)
+                        .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
                     if let Some(psbt) = &signer.signed_psbt {
                         return Command::perform(
                             update_spend_tx(self.revaultd.clone(), psbt.clone()),
-                            Message::Signed,
+                            |res| Message::SpendTx(SpendTxMessage::Signed(res)),
                         );
                     }
                 }
                 _ => (),
             },
             Message::Next => match self.step {
+                ManagerSendStep::WelcomeUser(_) => {
+                    self.step = ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new());
+                }
                 ManagerSendStep::SelectOutputs(_) => {
                     self.step = ManagerSendStep::SelectInputs(ManagerSelectInputsView::new());
                 }
@@ -370,6 +502,7 @@ impl State for ManagerSendState {
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
         match &mut self.step {
+            ManagerSendStep::WelcomeUser(v) => v.view(),
             ManagerSendStep::SelectOutputs(v) => {
                 let valid = !self.outputs.iter().any(|o| !o.valid());
                 v.view(
@@ -405,7 +538,9 @@ impl State for ManagerSendState {
                     &psbt,
                     &feerate,
                     self.warning.as_ref(),
-                    signer.view(ctx).map(Message::Sign),
+                    signer
+                        .view(ctx)
+                        .map(|m| Message::SpendTx(SpendTxMessage::Sign(m))),
                 )
             }
             ManagerSendStep::Success(v) => {

@@ -1,10 +1,11 @@
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::sync::Arc;
 
 use super::{error::Error, menu::Menu};
 use crate::revault::Role;
 use crate::revaultd::{
     model::{
-        RevocationTransactions, SpendTransaction, UnvaultTransaction, Vault, VaultStatus,
+        RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault, VaultStatus,
         VaultTransactions,
     },
     RevaultD, RevaultDError,
@@ -31,9 +32,20 @@ pub enum Message {
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
-    Feerate(u32),
-    GenerateTransaction,
     SpendTransaction(Result<SpendTransaction, RevaultDError>),
+    SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
+    SpendTx(SpendTxMessage),
+}
+
+#[derive(Debug, Clone)]
+pub enum SpendTxMessage {
+    FeerateEdited(u32),
+    PsbtEdited(String),
+    Import,
+    Generate,
+    /// Select the SpendTxMessage with the given psbt.
+    Select(Psbt),
+    Updated(Result<(), RevaultDError>),
     Sign(SignMessage),
     Signed(Result<(), RevaultDError>),
 }

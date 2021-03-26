@@ -11,9 +11,172 @@ use crate::ui::{
     component::{button, card, separation, text, ContainerBackgroundStyle},
     error::Error,
     menu::Menu,
-    message::{InputMessage, Message, RecipientMessage},
+    message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     view::Context,
 };
+
+#[derive(Debug)]
+pub struct ManagerImportTransactionView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    psbt_input: iced::text_input::State,
+    import_button: iced::button::State,
+}
+
+impl ManagerImportTransactionView {
+    pub fn new() -> Self {
+        ManagerImportTransactionView {
+            cancel_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+            psbt_input: iced::text_input::State::new(),
+            import_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        psbt_input: &str,
+        psbt_imported: Option<&Psbt>,
+        warning: Option<&String>,
+    ) -> Element<'a, Message> {
+        let mut col = Column::new()
+            .spacing(20)
+            .push(text::bold(text::simple("Import spend transaction")))
+            .push(text::simple("Enter PSBT:"))
+            .push(
+                TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
+                    Message::SpendTx(SpendTxMessage::PsbtEdited(p))
+                })
+                .size(15)
+                .width(Length::Fill)
+                .padding(10),
+            );
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::small(error))))
+        }
+
+        if let Some(psbt) = psbt_imported {
+            col = col.push(card::success(Container::new(
+                Column::new()
+                    .push(text::simple("Transaction imported"))
+                    .push(
+                        button::success(
+                            &mut self.import_button,
+                            button::button_content(None, "See transaction detail"),
+                        )
+                        .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
+                    ),
+            )));
+        } else {
+            col = col.push(
+                button::primary(
+                    &mut self.import_button,
+                    button::button_content(None, "Import transaction"),
+                )
+                .on_press(Message::SpendTx(SpendTxMessage::Import)),
+            );
+        }
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new().push(Column::new().width(Length::Fill)).push(
+                            Container::new(
+                                button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                )
+                                .on_press(Message::Menu(Menu::Home)),
+                            )
+                            .width(Length::Shrink),
+                        ),
+                    )
+                    .push(
+                        Container::new(
+                            Column::new()
+                                .push(card::white(Container::new(col)).width(Length::Fill))
+                                .spacing(20),
+                        )
+                        .width(Length::Fill)
+                        .align_x(Align::Center),
+                    )
+                    .spacing(20),
+            )),
+        )
+        .style(ContainerBackgroundStyle)
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSendWelcomeView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    crate_transaction_button: iced::button::State,
+    import_transaction_button: iced::button::State,
+}
+
+impl ManagerSendWelcomeView {
+    pub fn new() -> Self {
+        ManagerSendWelcomeView {
+            cancel_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+            crate_transaction_button: iced::button::State::new(),
+            import_transaction_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a>(&'a mut self) -> Element<'a, Message> {
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new().push(Column::new().width(Length::Fill)).push(
+                            Container::new(
+                                button::cancel(
+                                    &mut self.cancel_button,
+                                    Container::new(text::simple("X Close")).padding(10),
+                                )
+                                .on_press(Message::Menu(Menu::Home)),
+                            )
+                            .width(Length::Shrink),
+                        ),
+                    )
+                    .push(
+                        Container::new(
+                            Column::new()
+                                .push(
+                                    button::primary(
+                                        &mut self.crate_transaction_button,
+                                        button::button_content(None, "Create spend transaction"),
+                                    )
+                                    .on_press(Message::Next),
+                                )
+                                .push(
+                                    button::primary(
+                                        &mut self.import_transaction_button,
+                                        button::button_content(None, "Import spend transaction"),
+                                    )
+                                    .on_press(Message::SpendTx(SpendTxMessage::Import)),
+                                )
+                                .spacing(20),
+                        )
+                        .width(Length::Fill)
+                        .align_x(Align::Center),
+                    )
+                    .spacing(20),
+            )),
+        )
+        .style(ContainerBackgroundStyle)
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
 
 #[derive(Debug)]
 pub struct ManagerSelectOutputsView {
@@ -343,7 +506,7 @@ impl ManagerSelectFeeView {
                 ctx,
                 selected_inputs,
                 &psbt.0,
-                &psbt.1,
+                Some(&psbt.1),
             ));
             if !*processing {
                 footer = footer.push(Container::new(
@@ -366,7 +529,7 @@ impl ManagerSelectFeeView {
                 &mut self.generate_button,
                 button::button_content(None, "Generate transaction"),
             )
-            .on_press(Message::GenerateTransaction)
+            .on_press(Message::SpendTx(SpendTxMessage::Generate))
         } else {
             button::success(
                 &mut self.generate_button,
@@ -386,12 +549,11 @@ impl ManagerSelectFeeView {
                     .push(text::simple("satoshis/vbyte")),
             ))
             .push(
-                Container::new(
-                    Slider::new(&mut self.slider, 1..=1000, *feerate, Message::Feerate)
-                        .width(Length::Fill),
-                )
-                .max_width(300)
+                Container::new(Slider::new(&mut self.slider, 1..=1000, *feerate, |f| {
+                    Message::SpendTx(SpendTxMessage::FeerateEdited(f))
+                }))
                 .width(Length::Fill)
+                .max_width(300)
                 .align_x(Align::Center),
             )
             .push(slider_button)
@@ -451,11 +613,11 @@ impl ManagerSelectFeeView {
     }
 }
 
-fn spend_tx_with_feerate_view<'a, T: 'a>(
+pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     ctx: &Context,
     inputs: &[model::Vault],
     psbt: &Psbt,
-    feerate: &u32,
+    feerate: Option<&u32>,
 ) -> Container<'a, T> {
     let mut total_fees = 0;
     let mut col_input = Column::new()
@@ -497,6 +659,12 @@ fn spend_tx_with_feerate_view<'a, T: 'a>(
                 .align_items(Align::Center),
         )));
     }
+    let mut column_fee = Column::new();
+    if let Some(feerate) = feerate {
+        column_fee = column_fee.push(Row::new().push(text::simple("Feerate: ")).push(text::bold(
+            text::simple(&format!("{} satoshis/vbyte", feerate)),
+        )))
+    }
     Container::new(
         Column::new()
             .push(
@@ -505,19 +673,15 @@ fn spend_tx_with_feerate_view<'a, T: 'a>(
                     .align_x(Align::Center),
             )
             .push(
-                Column::new()
-                    .push(Row::new().push(text::simple("Feerate: ")).push(text::bold(
-                        text::simple(&format!("{} satoshis/vbyte", feerate)),
-                    )))
-                    .push(
-                        Row::new()
-                            .push(text::simple("total fees: "))
-                            .push(text::bold(text::simple(&format!(
-                                "{}",
-                                ctx.converter.converts(total_fees)
-                            ))))
-                            .push(text::simple(&format!(" {}", ctx.converter.unit))),
-                    ),
+                column_fee.push(
+                    Row::new()
+                        .push(text::simple("total fees: "))
+                        .push(text::bold(text::simple(&format!(
+                            "{}",
+                            ctx.converter.converts(total_fees)
+                        ))))
+                        .push(text::simple(&format!(" {}", ctx.converter.unit))),
+                ),
             )
             .push(
                 Row::new()
@@ -557,7 +721,7 @@ impl ManagerSignView {
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
         let mut col = Column::new()
-            .push(spend_tx_with_feerate_view(ctx, inputs, psbt, feerate))
+            .push(spend_tx_with_feerate_view(ctx, inputs, psbt, Some(feerate)))
             .spacing(20)
             .max_width(1000);
         if let Some(error) = warning {
@@ -664,7 +828,7 @@ impl ManagerSpendTransactionCreatedView {
                     .push(
                         Container::new(
                             Column::new()
-                                .push(spend_tx_with_feerate_view(ctx, inputs, psbt, feerate))
+                                .push(spend_tx_with_feerate_view(ctx, inputs, psbt, Some(feerate)))
                                 .spacing(20)
                                 .max_width(1000),
                         )

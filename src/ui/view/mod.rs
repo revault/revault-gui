@@ -9,6 +9,7 @@ mod network;
 mod settings;
 mod sidebar;
 pub mod sign;
+mod spend_transaction;
 pub mod stakeholder;
 pub mod vault;
 
@@ -17,6 +18,7 @@ pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;
+pub use spend_transaction::SpendTransactionView;
 pub use stakeholder::{
     StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
 };

@@ -176,6 +176,13 @@ pub struct SpendTransaction {
     pub feerate: u32,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpendTx {
+    #[serde(with = "bitcoin_psbt")]
+    pub psbt: PartiallySignedTransaction,
+    pub deposit_outpoints: Vec<String>,
+}
+
 mod bitcoin_transaction {
     use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
     use serde::{self, Deserialize, Deserializer};
