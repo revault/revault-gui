@@ -22,7 +22,7 @@ use crate::revault::TransactionKind;
 use crate::ui::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
-    state::{sign::SignState, SpendTransactionState},
+    state::{sign::SignState, SpendTransactionListItem, SpendTransactionState},
     view::manager::{
         manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
         ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
@@ -43,6 +43,9 @@ pub struct ManagerHomeState {
 
     vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
+
+    spend_txs: Vec<SpendTransactionListItem>,
+    selected_spend_tx: Option<SpendTransactionState>,
 }
 
 impl ManagerHomeState {
@@ -55,7 +58,35 @@ impl ManagerHomeState {
             vaults: Vec::new(),
             warning: None,
             selected_vault: None,
+            spend_txs: Vec::new(),
+            selected_spend_tx: None,
         }
+    }
+
+    pub fn update_spend_txs(&mut self, txs: Vec<model::SpendTx>) {
+        self.spend_txs = txs.into_iter().map(SpendTransactionListItem::new).collect();
+    }
+
+    pub fn on_spend_tx_select(&mut self, psbt: Psbt) -> Command<Message> {
+        if let Some(selected) = &self.selected_spend_tx {
+            if selected.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid() {
+                self.selected_spend_tx = None;
+                return Command::none();
+            }
+        }
+
+        if self
+            .spend_txs
+            .iter()
+            .find(|item| item.tx.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
+            .is_some()
+        {
+            let selected_spend_tx = SpendTransactionState::new(self.revaultd.clone(), psbt);
+            let cmd = selected_spend_tx.load();
+            self.selected_spend_tx = Some(selected_spend_tx);
+            return cmd;
+        };
+        Command::none()
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
@@ -109,6 +140,18 @@ impl ManagerHomeState {
 impl State for ManagerHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::SpendTx(SpendTxMessage::Select(psbt)) => {
+                return self.on_spend_tx_select(psbt);
+            }
+            Message::SpendTx(msg) => {
+                if let Some(tx) = &mut self.selected_spend_tx {
+                    return tx.update(Message::SpendTx(msg));
+                }
+            }
+            Message::SpendTransactions(res) => match res {
+                Ok(txs) => self.update_spend_txs(txs),
+                Err(e) => self.warning = Error::from(e).into(),
+            },
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -138,9 +181,18 @@ impl State for ManagerHomeState {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
         }
+
+        if let Some(tx) = &mut self.selected_spend_tx {
+            return tx.view(ctx);
+        }
+
         self.view.view(
             ctx,
             self.warning.as_ref().into(),
+            self.spend_txs
+                .iter_mut()
+                .map(|tx| tx.view(ctx).map(Message::SpendTx))
+                .collect(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
         )
@@ -150,6 +202,10 @@ impl State for ManagerHomeState {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
             Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
+            Command::perform(
+                list_spend_txs(self.revaultd.clone()),
+                Message::SpendTransactions,
+            ),
         ])
     }
 }

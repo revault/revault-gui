@@ -1,18 +1,16 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use iced::{
-    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Scrollable,
-    Slider, TextInput,
-};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
 
-use crate::revaultd::model;
-
-use crate::ui::{
-    component::{button, card, separation, text, ContainerBackgroundStyle},
-    error::Error,
-    menu::Menu,
-    message::{Message, SpendTxMessage},
-    view::{manager::spend_tx_with_feerate_view, Context},
+use crate::{
+    revaultd::model,
+    ui::{
+        component::{badge, button, card, text, ContainerBackgroundStyle},
+        error::Error,
+        menu::Menu,
+        message::{Message, SpendTxMessage},
+        view::{manager::spend_tx_with_feerate_view, Context},
+    },
 };
 
 #[derive(Debug)]
@@ -74,6 +72,64 @@ impl SpendTransactionView {
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionListItemView {
+    select_button: iced::button::State,
+}
+
+impl SpendTransactionListItemView {
+    pub fn new() -> Self {
+        Self {
+            select_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view(&mut self, ctx: &Context, tx: &model::SpendTx) -> Element<SpendTxMessage> {
+        let amount = tx
+            .psbt
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .fold(0, |acc, output| acc + output.value);
+        button::white_card_button(
+            &mut self.select_button,
+            Container::new(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(badge::pending_spent_tx())
+                                .push(Column::new().push(text::bold(text::small(&format!(
+                                    "txid: {}",
+                                    tx.psbt.global.unsigned_tx.txid().to_string()
+                                )))))
+                                .spacing(20),
+                        )
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(text::bold(text::simple(&format!(
+                                    "{}",
+                                    ctx.converter.converts(amount),
+                                ))))
+                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .align_items(Align::Center),
+                        )
+                        .width(Length::Shrink),
+                    )
+                    .spacing(20)
+                    .align_items(Align::Center),
+            ),
+        )
+        .on_press(SpendTxMessage::Select(tx.psbt.clone()))
+        .width(Length::Fill)
         .into()
     }
 }

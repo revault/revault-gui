@@ -48,6 +48,8 @@ pub enum SpendTxMessage {
     Updated(Result<(), RevaultDError>),
     Sign(SignMessage),
     Signed(Result<(), RevaultDError>),
+    Inputs(Result<Vec<Vault>, RevaultDError>),
+    SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

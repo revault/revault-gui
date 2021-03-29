@@ -643,7 +643,11 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
         .push(text::bold(text::simple("Outputs")))
         .spacing(10);
     for output in &psbt.global.unsigned_tx.output {
-        total_fees -= output.value;
+        if total_fees > output.value {
+            total_fees -= output.value;
+        } else {
+            total_fees = 0;
+        }
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network).unwrap();
         col_output = col_output.push(card::simple(Container::new(
             Row::new()
@@ -668,7 +672,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     Container::new(
         Column::new()
             .push(
-                Container::new(text::bold(text::simple("Generated transaction")))
+                Container::new(text::bold(text::simple("Spend transaction")))
                     .width(Length::Fill)
                     .align_x(Align::Center),
             )

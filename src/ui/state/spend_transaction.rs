@@ -5,30 +5,24 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
-    vault::{Vault, VaultListItem},
+    cmd::{list_spend_txs, list_vaults},
     State,
 };
 
-use crate::revaultd::{
-    model::{self, VaultStatus},
-    RevaultD,
-};
-
-use crate::revault::TransactionKind;
+use crate::revaultd::{model, RevaultD};
 
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
-    state::sign::SignState,
+    message::{Message, SpendTxMessage},
     view::Context,
-    view::SpendTransactionView,
+    view::{SpendTransactionListItemView, SpendTransactionView},
 };
 
 #[derive(Debug)]
 pub struct SpendTransactionState {
+    pub psbt: Psbt,
+
     revaultd: Arc<RevaultD>,
-    psbt: Psbt,
     deposit_outpoints: Vec<String>,
     deposits: Vec<model::Vault>,
     warning: Option<Error>,
@@ -52,7 +46,7 @@ impl SpendTransactionState {
 impl State for SpendTransactionState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Vaults(res) => match res {
+            Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
                     self.deposits = vaults
                         .into_iter()
@@ -61,7 +55,7 @@ impl State for SpendTransactionState {
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::SpendTransactions(res) => match res {
+            Message::SpendTx(SpendTxMessage::SpendTransactions(res)) => match res {
                 Ok(txs) => {
                     for tx in txs {
                         if tx.psbt.global.unsigned_tx.txid() == self.psbt.global.unsigned_tx.txid()
@@ -70,7 +64,7 @@ impl State for SpendTransactionState {
                             self.psbt = tx.psbt;
                             return Command::perform(
                                 list_vaults(self.revaultd.clone(), None),
-                                Message::Vaults,
+                                |res| Message::SpendTx(SpendTxMessage::Inputs(res)),
                             );
                         }
                     }
@@ -87,9 +81,27 @@ impl State for SpendTransactionState {
     }
 
     fn load(&self) -> Command<Message> {
-        Command::perform(
-            list_spend_txs(self.revaultd.clone()),
-            Message::SpendTransactions,
-        )
+        Command::perform(list_spend_txs(self.revaultd.clone()), |res| {
+            Message::SpendTx(SpendTxMessage::SpendTransactions(res))
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionListItem {
+    pub tx: model::SpendTx,
+    view: SpendTransactionListItemView,
+}
+
+impl SpendTransactionListItem {
+    pub fn new(tx: model::SpendTx) -> Self {
+        Self {
+            tx,
+            view: SpendTransactionListItemView::new(),
+        }
+    }
+
+    pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
+        self.view.view(ctx, &self.tx)
     }
 }

@@ -18,7 +18,7 @@ pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;
-pub use spend_transaction::SpendTransactionView;
+pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
 pub use stakeholder::{
     StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
 };

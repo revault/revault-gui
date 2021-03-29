@@ -439,4 +439,25 @@ pub mod badge {
             }
         }
     }
+
+    pub fn pending_spent_tx<'a, T: 'a>() -> Container<'a, T> {
+        let icon = send_icon().width(Length::Units(20));
+        Container::new(icon)
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(InactiveBadgeStyle)
+            .align_x(iced::Align::Center)
+            .align_y(iced::Align::Center)
+    }
+
+    struct InactiveBadgeStyle;
+    impl container::StyleSheet for InactiveBadgeStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 40.0,
+                background: color::BACKGROUND.into(),
+                ..container::Style::default()
+            }
+        }
+    }
 }
