@@ -86,6 +86,11 @@ pub async fn get_spend_tx(
 pub async fn update_spend_tx(revaultd: Arc<RevaultD>, psbt: Psbt) -> Result<(), RevaultDError> {
     revaultd.update_spend_tx(&psbt)
 }
+
 pub async fn list_spend_txs(revaultd: Arc<RevaultD>) -> Result<Vec<SpendTx>, RevaultDError> {
     revaultd.list_spend_txs().map(|res| res.spend_txs)
+}
+
+pub async fn delete_spend_tx(revaultd: Arc<RevaultD>, txid: String) -> Result<(), RevaultDError> {
+    revaultd.delete_spend_tx(&txid)
 }

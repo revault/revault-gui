@@ -50,6 +50,12 @@ pub enum SpendTxMessage {
     Signed(Result<(), RevaultDError>),
     Inputs(Result<Vec<Vault>, RevaultDError>),
     SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
+    SelectShare,
+    SelectDelete,
+    SelectSign,
+    SelectBroadcast,
+    Delete,
+    Deleted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

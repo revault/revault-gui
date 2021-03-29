@@ -65,7 +65,8 @@ impl ManagerImportTransactionView {
                             button::button_content(None, "See transaction detail"),
                         )
                         .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
-                    ),
+                    )
+                    .spacing(20),
             )));
         } else {
             col = col.push(

@@ -189,6 +189,11 @@ impl RevaultD {
     pub fn list_spend_txs(&self) -> Result<ListSpendTransactionsResponse, RevaultDError> {
         self.call("listspendtxs", Option::<Request>::None)
     }
+
+    pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

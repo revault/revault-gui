@@ -9,7 +9,7 @@ mod network;
 mod settings;
 mod sidebar;
 pub mod sign;
-mod spend_transaction;
+pub mod spend_transaction;
 pub mod stakeholder;
 pub mod vault;
 
