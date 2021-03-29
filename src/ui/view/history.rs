@@ -33,7 +33,7 @@ impl HistoryView {
             layout::main_section(Container::new(
                 Scrollable::new(&mut self.scroll).push(Container::new(
                     Column::new()
-                        .push(Column::with_children(vaults))
+                        .push(Column::with_children(vaults).spacing(5))
                         .spacing(20),
                 )),
             )),

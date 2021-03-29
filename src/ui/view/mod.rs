@@ -15,7 +15,6 @@ pub mod vault;
 pub use deposit::DepositView;
 pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
-pub use manager::ManagerSendView;
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;
 pub use stakeholder::{
