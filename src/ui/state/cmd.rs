@@ -94,3 +94,10 @@ pub async fn list_spend_txs(revaultd: Arc<RevaultD>) -> Result<Vec<SpendTx>, Rev
 pub async fn delete_spend_tx(revaultd: Arc<RevaultD>, txid: String) -> Result<(), RevaultDError> {
     revaultd.delete_spend_tx(&txid)
 }
+
+pub async fn broadcast_spend_tx(
+    revaultd: Arc<RevaultD>,
+    txid: String,
+) -> Result<(), RevaultDError> {
+    revaultd.broadcast_spend_tx(&txid)
+}

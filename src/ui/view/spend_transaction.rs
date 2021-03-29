@@ -119,7 +119,7 @@ impl SpendTransactionSharePsbtView {
                         &mut self.broadcast_button,
                         button::button_content(None, "Broadcast"),
                     )
-                    .on_press(Message::SpendTx(SpendTxMessage::SelectSign)),
+                    .on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast)),
                 )
                 .push(
                     button::transparent(
@@ -197,7 +197,7 @@ impl SpendTransactionDeleteView {
         );
         if !*success {
             button_broadcast =
-                button_broadcast.on_press(Message::SpendTx(SpendTxMessage::SelectSign));
+                button_broadcast.on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast));
         }
 
         let mut button_delete = button::primary(
@@ -229,6 +229,115 @@ impl SpendTransactionDeleteView {
                         col_action
                             .push(text::simple("Do you want to delete transaction ?"))
                             .push(button_delete_action)
+                            .align_items(Align::Center)
+                            .spacing(20),
+                    ))
+                    .width(Length::Fill)
+                    .align_x(Align::Center)
+                    .padding(20),
+                )
+                .spacing(20),
+        )
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionBroadcastView {
+    share_button: iced::button::State,
+    sign_button: iced::button::State,
+    broadcast_button: iced::button::State,
+    delete_button: iced::button::State,
+    confirm_button: iced::button::State,
+}
+
+impl SpendTransactionBroadcastView {
+    pub fn new() -> Self {
+        Self {
+            share_button: iced::button::State::new(),
+            sign_button: iced::button::State::new(),
+            broadcast_button: iced::button::State::new(),
+            delete_button: iced::button::State::new(),
+            confirm_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view(
+        &mut self,
+        processing: &bool,
+        success: &bool,
+        warning: Option<&Error>,
+    ) -> Element<Message> {
+        let button_broadcast_action = if *processing {
+            button::important(
+                &mut self.confirm_button,
+                button::button_content(None, "Broadcasting"),
+            )
+        } else if *success {
+            button::success(
+                &mut self.confirm_button,
+                button::button_content(None, "Broadcasted"),
+            )
+        } else {
+            button::important(
+                &mut self.confirm_button,
+                button::button_content(None, "Yes broadcast"),
+            )
+            .on_press(Message::SpendTx(SpendTxMessage::Broadcast))
+        };
+
+        let mut button_share = button::transparent(
+            &mut self.share_button,
+            button::button_content(None, "Share and update"),
+        );
+        if !*success {
+            button_share = button_share.on_press(Message::SpendTx(SpendTxMessage::SelectShare));
+        }
+
+        let mut button_sign =
+            button::transparent(&mut self.sign_button, button::button_content(None, "Sign"));
+        if !*success {
+            button_sign = button_sign.on_press(Message::SpendTx(SpendTxMessage::SelectSign));
+        }
+
+        let mut button_broadcast = button::primary(
+            &mut self.broadcast_button,
+            button::button_content(None, "Broadcast"),
+        );
+        if !*success {
+            button_broadcast =
+                button_broadcast.on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast));
+        }
+
+        let mut button_delete = button::transparent(
+            &mut self.delete_button,
+            button::button_content(None, "Delete"),
+        );
+        if !*success {
+            button_delete = button_delete.on_press(Message::SpendTx(SpendTxMessage::SelectDelete));
+        }
+
+        let mut col_action = Column::new();
+        if let Some(error) = warning {
+            col_action = col_action.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
+
+        Container::new(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(button_share)
+                        .push(button_sign)
+                        .push(button_broadcast)
+                        .push(button_delete),
+                )
+                .push(
+                    card::white(Container::new(
+                        col_action
+                            .push(text::simple("Do you want to broadcast transaction ?"))
+                            .push(button_broadcast_action)
                             .align_items(Align::Center)
                             .spacing(20),
                     ))

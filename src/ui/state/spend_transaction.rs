@@ -5,7 +5,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{delete_spend_tx, list_spend_txs, list_vaults},
+    cmd::{broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults},
     State,
 };
 
@@ -15,8 +15,8 @@ use crate::ui::{
     error::Error,
     message::{Message, SpendTxMessage},
     view::spend_transaction::{
-        SpendTransactionDeleteView, SpendTransactionListItemView, SpendTransactionSharePsbtView,
-        SpendTransactionView,
+        SpendTransactionBroadcastView, SpendTransactionDeleteView, SpendTransactionListItemView,
+        SpendTransactionSharePsbtView, SpendTransactionView,
     },
     view::Context,
 };
@@ -108,6 +108,12 @@ impl State for SpendTransactionState {
 #[derive(Debug)]
 pub enum SpendTransactionAction {
     SharePsbt(SpendTransactionSharePsbtView),
+    Broadcast {
+        processing: bool,
+        success: bool,
+        warning: Option<Error>,
+        view: SpendTransactionBroadcastView,
+    },
     Delete {
         processing: bool,
         success: bool,
@@ -162,6 +168,38 @@ impl SpendTransactionAction {
                     view: SpendTransactionDeleteView::new(),
                 };
             }
+            SpendTxMessage::SelectBroadcast => {
+                *self = Self::Broadcast {
+                    processing: false,
+                    success: false,
+                    warning: None,
+                    view: SpendTransactionBroadcastView::new(),
+                };
+            }
+            SpendTxMessage::Broadcast => {
+                if let Self::Broadcast { processing, .. } = self {
+                    *processing = true;
+                    return Command::perform(
+                        broadcast_spend_tx(revaultd, psbt.global.unsigned_tx.txid().to_string()),
+                        SpendTxMessage::Broadcasted,
+                    );
+                }
+            }
+            SpendTxMessage::Broadcasted(res) => {
+                if let Self::Broadcast {
+                    processing,
+                    success,
+                    warning,
+                    ..
+                } = self
+                {
+                    *processing = false;
+                    match res {
+                        Ok(()) => *success = true,
+                        Err(e) => *warning = Error::from(e).into(),
+                    };
+                }
+            }
             _ => {}
         }
         Command::none()
@@ -170,6 +208,12 @@ impl SpendTransactionAction {
     fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
             Self::SharePsbt(view) => view.view(ctx, &psbt),
+            Self::Broadcast {
+                view,
+                processing,
+                success,
+                warning,
+            } => view.view(&processing, &success, warning.as_ref()),
             Self::Delete {
                 view,
                 processing,

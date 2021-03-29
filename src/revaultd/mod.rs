@@ -194,6 +194,11 @@ impl RevaultD {
         let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
         Ok(())
     }
+
+    pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

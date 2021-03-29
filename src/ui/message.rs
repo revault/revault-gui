@@ -56,6 +56,8 @@ pub enum SpendTxMessage {
     SelectBroadcast,
     Delete,
     Deleted(Result<(), RevaultDError>),
+    Broadcast,
+    Broadcasted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]
