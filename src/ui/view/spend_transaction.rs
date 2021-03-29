@@ -1,6 +1,6 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable, TextInput};
 
 use crate::{
     revaultd::model,
@@ -85,6 +85,9 @@ pub struct SpendTransactionSharePsbtView {
     sign_button: iced::button::State,
     broadcast_button: iced::button::State,
     delete_button: iced::button::State,
+    psbt_input: iced::text_input::State,
+    copy_button: iced::button::State,
+    confirm_button: iced::button::State,
 }
 
 impl SpendTransactionSharePsbtView {
@@ -94,10 +97,20 @@ impl SpendTransactionSharePsbtView {
             sign_button: iced::button::State::new(),
             broadcast_button: iced::button::State::new(),
             delete_button: iced::button::State::new(),
+            psbt_input: iced::text_input::State::new(),
+            copy_button: iced::button::State::new(),
+            confirm_button: iced::button::State::new(),
         }
     }
 
-    pub fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
+    pub fn view(
+        &mut self,
+        psbt_input: &str,
+        processing: &bool,
+        success: &bool,
+        psbt: &Psbt,
+        warning: Option<&Error>,
+    ) -> Element<Message> {
         let col = Column::new().push(
             Row::new()
                 .push(
@@ -129,7 +142,53 @@ impl SpendTransactionSharePsbtView {
                     .on_press(Message::SpendTx(SpendTxMessage::SelectDelete)),
                 ),
         );
-        Container::new(col).into()
+
+        let psbt_str = bitcoin::base64::encode(&bitcoin::consensus::serialize(psbt));
+        let mut col_action = Column::new().spacing(20).push(
+            Column::new().push(
+                Row::new()
+                    .push(Container::new(text::small(&psbt_str)).width(Length::Fill))
+                    .push(
+                        button::clipboard(&mut self.copy_button, Message::Clipboard(psbt_str))
+                            .width(Length::Shrink),
+                    )
+                    .width(Length::Fill),
+            ),
+        );
+        if let Some(error) = warning {
+            col_action = col_action.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
+
+        let mut button_update_action = button::important(
+            &mut self.confirm_button,
+            button::button_content(None, "Update transaction"),
+        );
+        if !*processing {
+            button_update_action =
+                button_update_action.on_press(Message::SpendTx(SpendTxMessage::Update));
+        }
+        if *success {
+            col_action = col_action.push(text::success(text::simple("Transaction updated")));
+        }
+        Container::new(
+            col.push(card::white(Container::new(
+                col_action
+                    .push(text::simple("Enter PSBT:"))
+                    .push(
+                        TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
+                            Message::SpendTx(SpendTxMessage::PsbtEdited(p))
+                        })
+                        .size(15)
+                        .width(Length::Fill)
+                        .padding(10),
+                    )
+                    .push(button_update_action),
+            )))
+            .spacing(20),
+        )
+        .into()
     }
 }
 

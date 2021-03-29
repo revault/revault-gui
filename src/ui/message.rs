@@ -45,7 +45,6 @@ pub enum SpendTxMessage {
     Generate,
     /// Select the SpendTxMessage with the given psbt.
     Select(Psbt),
-    Updated(Result<(), RevaultDError>),
     Sign(SignMessage),
     Signed(Result<(), RevaultDError>),
     Inputs(Result<Vec<Vault>, RevaultDError>),
@@ -58,6 +57,8 @@ pub enum SpendTxMessage {
     Deleted(Result<(), RevaultDError>),
     Broadcast,
     Broadcasted(Result<(), RevaultDError>),
+    Update,
+    Updated(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

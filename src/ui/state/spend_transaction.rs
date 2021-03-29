@@ -5,7 +5,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults},
+    cmd::{broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
     State,
 };
 
@@ -80,7 +80,7 @@ impl State for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(self.revaultd.clone(), &self.psbt, msg)
+                    .update(self.revaultd.clone(), &mut self.psbt, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
@@ -107,7 +107,13 @@ impl State for SpendTransactionState {
 
 #[derive(Debug)]
 pub enum SpendTransactionAction {
-    SharePsbt(SpendTransactionSharePsbtView),
+    SharePsbt {
+        psbt_input: String,
+        processing: bool,
+        success: bool,
+        warning: Option<Error>,
+        view: SpendTransactionSharePsbtView,
+    },
     Broadcast {
         processing: bool,
         success: bool,
@@ -124,12 +130,18 @@ pub enum SpendTransactionAction {
 
 impl SpendTransactionAction {
     fn new() -> Self {
-        Self::SharePsbt(SpendTransactionSharePsbtView::new())
+        Self::SharePsbt {
+            psbt_input: "".to_string(),
+            processing: false,
+            success: false,
+            warning: None,
+            view: SpendTransactionSharePsbtView::new(),
+        }
     }
     fn update(
         &mut self,
         revaultd: Arc<RevaultD>,
-        psbt: &Psbt,
+        psbt: &mut Psbt,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
         match message {
@@ -200,6 +212,72 @@ impl SpendTransactionAction {
                     };
                 }
             }
+            SpendTxMessage::PsbtEdited(input) => {
+                if let Self::SharePsbt {
+                    psbt_input,
+                    processing,
+                    success,
+                    ..
+                } = self
+                {
+                    *success = false;
+                    if !*processing {
+                        *psbt_input = input;
+                    }
+                }
+            }
+            SpendTxMessage::Update => {
+                if let Self::SharePsbt {
+                    psbt_input,
+                    processing,
+                    warning,
+                    ..
+                } = self
+                {
+                    let p: Option<Psbt> = bitcoin::base64::decode(&psbt_input)
+                        .ok()
+                        .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok());
+                    if let Some(p) = p {
+                        if p.global.unsigned_tx.txid() != psbt.global.unsigned_tx.txid() {
+                            *warning =
+                                Error::UnexpectedError("psbt has not the same".to_string()).into();
+                        } else {
+                            *processing = true;
+                            return Command::perform(
+                                update_spend_tx(revaultd.clone(), p),
+                                SpendTxMessage::Updated,
+                            );
+                        }
+                    } else {
+                        *warning =
+                            Error::UnexpectedError("Please enter a valid psbt".to_string()).into();
+                    }
+                }
+            }
+            SpendTxMessage::Updated(res) => {
+                if let Self::SharePsbt {
+                    psbt_input,
+                    processing,
+                    success,
+                    warning,
+                    ..
+                } = self
+                {
+                    match res {
+                        Ok(()) => {
+                            *success = true;
+                            *psbt = bitcoin::consensus::encode::deserialize(
+                                &bitcoin::base64::decode(&psbt_input)
+                                    .expect("psbt was successfully updated with the given input"),
+                            )
+                            .expect("psbt was successfully updated with the given input");
+                            *psbt_input = "".to_string();
+                        }
+                        Err(e) => *warning = Error::from(e).into(),
+                    };
+                    *processing = false;
+                }
+            }
             _ => {}
         }
         Command::none()
@@ -207,7 +285,14 @@ impl SpendTransactionAction {
 
     fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
-            Self::SharePsbt(view) => view.view(ctx, &psbt),
+            Self::SharePsbt {
+                view,
+                psbt_input,
+                processing,
+                success,
+                warning,
+                ..
+            } => view.view(&psbt_input, &processing, &success, psbt, warning.as_ref()),
             Self::Broadcast {
                 view,
                 processing,
