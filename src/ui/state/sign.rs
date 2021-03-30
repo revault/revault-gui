@@ -78,7 +78,16 @@ impl SignState {
                         self.signed_psbt = base64::decode(&psbt_input)
                             .ok()
                             .and_then(|bytes| encode::deserialize(&bytes).ok());
-                        if self.signed_psbt.is_none() {
+                        if let Some(signed) = &self.signed_psbt {
+                            if signed.global.unsigned_tx.txid()
+                                != self.original_psbt.global.unsigned_tx.txid()
+                            {
+                                self.signed_psbt = None;
+                                *warning = Some(
+                                    "PSBT is not the targeted transaction to sign".to_string(),
+                                );
+                            }
+                        } else {
                             *warning = Some("Please enter valid PSBT".to_string());
                         }
                     }

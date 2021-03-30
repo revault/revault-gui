@@ -193,6 +193,75 @@ impl SpendTransactionSharePsbtView {
 }
 
 #[derive(Debug)]
+pub struct SpendTransactionSignView {
+    share_button: iced::button::State,
+    sign_button: iced::button::State,
+    broadcast_button: iced::button::State,
+    delete_button: iced::button::State,
+    confirm_button: iced::button::State,
+}
+
+impl SpendTransactionSignView {
+    pub fn new() -> Self {
+        Self {
+            share_button: iced::button::State::new(),
+            sign_button: iced::button::State::new(),
+            broadcast_button: iced::button::State::new(),
+            delete_button: iced::button::State::new(),
+            confirm_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        signer: Element<'a, Message>,
+        warning: Option<&Error>,
+    ) -> Element<'a, Message> {
+        let col = Column::new().push(
+            Row::new()
+                .push(
+                    button::transparent(
+                        &mut self.share_button,
+                        button::button_content(None, "Share and update"),
+                    )
+                    .on_press(Message::SpendTx(SpendTxMessage::SelectShare)),
+                )
+                .push(
+                    button::primary(&mut self.sign_button, button::button_content(None, "Sign"))
+                        .on_press(Message::SpendTx(SpendTxMessage::SelectSign)),
+                )
+                .push(
+                    button::transparent(
+                        &mut self.broadcast_button,
+                        button::button_content(None, "Broadcast"),
+                    )
+                    .on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast)),
+                )
+                .push(
+                    button::transparent(
+                        &mut self.delete_button,
+                        button::button_content(None, "Delete"),
+                    )
+                    .on_press(Message::SpendTx(SpendTxMessage::SelectDelete)),
+                ),
+        );
+
+        let mut col_action = Column::new().push(signer);
+        if let Some(error) = warning {
+            col_action = col_action.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
+
+        Container::new(
+            col.push(card::white(Container::new(col_action)))
+                .spacing(20),
+        )
+        .into()
+    }
+}
+
+#[derive(Debug)]
 pub struct SpendTransactionDeleteView {
     share_button: iced::button::State,
     sign_button: iced::button::State,

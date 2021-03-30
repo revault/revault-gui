@@ -4,21 +4,26 @@ use std::sync::Arc;
 
 use iced::{Command, Element};
 
-use super::{
-    cmd::{broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
-    State,
-};
-
-use crate::revaultd::{model, RevaultD};
-
-use crate::ui::{
-    error::Error,
-    message::{Message, SpendTxMessage},
-    view::spend_transaction::{
-        SpendTransactionBroadcastView, SpendTransactionDeleteView, SpendTransactionListItemView,
-        SpendTransactionSharePsbtView, SpendTransactionView,
+use crate::{
+    revault::TransactionKind,
+    revaultd::{model, RevaultD},
+    ui::{
+        error::Error,
+        message::{Message, SignMessage, SpendTxMessage},
+        state::{
+            cmd::{
+                broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults, update_spend_tx,
+            },
+            sign::SignState,
+            State,
+        },
+        view::spend_transaction::{
+            SpendTransactionBroadcastView, SpendTransactionDeleteView,
+            SpendTransactionListItemView, SpendTransactionSharePsbtView, SpendTransactionSignView,
+            SpendTransactionView,
+        },
+        view::Context,
     },
-    view::Context,
 };
 
 #[derive(Debug)]
@@ -114,6 +119,11 @@ pub enum SpendTransactionAction {
         warning: Option<Error>,
         view: SpendTransactionSharePsbtView,
     },
+    Sign {
+        warning: Option<Error>,
+        signer: SignState,
+        view: SpendTransactionSignView,
+    },
     Broadcast {
         processing: bool,
         success: bool,
@@ -179,6 +189,45 @@ impl SpendTransactionAction {
                     warning: None,
                     view: SpendTransactionDeleteView::new(),
                 };
+            }
+            SpendTxMessage::SelectSign => {
+                *self = Self::Sign {
+                    warning: None,
+                    signer: SignState::new(psbt.clone(), TransactionKind::Spend),
+                    view: SpendTransactionSignView::new(),
+                };
+            }
+            SpendTxMessage::Sign(msg) => {
+                if let Self::Sign { signer, .. } = self {
+                    signer.update(msg);
+                    if let Some(psbt) = &signer.signed_psbt {
+                        return Command::perform(
+                            update_spend_tx(revaultd.clone(), psbt.clone()),
+                            SpendTxMessage::Signed,
+                        );
+                    }
+                }
+            }
+            SpendTxMessage::Signed(res) => {
+                if let Self::Sign {
+                    warning, signer, ..
+                } = self
+                {
+                    match res {
+                        Ok(_) => {
+                            // During this step state has a generated psbt
+                            // and signer has a signed psbt.
+                            *psbt = signer
+                                .signed_psbt
+                                .as_ref()
+                                .expect("A signed message means signer has a signed psbt")
+                                .clone();
+                            signer.update(SignMessage::Success);
+                        }
+
+                        Err(e) => *warning = Some(Error::RevaultDError(e)),
+                    }
+                }
             }
             SpendTxMessage::SelectBroadcast => {
                 *self = Self::Broadcast {
@@ -285,6 +334,16 @@ impl SpendTransactionAction {
 
     fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
+            Self::Sign {
+                signer,
+                warning,
+                view,
+            } => view.view(
+                signer
+                    .view(ctx)
+                    .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg))),
+                warning.as_ref(),
+            ),
             Self::SharePsbt {
                 view,
                 psbt_input,
