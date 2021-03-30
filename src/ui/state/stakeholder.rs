@@ -22,7 +22,7 @@ use crate::ui::{
     },
     view::{
         stakeholder::{stakeholder_deposit_pending, stakeholder_deposit_signed},
-        vault::DelegateVaultListItemView,
+        vault::{DelegateVaultListItemView, VaultListItemView},
         Context, StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
         StakeholderHomeView, StakeholderNetworkView,
     },
@@ -38,6 +38,8 @@ pub struct StakeholderHomeState {
     /// balance as active and inactive tuple.
     balance: (u64, u64),
     view: StakeholderHomeView,
+
+    vaults: Vec<VaultListItem<VaultListItemView>>,
 }
 
 impl StakeholderHomeState {
@@ -48,11 +50,16 @@ impl StakeholderHomeState {
             view: StakeholderHomeView::new(),
             unsecured_fund_balance: 0,
             balance: (0, 0),
+            vaults: Vec::new(),
         }
     }
 
     fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.calculate_balance(&vaults);
+        self.vaults = vaults
+            .into_iter()
+            .map(|vlt| VaultListItem::new(vlt))
+            .collect();
     }
 
     fn calculate_balance(&mut self, vaults: &[model::Vault]) {
@@ -95,7 +102,7 @@ impl State for StakeholderHomeState {
         self.view.view(
             ctx,
             None,
-            Vec::new(),
+            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
             &self.unsecured_fund_balance,
         )

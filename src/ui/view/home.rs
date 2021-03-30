@@ -12,6 +12,7 @@ use crate::ui::{
 pub struct ManagerHomeView {
     sidebar: Sidebar,
     scroll: scrollable::State,
+    deposit_button: iced::button::State,
 }
 
 impl ManagerHomeView {
@@ -19,6 +20,7 @@ impl ManagerHomeView {
         ManagerHomeView {
             scroll: scrollable::State::new(),
             sidebar: Sidebar::new(),
+            deposit_button: iced::button::State::default(),
         }
     }
 
@@ -29,6 +31,27 @@ impl ManagerHomeView {
         vaults: Vec<Element<'a, Message>>,
         balance: &(u64, u64),
     ) -> Element<'a, Message> {
+        let vaults_view = if vaults.is_empty() {
+            Column::new().push(card::simple(Container::new(
+                Row::new()
+                    .push(
+                        Container::new(text::simple(
+                            "No vaults yet, start using Revault by making a deposit",
+                        ))
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        button::primary(
+                            &mut self.deposit_button,
+                            button::button_content(None, "Deposit"),
+                        )
+                        .on_press(Message::Menu(Menu::Deposit)),
+                    )
+                    .align_items(iced::Align::Center),
+            )))
+        } else {
+            Column::with_children(vaults)
+        };
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
@@ -40,7 +63,7 @@ impl ManagerHomeView {
                                 .push(Column::new().width(Length::FillPortion(1)))
                                 .push(balance_view(ctx, balance).width(Length::FillPortion(1))),
                         )
-                        .push(Column::with_children(vaults))
+                        .push(vaults_view)
                         .spacing(20),
                 )),
             )),
@@ -54,6 +77,7 @@ pub struct StakeholderHomeView {
     sidebar: Sidebar,
     scroll: scrollable::State,
     ack_fund_button: iced::button::State,
+    deposit_button: iced::button::State,
 }
 
 impl StakeholderHomeView {
@@ -62,6 +86,7 @@ impl StakeholderHomeView {
             scroll: scrollable::State::new(),
             sidebar: Sidebar::new(),
             ack_fund_button: iced::button::State::default(),
+            deposit_button: iced::button::State::default(),
         }
     }
 
@@ -73,6 +98,27 @@ impl StakeholderHomeView {
         balance: &(u64, u64),
         unsecured_fund_balance: &u64,
     ) -> Element<'a, Message> {
+        let vaults_view = if vaults.is_empty() {
+            Column::new().push(card::simple(Container::new(
+                Row::new()
+                    .push(
+                        Container::new(text::simple(
+                            "No vaults yet, start using Revault by making a deposit",
+                        ))
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        button::primary(
+                            &mut self.deposit_button,
+                            button::button_content(None, "Deposit"),
+                        )
+                        .on_press(Message::Menu(Menu::Deposit)),
+                    )
+                    .align_items(iced::Align::Center),
+            )))
+        } else {
+            Column::with_children(vaults)
+        };
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
@@ -93,7 +139,7 @@ impl StakeholderHomeView {
                                 .push(balance_view(ctx, balance).width(Length::Fill))
                                 .spacing(20),
                         )
-                        .push(Column::with_children(vaults))
+                        .push(vaults_view)
                         .spacing(20),
                 )),
             )),
