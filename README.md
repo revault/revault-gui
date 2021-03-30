@@ -24,7 +24,7 @@ at `REVAULTD_PATH`; if `REVAULTD_PATH` is unset, it will try to run the `revault
 command (will fail if `revaultd` is not installed globally). For this reason, it is suggested to
 either start `revaultd` before starting the GUI, or set `REVAULTD_PATH` to
 `/path/to/revaultd/repository/target/debug/revaultd`. For specific instruction on how to run
-revaultd, please refer to the [Revaultd repository](https:://github.com/revault/revaultd).
+revaultd, please refer to the [Revaultd repository](https://github.com/revault/revaultd).
 
 ### Starting the GUI
 
