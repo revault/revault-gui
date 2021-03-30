@@ -1,46 +1,19 @@
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+
 use iced::{
-    scrollable, text_input, Checkbox, Column, Container, Element, Length, Row, Scrollable,
-    TextInput,
+    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Scrollable,
+    Slider, TextInput,
 };
 
+use crate::revaultd::model;
+
 use crate::ui::{
-    component::{button, card, separation, text},
+    component::{button, card, separation, text, ContainerBackgroundStyle},
+    error::Error,
     menu::Menu,
     message::{InputMessage, Message, RecipientMessage},
     view::Context,
 };
-
-#[derive(Debug)]
-pub enum ManagerSendView {
-    SelectOutputs(ManagerSelectOutputsView),
-    SelectInputs(ManagerSelectInputsView),
-    SelectFee(ManagerSelectFeeView),
-    Sign(ManagerSignView),
-}
-
-impl ManagerSendView {
-    pub fn new() -> Self {
-        Self::SelectOutputs(ManagerSelectOutputsView::new())
-    }
-
-    pub fn next(&self) -> ManagerSendView {
-        match self {
-            Self::SelectOutputs(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
-            Self::SelectInputs(_) => Self::SelectFee(ManagerSelectFeeView::new()),
-            Self::SelectFee(_) => Self::Sign(ManagerSignView::new()),
-            _ => Self::new(),
-        }
-    }
-
-    pub fn previous(&self) -> ManagerSendView {
-        match self {
-            Self::SelectInputs(_) => Self::SelectOutputs(ManagerSelectOutputsView::new()),
-            Self::SelectFee(_) => Self::SelectInputs(ManagerSelectInputsView::new()),
-            Self::Sign(_) => Self::SelectFee(ManagerSelectFeeView::new()),
-            _ => Self::new(),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct ManagerSelectOutputsView {
@@ -68,7 +41,7 @@ impl ManagerSelectOutputsView {
         let mut col_outputs = Column::new()
             .spacing(20)
             .width(Length::Fill)
-            .align_items(iced::Align::Center);
+            .align_items(Align::Center);
         for (i, element) in selected_outputs.into_iter().enumerate() {
             if i > 0 {
                 col_outputs = col_outputs.push(separation().width(Length::Fill));
@@ -117,17 +90,18 @@ impl ManagerSelectOutputsView {
                     .push(
                         Container::new(element)
                             .width(Length::Fill)
-                            .align_x(iced::Align::Center),
+                            .align_x(Align::Center),
                     )
                     .push(
                         Column::new()
                             .push(footer)
                             .width(Length::Fill)
-                            .align_items(iced::Align::Center),
+                            .align_items(Align::Center),
                     )
                     .spacing(20),
             )),
         )
+        .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -157,13 +131,6 @@ impl ManagerSendOutputView {
         warning_address: &bool,
         warning_amount: &bool,
     ) -> Element<RecipientMessage> {
-        let address = TextInput::new(
-            &mut self.address_input,
-            "Address",
-            &address,
-            RecipientMessage::AddressEdited,
-        )
-        .padding(10);
         let mut col = Column::with_children(vec![
             Container::new(
                 button::transparent(
@@ -173,10 +140,17 @@ impl ManagerSendOutputView {
                 .on_press(RecipientMessage::Delete),
             )
             .width(Length::Fill)
-            .align_x(iced::Align::End)
+            .align_x(Align::End)
             .into(),
             Container::new(text::bold(text::simple("Enter address:"))).into(),
-            Container::new(address).into(),
+            TextInput::new(
+                &mut self.address_input,
+                "Address",
+                &address,
+                RecipientMessage::AddressEdited,
+            )
+            .padding(10)
+            .into(),
         ]);
 
         if *warning_address {
@@ -199,7 +173,7 @@ impl ManagerSendOutputView {
                 "Please enter a valid amount",
             ))))
         }
-        Container::new(col.spacing(10)).into()
+        card::white(Container::new(col.spacing(10))).into()
     }
 }
 
@@ -231,14 +205,14 @@ impl ManagerSelectInputsView {
         let mut col_inputs = Column::new()
             .spacing(20)
             .width(Length::Fill)
-            .align_items(iced::Align::Center);
+            .align_items(Align::Center);
         for (i, element) in selected_inputs.into_iter().enumerate() {
             if i > 0 {
                 col_inputs = col_inputs.push(separation().width(Length::Fill));
             }
             col_inputs = col_inputs.push(element);
         }
-        let element: Element<_> = col_inputs.max_width(500).into();
+        let element: Element<_> = col_inputs.max_width(1000).into();
 
         let mut footer = Column::new();
         if valid {
@@ -265,7 +239,8 @@ impl ManagerSelectInputsView {
                                     .push(
                                         button::transparent(
                                             &mut self.back_button,
-                                            Container::new(text::simple("Go Back")).padding(10),
+                                            Container::new(text::simple("< Select recipients"))
+                                                .padding(10),
                                         )
                                         .on_press(Message::Previous),
                                     )
@@ -285,17 +260,18 @@ impl ManagerSelectInputsView {
                     .push(
                         Container::new(element)
                             .width(Length::Fill)
-                            .align_x(iced::Align::Center),
+                            .align_x(Align::Center),
                     )
                     .push(
                         Column::new()
                             .push(footer)
                             .width(Length::Fill)
-                            .align_items(iced::Align::Center),
+                            .align_items(Align::Center),
                     )
                     .spacing(20),
             )),
         )
+        .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -309,16 +285,25 @@ pub fn manager_send_input_view<'a>(
     amount: &u64,
     selected: bool,
 ) -> Element<'a, InputMessage> {
-    let checkbox =
-        Checkbox::new(selected, &outpoint.to_string(), InputMessage::Selected).text_size(15);
+    let checkbox = Checkbox::new(selected, "", InputMessage::Selected).text_size(10);
     let row = Row::new()
         .push(checkbox)
-        .push(text::bold(text::simple(&format!(
-            "{}",
-            ctx.converter.converts(*amount)
-        ))))
+        .push(
+            Container::new(
+                Row::new()
+                    .push(text::bold(text::simple(&format!(
+                        "{}",
+                        ctx.converter.converts(*amount)
+                    ))))
+                    .push(text::small(&ctx.converter.unit.to_string()))
+                    .align_items(Align::Center),
+            )
+            .width(Length::Fill),
+        )
+        .push((Column::new().push(text::bold(text::small(outpoint)))).width(Length::Shrink))
+        .align_items(Align::Center)
         .spacing(20);
-    Container::new(row).width(Length::Fill).into()
+    card::white(Container::new(row)).width(Length::Fill).into()
 }
 
 #[derive(Debug)]
@@ -327,6 +312,8 @@ pub struct ManagerSelectFeeView {
     cancel_button: iced::button::State,
     next_button: iced::button::State,
     back_button: iced::button::State,
+    slider: iced::slider::State,
+    generate_button: iced::button::State,
 }
 
 impl ManagerSelectFeeView {
@@ -336,71 +323,210 @@ impl ManagerSelectFeeView {
             next_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
+            slider: iced::slider::State::new(),
+            generate_button: iced::button::State::new(),
         }
     }
 
-    pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
-        let mut footer = Row::new().spacing(20);
-        if valid {
-            footer = footer.push(Container::new(
-                button::primary(
-                    &mut self.next_button,
-                    Container::new(text::simple("Continue")).padding(10),
-                )
-                .on_press(Message::Next),
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        selected_inputs: &[model::Vault],
+        feerate: &u32,
+        psbt: Option<&(Psbt, u32)>,
+        processing: &bool,
+        warning: Option<&Error>,
+    ) -> Element<'a, Message> {
+        let mut footer = Column::new().spacing(20);
+        if let Some(psbt) = psbt {
+            footer = footer.push(spend_tx_with_feerate_view(
+                ctx,
+                selected_inputs,
+                &psbt.0,
+                &psbt.1,
             ));
-        } else {
-            footer = footer.push(Container::new(button::primary_disable(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-            )));
+            if !*processing {
+                footer = footer.push(Container::new(
+                    button::primary(
+                        &mut self.next_button,
+                        Container::new(text::simple("Sign transaction")).padding(10),
+                    )
+                    .on_press(Message::Next),
+                ));
+            }
         }
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
-                Column::new()
-                    .push(
-                        Row::new()
-                            .push(
-                                Column::new()
-                                    .push(
-                                        button::transparent(
-                                            &mut self.back_button,
-                                            Container::new(text::simple("Go Back")).padding(10),
-                                        )
-                                        .on_press(Message::Previous),
-                                    )
-                                    .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    button::cancel(
-                                        &mut self.cancel_button,
-                                        Container::new(text::simple("X Close")).padding(10),
-                                    )
-                                    .on_press(Message::Menu(Menu::Home)),
-                                )
-                                .width(Length::Shrink),
-                            ),
-                    )
-                    .push(
-                        Container::new(text::simple("Select fee"))
-                            .width(Length::Fill)
-                            .align_x(iced::Align::Center),
-                    )
+
+        let slider_button = if *processing {
+            button::primary(
+                &mut self.generate_button,
+                button::button_content(None, "Processing"),
+            )
+        } else if psbt.is_none() {
+            button::primary(
+                &mut self.generate_button,
+                button::button_content(None, "Generate transaction"),
+            )
+            .on_press(Message::GenerateTransaction)
+        } else {
+            button::success(
+                &mut self.generate_button,
+                button::button_content(None, "Generated"),
+            )
+        };
+
+        let mut col_fee = Column::new()
+            .push(
+                Container::new(text::bold(text::simple("Select fee")))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .push(Container::new(
+                Row::new()
+                    .push(text::bold(text::simple(&format!("{}", feerate))))
+                    .push(text::simple("satoshis/vbyte")),
+            ))
+            .push(
+                Container::new(
+                    Slider::new(&mut self.slider, 1..=1000, *feerate, Message::Feerate)
+                        .width(Length::Fill),
+                )
+                .max_width(300)
+                .width(Length::Fill)
+                .align_x(Align::Center),
+            )
+            .push(slider_button)
+            .spacing(20)
+            .align_items(Align::Center);
+
+        if let Some(error) = warning {
+            col_fee = col_fee.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
+
+        let col = Column::new()
+            .push(
+                Row::new()
                     .push(
                         Column::new()
-                            .push(footer)
-                            .width(Length::Fill)
-                            .align_items(iced::Align::Center),
+                            .push(
+                                button::transparent(
+                                    &mut self.back_button,
+                                    Container::new(text::simple("< Select inputs")).padding(10),
+                                )
+                                .on_press(Message::Previous),
+                            )
+                            .width(Length::Fill),
                     )
-                    .spacing(20),
-            )),
-        )
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+                    .push(
+                        Container::new(
+                            button::cancel(
+                                &mut self.cancel_button,
+                                Container::new(text::simple("X Close")).padding(10),
+                            )
+                            .on_press(Message::Menu(Menu::Home)),
+                        )
+                        .width(Length::Shrink),
+                    ),
+            )
+            .push(
+                Container::new(
+                    Column::new()
+                        .push(card::white(Container::new(col_fee)))
+                        .align_items(Align::Center)
+                        .max_width(1000),
+                )
+                .align_x(Align::Center),
+            )
+            .push(footer.max_width(1000).align_items(Align::Center))
+            .align_items(Align::Center)
+            .spacing(20);
+
+        Container::new(Scrollable::new(&mut self.scroll).push(Container::new(col)))
+            .padding(20)
+            .style(ContainerBackgroundStyle)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
+}
+
+fn spend_tx_with_feerate_view<'a, T: 'a>(
+    ctx: &Context,
+    inputs: &[model::Vault],
+    psbt: &Psbt,
+    feerate: &u32,
+) -> Container<'a, T> {
+    let mut total_fees = 0;
+    let mut col_input = Column::new()
+        .push(text::bold(text::simple("Inputs")))
+        .spacing(10);
+    for input in inputs {
+        total_fees += input.amount;
+        col_input = col_input.push(card::simple(Container::new(
+            Row::new()
+                .push(Container::new(text::small(&input.address.to_string())).width(Length::Fill))
+                .push(
+                    Container::new(text::bold(text::small(&format!(
+                        "{}",
+                        ctx.converter.converts(input.amount),
+                    ))))
+                    .width(Length::Shrink),
+                )
+                .spacing(5)
+                .align_items(Align::Center),
+        )));
+    }
+    let mut col_output = Column::new()
+        .push(text::bold(text::simple("Outputs")))
+        .spacing(10);
+    for output in &psbt.global.unsigned_tx.output {
+        total_fees -= output.value;
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network).unwrap();
+        col_output = col_output.push(card::simple(Container::new(
+            Row::new()
+                .push(Container::new(text::small(&addr.to_string())).width(Length::Fill))
+                .push(Container::new(
+                    text::bold(text::small(&format!(
+                        "{}",
+                        ctx.converter.converts(output.value)
+                    )))
+                    .width(Length::Shrink),
+                ))
+                .spacing(5)
+                .align_items(Align::Center),
+        )));
+    }
+    Container::new(
+        Column::new()
+            .push(
+                Container::new(text::bold(text::simple("Generated transaction")))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .push(
+                Column::new()
+                    .push(Row::new().push(text::simple("Feerate: ")).push(text::bold(
+                        text::simple(&format!("{} satoshis/vbyte", feerate)),
+                    )))
+                    .push(
+                        Row::new()
+                            .push(text::simple("total fees: "))
+                            .push(text::bold(text::simple(&format!(
+                                "{}",
+                                ctx.converter.converts(total_fees)
+                            ))))
+                            .push(text::simple(&format!(" {}", ctx.converter.unit))),
+                    ),
+            )
+            .push(
+                Row::new()
+                    .push(col_input.width(Length::FillPortion(1)))
+                    .push(col_output.width(Length::FillPortion(1)))
+                    .spacing(20),
+            )
+            .spacing(20),
+    )
 }
 
 #[derive(Debug)]
@@ -421,22 +547,25 @@ impl ManagerSignView {
         }
     }
 
-    pub fn view<'a>(&'a mut self, valid: bool) -> Element<'a, Message> {
-        let mut footer = Row::new().spacing(20);
-        if valid {
-            footer = footer.push(Container::new(
-                button::primary(
-                    &mut self.next_button,
-                    Container::new(text::simple("Continue")).padding(10),
-                )
-                .on_press(Message::Next),
-            ));
-        } else {
-            footer = footer.push(Container::new(button::primary_disable(
-                &mut self.next_button,
-                Container::new(text::simple("Continue")).padding(10),
-            )));
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        inputs: &[model::Vault],
+        psbt: &Psbt,
+        feerate: &u32,
+        warning: Option<&Error>,
+        signer: Element<'a, Message>,
+    ) -> Element<'a, Message> {
+        let mut col = Column::new()
+            .push(spend_tx_with_feerate_view(ctx, inputs, psbt, feerate))
+            .spacing(20)
+            .max_width(1000);
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
         }
+        col = col.push(card::white(Container::new(signer)));
         Container::new(
             Scrollable::new(&mut self.scroll).push(Container::new(
                 Column::new()
@@ -465,19 +594,92 @@ impl ManagerSignView {
                             ),
                     )
                     .push(
-                        Container::new(text::simple("Sign tx"))
+                        Container::new(col)
                             .width(Length::Fill)
-                            .align_x(iced::Align::Center),
-                    )
-                    .push(
-                        Column::new()
-                            .push(footer)
-                            .width(Length::Fill)
-                            .align_items(iced::Align::Center),
+                            .align_x(Align::Center),
                     )
                     .spacing(20),
             )),
         )
+        .style(ContainerBackgroundStyle)
+        .padding(20)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagerSpendTransactionCreatedView {
+    scroll: scrollable::State,
+    cancel_button: iced::button::State,
+    next_button: iced::button::State,
+    back_button: iced::button::State,
+}
+
+impl ManagerSpendTransactionCreatedView {
+    pub fn new() -> Self {
+        ManagerSpendTransactionCreatedView {
+            cancel_button: iced::button::State::new(),
+            next_button: iced::button::State::new(),
+            back_button: iced::button::State::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        inputs: &[model::Vault],
+        psbt: &Psbt,
+        feerate: &u32,
+    ) -> Element<'a, Message> {
+        Container::new(
+            Scrollable::new(&mut self.scroll).push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(
+                                        button::transparent(
+                                            &mut self.back_button,
+                                            Container::new(text::simple("Go Back")).padding(10),
+                                        )
+                                        .on_press(Message::Previous),
+                                    )
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(
+                                    button::cancel(
+                                        &mut self.cancel_button,
+                                        Container::new(text::simple("X Close")).padding(10),
+                                    )
+                                    .on_press(Message::Menu(Menu::Home)),
+                                )
+                                .width(Length::Shrink),
+                            ),
+                    )
+                    .push(
+                        Container::new(
+                            Column::new()
+                                .push(spend_tx_with_feerate_view(ctx, inputs, psbt, feerate))
+                                .spacing(20)
+                                .max_width(1000),
+                        )
+                        .width(Length::Fill)
+                        .align_x(Align::Center),
+                    )
+                    .push(
+                        Container::new(text::success(text::simple("created")))
+                            .width(Length::Fill)
+                            .align_x(Align::Center),
+                    )
+                    .spacing(20),
+            )),
+        )
+        .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)

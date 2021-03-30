@@ -167,6 +167,15 @@ pub struct UnvaultTransaction {
     pub unvault_tx: PartiallySignedTransaction,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpendTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub spend_tx: PartiallySignedTransaction,
+
+    #[serde(skip)]
+    pub feerate: u32,
+}
+
 mod bitcoin_transaction {
     use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
     use serde::{self, Deserialize, Deserializer};

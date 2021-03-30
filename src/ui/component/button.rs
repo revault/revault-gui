@@ -38,6 +38,8 @@ button!(cancel, CancelStyle, color::CANCEL, color::FOREGROUND);
 
 button!(important, ImportantStyle, color::CANCEL, color::FOREGROUND);
 
+button!(success, SuccessStyle, color::SUCCESS, color::FOREGROUND);
+
 button!(
     transparent,
     TransparentStyle,

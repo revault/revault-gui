@@ -3,7 +3,10 @@ use std::sync::Arc;
 use super::{error::Error, menu::Menu};
 use crate::revault::Role;
 use crate::revaultd::{
-    model::{RevocationTransactions, UnvaultTransaction, Vault, VaultStatus, VaultTransactions},
+    model::{
+        RevocationTransactions, SpendTransaction, UnvaultTransaction, Vault, VaultStatus,
+        VaultTransactions,
+    },
     RevaultD, RevaultDError,
 };
 
@@ -28,6 +31,11 @@ pub enum Message {
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
+    Feerate(u32),
+    GenerateTransaction,
+    SpendTransaction(Result<SpendTransaction, RevaultDError>),
+    Sign(SignMessage),
+    Signed(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

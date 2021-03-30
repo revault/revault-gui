@@ -1,3 +1,5 @@
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use std::collections::HashMap;
 use std::convert::From;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -5,7 +7,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::{
-    cmd::{get_blockheight, list_vaults},
+    cmd::{get_blockheight, get_spend_tx, list_vaults, update_spend_tx},
     vault::{Vault, VaultListItem},
     State,
 };
@@ -15,10 +17,17 @@ use crate::revaultd::{
     RevaultD,
 };
 
+use crate::revault::TransactionKind;
+
 use crate::ui::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, VaultMessage},
-    view::manager::{manager_send_input_view, ManagerSendOutputView, ManagerSendView},
+    message::{InputMessage, Message, RecipientMessage, SignMessage, VaultMessage},
+    state::sign::SignState,
+    view::manager::{
+        manager_send_input_view, ManagerSelectFeeView, ManagerSelectInputsView,
+        ManagerSelectOutputsView, ManagerSendOutputView, ManagerSignView,
+        ManagerSpendTransactionCreatedView,
+    },
     view::{vault::VaultListItemView, Context, ManagerHomeView, ManagerNetworkView},
 };
 
@@ -152,24 +161,43 @@ impl From<ManagerHomeState> for Box<dyn State> {
 }
 
 #[derive(Debug)]
+enum ManagerSendStep {
+    SelectOutputs(ManagerSelectOutputsView),
+    SelectInputs(ManagerSelectInputsView),
+    SelectFee(ManagerSelectFeeView),
+    Sign {
+        signer: SignState,
+        view: ManagerSignView,
+    },
+    Success(ManagerSpendTransactionCreatedView),
+}
+
+#[derive(Debug)]
 pub struct ManagerSendState {
     revaultd: Arc<RevaultD>,
-    view: ManagerSendView,
 
     warning: Option<Error>,
 
     vaults: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
+    feerate: u32,
+    psbt: Option<(Psbt, u32)>,
+    processing: bool,
+
+    step: ManagerSendStep,
 }
 
 impl ManagerSendState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerSendState {
             revaultd,
-            view: ManagerSendView::new(),
+            step: ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new()),
             warning: None,
             vaults: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
+            feerate: 20,
+            psbt: None,
+            processing: false,
         }
     }
 
@@ -199,27 +227,135 @@ impl ManagerSendState {
         }
         output_amount
     }
+
+    pub fn selected_inputs(&self) -> Vec<model::Vault> {
+        self.vaults
+            .iter()
+            .cloned()
+            .filter_map(|input| {
+                if input.selected {
+                    Some(input.vault)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::SpendTransaction(res) => {
+                self.processing = false;
+                match res {
+                    Ok(tx) => {
+                        self.psbt = Some((tx.spend_tx, tx.feerate));
+                    }
+                    Err(e) => self.warning = Some(Error::RevaultDError(e)),
+                }
+            }
+            Message::GenerateTransaction => {
+                self.processing = true;
+                self.warning = None;
+                let inputs = self
+                    .selected_inputs()
+                    .into_iter()
+                    .map(|input| input.outpoint())
+                    .collect();
+
+                let outputs: HashMap<String, u64> = self
+                    .outputs
+                    .iter()
+                    .map(|output| (output.address.clone(), output.amount().unwrap()))
+                    .collect();
+
+                return Command::perform(
+                    get_spend_tx(self.revaultd.clone(), inputs, outputs, self.feerate),
+                    Message::SpendTransaction,
+                );
+            }
+            Message::Feerate(feerate) => {
+                if !self.processing {
+                    self.feerate = feerate;
+                    self.psbt = None;
+                }
+            }
             Message::Vaults(res) => match res {
                 Ok(vlts) => self.update_vaults(vlts),
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
-            Message::Next => self.view = self.view.next(),
-            Message::Previous => self.view = self.view.previous(),
+            Message::Signed(res) => match res {
+                Ok(_) => {
+                    if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
+                        // During this step state has a generated psbt
+                        // and signer has a signed psbt.
+                        self.psbt = Some((
+                            signer.signed_psbt.clone().expect("As the received message is a sign success, the psbt should not be None"),
+                            self.psbt.clone().expect("As the received message is a sign success, the psbt should not be None").1,
+                        ));
+                        signer.update(SignMessage::Success);
+                        self.step =
+                            ManagerSendStep::Success(ManagerSpendTransactionCreatedView::new());
+                    };
+                }
+                Err(e) => self.warning = Some(Error::RevaultDError(e)),
+            },
+            Message::Sign(msg) => match &mut self.step {
+                ManagerSendStep::Sign { signer, .. } => {
+                    signer.update(msg).map(Message::Sign);
+                    if let Some(psbt) = &signer.signed_psbt {
+                        return Command::perform(
+                            update_spend_tx(self.revaultd.clone(), psbt.clone()),
+                            Message::Signed,
+                        );
+                    }
+                }
+                _ => (),
+            },
+            Message::Next => match self.step {
+                ManagerSendStep::SelectOutputs(_) => {
+                    self.step = ManagerSendStep::SelectInputs(ManagerSelectInputsView::new());
+                }
+                ManagerSendStep::SelectInputs(_) => {
+                    self.step = ManagerSendStep::SelectFee(ManagerSelectFeeView::new());
+                }
+                ManagerSendStep::SelectFee(_) => {
+                    if let Some((psbt, _)) = &self.psbt {
+                        self.step = ManagerSendStep::Sign {
+                            signer: SignState::new(psbt.clone(), TransactionKind::Spend),
+                            view: ManagerSignView::new(),
+                        };
+                    }
+                }
+                _ => (),
+            },
+            Message::Previous => {
+                self.step = match self.step {
+                    ManagerSendStep::SelectInputs(_) => {
+                        ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new())
+                    }
+                    ManagerSendStep::SelectFee(_) => {
+                        ManagerSendStep::SelectInputs(ManagerSelectInputsView::new())
+                    }
+                    ManagerSendStep::Sign { .. } => {
+                        ManagerSendStep::SelectFee(ManagerSelectFeeView::new())
+                    }
+                    _ => ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new()),
+                }
+            }
             Message::AddRecipient => self.outputs.push(ManagerSendOutput::new()),
             Message::Recipient(i, RecipientMessage::Delete) => {
                 self.outputs.remove(i);
             }
             Message::Input(i, msg) => {
+                self.psbt = None;
                 if let Some(input) = self.vaults.get_mut(i) {
                     input.update(msg);
                 }
             }
             Message::Recipient(i, msg) => {
+                self.psbt = None;
                 if let Some(output) = self.outputs.get_mut(i) {
                     output.update(msg);
                 }
@@ -230,10 +366,11 @@ impl State for ManagerSendState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
+        let selected_inputs = self.selected_inputs();
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
-        match &mut self.view {
-            ManagerSendView::SelectOutputs(v) => {
+        match &mut self.step {
+            ManagerSendStep::SelectOutputs(v) => {
                 let valid = !self.outputs.iter().any(|o| !o.valid());
                 v.view(
                     self.outputs
@@ -244,7 +381,7 @@ impl State for ManagerSendState {
                     valid,
                 )
             }
-            ManagerSendView::SelectInputs(v) => v.view(
+            ManagerSendStep::SelectInputs(v) => v.view(
                 self.vaults
                     .iter_mut()
                     .enumerate()
@@ -252,14 +389,35 @@ impl State for ManagerSendState {
                     .collect(),
                 input_amount > output_amount,
             ),
-            ManagerSendView::SelectFee(v) => v.view(false),
-            ManagerSendView::Sign(v) => v.view(false),
+            ManagerSendStep::SelectFee(v) => v.view(
+                ctx,
+                &selected_inputs,
+                &self.feerate,
+                self.psbt.as_ref(),
+                &self.processing,
+                self.warning.as_ref(),
+            ),
+            ManagerSendStep::Sign { signer, view } => {
+                let (psbt, feerate) = self.psbt.as_ref().unwrap();
+                view.view(
+                    ctx,
+                    &selected_inputs,
+                    &psbt,
+                    &feerate,
+                    self.warning.as_ref(),
+                    signer.view(ctx).map(Message::Sign),
+                )
+            }
+            ManagerSendStep::Success(v) => {
+                let (psbt, _) = self.psbt.as_ref().unwrap();
+                v.view(ctx, &selected_inputs, &psbt, &self.feerate)
+            }
         }
     }
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone(), None),
+            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Active])),
             Message::Vaults,
         )])
     }
@@ -338,7 +496,7 @@ impl ManagerSendOutput {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ManagerSendInput {
     vault: model::Vault,
     selected: bool,
