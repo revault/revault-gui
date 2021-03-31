@@ -29,7 +29,7 @@ impl ManagerHomeView {
         ctx: &Context,
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
-        vaults: Vec<Element<'a, Message>>,
+        moving_vaults: Vec<Element<'a, Message>>,
         balance: &(u64, u64),
     ) -> Element<'a, Message> {
         let mut content = Column::new().push(
@@ -53,7 +53,7 @@ impl ManagerHomeView {
             )
         }
 
-        if vaults.is_empty() {
+        if balance.0 == 0 && balance.1 == 0 {
             content = content.push(card::simple(Container::new(
                 Row::new()
                     .push(
@@ -71,10 +71,12 @@ impl ManagerHomeView {
                     )
                     .align_items(iced::Align::Center),
             )))
-        } else {
+        }
+
+        if !moving_vaults.is_empty() {
             content = content
-                .push(text::bold(text::simple("Vaults:")))
-                .push(Column::with_children(vaults).spacing(10))
+                .push(text::bold(text::simple("Funds are moving:")))
+                .push(Column::with_children(moving_vaults).spacing(10))
                 .spacing(20)
         };
 
@@ -111,12 +113,22 @@ impl StakeholderHomeView {
         &'a mut self,
         ctx: &Context,
         warning: Option<&Error>,
-        vaults: Vec<Element<'a, Message>>,
+        moving_vaults: Vec<Element<'a, Message>>,
         balance: &(u64, u64),
         unsecured_fund_balance: &u64,
     ) -> Element<'a, Message> {
-        let vaults_view = if vaults.is_empty() {
-            Column::new().push(card::simple(Container::new(
+        let mut col_body = Column::new().push(
+            Row::new()
+                .push(
+                    unsecured_fund_view(ctx, &mut self.ack_fund_button, &unsecured_fund_balance)
+                        .max_width(400)
+                        .width(Length::Fill),
+                )
+                .push(balance_view(ctx, balance).width(Length::Fill))
+                .spacing(20),
+        );
+        if balance.0 == 0 && balance.1 == 0 {
+            col_body = col_body.push(card::simple(Container::new(
                 Row::new()
                     .push(
                         Container::new(text::simple(
@@ -133,32 +145,20 @@ impl StakeholderHomeView {
                     )
                     .align_items(iced::Align::Center),
             )))
-        } else {
-            Column::with_children(vaults)
+        }
+
+        if !moving_vaults.is_empty() {
+            col_body = col_body
+                .push(text::bold(text::simple("Funds are moving:")))
+                .push(Column::with_children(moving_vaults).spacing(10))
+                .spacing(20)
         };
+
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
             layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
-                    Column::new()
-                        .push(
-                            Row::new()
-                                .push(
-                                    unsecured_fund_view(
-                                        ctx,
-                                        &mut self.ack_fund_button,
-                                        &unsecured_fund_balance,
-                                    )
-                                    .max_width(400)
-                                    .width(Length::Fill),
-                                )
-                                .push(balance_view(ctx, balance).width(Length::Fill))
-                                .spacing(20),
-                        )
-                        .push(vaults_view)
-                        .spacing(20),
-                )),
+                Scrollable::new(&mut self.scroll).push(Container::new(col_body.spacing(20))),
             )),
         )
         .into()
