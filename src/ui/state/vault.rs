@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     revault::TransactionKind,
     revaultd::{
-        model::{self, RevocationTransactions, VaultTransactions},
+        model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
         RevaultD,
     },
     ui::{
@@ -13,15 +13,15 @@ use crate::{
         message::{Message, SignMessage, VaultMessage},
         state::{
             cmd::{
-                get_onchain_txs, get_revocation_txs, get_unvault_tx, set_revocation_txs,
+                get_onchain_txs, get_revocation_txs, get_unvault_tx, revault, set_revocation_txs,
                 set_unvault_tx,
             },
             sign::SignState,
         },
         view::{
             vault::{
-                AcknowledgeVaultView, DelegateVaultView, VaultModal, VaultOnChainTransactionsPanel,
-                VaultView,
+                AcknowledgeVaultView, DelegateVaultView, RevaultVaultView, VaultModal,
+                VaultOnChainTransactionsPanel, VaultView,
             },
             Context,
         },
@@ -87,6 +87,9 @@ impl Vault {
                 Ok(tx) => self.section = VaultSection::new_ack_section(tx),
                 Err(e) => self.warning = Error::from(e).into(),
             },
+            VaultMessage::SelectRevault => {
+                self.section = VaultSection::new_revault_section();
+            }
             VaultMessage::Delegate(outpoint) => {
                 if outpoint == self.vault.outpoint() {
                     return Command::perform(
@@ -106,7 +109,7 @@ impl Vault {
             _ => {
                 return self
                     .section
-                    .update(revaultd, &self.vault, message)
+                    .update(revaultd, &mut self.vault, message)
                     .map(Message::Vault);
             }
         };
@@ -150,6 +153,15 @@ pub enum VaultSection {
         view: AcknowledgeVaultView,
         signer: SignState,
     },
+    /// Revault action ask the user if the vault that is unvaulting
+    /// should be revaulted and executes the revault command after
+    /// confirmation from the user.
+    Revault {
+        processing: bool,
+        success: bool,
+        warning: Option<Error>,
+        view: RevaultVaultView,
+    },
 }
 
 impl VaultSection {
@@ -168,6 +180,15 @@ impl VaultSection {
         }
     }
 
+    pub fn new_revault_section() -> Self {
+        Self::Revault {
+            processing: false,
+            success: false,
+            view: RevaultVaultView::new(),
+            warning: None,
+        }
+    }
+
     pub fn new_ack_section(txs: RevocationTransactions) -> Self {
         Self::Acknowledge {
             emergency_tx: (txs.emergency_tx.clone(), false),
@@ -182,10 +203,43 @@ impl VaultSection {
     fn update(
         &mut self,
         revaultd: Arc<RevaultD>,
-        vault: &model::Vault,
+        vault: &mut model::Vault,
         message: VaultMessage,
     ) -> Command<VaultMessage> {
         match message {
+            VaultMessage::Revault => {
+                if let Self::Revault {
+                    processing,
+                    warning,
+                    ..
+                } = self
+                {
+                    *processing = true;
+                    *warning = None;
+                    return Command::perform(
+                        revault(revaultd.clone(), vault.outpoint()),
+                        VaultMessage::Revaulted,
+                    );
+                }
+            }
+            VaultMessage::Revaulted(res) => {
+                if let Self::Revault {
+                    processing,
+                    success,
+                    warning,
+                    ..
+                } = self
+                {
+                    *processing = false;
+                    match res {
+                        Ok(()) => {
+                            *success = true;
+                            vault.status = VaultStatus::Canceling;
+                        }
+                        Err(e) => *warning = Error::from(e).into(),
+                    }
+                }
+            }
             VaultMessage::Signed(res) => match self {
                 VaultSection::Delegate {
                     warning, signer, ..
@@ -293,6 +347,12 @@ impl VaultSection {
                     signer.view(ctx).map(VaultMessage::Sign),
                 )
                 .map(Message::Vault),
+            Self::Revault {
+                processing,
+                success,
+                warning,
+                view,
+            } => view.view(ctx, &processing, &success, warning.as_ref()),
         }
     }
 }
