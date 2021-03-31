@@ -72,6 +72,8 @@ pub enum VaultMessage {
     Delegate(String),
     Acknowledge(String),
     Retry,
+    Revault,
+    Revaulted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]
