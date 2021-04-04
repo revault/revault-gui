@@ -2,9 +2,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use copypasta::{ClipboardContext, ClipboardProvider};
-use iced::{executor, Application, Color, Command, Element, Settings, Subscription};
-use tracing::error;
+use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, Subscription};
 
 use super::menu::Menu;
 use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
@@ -20,7 +18,6 @@ pub struct App {
     config: Config,
     revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
-    clipboard: ClipboardContext,
     context: Context,
 }
 
@@ -102,7 +99,6 @@ impl Application for App {
                 config,
                 state: std::boxed::Box::new(state),
                 revaultd: None,
-                clipboard: ClipboardContext::new().expect("Failed to get clipboard provider"),
                 context: Context::default(),
             },
             cmd,
@@ -117,7 +113,11 @@ impl Application for App {
         String::from("Revault GUI")
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(
+        &mut self,
+        message: Self::Message,
+        clipboard: &mut Clipboard,
+    ) -> Command<Self::Message> {
         match message {
             Message::Install => {
                 self.state = InstallingState::new().into();
@@ -129,9 +129,7 @@ impl Application for App {
             Message::Clipboard(text)
             | Message::SpendTx(SpendTxMessage::Sign(SignMessage::Clipboard(text)))
             | Message::Vault(VaultMessage::Sign(SignMessage::Clipboard(text))) => {
-                if let Err(e) = self.clipboard.set_contents(text) {
-                    error!("Failed to set contents to clipboard: {}", e);
-                };
+                clipboard.write(text);
                 Command::none()
             }
             _ => self.state.update(message),
