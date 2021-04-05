@@ -28,11 +28,33 @@ impl ManagerHomeView {
         &'a mut self,
         ctx: &Context,
         warning: Option<&Error>,
+        spend_txs: Vec<Element<'a, Message>>,
         vaults: Vec<Element<'a, Message>>,
         balance: &(u64, u64),
     ) -> Element<'a, Message> {
-        let vaults_view = if vaults.is_empty() {
-            Column::new().push(card::simple(Container::new(
+        let mut content = Column::new().push(
+            Row::new()
+                .push(Column::new().width(Length::FillPortion(1)))
+                .push(balance_view(ctx, balance).width(Length::FillPortion(1))),
+        );
+
+        if !spend_txs.is_empty() {
+            content = content.push(
+                Column::new()
+                    .push(
+                        Column::new()
+                            .push(text::bold(text::simple("Pending spend transactions")))
+                            .push(text::small(
+                                "These transactions are waiting for managers signatures",
+                            )),
+                    )
+                    .push(Column::with_children(spend_txs).spacing(10))
+                    .spacing(20),
+            )
+        }
+
+        if vaults.is_empty() {
+            content = content.push(card::simple(Container::new(
                 Row::new()
                     .push(
                         Container::new(text::simple(
@@ -50,22 +72,17 @@ impl ManagerHomeView {
                     .align_items(iced::Align::Center),
             )))
         } else {
-            Column::with_children(vaults)
+            content = content
+                .push(text::bold(text::simple("Vaults:")))
+                .push(Column::with_children(vaults).spacing(10))
+                .spacing(20)
         };
+
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
             layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
-                    Column::new()
-                        .push(
-                            Row::new()
-                                .push(Column::new().width(Length::FillPortion(1)))
-                                .push(balance_view(ctx, balance).width(Length::FillPortion(1))),
-                        )
-                        .push(vaults_view)
-                        .spacing(20),
-                )),
+                Scrollable::new(&mut self.scroll).push(Container::new(content.spacing(20))),
             )),
         )
         .into()

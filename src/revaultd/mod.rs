@@ -16,7 +16,7 @@ pub mod model;
 use client::Client;
 use config::Config;
 use model::{
-    DepositAddress, RevocationTransactions, SpendTransaction, UnvaultTransaction, Vault,
+    DepositAddress, RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
     VaultStatus, VaultTransactions,
 };
 
@@ -185,6 +185,20 @@ impl RevaultD {
         let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
         Ok(())
     }
+
+    pub fn list_spend_txs(&self) -> Result<ListSpendTransactionsResponse, RevaultDError> {
+        self.call("listspendtxs", Option::<Request>::None)
+    }
+
+    pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
+
+    pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -219,6 +233,12 @@ pub struct ListTransactionsRequest(Vec<String>);
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListOnchainTransactionsResponse {
     pub onchain_transactions: Vec<VaultTransactions>,
+}
+
+/// list_spend_txs
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListSpendTransactionsResponse {
+    pub spend_txs: Vec<SpendTx>,
 }
 
 // RevaultD can start only if a config path is given.

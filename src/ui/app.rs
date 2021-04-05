@@ -7,7 +7,7 @@ use iced::{executor, Application, Color, Command, Element, Settings, Subscriptio
 use tracing::error;
 
 use super::menu::Menu;
-use super::message::{Message, SignMessage, VaultMessage};
+use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use super::state::{
     ChargingState, DepositState, HistoryState, InstallingState, ManagerHomeState,
     ManagerNetworkState, ManagerSendState, SettingsState, StakeholderACKFundsState,
@@ -113,7 +113,7 @@ impl Application for App {
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
             Message::Clipboard(text)
-            | Message::Sign(SignMessage::Clipboard(text))
+            | Message::SpendTx(SpendTxMessage::Sign(SignMessage::Clipboard(text)))
             | Message::Vault(VaultMessage::Sign(SignMessage::Clipboard(text))) => {
                 if let Err(e) = self.clipboard.set_contents(text) {
                     error!("Failed to set contents to clipboard: {}", e);

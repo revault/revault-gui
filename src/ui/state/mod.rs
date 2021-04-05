@@ -6,6 +6,7 @@ pub mod installing;
 pub mod manager;
 mod settings;
 mod sign;
+mod spend_transaction;
 pub mod stakeholder;
 mod vault;
 
@@ -17,6 +18,7 @@ pub use history::HistoryState;
 pub use installing::InstallingState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
 pub use settings::SettingsState;
+pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};
 pub use stakeholder::{
     StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
     StakeholderNetworkState,
