@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use iced::{Command, Element};
@@ -27,14 +28,12 @@ pub struct StakeholderHomeState {
     revaultd: Arc<RevaultD>,
     warning: Option<Error>,
 
-    /// funds without presigned revocation transactions.
-    unsecured_fund_balance: u64,
-    /// balance as active and inactive tuple.
-    balance: (u64, u64),
-    view: StakeholderHomeView,
+    balance: HashMap<VaultStatus, (u64, u64)>,
 
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
+
+    view: StakeholderHomeView,
 }
 
 impl StakeholderHomeState {
@@ -43,8 +42,7 @@ impl StakeholderHomeState {
             revaultd,
             warning: None,
             view: StakeholderHomeView::new(),
-            unsecured_fund_balance: 0,
-            balance: (0, 0),
+            balance: HashMap::new(),
             moving_vaults: Vec::new(),
             selected_vault: None,
         }
@@ -90,27 +88,23 @@ impl StakeholderHomeState {
     }
 
     fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        let mut active_amount: u64 = 0;
-        let mut inactive_amount: u64 = 0;
-        let mut unsecured_amount: u64 = 0;
+        let mut balance = HashMap::new();
         for vault in vaults {
-            match vault.status {
-                VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
-                    active_amount += vault.amount
-                }
-                VaultStatus::Unconfirmed | VaultStatus::Funded => {
-                    inactive_amount += vault.amount;
-                    unsecured_amount += vault.amount;
-                }
-                VaultStatus::Secured => {
-                    inactive_amount += vault.amount;
-                }
-                _ => {}
+            if vault.status == VaultStatus::Unconfirmed
+                || vault.status == VaultStatus::Spent
+                || vault.status == VaultStatus::Spending
+            {
+                continue;
+            }
+            if let Some((number, amount)) = balance.get_mut(&vault.status) {
+                *number += 1;
+                *amount += vault.amount;
+            } else {
+                balance.insert(vault.status.clone(), (1, vault.amount));
             }
         }
 
-        self.balance = (active_amount, inactive_amount);
-        self.unsecured_fund_balance = unsecured_amount;
+        self.balance = balance;
     }
 }
 
@@ -139,7 +133,6 @@ impl State for StakeholderHomeState {
             None,
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
-            &self.unsecured_fund_balance,
         )
     }
 

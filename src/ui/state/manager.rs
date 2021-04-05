@@ -36,8 +36,8 @@ pub struct ManagerHomeState {
     revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
-    /// balance as active and inactive tuple.
-    balance: (u64, u64),
+    /// balance as a map of status and a tuple of number of vaults and amount of funds.
+    balance: HashMap<VaultStatus, (u64, u64)>,
     blockheight: u64,
     warning: Option<Error>,
 
@@ -52,7 +52,7 @@ impl ManagerHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerHomeState {
             revaultd,
-            balance: (0, 0),
+            balance: HashMap::new(),
             view: ManagerHomeView::new(),
             blockheight: 0,
             moving_vaults: Vec::new(),
@@ -128,22 +128,24 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    pub fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        let mut active_amount: u64 = 0;
-        let mut inactive_amount: u64 = 0;
+    fn calculate_balance(&mut self, vaults: &[model::Vault]) {
+        let mut balance = HashMap::new();
         for vault in vaults {
-            match vault.status {
-                VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
-                    active_amount += vault.amount
-                }
-                VaultStatus::Secured | VaultStatus::Funded | VaultStatus::Unconfirmed => {
-                    inactive_amount += vault.amount
-                }
-                _ => {}
+            if vault.status == VaultStatus::Unconfirmed
+                || vault.status == VaultStatus::Spent
+                || vault.status == VaultStatus::Spending
+            {
+                continue;
+            }
+            if let Some((number, amount)) = balance.get_mut(&vault.status) {
+                *number += 1;
+                *amount += vault.amount;
+            } else {
+                balance.insert(vault.status.clone(), (1, vault.amount));
             }
         }
 
-        self.balance = (active_amount, inactive_amount);
+        self.balance = balance;
     }
 }
 
