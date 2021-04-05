@@ -355,7 +355,9 @@ impl SpendTransactionDeleteView {
                 .push(
                     card::white(Container::new(
                         col_action
-                            .push(text::simple("Do you want to delete transaction ?"))
+                            .push(text::simple(
+                                "Are you sure you want to delete this transaction?",
+                            ))
                             .push(button_delete_action)
                             .align_items(Align::Center)
                             .spacing(20),
@@ -464,7 +466,9 @@ impl SpendTransactionBroadcastView {
                 .push(
                     card::white(Container::new(
                         col_action
-                            .push(text::simple("Do you want to broadcast transaction ?"))
+                            .push(text::simple(
+                                "Are you sure you want to broadcast this transaction ?",
+                            ))
                             .push(button_broadcast_action)
                             .align_items(Align::Center)
                             .spacing(20),

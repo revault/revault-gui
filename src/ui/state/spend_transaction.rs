@@ -288,8 +288,10 @@ impl SpendTransactionAction {
                         .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok());
                     if let Some(p) = p {
                         if p.global.unsigned_tx.txid() != psbt.global.unsigned_tx.txid() {
-                            *warning =
-                                Error::UnexpectedError("psbt has not the same".to_string()).into();
+                            *warning = Error::UnexpectedError(
+                                "Entered PSBT is for a different transaction".to_string(),
+                            )
+                            .into();
                         } else {
                             *processing = true;
                             return Command::perform(
