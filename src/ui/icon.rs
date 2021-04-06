@@ -74,6 +74,10 @@ pub fn person_check_icon() -> Text {
     icon('\u{F4AF}')
 }
 
+pub fn arrow_up_icon() -> Text {
+    icon('\u{F148}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

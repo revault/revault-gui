@@ -8,7 +8,7 @@ use crate::{
     ui::{
         component::{button, card, navbar, scroll, separation, text},
         error::Error,
-        icon::{person_check_icon, shield_check_icon, shield_notif_icon},
+        icon::{arrow_up_icon, person_check_icon, shield_check_icon},
         menu::Menu,
         message::Message,
         view::{layout, sidebar::Sidebar, Context},
@@ -167,12 +167,14 @@ impl StakeholderHomeView {
 #[derive(Debug)]
 struct Overview {
     ack_fund_button: iced::button::State,
+    delegate_fund_button: iced::button::State,
 }
 
 impl Overview {
     pub fn new() -> Self {
         Self {
             ack_fund_button: iced::button::State::new(),
+            delegate_fund_button: iced::button::State::new(),
         }
     }
 
@@ -217,7 +219,9 @@ impl Overview {
                 *active_amount,
                 overview.get(&VaultStatus::Activating),
             ));
-        } else if overview.get(&VaultStatus::Activating).is_some() {
+        } else if overview.get(&VaultStatus::Activating).is_some()
+            || overview.get(&VaultStatus::Secured).is_some()
+        {
             col_body = col_body.push(active_funds_overview_card(
                 ctx,
                 0,
@@ -227,13 +231,38 @@ impl Overview {
         }
 
         if let Some((nb_secured_vaults, secured_amount)) = overview.get(&VaultStatus::Secured) {
+            if ctx.role == Role::Stakeholder {
+                col_body = col_body.push(
+                    Container::new(
+                        button::transparent(
+                            &mut self.delegate_fund_button,
+                            button::button_content(Some(arrow_up_icon()), "Delegate funds"),
+                        )
+                        .on_press(Message::Menu(Menu::ACKFunds)),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+                );
+            } else {
+                col_body = col_body.push(
+                    Container::new(
+                        Row::new()
+                            .push(arrow_up_icon())
+                            .push(text::simple("Need stakeholders delegation")),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+                );
+            }
             col_body = col_body.push(acked_funds_overview_card(
                 ctx,
                 *nb_secured_vaults,
                 *secured_amount,
                 overview.get(&VaultStatus::Securing),
             ));
-        } else if overview.get(&VaultStatus::Securing).is_some() {
+        } else if overview.get(&VaultStatus::Securing).is_some()
+            || overview.get(&VaultStatus::Funded).is_some()
+        {
             col_body = col_body.push(acked_funds_overview_card(
                 ctx,
                 0,
@@ -245,67 +274,44 @@ impl Overview {
         if let Some((nb_funded_vaults, funded_amount)) = overview.get(&VaultStatus::Funded) {
             if ctx.role == Role::Stakeholder {
                 col_body = col_body.push(
-                    Column::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(text::bold(text::simple(&format!(
-                                        "{}",
-                                        ctx.converter.converts(*funded_amount),
-                                    ))))
-                                    .push(text::simple(&format!(
-                                        " {} received in ",
-                                        ctx.converter.unit
-                                    )))
-                                    .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
-                                    .push(text::simple(" new deposits since last signing")),
-                            )
-                            .width(Length::Fill)
-                            .align_x(iced::Align::End),
+                    Container::new(
+                        button::transparent(
+                            &mut self.ack_fund_button,
+                            button::button_content(Some(arrow_up_icon()), "Acknowledge funds"),
                         )
-                        .push(
-                            Container::new(
-                                button::important(
-                                    &mut self.ack_fund_button,
-                                    button::button_content(
-                                        Some(shield_notif_icon()),
-                                        "Acknowledge funds",
-                                    ),
-                                )
-                                .on_press(Message::Menu(Menu::ACKFunds)),
-                            )
-                            .width(Length::Fill)
-                            .align_x(iced::Align::End),
-                        )
-                        .spacing(10)
-                        .width(Length::Fill),
+                        .on_press(Message::Menu(Menu::ACKFunds)),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
                 );
             } else {
                 col_body = col_body.push(
-                    Column::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(text::bold(text::simple(&format!(
-                                        "{}",
-                                        ctx.converter.converts(*funded_amount),
-                                    ))))
-                                    .push(text::simple(&format!(
-                                        " {} received in ",
-                                        ctx.converter.unit
-                                    )))
-                                    .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
-                                    .push(text::simple(
-                                        " new deposits, waiting stakeholders acknowledgment",
-                                    )),
-                            )
-                            .width(Length::Fill)
-                            .align_x(iced::Align::End),
-                        )
-                        .spacing(10)
-                        .width(Length::Fill),
+                    Container::new(
+                        Row::new()
+                            .push(arrow_up_icon())
+                            .push(text::simple("Need stakeholders acknowledgment")),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
                 );
             }
+            col_body = col_body.push(
+                Container::new(
+                    Row::new()
+                        .push(text::bold(text::simple(&format!(
+                            "{}",
+                            ctx.converter.converts(*funded_amount),
+                        ))))
+                        .push(text::simple(&format!(
+                            " {} received in ",
+                            ctx.converter.unit
+                        )))
+                        .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
+                        .push(text::simple(" new deposits")),
+                )
+                .width(Length::Fill)
+                .align_x(iced::Align::Center),
+            );
         }
         card::white(Container::new(col_body.spacing(15))).into()
     }
@@ -323,7 +329,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                 Container::new(
                     Row::new()
                         .push(person_check_icon())
-                        .push(text::simple("  Active funds:"))
+                        .push(text::simple("  Delegated funds:"))
                         .align_items(Align::Center),
                 )
                 .width(Length::Fill),
@@ -346,7 +352,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::small("funds waiting other stakeholder signatures:"))
+                            .push(text::small("funds waiting other stakeholder delegation:"))
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
@@ -400,7 +406,9 @@ fn acked_funds_overview_card<'a, T: 'a>(
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::small("funds waiting other stakeholder signatures:"))
+                            .push(text::small(
+                                "funds waiting other stakeholder acknowledgment:",
+                            ))
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
