@@ -28,7 +28,6 @@ pub enum Message {
     Next,
     Previous,
     DepositAddress(Result<bitcoin::Address, RevaultDError>),
-    Deposit(usize, DepositMessage),
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
@@ -64,12 +63,15 @@ pub enum SpendTxMessage {
 #[derive(Debug, Clone)]
 pub enum VaultMessage {
     ListOnchainTransaction,
+    RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
     Sign(SignMessage),
     Signed(Result<(), RevaultDError>),
     Select(String),
     Delegate(String),
+    Acknowledge(String),
+    Retry,
 }
 
 #[derive(Debug, Clone)]
@@ -92,15 +94,6 @@ pub enum SignatureSharingStatus {
     Unshared,
     Processing,
     Success,
-}
-
-#[derive(Debug, Clone)]
-pub enum DepositMessage {
-    RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
-    Sign(SignMessage),
-    Signed(Result<(), RevaultDError>),
-    /// Message ask for Deposit State to retry connecting to revaultd.
-    Retry,
 }
 
 #[derive(Debug, Clone)]

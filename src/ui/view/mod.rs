@@ -19,9 +19,7 @@ pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
-pub use stakeholder::{
-    StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
-};
+pub use stakeholder::{StakeholderACKFundsView, StakeholderDelegateFundsView};
 pub use vault::VaultView;
 
 use bitcoin::Network;

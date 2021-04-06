@@ -1,30 +1,24 @@
 use std::sync::Arc;
 
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-
 use iced::{Command, Element};
 
-use crate::revault::TransactionKind;
-
 use crate::revaultd::{
-    model::{self, RevocationTransactions, VaultStatus},
+    model::{self, VaultStatus},
     RevaultD,
 };
 
 use crate::ui::{
     error::Error,
-    message::{DepositMessage, Message, SignMessage, VaultFilterMessage, VaultMessage},
+    message::{Message, VaultFilterMessage, VaultMessage},
     state::{
-        cmd::{get_blockheight, get_revocation_txs, list_vaults, set_revocation_txs},
-        sign::SignState,
+        cmd::{get_blockheight, get_revocation_txs, list_vaults},
         vault::{Vault, VaultListItem},
         State,
     },
     view::{
-        stakeholder::{stakeholder_deposit_pending, stakeholder_deposit_signed},
-        vault::{DelegateVaultListItemView, VaultListItemView},
-        Context, StakeholderACKDepositView, StakeholderACKFundsView, StakeholderDelegateFundsView,
-        StakeholderHomeView, StakeholderNetworkView,
+        vault::{AcknowledgeVaultListItemView, DelegateVaultListItemView, VaultListItemView},
+        Context, StakeholderACKFundsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        StakeholderNetworkView,
     },
 };
 
@@ -186,10 +180,12 @@ impl From<StakeholderNetworkState> for Box<dyn State> {
 #[derive(Debug)]
 pub struct StakeholderACKFundsState {
     revaultd: Arc<RevaultD>,
-    warning: Option<Error>,
 
+    warning: Option<Error>,
     balance: u64,
-    deposits: Vec<Deposit>,
+    deposits: Vec<VaultListItem<AcknowledgeVaultListItemView>>,
+    selected_vault: Option<Vault>,
+
     view: StakeholderACKFundsView,
 }
 
@@ -201,23 +197,35 @@ impl StakeholderACKFundsState {
             deposits: Vec::new(),
             view: StakeholderACKFundsView::new(),
             balance: 0,
+            selected_vault: None,
         }
     }
 
-    fn start_signing_deposit(&mut self, index: usize) -> Command<Message> {
-        if let Some(Deposit::Pending { vault }) = self.deposits.get_mut(index) {
-            return Command::perform(
-                get_revocation_txs(self.revaultd.clone(), vault.outpoint()),
-                move |res| Message::Deposit(index, DepositMessage::RevocationTransactions(res)),
-            );
+    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+        if let Some(selected) = &self.selected_vault {
+            if selected.vault.outpoint() == outpoint {
+                self.selected_vault = None;
+                return self.load();
+            }
         }
+
+        if let Some(selected) = self
+            .deposits
+            .iter()
+            .find(|vlt| vlt.vault.outpoint() == outpoint)
+        {
+            self.selected_vault = Some(Vault::new(selected.vault.clone()));
+            return Command::perform(
+                get_revocation_txs(self.revaultd.clone(), selected.vault.outpoint()),
+                |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
+            );
+        };
         Command::none()
     }
 
-    fn update_deposits(&mut self, vaults: Vec<model::Vault>) -> Command<Message> {
+    fn update_deposits(&mut self, vaults: Vec<model::Vault>) {
         self.calculate_balance(&vaults);
-        self.deposits = vaults.into_iter().map(Deposit::new).collect();
-        self.start_signing_deposit(0)
+        self.deposits = vaults.into_iter().map(VaultListItem::new).collect();
     }
 
     fn calculate_balance(&mut self, vaults: &[model::Vault]) {
@@ -235,20 +243,18 @@ impl StakeholderACKFundsState {
 impl State for StakeholderACKFundsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Deposit(i, msg) => {
-                if let Some(deposit) = self.deposits.get_mut(i) {
-                    let cmd = deposit
-                        .update(self.revaultd.clone(), msg)
-                        .map(move |msg| Message::Deposit(i, msg));
-                    if deposit.signed() {
-                        return Command::batch(vec![cmd, self.start_signing_deposit(i + 1)]);
-                    }
-                    return cmd;
+            Message::Vault(VaultMessage::Select(outpoint)) => self.on_vault_select(outpoint),
+            Message::Vault(msg) => {
+                if let Some(selected) = &mut self.selected_vault {
+                    return selected.update(self.revaultd.clone(), msg);
                 }
                 Command::none()
             }
             Message::Vaults(res) => match res {
-                Ok(vaults) => self.update_deposits(vaults),
+                Ok(vaults) => {
+                    self.update_deposits(vaults);
+                    Command::none()
+                }
                 Err(e) => {
                     self.warning = Error::from(e).into();
                     Command::none()
@@ -259,188 +265,21 @@ impl State for StakeholderACKFundsState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view.view(
-            ctx,
-            self.deposits
-                .iter_mut()
-                .enumerate()
-                .map(|(i, v)| {
-                    v.view(ctx).map(move |msg| {
-                        if let DepositMessage::Sign(SignMessage::Clipboard(psbt)) = msg {
-                            return Message::Clipboard(psbt);
-                        }
-                        Message::Deposit(i, msg)
-                    })
-                })
-                .collect(),
-        )
+        if let Some(selected) = &mut self.selected_vault {
+            return selected.view(ctx);
+        }
+        self.view
+            .view(ctx, self.deposits.iter_mut().map(|v| v.view(ctx)).collect())
     }
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone(), None),
+            list_vaults(
+                self.revaultd.clone(),
+                Some(&[VaultStatus::Securing, VaultStatus::Funded]),
+            ),
             Message::Vaults,
         )])
-    }
-}
-
-#[derive(Debug)]
-pub enum Deposit {
-    Signed {
-        vault: model::Vault,
-    },
-    Signing {
-        warning: Option<String>,
-        vault: model::Vault,
-        emergency_tx: (Psbt, bool),
-        emergency_unvault_tx: (Psbt, bool),
-        cancel_tx: (Psbt, bool),
-        view: StakeholderACKDepositView,
-        signer: SignState,
-    },
-    Pending {
-        vault: model::Vault,
-    },
-}
-
-impl Deposit {
-    fn new(vault: model::Vault) -> Self {
-        Deposit::Pending { vault }
-    }
-
-    fn signed(&self) -> bool {
-        matches!(self, Self::Signed { .. })
-    }
-
-    fn update(
-        &mut self,
-        revaultd: Arc<RevaultD>,
-        message: DepositMessage,
-    ) -> Command<DepositMessage> {
-        match message {
-            DepositMessage::Retry => {
-                if let Deposit::Signing {
-                    warning,
-                    vault,
-                    emergency_tx,
-                    emergency_unvault_tx,
-                    cancel_tx,
-                    ..
-                } = self
-                {
-                    *warning = None;
-                    return Command::perform(
-                        set_revocation_txs(
-                            revaultd,
-                            vault.outpoint(),
-                            emergency_tx.0.clone(),
-                            emergency_unvault_tx.0.clone(),
-                            cancel_tx.0.clone(),
-                        ),
-                        DepositMessage::Signed,
-                    );
-                }
-            }
-            DepositMessage::Signed(res) => {
-                if let Deposit::Signing { vault, warning, .. } = self {
-                    if let Err(e) = res {
-                        *warning = Some(format!("Error: {}", e));
-                    } else {
-                        *self = Deposit::Signed {
-                            vault: vault.clone(),
-                        };
-                    }
-                }
-            }
-            DepositMessage::RevocationTransactions(res) => {
-                if let Ok(txs) = res {
-                    self.signing(txs)
-                }
-            }
-            DepositMessage::Sign(msg) => {
-                if let Deposit::Signing {
-                    signer,
-                    emergency_tx,
-                    emergency_unvault_tx,
-                    cancel_tx,
-                    vault,
-                    ..
-                } = self
-                {
-                    signer.update(msg);
-                    if let Some(psbt) = &signer.signed_psbt {
-                        match signer.transaction_kind {
-                            TransactionKind::Emergency => {
-                                *emergency_tx = (psbt.clone(), true);
-                                *signer = SignState::new(
-                                    emergency_unvault_tx.0.clone(),
-                                    TransactionKind::EmergencyUnvault,
-                                );
-                            }
-                            TransactionKind::EmergencyUnvault => {
-                                *emergency_unvault_tx = (psbt.clone(), true);
-                                *signer =
-                                    SignState::new(cancel_tx.0.clone(), TransactionKind::Cancel);
-                            }
-                            TransactionKind::Cancel => {
-                                *cancel_tx = (psbt.clone(), true);
-                                return Command::perform(
-                                    set_revocation_txs(
-                                        revaultd,
-                                        vault.outpoint(),
-                                        emergency_tx.0.clone(),
-                                        emergency_unvault_tx.0.clone(),
-                                        cancel_tx.0.clone(),
-                                    ),
-                                    DepositMessage::Signed,
-                                );
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-        }
-        Command::none()
-    }
-
-    fn signing(&mut self, txs: RevocationTransactions) {
-        if let Deposit::Pending { vault } = self {
-            let signer = SignState::new(txs.emergency_tx.clone(), TransactionKind::Emergency);
-            *self = Deposit::Signing {
-                warning: None,
-                vault: vault.to_owned(),
-                view: StakeholderACKDepositView::new(),
-                emergency_tx: (txs.emergency_tx, false),
-                emergency_unvault_tx: (txs.emergency_unvault_tx, false),
-                cancel_tx: (txs.cancel_tx, false),
-                signer,
-            };
-        }
-    }
-
-    fn view(&mut self, ctx: &Context) -> Element<DepositMessage> {
-        match self {
-            Self::Signed { vault } => stakeholder_deposit_signed(ctx, vault),
-            Self::Pending { vault } => stakeholder_deposit_pending(ctx, vault),
-            Self::Signing {
-                warning,
-                vault,
-                view,
-                emergency_tx,
-                emergency_unvault_tx,
-                cancel_tx,
-                signer,
-            } => view.view(
-                ctx,
-                warning.as_ref(),
-                vault,
-                emergency_tx,
-                emergency_unvault_tx,
-                cancel_tx,
-                signer.view(ctx).map(DepositMessage::Sign),
-            ),
-        }
     }
 }
 
@@ -469,7 +308,12 @@ impl StakeholderDelegateFundsState {
             revaultd,
             active_balance: 0,
             vaults: Vec::new(),
-            vault_status_filter: vec![VaultStatus::Secured],
+            vault_status_filter: vec![
+                VaultStatus::Funded,
+                VaultStatus::Securing,
+                VaultStatus::Activating,
+                VaultStatus::Secured,
+            ],
             selected_vault: None,
             warning: None,
             view: StakeholderDelegateFundsView::new(),
@@ -488,7 +332,7 @@ impl StakeholderDelegateFundsState {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return Command::none();
+                return self.load();
             }
         }
 
@@ -526,6 +370,27 @@ impl StakeholderDelegateFundsState {
         Command::none()
     }
 
+    pub fn on_vault_acknowledge(&mut self, outpoint: String) -> Command<Message> {
+        if let Some(selected) = &mut self.selected_vault {
+            if selected.vault.outpoint() == outpoint {
+                return selected.update(self.revaultd.clone(), VaultMessage::Acknowledge(outpoint));
+            }
+        }
+
+        if let Some(selected) = self
+            .vaults
+            .iter()
+            .find(|vlt| vlt.vault.outpoint() == outpoint)
+        {
+            let mut selected_vault = Vault::new(selected.vault.clone());
+            let cmd =
+                selected_vault.update(self.revaultd.clone(), VaultMessage::Acknowledge(outpoint));
+            self.selected_vault = Some(selected_vault);
+            return cmd;
+        };
+        Command::none()
+    }
+
     pub fn calculate_balance(&mut self, vaults: &[model::Vault]) {
         self.active_balance = 0;
         for vault in vaults {
@@ -548,6 +413,7 @@ impl State for StakeholderDelegateFundsState {
             },
             Message::Vault(msg) => match msg {
                 VaultMessage::Select(outpoint) => return self.on_vault_select(outpoint),
+                VaultMessage::Acknowledge(outpoint) => return self.on_vault_acknowledge(outpoint),
                 VaultMessage::Delegate(outpoint) => return self.on_vault_delegate(outpoint),
                 _ => {
                     if let Some(vault) = &mut self.selected_vault {
@@ -586,7 +452,13 @@ impl State for StakeholderDelegateFundsState {
         Command::perform(
             list_vaults(
                 self.revaultd.clone(),
-                Some(&[VaultStatus::Secured, VaultStatus::Active]),
+                Some(&[
+                    VaultStatus::Funded,
+                    VaultStatus::Securing,
+                    VaultStatus::Secured,
+                    VaultStatus::Activating,
+                    VaultStatus::Active,
+                ]),
             ),
             Message::Vaults,
         )
