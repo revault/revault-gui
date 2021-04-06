@@ -17,7 +17,7 @@ pub struct BitcoindConfig {
     /// The IP:port bitcoind's RPC is listening on
     pub addr: SocketAddr,
     /// The poll interval for bitcoind
-    pub poll_interval_secs: u64,
+    pub poll_interval_secs: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
