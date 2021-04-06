@@ -59,6 +59,31 @@ impl App {
         };
         self.state.load()
     }
+
+    /// After the synchronisation process, the UI displays the home panel to the user
+    /// according to the role specified in the revaultd configuration.
+    fn on_synced(&mut self, revaultd: Arc<RevaultD>) -> Command<Message> {
+        let role = if revaultd.config.stakeholder_config.is_some() {
+            Role::Stakeholder
+        } else {
+            Role::Manager
+        };
+
+        // The user is both a manager and a stakholder, then role can be modified.
+        let edit_role = revaultd.config.stakeholder_config.is_some()
+            && revaultd.config.manager_config.is_some();
+
+        self.context = Context::new(
+            Converter::new(revaultd.network()),
+            revaultd.network(),
+            edit_role,
+            role,
+            Menu::Home,
+        );
+        self.context.network_up = true;
+        self.revaultd = Some(revaultd);
+        self.load_state(role, Menu::Home)
+    }
 }
 
 impl Application for App {
@@ -98,18 +123,7 @@ impl Application for App {
                 self.state = InstallingState::new().into();
                 self.state.load()
             }
-            Message::Synced(revaultd) => {
-                self.context = Context::new(
-                    Converter::new(revaultd.network()),
-                    revaultd.network(),
-                    true,
-                    Role::Manager,
-                    Menu::Home,
-                );
-                self.context.network_up = true;
-                self.revaultd = Some(revaultd);
-                self.load_state(Role::Manager, Menu::Home)
-            }
+            Message::Synced(revaultd) => self.on_synced(revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
             Message::Clipboard(text)
