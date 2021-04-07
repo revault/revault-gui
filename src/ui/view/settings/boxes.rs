@@ -72,11 +72,34 @@ impl SettingsBox for GeneralBox {
             ),
             (
                 "Coordinator poll",
-                format!("{:?}", config.coordinator_poll_seconds),
+                config
+                    .coordinator_poll_seconds
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or("Not set".to_string()),
             ),
-            ("Data dir", format!("{:?}", config.data_dir)),
-            ("Daemon", format!("{:?}", config.daemon)),
-            ("Log level", format!("{:?}", config.log_level)),
+            (
+                "Data dir",
+                config
+                    .data_dir
+                    .clone()
+                    .map(|d| format!("{:?}", d))
+                    .unwrap_or("Not set".to_string()),
+            ),
+            (
+                "Daemon",
+                config
+                    .daemon
+                    .map(|d| d.to_string())
+                    .unwrap_or("Not set".to_string()),
+            ),
+            (
+                "Log level",
+                config
+                    .log_level
+                    .clone()
+                    .map(|d| d.to_string())
+                    .unwrap_or("Not set".to_string()),
+            ),
         ];
         let mut column = Column::new();
         for (k, v) in rows {
@@ -99,7 +122,7 @@ impl SettingsBox for BitcoindBox {
     }
 
     fn description(&self) -> &'static str {
-        "Select the network, the cookie file path, the RPC address, the poll interval"
+        ""
     }
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
@@ -113,7 +136,10 @@ impl SettingsBox for BitcoindBox {
             ("Socket address", config.addr.to_string()),
             (
                 "Poll interval",
-                format!("{} seconds", config.poll_interval_secs),
+                config
+                    .poll_interval_secs
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or("Not set".to_string()),
             ),
         ];
         let mut column = Column::new();
@@ -205,7 +231,7 @@ pub struct StakeholderBox {}
 
 impl SettingsBox for StakeholderBox {
     fn title(&self) -> &'static str {
-        "Stakeholder config"
+        "My stakeholder info"
     }
 
     fn description(&self) -> &'static str {
@@ -254,7 +280,7 @@ pub struct ManagerBox {}
 
 impl SettingsBox for ManagerBox {
     fn title(&self) -> &'static str {
-        "Manager config"
+        "My manager info"
     }
 
     fn description(&self) -> &'static str {
