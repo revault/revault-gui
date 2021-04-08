@@ -1,14 +1,14 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 use iced::{
-    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Scrollable,
-    Slider, TextInput,
+    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Slider,
+    TextInput,
 };
 
 use crate::revaultd::model;
 
 use crate::ui::{
-    component::{button, card, separation, text, ContainerBackgroundStyle},
+    component::{button, card, scroll, separation, text, ContainerBackgroundStyle},
     error::Error,
     menu::Menu,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
@@ -77,8 +77,9 @@ impl ManagerImportTransactionView {
                 .on_press(Message::SpendTx(SpendTxMessage::Import)),
             );
         }
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
@@ -102,8 +103,8 @@ impl ManagerImportTransactionView {
                         .align_x(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
@@ -131,8 +132,9 @@ impl ManagerSendWelcomeView {
     }
 
     pub fn view<'a>(&'a mut self) -> Element<'a, Message> {
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
@@ -169,8 +171,8 @@ impl ManagerSendWelcomeView {
                         .align_x(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
@@ -236,8 +238,9 @@ impl ManagerSelectOutputsView {
                 Container::new(text::simple("Continue")).padding(10),
             )));
         }
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
@@ -263,8 +266,8 @@ impl ManagerSelectOutputsView {
                             .align_items(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
@@ -393,8 +396,9 @@ impl ManagerSelectInputsView {
                 Container::new(text::simple("Continue")).padding(10),
             )));
         }
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new()
@@ -433,8 +437,8 @@ impl ManagerSelectInputsView {
                             .align_items(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
@@ -605,7 +609,7 @@ impl ManagerSelectFeeView {
             .align_items(Align::Center)
             .spacing(20);
 
-        Container::new(Scrollable::new(&mut self.scroll).push(Container::new(col)))
+        Container::new(scroll(&mut self.scroll, Container::new(col)))
             .padding(20)
             .style(ContainerBackgroundStyle)
             .width(Length::Fill)
@@ -735,8 +739,9 @@ impl ManagerSignView {
             ))));
         }
         col = col.push(card::white(Container::new(signer)));
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new()
@@ -768,8 +773,8 @@ impl ManagerSignView {
                             .align_x(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
@@ -803,8 +808,9 @@ impl ManagerSpendTransactionCreatedView {
         psbt: &Psbt,
         feerate: &u32,
     ) -> Element<'a, Message> {
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new()
@@ -846,8 +852,8 @@ impl ManagerSpendTransactionCreatedView {
                             .align_x(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)

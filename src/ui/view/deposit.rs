@@ -1,7 +1,7 @@
-use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row, Scrollable};
+use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row};
 
 use crate::ui::{
-    component::{button, card, navbar, text},
+    component::{button, card, navbar, scroll, text},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
@@ -64,9 +64,10 @@ impl DepositView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(card::white(Container::new(col))),
-            )),
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                card::white(Container::new(col)),
+            ))),
         )
         .into()
     }

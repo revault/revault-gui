@@ -1,7 +1,7 @@
-use iced::{scrollable, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Column, Container, Element, Length, Row};
 
 use crate::ui::{
-    component::{badge, button, card, navbar, separation, text},
+    component::{badge, button, card, navbar, scroll, separation, text},
     error::Error,
     menu::Menu,
     message::Message,
@@ -83,9 +83,10 @@ impl ManagerHomeView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(content.spacing(20))),
-            )),
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(content.spacing(20)),
+            ))),
         )
         .into()
     }
@@ -157,9 +158,10 @@ impl StakeholderHomeView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(col_body.spacing(20))),
-            )),
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(col_body.spacing(20)),
+            ))),
         )
         .into()
     }

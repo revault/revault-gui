@@ -1,11 +1,11 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable, TextInput};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, TextInput};
 
 use crate::{
     revaultd::model,
     ui::{
-        component::{badge, button, card, text, ContainerBackgroundStyle},
+        component::{badge, button, card, scroll, text, ContainerBackgroundStyle},
         error::Error,
         menu::Menu,
         message::{Message, SpendTxMessage},
@@ -48,8 +48,9 @@ impl SpendTransactionView {
         col = col
             .push(spend_tx_with_feerate_view(ctx, spent_vaults, psbt, None))
             .push(action);
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(Container::new(
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
                 Column::new()
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
@@ -69,8 +70,8 @@ impl SpendTransactionView {
                             .align_x(Align::Center),
                     )
                     .spacing(20),
-            )),
-        )
+            ),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)

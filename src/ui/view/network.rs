@@ -1,8 +1,8 @@
-use iced::{scrollable, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Column, Container, Element, Length, Row};
 
 use crate::ui::{
     color,
-    component::{badge, card, navbar, text},
+    component::{badge, card, navbar, scroll, text},
     error::Error,
     icon::dot_icon,
     message::Message,
@@ -32,13 +32,14 @@ impl ManagerNetworkView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(
                     Column::new()
                         .push(bitcoin_core_card(blockheight))
                         .spacing(20),
-                )),
-            )),
+                ),
+            ))),
         )
         .into()
     }
@@ -67,13 +68,14 @@ impl StakeholderNetworkView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(
                     Column::new()
                         .push(bitcoin_core_card(blockheight))
                         .spacing(20),
-                )),
-            )),
+                ),
+            ))),
         )
         .into()
     }

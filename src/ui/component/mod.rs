@@ -1,9 +1,19 @@
 pub mod button;
 
 use super::color;
-use iced::{container, Column, Container, Length, Row};
+use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
 
 use crate::ui::image::revault_colored_logo;
+
+/// scroll is a wrapper for Scrollable in order to fix a bug from iced 0.3.0
+/// scroll add padding to the content in order to give space to the scroll bar.
+/// TODO: remove it once https://github.com/hecrj/iced/issues/793 is fixed
+pub fn scroll<'a, T: 'a>(
+    state: &'a mut scrollable::State,
+    content: Container<'a, T>,
+) -> Scrollable<'a, T> {
+    Scrollable::new(state).push(Container::new(content).padding(10))
+}
 
 pub fn navbar<'a, T: 'a>(notification: Option<Container<'a, T>>) -> Container<'a, T> {
     let svg = revault_colored_logo()

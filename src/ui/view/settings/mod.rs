@@ -1,8 +1,8 @@
-use iced::{scrollable, Column, Container, Element, Scrollable};
+use iced::{scrollable, Column, Container, Element};
 
 use crate::revault::Role;
 use crate::ui::{
-    component::navbar,
+    component::{navbar, scroll},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
@@ -37,9 +37,11 @@ impl SettingsView {
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
             layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll)
-                    .push(SettingsView::display_boxes(&ctx, &config))
-                    .spacing(8),
+                scroll(
+                    &mut self.scroll,
+                    Container::new(SettingsView::display_boxes(&ctx, &config)),
+                )
+                .spacing(8),
             )),
         )
         .into()

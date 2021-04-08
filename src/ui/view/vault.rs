@@ -1,9 +1,9 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use chrono::NaiveDateTime;
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::ui::{
-    component::{badge, button, card, separation, text, ContainerBackgroundStyle},
+    component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
     error::Error,
     icon,
     message::{Message, SignMessage, VaultMessage},
@@ -57,35 +57,34 @@ impl VaultModal {
             )
             .width(Length::Shrink),
         );
-        Container::new(
-            Scrollable::new(&mut self.scroll).push(
-                Container::new(
-                    Column::new()
-                        .push(header)
-                        .push(
-                            Container::new(
-                                Column::new()
-                                    .push(
-                                        Container::new(text::simple("Vault Detail"))
-                                            .width(Length::Fill)
-                                            .align_x(Align::Center),
-                                    )
-                                    .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
-                                    .push(Container::new(panel))
-                                    .spacing(20),
-                            )
-                            .max_width(1000)
-                            .align_x(Align::Center)
-                            .width(Length::Fill),
+        Container::new(scroll(
+            &mut self.scroll,
+            Container::new(
+                Column::new()
+                    .push(header)
+                    .push(
+                        Container::new(
+                            Column::new()
+                                .push(
+                                    Container::new(text::simple("Vault Detail"))
+                                        .width(Length::Fill)
+                                        .align_x(Align::Center),
+                                )
+                                .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
+                                .push(Container::new(panel))
+                                .spacing(20),
                         )
-                        .width(Length::Fill)
-                        .align_items(Align::Center)
-                        .spacing(20),
-                )
-                .width(Length::Fill)
-                .align_x(Align::Center),
-            ),
-        )
+                        .max_width(1000)
+                        .align_x(Align::Center)
+                        .width(Length::Fill),
+                    )
+                    .width(Length::Fill)
+                    .align_items(Align::Center)
+                    .spacing(20),
+            )
+            .width(Length::Fill)
+            .align_x(Align::Center),
+        ))
         .style(ContainerBackgroundStyle)
         .padding(20)
         .width(Length::Fill)
