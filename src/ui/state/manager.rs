@@ -36,8 +36,8 @@ pub struct ManagerHomeState {
     revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
-    /// balance as a map of status and a tuple of number of vaults and amount of funds.
-    balance: HashMap<VaultStatus, (u64, u64)>,
+    active_funds: u64,
+    inactive_funds: u64,
     blockheight: u64,
     warning: Option<Error>,
 
@@ -52,7 +52,8 @@ impl ManagerHomeState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         ManagerHomeState {
             revaultd,
-            balance: HashMap::new(),
+            active_funds: 0,
+            inactive_funds: 0,
             view: ManagerHomeView::new(),
             blockheight: 0,
             moving_vaults: Vec::new(),
@@ -90,7 +91,17 @@ impl ManagerHomeState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        self.calculate_balance(&vaults);
+        let (active_funds, inactive_funds) =
+            vaults.iter().fold((0, 0), |acc, vault| match vault.status {
+                VaultStatus::Active => (acc.0 + vault.amount, acc.1),
+                VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
+                    (acc.0, acc.1 + vault.amount)
+                }
+                _ => (acc.0, acc.1),
+            });
+        self.active_funds = active_funds;
+        self.inactive_funds = inactive_funds;
+
         self.moving_vaults = vaults
             .into_iter()
             .filter_map(|vlt| {
@@ -126,26 +137,6 @@ impl ManagerHomeState {
             return cmd;
         };
         Command::none()
-    }
-
-    fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        let mut balance = HashMap::new();
-        for vault in vaults {
-            if vault.status == VaultStatus::Unconfirmed
-                || vault.status == VaultStatus::Spent
-                || vault.status == VaultStatus::Spending
-            {
-                continue;
-            }
-            if let Some((number, amount)) = balance.get_mut(&vault.status) {
-                *number += 1;
-                *amount += vault.amount;
-            } else {
-                balance.insert(vault.status.clone(), (1, vault.amount));
-            }
-        }
-
-        self.balance = balance;
     }
 }
 
@@ -206,7 +197,8 @@ impl State for ManagerHomeState {
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
                 .collect(),
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            &self.balance,
+            self.active_funds,
+            self.inactive_funds,
         )
     }
 

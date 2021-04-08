@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row};
+use iced::{scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row};
 
 use crate::{
-    revault::Role,
     revaultd::model::VaultStatus,
     ui::{
+        color,
         component::{button, card, navbar, scroll, separation, text},
         error::Error,
         icon::{arrow_up_icon, person_check_icon, shield_check_icon},
@@ -18,7 +18,6 @@ use crate::{
 #[derive(Debug)]
 pub struct ManagerHomeView {
     sidebar: Sidebar,
-    overview: Overview,
     scroll: scrollable::State,
     deposit_button: iced::button::State,
 }
@@ -28,7 +27,6 @@ impl ManagerHomeView {
         ManagerHomeView {
             scroll: scrollable::State::new(),
             sidebar: Sidebar::new(),
-            overview: Overview::new(),
             deposit_button: iced::button::State::default(),
         }
     }
@@ -39,9 +37,10 @@ impl ManagerHomeView {
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
-        balance: &HashMap<VaultStatus, (u64, u64)>,
+        active_funds: u64,
+        inactive_funds: u64,
     ) -> Element<'a, Message> {
-        let mut content = Column::new().push(self.overview.view(ctx, balance));
+        let mut content = Column::new().push(manager_overview(ctx, active_funds, inactive_funds));
 
         if !spend_txs.is_empty() {
             content = content.push(
@@ -58,7 +57,7 @@ impl ManagerHomeView {
             )
         }
 
-        if balance.len() == 0 {
+        if active_funds == 0 && inactive_funds == 0 {
             content = content.push(card::simple(Container::new(
                 Row::new()
                     .push(
@@ -97,10 +96,66 @@ impl ManagerHomeView {
     }
 }
 
+fn manager_overview<'a, T: 'a>(
+    ctx: &Context,
+    active_funds: u64,
+    inactive_funds: u64,
+) -> Container<'a, T> {
+    card::white(Container::new(
+        Column::new()
+            .push(text::bold(text::simple("overview:")))
+            .push(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(Column::new().width(Length::Fill))
+                            .push(
+                                text::bold(text::simple(
+                                    &ctx.converter.converts(active_funds).to_string(),
+                                ))
+                                .size(50),
+                            )
+                            .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                            .align_items(Align::Center),
+                    )
+                    .push(
+                        Container::new(
+                            text::simple("are available to managers")
+                                .horizontal_alignment(HorizontalAlignment::Right)
+                                .width(Length::Fill),
+                        )
+                        .width(Length::Fill),
+                    )
+                    .push(Column::new().padding(5))
+                    .push(
+                        Row::new()
+                            .push(Column::new().width(Length::Fill))
+                            .push(
+                                text::bold(text::simple(
+                                    &ctx.converter.converts(inactive_funds).to_string(),
+                                ))
+                                .color(color::SECONDARY)
+                                .size(40),
+                            )
+                            .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                            .align_items(Align::Center),
+                    )
+                    .push(
+                        Container::new(
+                            text::simple("are held by stakeholders")
+                                .horizontal_alignment(HorizontalAlignment::Right)
+                                .width(Length::Fill),
+                        )
+                        .width(Length::Fill),
+                    ),
+            ),
+    ))
+}
+
 #[derive(Debug)]
 pub struct StakeholderHomeView {
     sidebar: Sidebar,
-    overview: Overview,
+    overview: StakeholderOverview,
     scroll: scrollable::State,
     ack_fund_button: iced::button::State,
     deposit_button: iced::button::State,
@@ -111,7 +166,7 @@ impl StakeholderHomeView {
         StakeholderHomeView {
             scroll: scrollable::State::new(),
             sidebar: Sidebar::new(),
-            overview: Overview::new(),
+            overview: StakeholderOverview::new(),
             ack_fund_button: iced::button::State::default(),
             deposit_button: iced::button::State::default(),
         }
@@ -165,12 +220,12 @@ impl StakeholderHomeView {
 }
 
 #[derive(Debug)]
-struct Overview {
+struct StakeholderOverview {
     ack_fund_button: iced::button::State,
     delegate_fund_button: iced::button::State,
 }
 
-impl Overview {
+impl StakeholderOverview {
     pub fn new() -> Self {
         Self {
             ack_fund_button: iced::button::State::new(),
@@ -231,8 +286,8 @@ impl Overview {
         }
 
         if let Some((nb_secured_vaults, secured_amount)) = overview.get(&VaultStatus::Secured) {
-            if ctx.role == Role::Stakeholder {
-                col_body = col_body.push(
+            col_body = col_body
+                .push(
                     Container::new(
                         button::transparent(
                             &mut self.delegate_fund_button,
@@ -242,24 +297,13 @@ impl Overview {
                     )
                     .width(Length::Fill)
                     .align_x(Align::Center),
-                );
-            } else {
-                col_body = col_body.push(
-                    Container::new(
-                        Row::new()
-                            .push(arrow_up_icon())
-                            .push(text::simple("Need stakeholders delegation")),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                );
-            }
-            col_body = col_body.push(acked_funds_overview_card(
-                ctx,
-                *nb_secured_vaults,
-                *secured_amount,
-                overview.get(&VaultStatus::Securing),
-            ));
+                )
+                .push(acked_funds_overview_card(
+                    ctx,
+                    *nb_secured_vaults,
+                    *secured_amount,
+                    overview.get(&VaultStatus::Securing),
+                ));
         } else if overview.get(&VaultStatus::Securing).is_some()
             || overview.get(&VaultStatus::Funded).is_some()
         {
@@ -272,8 +316,8 @@ impl Overview {
         }
 
         if let Some((nb_funded_vaults, funded_amount)) = overview.get(&VaultStatus::Funded) {
-            if ctx.role == Role::Stakeholder {
-                col_body = col_body.push(
+            col_body = col_body
+                .push(
                     Container::new(
                         button::transparent(
                             &mut self.ack_fund_button,
@@ -283,35 +327,24 @@ impl Overview {
                     )
                     .width(Length::Fill)
                     .align_x(Align::Center),
-                );
-            } else {
-                col_body = col_body.push(
+                )
+                .push(
                     Container::new(
                         Row::new()
-                            .push(arrow_up_icon())
-                            .push(text::simple("Need stakeholders acknowledgment")),
+                            .push(text::bold(text::simple(&format!(
+                                "{}",
+                                ctx.converter.converts(*funded_amount),
+                            ))))
+                            .push(text::simple(&format!(
+                                " {} received in ",
+                                ctx.converter.unit
+                            )))
+                            .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
+                            .push(text::simple(" new deposits")),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .align_x(iced::Align::Center),
                 );
-            }
-            col_body = col_body.push(
-                Container::new(
-                    Row::new()
-                        .push(text::bold(text::simple(&format!(
-                            "{}",
-                            ctx.converter.converts(*funded_amount),
-                        ))))
-                        .push(text::simple(&format!(
-                            " {} received in ",
-                            ctx.converter.unit
-                        )))
-                        .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
-                        .push(text::simple(" new deposits")),
-                )
-                .width(Length::Fill)
-                .align_x(iced::Align::Center),
-            );
         }
         card::white(Container::new(col_body.spacing(15))).into()
     }
