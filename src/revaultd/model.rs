@@ -35,7 +35,7 @@ impl Vault {
 
 /// The status of a [Vault], depends both on the block chain and the set of pre-signed
 /// transactions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VaultStatus {
     /// The deposit transaction is less than 6 blocks deep in the chain.
     #[serde(rename = "unconfirmed")]
