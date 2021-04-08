@@ -111,19 +111,24 @@ fn vault<'a>(
                                     Column::new()
                                         .push(
                                             Row::new()
-                                                .push(text::small(&vlt.txid))
+                                                .push(text::bold(text::simple(&vlt.txid)))
                                                 .push(button::clipboard(
                                                     copy_button,
                                                     Message::Clipboard(vlt.txid.to_string()),
                                                 ))
                                                 .align_items(Align::Center),
                                         )
-                                        .push(text::small(&format!(
+                                        .push(text::simple(&format!(
+                                            "received at {}",
+                                            NaiveDateTime::from_timestamp(vlt.received_at, 0)
+                                        )))
+                                        .push(text::simple(&format!(
                                             "{} ( {} )",
                                             &vlt.status,
                                             NaiveDateTime::from_timestamp(vlt.updated_at, 0)
                                         ))),
                                 )
+                                .align_items(Align::Center)
                                 .spacing(20),
                         )
                         .width(Length::Fill),

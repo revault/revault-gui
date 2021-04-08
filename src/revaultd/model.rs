@@ -13,6 +13,10 @@ pub struct Vault {
     pub address: String,
     /// Amount of the vault in satoshis
     pub amount: u64,
+    /// derivation_index is the index used to create scriptPubKey of the deposit address
+    pub derivation_index: u32,
+    /// Timestamp of the deposit transaction reception time.
+    pub received_at: i64,
     /// Status of the vault
     pub status: VaultStatus,
     /// Deposit txid of the vault deposit transaction
