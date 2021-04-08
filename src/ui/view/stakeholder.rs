@@ -1,9 +1,9 @@
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, Scrollable};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::revaultd::model::VaultStatus;
 
 use crate::ui::{
-    component::{button, card, navbar, text, ContainerBackgroundStyle},
+    component::{button, card, navbar, scroll, text, ContainerBackgroundStyle},
     error::Error,
     menu::Menu,
     message::{Message, VaultFilterMessage},
@@ -53,7 +53,7 @@ impl StakeholderACKFundsView {
                     .align_x(Align::Center),
             )
             .spacing(50);
-        Container::new(Scrollable::new(&mut self.scroll).push(col))
+        Container::new(scroll(&mut self.scroll, Container::new(col)))
             .width(Length::Fill)
             .height(Length::Fill)
             .style(ContainerBackgroundStyle)
@@ -183,7 +183,10 @@ impl StakeholderDelegateFundsView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(Scrollable::new(&mut self.scroll).push(col))),
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(col),
+            ))),
         )
         .into()
     }

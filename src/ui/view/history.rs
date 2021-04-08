@@ -1,7 +1,7 @@
-use iced::{scrollable, Column, Container, Element, Scrollable};
+use iced::{scrollable, Column, Container, Element};
 
 use crate::ui::{
-    component::navbar,
+    component::{navbar, scroll},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
@@ -30,13 +30,14 @@ impl HistoryView {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                Scrollable::new(&mut self.scroll).push(Container::new(
+            layout::main_section(Container::new(scroll(
+                &mut self.scroll,
+                Container::new(
                     Column::new()
                         .push(Column::with_children(vaults).spacing(5))
                         .spacing(20),
-                )),
-            )),
+                ),
+            ))),
         )
         .into()
     }
