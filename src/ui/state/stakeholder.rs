@@ -33,7 +33,8 @@ pub struct StakeholderHomeState {
     balance: (u64, u64),
     view: StakeholderHomeView,
 
-    vaults: Vec<VaultListItem<VaultListItemView>>,
+    moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+    selected_vault: Option<Vault>,
 }
 
 impl StakeholderHomeState {
@@ -44,16 +45,48 @@ impl StakeholderHomeState {
             view: StakeholderHomeView::new(),
             unsecured_fund_balance: 0,
             balance: (0, 0),
-            vaults: Vec::new(),
+            moving_vaults: Vec::new(),
+            selected_vault: None,
         }
     }
 
     fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.calculate_balance(&vaults);
-        self.vaults = vaults
+        self.moving_vaults = vaults
             .into_iter()
-            .map(|vlt| VaultListItem::new(vlt))
+            .filter_map(|vlt| {
+                if vlt.status == VaultStatus::Canceling
+                    || vlt.status == VaultStatus::Spending
+                    || vlt.status == VaultStatus::Unvaulting
+                    || vlt.status == VaultStatus::Unvaulted
+                {
+                    Some(VaultListItem::new(vlt))
+                } else {
+                    None
+                }
+            })
             .collect();
+    }
+
+    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+        if let Some(selected) = &self.selected_vault {
+            if selected.vault.outpoint() == outpoint {
+                self.selected_vault = None;
+                return Command::none();
+            }
+        }
+
+        if let Some(selected) = self
+            .moving_vaults
+            .iter()
+            .find(|vlt| vlt.vault.outpoint() == outpoint)
+        {
+            let selected_vault = Vault::new(selected.vault.clone());
+            let cmd = selected_vault.load(self.revaultd.clone());
+            self.selected_vault = Some(selected_vault);
+            return cmd;
+        };
+        Command::none()
     }
 
     fn calculate_balance(&mut self, vaults: &[model::Vault]) {
@@ -83,20 +116,28 @@ impl StakeholderHomeState {
 
 impl State for StakeholderHomeState {
     fn update(&mut self, message: Message) -> Command<Message> {
-        if let Message::Vaults(res) = message {
-            match res {
+        match message {
+            Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
+            },
+            Message::Vault(VaultMessage::Select(outpoint)) => {
+                return self.on_vault_select(outpoint)
             }
+            _ => {}
         }
         Command::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
+        if let Some(v) = &mut self.selected_vault {
+            return v.view(ctx);
+        }
+
         self.view.view(
             ctx,
             None,
-            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
             &self.unsecured_fund_balance,
         )

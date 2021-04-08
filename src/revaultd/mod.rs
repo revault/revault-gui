@@ -199,6 +199,11 @@ impl RevaultD {
         let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
         Ok(())
     }
+
+    pub fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
