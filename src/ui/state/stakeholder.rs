@@ -118,6 +118,11 @@ impl State for StakeholderHomeState {
             Message::Vault(VaultMessage::Select(outpoint)) => {
                 return self.on_vault_select(outpoint)
             }
+            Message::Vault(msg) => {
+                if let Some(selected) = &mut self.selected_vault {
+                    return selected.update(self.revaultd.clone(), msg);
+                }
+            }
             _ => {}
         }
         Command::none()
