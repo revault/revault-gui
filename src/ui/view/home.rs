@@ -293,7 +293,7 @@ impl StakeholderOverview {
                             &mut self.delegate_fund_button,
                             button::button_content(Some(arrow_up_icon()), "Delegate funds"),
                         )
-                        .on_press(Message::Menu(Menu::ACKFunds)),
+                        .on_press(Message::Menu(Menu::DelegateFunds)),
                     )
                     .width(Length::Fill)
                     .align_x(Align::Center),
