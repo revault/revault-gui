@@ -5,32 +5,7 @@ Revault GUI is an user graphical interface written in rust for the
 
 ## Get started
 
-### Installation requirements
-
-The GUI needs the following libraries in order to work:
-- `libvulkan-dev`
-- `cmake`
-- `pkg-config`
-
-### Starting revaultd
-
-The GUI needs:
-- Access to the revaultd configuration file. This file
-location can be specified by the env var `REVAULTD_CONF`, if not the
-default `revaultd` configuration location (`~/.revault/revault.toml`) is checked.
-
-- A running revaultd instance. If it's not already running, the GUI will try to run the daemon
-at `REVAULTD_PATH`; if `REVAULTD_PATH` is unset, it will try to run the `revaultd`
-command (will fail if `revaultd` is not installed globally). For this reason, it is suggested to
-either start `revaultd` before starting the GUI, or set `REVAULTD_PATH` to
-`/path/to/revaultd/repository/target/debug/revaultd`. For specific instruction on how to run
-revaultd, please refer to the [Revaultd repository](https://github.com/revault/revaultd).
-
-### Starting the GUI
-
-```
-cargo run --release
-```
+See [doc/DEMO.md](doc/DEMO.md) for instructions on how to start the GUI
 
 ## ENV vars:
 
