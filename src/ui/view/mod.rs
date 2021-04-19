@@ -2,7 +2,6 @@ pub mod charging;
 mod deposit;
 mod history;
 mod home;
-pub mod installing;
 mod layout;
 pub mod manager;
 mod network;
