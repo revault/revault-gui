@@ -234,6 +234,7 @@ impl VaultSection {
                     match res {
                         Ok(()) => {
                             *success = true;
+                            *warning = None;
                             vault.status = VaultStatus::Canceling;
                         }
                         Err(e) => *warning = Error::from(e).into(),
@@ -245,6 +246,7 @@ impl VaultSection {
                     warning, signer, ..
                 } => match res {
                     Ok(()) => {
+                        *warning = None;
                         signer.update(SignMessage::Success);
                     }
                     Err(e) => {
@@ -255,6 +257,7 @@ impl VaultSection {
                     warning, signer, ..
                 } => match res {
                     Ok(()) => {
+                        *warning = None;
                         signer.update(SignMessage::Success);
                     }
                     Err(e) => {
@@ -264,7 +267,10 @@ impl VaultSection {
                 _ => {}
             },
             VaultMessage::Sign(msg) => match self {
-                VaultSection::Delegate { signer, .. } => {
+                VaultSection::Delegate {
+                    signer, warning, ..
+                } => {
+                    *warning = None;
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
                         return Command::perform(
@@ -278,8 +284,10 @@ impl VaultSection {
                     emergency_tx,
                     emergency_unvault_tx,
                     cancel_tx,
+                    warning,
                     ..
                 } => {
+                    *warning = None;
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
                         match signer.transaction_kind {
