@@ -7,9 +7,9 @@ use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, 
 use super::menu::Menu;
 use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use super::state::{
-    ChargingState, DepositState, HistoryState, InstallingState, ManagerHomeState,
-    ManagerNetworkState, ManagerSendState, SettingsState, StakeholderACKFundsState,
-    StakeholderDelegateFundsState, StakeholderHomeState, StakeholderNetworkState, State,
+    ChargingState, DepositState, HistoryState, ManagerHomeState, ManagerNetworkState,
+    ManagerSendState, SettingsState, StakeholderACKFundsState, StakeholderDelegateFundsState,
+    StakeholderHomeState, StakeholderNetworkState, State,
 };
 
 use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
@@ -119,10 +119,6 @@ impl Application for App {
         clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
         match message {
-            Message::Install => {
-                self.state = InstallingState::new().into();
-                self.state.load()
-            }
             Message::Synced(revaultd) => self.on_synced(revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),

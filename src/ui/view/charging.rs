@@ -1,4 +1,4 @@
-use iced::{button, Column, Container, Element};
+use iced::{button, Container, Element};
 
 use crate::ui::{component, message::Message, view::layout};
 
@@ -33,13 +33,7 @@ impl ChargingAskInstallView {
         }
     }
     pub fn view(&mut self) -> Element<Message> {
-        let text = component::text::paragraph("No config do you want to install ?");
-        let button = button::Button::new(
-            &mut self.validate_button,
-            component::text::simple("Install"),
-        )
-        .on_press(Message::Install);
-
-        layout::cover(Container::new(Column::new().push(text).push(button)))
+        let text = component::text::paragraph("No config found");
+        layout::cover(Container::new(text))
     }
 }
