@@ -1,7 +1,7 @@
-use iced::{scrollable, Column, Container, Element};
+use iced::{scrollable, Column, Container, Element, Row};
 
 use crate::ui::{
-    component::{navbar, scroll},
+    component::{navbar, scroll, text},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
@@ -34,6 +34,11 @@ impl VaultsView {
                 &mut self.scroll,
                 Container::new(
                     Column::new()
+                        .push(
+                            Row::new()
+                                .push(text::bold(text::simple(&format!(" {}", vaults.len()))))
+                                .push(text::simple(" vaults")),
+                        )
                         .push(Column::with_children(vaults).spacing(5))
                         .spacing(20),
                 ),
