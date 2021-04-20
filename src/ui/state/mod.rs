@@ -1,19 +1,18 @@
 pub mod charging;
 mod cmd;
 mod deposit;
-mod history;
 pub mod manager;
 mod settings;
 mod sign;
 mod spend_transaction;
 pub mod stakeholder;
 mod vault;
+mod vaults;
 
 use iced::{Command, Element, Subscription};
 
 pub use charging::ChargingState;
 pub use deposit::DepositState;
-pub use history::HistoryState;
 pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
 pub use settings::SettingsState;
 pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};
@@ -21,6 +20,7 @@ pub use stakeholder::{
     StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
     StakeholderNetworkState,
 };
+pub use vaults::VaultsState;
 
 use super::{message::Message, view::Context};
 

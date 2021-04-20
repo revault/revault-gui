@@ -8,14 +8,14 @@ use crate::ui::{
 };
 
 #[derive(Debug)]
-pub struct HistoryView {
+pub struct VaultsView {
     scroll: scrollable::State,
     sidebar: Sidebar,
 }
 
-impl HistoryView {
+impl VaultsView {
     pub fn new() -> Self {
-        HistoryView {
+        VaultsView {
             sidebar: Sidebar::new(),
             scroll: scrollable::State::new(),
         }

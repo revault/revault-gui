@@ -14,13 +14,13 @@ use crate::revaultd::{model, RevaultD};
 use crate::ui::{
     error::Error,
     message::{Message, VaultMessage},
-    view::{vault::VaultListItemView, Context, HistoryView},
+    view::{vault::VaultListItemView, Context, VaultsView},
 };
 
 #[derive(Debug)]
-pub struct HistoryState {
+pub struct VaultsState {
     revaultd: Arc<RevaultD>,
-    view: HistoryView,
+    view: VaultsView,
 
     blockheight: u64,
     warning: Option<Error>,
@@ -29,11 +29,11 @@ pub struct HistoryState {
     selected_vault: Option<Vault>,
 }
 
-impl HistoryState {
+impl VaultsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        HistoryState {
+        VaultsState {
             revaultd,
-            view: HistoryView::new(),
+            view: VaultsView::new(),
             blockheight: 0,
             vaults: Vec::new(),
             warning: None,
@@ -70,7 +70,7 @@ impl HistoryState {
     }
 }
 
-impl State for HistoryState {
+impl State for VaultsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
@@ -117,8 +117,8 @@ impl State for HistoryState {
     }
 }
 
-impl From<HistoryState> for Box<dyn State> {
-    fn from(s: HistoryState) -> Box<dyn State> {
+impl From<VaultsState> for Box<dyn State> {
+    fn from(s: VaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

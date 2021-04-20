@@ -34,8 +34,13 @@ pub fn turnback_icon() -> Text {
     icon('\u{F131}')
 }
 
+#[allow(dead_code)]
 pub fn history_icon() -> Text {
     icon('\u{F292}')
+}
+
+pub fn vaults_icon() -> Text {
+    icon('\u{F1C7}')
 }
 
 pub fn settings_icon() -> Text {

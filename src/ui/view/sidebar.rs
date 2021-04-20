@@ -5,8 +5,8 @@ use crate::ui::{
     component::{
         button,
         icon::{
-            deposit_icon, dot_icon, history_icon, home_icon, network_icon, person_check_icon,
-            send_icon, settings_icon,
+            deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, send_icon,
+            settings_icon, vaults_icon,
         },
         separation, text, TransparentPickListStyle,
     },
@@ -21,7 +21,7 @@ pub struct Sidebar {
     deposit_menu_button: iced::button::State,
     delegate_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
-    history_menu_button: iced::button::State,
+    vaults_menu_button: iced::button::State,
     network_menu_button: iced::button::State,
     spend_menu_button: iced::button::State,
     settings_menu_button: iced::button::State,
@@ -33,7 +33,7 @@ impl Sidebar {
             deposit_menu_button: iced::button::State::new(),
             delegate_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
-            history_menu_button: iced::button::State::new(),
+            vaults_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
             spend_menu_button: iced::button::State::new(),
             settings_menu_button: iced::button::State::new(),
@@ -70,18 +70,18 @@ impl Sidebar {
             )
             .on_press(Message::Menu(Menu::Home))
         };
-        let history_button = if context.menu == Menu::History {
+        let vaults_button = if context.menu == Menu::Vaults {
             button::primary(
-                &mut self.history_menu_button,
-                button::button_content(Some(history_icon()), "History"),
+                &mut self.vaults_menu_button,
+                button::button_content(Some(vaults_icon()), "Vaults"),
             )
-            .on_press(Message::Menu(Menu::History))
+            .on_press(Message::Menu(Menu::Vaults))
         } else {
             button::transparent(
-                &mut self.history_menu_button,
-                button::button_content(Some(history_icon()), "History"),
+                &mut self.vaults_menu_button,
+                button::button_content(Some(vaults_icon()), "Vaults"),
             )
-            .on_press(Message::Menu(Menu::History))
+            .on_press(Message::Menu(Menu::Vaults))
         };
         let network_button = if context.menu == Menu::Network {
             button::primary(
@@ -172,7 +172,7 @@ impl Sidebar {
                 role.width(Length::Units(200)),
                 separation().width(iced::Length::Units(200)),
                 Container::new(home_button.width(Length::Units(200))),
-                Container::new(history_button.width(Length::Units(200))),
+                Container::new(vaults_button.width(Length::Units(200))),
                 Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
                 Container::new(deposit_button.width(Length::Units(200))),

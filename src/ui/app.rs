@@ -7,9 +7,9 @@ use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, 
 use super::menu::Menu;
 use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use super::state::{
-    ChargingState, DepositState, HistoryState, ManagerHomeState, ManagerNetworkState,
-    ManagerSendState, SettingsState, StakeholderACKFundsState, StakeholderDelegateFundsState,
-    StakeholderHomeState, StakeholderNetworkState, State,
+    ChargingState, DepositState, ManagerHomeState, ManagerNetworkState, ManagerSendState,
+    SettingsState, StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
+    StakeholderNetworkState, State, VaultsState,
 };
 
 use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
@@ -35,7 +35,7 @@ impl App {
             Role::Manager => match self.context.menu {
                 Menu::Deposit => DepositState::new(revaultd).into(),
                 Menu::Home => ManagerHomeState::new(revaultd).into(),
-                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Vaults => VaultsState::new(revaultd).into(),
                 Menu::Network => ManagerNetworkState::new(revaultd).into(),
                 Menu::Send => ManagerSendState::new(revaultd).into(),
                 // Manager cannot delegate funds, the user is redirected to the home.
@@ -46,7 +46,7 @@ impl App {
             Role::Stakeholder => match self.context.menu {
                 Menu::Deposit => DepositState::new(revaultd).into(),
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
-                Menu::History => HistoryState::new(revaultd).into(),
+                Menu::Vaults => VaultsState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
                 Menu::ACKFunds => StakeholderACKFundsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),

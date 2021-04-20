@@ -1,6 +1,5 @@
 pub mod charging;
 mod deposit;
-mod history;
 mod home;
 mod layout;
 pub mod manager;
@@ -11,15 +10,16 @@ pub mod sign;
 pub mod spend_transaction;
 pub mod stakeholder;
 pub mod vault;
+mod vaults;
 
 pub use deposit::DepositView;
-pub use history::HistoryView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
 pub use stakeholder::{StakeholderACKFundsView, StakeholderDelegateFundsView};
 pub use vault::VaultView;
+pub use vaults::VaultsView;
 
 use bitcoin::Network;
 
