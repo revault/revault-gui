@@ -3,9 +3,8 @@ use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::ui::{
-    component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
+    component::{badge, button, card, icon, scroll, separation, text, ContainerBackgroundStyle},
     error::Error,
-    icon,
     message::{Message, SignMessage, VaultMessage},
     view::Context,
 };

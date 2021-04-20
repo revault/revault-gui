@@ -5,10 +5,12 @@ use iced::{scrollable, Align, Column, Container, Element, HorizontalAlignment, L
 use crate::{
     revaultd::model::VaultStatus,
     ui::{
-        color,
-        component::{button, card, navbar, scroll, separation, text},
+        component::{
+            button, card, color,
+            icon::{arrow_up_icon, person_check_icon, shield_check_icon},
+            navbar, scroll, separation, text,
+        },
         error::Error,
-        icon::{arrow_up_icon, person_check_icon, shield_check_icon},
         menu::Menu,
         message::Message,
         view::{layout, sidebar::Sidebar, Context},

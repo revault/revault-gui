@@ -1,10 +1,8 @@
 use iced::{scrollable, Column, Container, Element, Length, Row};
 
 use crate::ui::{
-    color,
-    component::{badge, card, navbar, scroll, text},
+    component::{badge, card, color, icon::dot_icon, navbar, scroll, text},
     error::Error,
-    icon::dot_icon,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
 };

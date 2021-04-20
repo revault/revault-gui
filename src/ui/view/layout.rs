@@ -1,8 +1,6 @@
 use crate::ui::{
-    color,
-    component::{card, text},
+    component::{card, color, image::revault_colored_logo, text},
     error::Error,
-    image::revault_colored_logo,
 };
 
 use iced::{container, Column, Container, Element, Length, Row};
