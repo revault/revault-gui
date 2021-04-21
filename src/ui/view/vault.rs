@@ -400,9 +400,13 @@ fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
         | VaultStatus::Activating
         | VaultStatus::Active => badge::tx_deposit(),
         VaultStatus::Unvaulting | VaultStatus::Unvaulted => badge::vault_unvaulting(),
-        VaultStatus::Canceling | VaultStatus::EmergencyVaulting => badge::vault_canceling(),
-        VaultStatus::Canceled | VaultStatus::EmergencyVaulted => badge::vault_canceled(),
-        VaultStatus::Spendable | VaultStatus::Spending => badge::vault_spending(),
+        VaultStatus::Canceling
+        | VaultStatus::EmergencyVaulting
+        | VaultStatus::UnvaultEmergencyVaulting => badge::vault_canceling(),
+        VaultStatus::Canceled
+        | VaultStatus::EmergencyVaulted
+        | VaultStatus::UnvaultEmergencyVaulted => badge::vault_canceled(),
+        VaultStatus::Spending => badge::vault_spending(),
         VaultStatus::Spent => badge::vault_spent(),
     }
 }

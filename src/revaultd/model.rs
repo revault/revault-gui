@@ -74,9 +74,12 @@ pub enum VaultStatus {
     /// One of the emergency transactions is confirmed
     #[serde(rename = "emergencyvaulted")]
     EmergencyVaulted,
-    /// The unvault transaction CSV is expired
-    #[serde(rename = "spendable")]
-    Spendable,
+    /// The unvault emergency transactions has been broadcast
+    #[serde(rename = "unvaultemergencyvaulting")]
+    UnvaultEmergencyVaulting,
+    /// The unvault emergency transactions is confirmed
+    #[serde(rename = "unvaultemergencyvaulted")]
+    UnvaultEmergencyVaulted,
     /// The spend transaction has been broadcast
     #[serde(rename = "spending")]
     Spending,
@@ -100,11 +103,53 @@ impl std::fmt::Display for VaultStatus {
             Self::Canceled => write!(f, "Canceled"),
             Self::EmergencyVaulting => write!(f, "Emergency vaulting"),
             Self::EmergencyVaulted => write!(f, "Emergency vaulted"),
-            Self::Spendable => write!(f, "Spendable"),
+            Self::UnvaultEmergencyVaulting => write!(f, "Unvault Emergency vaulting"),
+            Self::UnvaultEmergencyVaulted => write!(f, "Unvault Emergency vaulted"),
             Self::Spending => write!(f, "Spending"),
             Self::Spent => write!(f, "Spent"),
         }
     }
+}
+
+impl VaultStatus {
+    pub const CURRENT: [VaultStatus; 11] = [
+        Self::Funded,
+        Self::Securing,
+        Self::Secured,
+        Self::Activating,
+        Self::Active,
+        Self::Unvaulting,
+        Self::Unvaulted,
+        Self::Canceling,
+        Self::EmergencyVaulting,
+        Self::UnvaultEmergencyVaulting,
+        Self::Spending,
+    ];
+
+    pub const ACTIVE: [VaultStatus; 1] = [Self::Active];
+
+    pub const INACTIVE: [VaultStatus; 4] = [
+        Self::Funded,
+        Self::Securing,
+        Self::Secured,
+        Self::Activating,
+    ];
+
+    pub const MOVING: [VaultStatus; 6] = [
+        Self::Unvaulting,
+        Self::Unvaulted,
+        Self::Canceling,
+        Self::EmergencyVaulting,
+        Self::UnvaultEmergencyVaulting,
+        Self::Spending,
+    ];
+
+    pub const MOVED: [VaultStatus; 4] = [
+        Self::Canceled,
+        Self::EmergencyVaulted,
+        Self::UnvaultEmergencyVaulted,
+        Self::Spent,
+    ];
 }
 
 #[derive(Debug, Clone, Deserialize)]
