@@ -124,7 +124,7 @@ impl Application for App {
             Message::Menu(menu) => self.load_state(self.context.role, menu),
             Message::Clipboard(text)
             | Message::SpendTx(SpendTxMessage::Sign(SignMessage::Clipboard(text)))
-            | Message::Vault(VaultMessage::Sign(SignMessage::Clipboard(text))) => {
+            | Message::Vault(_, VaultMessage::Sign(SignMessage::Clipboard(text))) => {
                 clipboard.write(text);
                 Command::none()
             }

@@ -52,7 +52,7 @@ impl VaultModal {
                     &mut self.cancel_button,
                     Container::new(text::simple("X Close")).padding(10),
                 )
-                .on_press(Message::Vault(VaultMessage::Select(vlt.outpoint()))),
+                .on_press(Message::Vault(vlt.outpoint(), VaultMessage::Select)),
             )
             .width(Length::Shrink),
         );
@@ -194,7 +194,8 @@ impl VaultOnChainTransactionsPanel {
                                         button::button_content(None, "Acknowledge"),
                                     )
                                     .on_press(Message::Vault(
-                                        VaultMessage::Acknowledge(vault.outpoint()),
+                                        vault.outpoint(),
+                                        VaultMessage::Acknowledge,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -218,7 +219,8 @@ impl VaultOnChainTransactionsPanel {
                                         button::button_content(None, "Delegate vault"),
                                     )
                                     .on_press(Message::Vault(
-                                        VaultMessage::Delegate(vault.outpoint()),
+                                        vault.outpoint(),
+                                        VaultMessage::Delegate,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -241,7 +243,10 @@ impl VaultOnChainTransactionsPanel {
                                         &mut self.action_button,
                                         button::button_content(None, "Revault"),
                                     )
-                                    .on_press(Message::Vault(VaultMessage::SelectRevault)),
+                                    .on_press(Message::Vault(
+                                        vault.outpoint(),
+                                        VaultMessage::SelectRevault,
+                                    )),
                                 )
                                 .width(Length::Shrink),
                             )
@@ -266,7 +271,10 @@ impl VaultOnChainTransactionsPanel {
                                     &mut self.action_button,
                                     button::button_content(None, "Revault"),
                                 )
-                                .on_press(Message::Vault(VaultMessage::SelectRevault)),
+                                .on_press(Message::Vault(
+                                    vault.outpoint(),
+                                    VaultMessage::SelectRevault,
+                                )),
                             )
                             .width(Length::Shrink),
                         )
@@ -454,7 +462,7 @@ impl VaultView for VaultListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::Vault(VaultMessage::Select(vault.outpoint())))
+        .on_press(Message::Vault(vault.outpoint(), VaultMessage::Select))
         .width(Length::Fill)
         .into()
     }
@@ -473,10 +481,12 @@ impl VaultView for AcknowledgeVaultListItemView {
     }
 
     fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+        let outpoint = vault.outpoint();
         if vault.status == VaultStatus::Funded || vault.status == VaultStatus::Unconfirmed {
-            vault_ack_pending(&mut self.select_button, ctx, vault).map(Message::Vault)
+            vault_ack_pending(&mut self.select_button, ctx, vault)
+                .map(move |msg| Message::Vault(outpoint.clone(), msg))
         } else {
-            vault_ack_signed(ctx, vault).map(Message::Vault)
+            vault_ack_signed(ctx, vault).map(move |msg| Message::Vault(outpoint.clone(), msg))
         }
     }
 }
@@ -556,7 +566,7 @@ fn vault_ack_pending<'a>(
                     .align_items(Align::Center),
             ),
         )
-        .on_press(VaultMessage::Select(deposit.outpoint())),
+        .on_press(VaultMessage::Select),
     )
     .into()
 }
@@ -611,7 +621,7 @@ impl VaultView for DelegateVaultListItemView {
                         &mut self.delegate_button,
                         button::button_content(None, "delegate"),
                     )
-                    .on_press(Message::Vault(VaultMessage::Delegate(vault.outpoint()))),
+                    .on_press(Message::Vault(vault.outpoint(), VaultMessage::Delegate)),
                 )
                 .width(Length::Shrink),
             )
@@ -622,7 +632,7 @@ impl VaultView for DelegateVaultListItemView {
                         &mut self.delegate_button,
                         button::button_content(None, "Ack then delegate"),
                     )
-                    .on_press(Message::Vault(VaultMessage::Acknowledge(vault.outpoint()))),
+                    .on_press(Message::Vault(vault.outpoint(), VaultMessage::Acknowledge)),
                 )
                 .width(Length::Shrink),
             )
@@ -636,7 +646,7 @@ impl VaultView for DelegateVaultListItemView {
                 &mut self.select_button,
                 button::button_content(None, "view"),
             )
-            .on_press(Message::Vault(VaultMessage::Select(vault.outpoint()))),
+            .on_press(Message::Vault(vault.outpoint(), VaultMessage::Select)),
         )
         .into()
     }
@@ -822,10 +832,11 @@ impl DelegateVaultView {
     pub fn view<'a>(
         &'a mut self,
         _ctx: &Context,
-        _vault: &Vault,
+        vault: &Vault,
         warning: Option<&Error>,
         signer: Element<'a, SignMessage>,
     ) -> Element<'a, Message> {
+        let outpoint = vault.outpoint();
         let mut col = Column::new();
         if let Some(error) = warning {
             col = col.push(card::alert_warning(Container::new(text::small(
@@ -835,7 +846,7 @@ impl DelegateVaultView {
         col.push(button::transparent(
                 &mut self.back_button,
                 Container::new(text::small("< vault transactions")),
-            ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
+            ).on_press(Message::Vault(vault.outpoint(), VaultMessage::ListOnchainTransaction)))
             .push(card::white(Container::new(
                 Column::new()
                     .push(
@@ -845,7 +856,7 @@ impl DelegateVaultView {
                     )
                     .push(signer.map(move |msg| match msg {
                         SignMessage::Clipboard(s) => Message::Clipboard(s),
-                        _ => Message::Vault(VaultMessage::Sign(msg)),
+                        _ => Message::Vault(outpoint.clone(), VaultMessage::Sign(msg)),
                     }))
                     .spacing(20),
             )))
@@ -873,6 +884,7 @@ impl RevaultVaultView {
     pub fn view<'a>(
         &'a mut self,
         _ctx: &Context,
+        vault: &Vault,
         processing: &bool,
         success: &bool,
         warning: Option<&Error>,
@@ -905,7 +917,7 @@ impl RevaultVaultView {
                 &mut self.broadcast_button,
                 button::button_content(None, "Yes Revault"),
             )
-            .on_press(Message::Vault(VaultMessage::Revault))
+            .on_press(Message::Vault(vault.outpoint(), VaultMessage::Revault))
         };
 
         let col = col
@@ -918,7 +930,10 @@ impl RevaultVaultView {
                     &mut self.back_button,
                     Container::new(text::small("< vault transactions")),
                 )
-                .on_press(Message::Vault(VaultMessage::ListOnchainTransaction)),
+                .on_press(Message::Vault(
+                    vault.outpoint(),
+                    VaultMessage::ListOnchainTransaction,
+                )),
             )
             .push(
                 card::white(Container::new(col))

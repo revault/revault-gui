@@ -67,12 +67,16 @@ impl Vault {
         }
     }
 
-    pub fn update(&mut self, revaultd: Arc<RevaultD>, message: VaultMessage) -> Command<Message> {
+    pub fn update(
+        &mut self,
+        revaultd: Arc<RevaultD>,
+        message: VaultMessage,
+    ) -> Command<VaultMessage> {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
                     get_onchain_txs(revaultd.clone(), self.vault.outpoint()),
-                    |res| Message::Vault(VaultMessage::OnChainTransactions(res)),
+                    VaultMessage::OnChainTransactions,
                 );
             }
             VaultMessage::OnChainTransactions(res) => match res {
@@ -90,27 +94,20 @@ impl Vault {
             VaultMessage::SelectRevault => {
                 self.section = VaultSection::new_revault_section();
             }
-            VaultMessage::Delegate(outpoint) => {
-                if outpoint == self.vault.outpoint() {
-                    return Command::perform(
-                        get_unvault_tx(revaultd.clone(), self.vault.outpoint()),
-                        |res| Message::Vault(VaultMessage::UnvaultTransaction(res)),
-                    );
-                }
+            VaultMessage::Delegate => {
+                return Command::perform(
+                    get_unvault_tx(revaultd.clone(), self.vault.outpoint()),
+                    VaultMessage::UnvaultTransaction,
+                );
             }
-            VaultMessage::Acknowledge(outpoint) => {
-                if outpoint == self.vault.outpoint() {
-                    return Command::perform(
-                        get_revocation_txs(revaultd.clone(), self.vault.outpoint()),
-                        |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
-                    );
-                }
+            VaultMessage::Acknowledge => {
+                return Command::perform(
+                    get_revocation_txs(revaultd.clone(), self.vault.outpoint()),
+                    VaultMessage::RevocationTransactions,
+                );
             }
             _ => {
-                return self
-                    .section
-                    .update(revaultd, &mut self.vault, message)
-                    .map(Message::Vault);
+                return self.section.update(revaultd, &mut self.vault, message);
             }
         };
         Command::none()
@@ -125,10 +122,10 @@ impl Vault {
         )
     }
 
-    pub fn load(&self, revaultd: Arc<RevaultD>) -> Command<Message> {
+    pub fn load(&self, revaultd: Arc<RevaultD>) -> Command<VaultMessage> {
         Command::perform(
             get_onchain_txs(revaultd.clone(), self.vault.outpoint()),
-            |res| Message::Vault(VaultMessage::OnChainTransactions(res)),
+            VaultMessage::OnChainTransactions,
         )
     }
 }
@@ -328,6 +325,7 @@ impl VaultSection {
     }
 
     pub fn view(&mut self, ctx: &Context, vault: &model::Vault) -> Element<Message> {
+        let outpoint = vault.outpoint();
         match self {
             Self::Unloaded => iced::Container::new(iced::Column::new()).into(),
             Self::OnchainTransactions { txs, view } => view.view(ctx, &vault, &txs),
@@ -354,13 +352,13 @@ impl VaultSection {
                     &cancel_tx,
                     signer.view(ctx).map(VaultMessage::Sign),
                 )
-                .map(Message::Vault),
+                .map(move |msg| Message::Vault(outpoint.clone(), msg)),
             Self::Revault {
                 processing,
                 success,
                 warning,
                 view,
-            } => view.view(ctx, &processing, &success, warning.as_ref()),
+            } => view.view(ctx, vault, &processing, &success, warning.as_ref()),
         }
     }
 }

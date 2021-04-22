@@ -134,7 +134,7 @@ impl ManagerHomeState {
             let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
-            return cmd;
+            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
         };
         Command::none()
     }
@@ -159,12 +159,16 @@ impl State for ManagerHomeState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::Vault(VaultMessage::Select(outpoint)) => {
+            Message::Vault(outpoint, VaultMessage::Select) => {
                 return self.on_vault_select(outpoint)
             }
-            Message::Vault(msg) => {
-                if let Some(vault) = &mut self.selected_vault {
-                    return vault.update(self.revaultd.clone(), msg);
+            Message::Vault(outpoint, msg) => {
+                if let Some(selected) = &mut self.selected_vault {
+                    if selected.vault.outpoint() == outpoint {
+                        return selected
+                            .update(self.revaultd.clone(), msg)
+                            .map(move |msg| Message::Vault(outpoint.clone(), msg));
+                    }
                 }
             }
             Message::BlockHeight(b) => match b {
