@@ -102,11 +102,7 @@ impl StakeholderDelegateFundsView {
                         button::button_content(None, "Available vaults"),
                     )
                     .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(vec![
-                            VaultStatus::Funded,
-                            VaultStatus::Securing,
-                            VaultStatus::Secured,
-                        ]),
+                        VaultFilterMessage::Status(&VaultStatus::INACTIVE),
                     )),
                 )
                 .push(
@@ -115,11 +111,7 @@ impl StakeholderDelegateFundsView {
                         button::button_content(None, "Delegated vaults"),
                     )
                     .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(vec![
-                            VaultStatus::Active,
-                            VaultStatus::Unvaulting,
-                            VaultStatus::Unvaulted,
-                        ]),
+                        VaultFilterMessage::Status(&VaultStatus::ACTIVE),
                     )),
                 );
         } else {
@@ -130,11 +122,7 @@ impl StakeholderDelegateFundsView {
                         button::button_content(None, "Available vaults"),
                     )
                     .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(vec![
-                            VaultStatus::Funded,
-                            VaultStatus::Securing,
-                            VaultStatus::Secured,
-                        ]),
+                        VaultFilterMessage::Status(&VaultStatus::INACTIVE),
                     )),
                 )
                 .push(
@@ -143,11 +131,7 @@ impl StakeholderDelegateFundsView {
                         button::button_content(None, "Delegated vaults"),
                     )
                     .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(vec![
-                            VaultStatus::Active,
-                            VaultStatus::Unvaulting,
-                            VaultStatus::Unvaulted,
-                        ]),
+                        VaultFilterMessage::Status(&VaultStatus::ACTIVE),
                     )),
                 );
         }
