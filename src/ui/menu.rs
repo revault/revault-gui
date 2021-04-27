@@ -2,10 +2,10 @@
 pub enum Menu {
     Deposit,
     Home,
-    History,
     Network,
     Send,
     ACKFunds,
     DelegateFunds,
     Settings,
+    Vaults,
 }

@@ -343,7 +343,7 @@ pub struct StakeholderDelegateFundsState {
     revaultd: Arc<RevaultD>,
 
     active_balance: u64,
-    vault_status_filter: Vec<VaultStatus>,
+    vault_status_filter: &'static [VaultStatus],
     vaults: Vec<VaultListItem<DelegateVaultListItemView>>,
     selected_vault: Option<Vault>,
     warning: Option<Error>,
@@ -357,12 +357,7 @@ impl StakeholderDelegateFundsState {
             revaultd,
             active_balance: 0,
             vaults: Vec::new(),
-            vault_status_filter: vec![
-                VaultStatus::Funded,
-                VaultStatus::Securing,
-                VaultStatus::Activating,
-                VaultStatus::Secured,
-            ],
+            vault_status_filter: &VaultStatus::INACTIVE,
             selected_vault: None,
             warning: None,
             view: StakeholderDelegateFundsView::new(),

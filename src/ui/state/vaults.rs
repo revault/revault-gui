@@ -9,35 +9,42 @@ use super::{
     State,
 };
 
-use crate::revaultd::{model, RevaultD};
+use crate::revaultd::{model, model::VaultStatus, RevaultD};
 
 use crate::ui::{
     error::Error,
-    message::{Message, VaultMessage},
-    view::{vault::VaultListItemView, Context, HistoryView},
+    message::{Message, VaultFilterMessage, VaultMessage},
+    view::{vault::VaultListItemView, Context, VaultsView},
 };
 
 #[derive(Debug)]
-pub struct HistoryState {
+pub struct VaultsState {
     revaultd: Arc<RevaultD>,
-    view: HistoryView,
+    view: VaultsView,
 
     blockheight: u64,
-    warning: Option<Error>,
 
+    vault_status_filter: &'static [VaultStatus],
     vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
+
+    warning: Option<Error>,
+
+    /// loading is true until Message::Vaults is handled
+    loading: bool,
 }
 
-impl HistoryState {
+impl VaultsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        HistoryState {
+        VaultsState {
             revaultd,
-            view: HistoryView::new(),
+            view: VaultsView::new(),
             blockheight: 0,
+            vault_status_filter: &VaultStatus::CURRENT,
             vaults: Vec::new(),
-            warning: None,
             selected_vault: None,
+            warning: None,
+            loading: true,
         }
     }
 
@@ -46,6 +53,7 @@ impl HistoryState {
             .into_iter()
             .map(|vlt| VaultListItem::new(vlt))
             .collect();
+        self.loading = false;
     }
 
     pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
@@ -70,7 +78,7 @@ impl HistoryState {
     }
 }
 
-impl State for HistoryState {
+impl State for VaultsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
@@ -89,6 +97,14 @@ impl State for HistoryState {
                     }
                 }
             }
+            Message::FilterVaults(VaultFilterMessage::Status(statuses)) => {
+                self.loading = true;
+                self.vault_status_filter = statuses;
+                return Command::perform(
+                    list_vaults(self.revaultd.clone(), Some(self.vault_status_filter)),
+                    Message::Vaults,
+                );
+            }
             Message::BlockHeight(b) => match b {
                 Ok(height) => self.blockheight = height.into(),
                 Err(e) => self.warning = Error::from(e).into(),
@@ -106,19 +122,24 @@ impl State for HistoryState {
             ctx,
             self.warning.as_ref().into(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.vault_status_filter,
+            self.loading,
         )
     }
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
+            Command::perform(
+                list_vaults(self.revaultd.clone(), Some(self.vault_status_filter)),
+                Message::Vaults,
+            ),
         ])
     }
 }
 
-impl From<HistoryState> for Box<dyn State> {
-    fn from(s: HistoryState) -> Box<dyn State> {
+impl From<VaultsState> for Box<dyn State> {
+    fn from(s: VaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

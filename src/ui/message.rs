@@ -78,7 +78,7 @@ pub enum VaultMessage {
 
 #[derive(Debug, Clone)]
 pub enum VaultFilterMessage {
-    Status(Vec<VaultStatus>),
+    Status(&'static [VaultStatus]),
 }
 
 #[derive(Debug, Clone)]
