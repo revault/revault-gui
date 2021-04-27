@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 
-use iced::{scrollable, Align, Column, Container, Element, HorizontalAlignment, Length, Row};
+use iced::{
+    scrollable,
+    tooltip::{self, Tooltip},
+    Align, Column, Container, Element, HorizontalAlignment, Length, Row,
+};
 
 use crate::{
     revaultd::model::VaultStatus,
     ui::{
         component::{
             button, card, color,
-            icon::{arrow_up_icon, person_check_icon, shield_check_icon},
-            navbar, scroll, separation, text,
+            icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
+            navbar, scroll, text, TooltipStyle,
         },
         error::Error,
         menu::Menu,
@@ -241,222 +245,262 @@ impl StakeholderOverview {
         overview: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<Message> {
         let (nb_total_vaults, total_amount) =
-            overview.iter().fold((0, 0), |acc, (_, (nb, amount))| {
-                (acc.0 + nb, acc.1 + amount)
+            overview.iter().fold((0, 0), |acc, (status, (nb, amount))| {
+                if *status == VaultStatus::Funded || *status == VaultStatus::Unconfirmed {
+                    (acc.0, acc.1)
+                } else {
+                    (acc.0 + nb, acc.1 + amount)
+                }
             });
 
-        let mut col_body = Column::new()
-            .push(text::bold(text::simple("overview:")))
-            .push(
-                Column::new()
-                    .push(
-                        Row::new()
-                            .push(Column::new().width(Length::Fill))
-                            .push(
-                                text::bold(text::simple(
-                                    &ctx.converter.converts(total_amount).to_string(),
-                                ))
-                                .size(50),
-                            )
-                            .push(text::simple(&format!(" {}", ctx.converter.unit)))
-                            .align_items(Align::Center),
-                    )
-                    .push(
-                        Row::new()
-                            .push(Column::new().width(Length::Fill))
-                            .push(text::bold(text::simple(&format!("{}", nb_total_vaults))))
-                            .push(text::simple(" vaults")),
-                    ),
-            );
-
-        if let Some((nb_active_vaults, active_amount)) = overview.get(&VaultStatus::Active) {
-            col_body = col_body.push(active_funds_overview_card(
-                ctx,
-                *nb_active_vaults,
-                *active_amount,
-                overview.get(&VaultStatus::Activating),
-            ));
-        } else if overview.get(&VaultStatus::Activating).is_some()
-            || overview.get(&VaultStatus::Secured).is_some()
-        {
-            col_body = col_body.push(active_funds_overview_card(
-                ctx,
-                0,
-                0,
-                overview.get(&VaultStatus::Activating),
-            ));
-        }
-
-        if let Some((nb_secured_vaults, secured_amount)) = overview.get(&VaultStatus::Secured) {
-            col_body = col_body
-                .push(
-                    Container::new(
-                        button::transparent(
-                            &mut self.delegate_fund_button,
-                            button::button_content(Some(arrow_up_icon()), "Delegate funds"),
-                        )
-                        .on_press(Message::Menu(Menu::DelegateFunds)),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                )
-                .push(acked_funds_overview_card(
-                    ctx,
-                    *nb_secured_vaults,
-                    *secured_amount,
-                    overview.get(&VaultStatus::Securing),
-                ));
-        } else if overview.get(&VaultStatus::Securing).is_some()
-            || overview.get(&VaultStatus::Funded).is_some()
-        {
-            col_body = col_body.push(acked_funds_overview_card(
-                ctx,
-                0,
-                0,
-                overview.get(&VaultStatus::Securing),
-            ));
-        }
+        let mut col = Column::new();
 
         if let Some((nb_funded_vaults, funded_amount)) = overview.get(&VaultStatus::Funded) {
-            col_body = col_body
-                .push(
-                    Container::new(
-                        button::transparent(
-                            &mut self.ack_fund_button,
-                            button::button_content(Some(arrow_up_icon()), "Acknowledge funds"),
+            col = col.push(
+                card::white(Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(text::bold(text::simple(&format!(
+                                        "{}",
+                                        ctx.converter.converts(*funded_amount),
+                                    ))))
+                                    .push(text::simple(&format!(
+                                        " {} received in ",
+                                        ctx.converter.unit
+                                    )))
+                                    .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
+                                    .push(text::simple(" new deposits")),
+                            )
+                            .width(Length::Fill)
+                            .align_x(iced::Align::Center),
                         )
-                        .on_press(Message::Menu(Menu::ACKFunds)),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(
+                                        button::primary(
+                                            &mut self.ack_fund_button,
+                                            button::button_content(None, "+ Create vaults")
+                                                .padding(3),
+                                        )
+                                        .on_press(Message::Menu(Menu::ACKFunds)),
+                                    )
+                                    .align_items(Align::Center)
+                                    .spacing(5),
+                            )
+                            .width(Length::Shrink)
+                            .align_x(Align::Center),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(10),
+                ))
+                .padding(5),
+            )
+        }
+
+        col = col.push(
+            Column::new()
+                .push(
+                    Column::new()
+                        .push(
+                            Row::new()
+                                .push(Column::new().width(Length::Fill))
+                                .push(
+                                    text::bold(text::simple(
+                                        &ctx.converter.converts(total_amount).to_string(),
+                                    ))
+                                    .size(50),
+                                )
+                                .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                                .align_items(Align::Center),
+                        )
+                        .push(
+                            Row::new()
+                                .push(Column::new().width(Length::Fill))
+                                .push(text::bold(text::simple(&format!("{}", nb_total_vaults))))
+                                .push(text::simple(" vaults")),
+                        ),
                 )
                 .push(
-                    Container::new(
-                        Row::new()
-                            .push(text::bold(text::simple(&format!(
-                                "{}",
-                                ctx.converter.converts(*funded_amount),
-                            ))))
-                            .push(text::simple(&format!(
-                                " {} received in ",
-                                ctx.converter.unit
-                            )))
-                            .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
-                            .push(text::simple(" new deposits")),
-                    )
-                    .width(Length::Fill)
-                    .align_x(iced::Align::Center),
-                );
-        }
-        card::white(Container::new(col_body.spacing(15))).into()
+                    Row::new()
+                        .push(
+                            secured_funds_overview_card(
+                                ctx,
+                                overview.get(&VaultStatus::Secured),
+                                overview.get(&VaultStatus::Securing),
+                                overview.get(&VaultStatus::Activating),
+                            )
+                            .width(Length::FillPortion(1)),
+                        )
+                        .push(
+                            active_funds_overview_card(ctx, overview.get(&VaultStatus::Active))
+                                .width(Length::FillPortion(1)),
+                        )
+                        .spacing(10),
+                )
+                .spacing(20),
+        );
+
+        Container::new(col.spacing(40)).into()
     }
 }
 
 fn active_funds_overview_card<'a, T: 'a>(
     ctx: &Context,
-    nb_active_vaults: u64,
-    active_amount: u64,
-    activating: Option<&(u64, u64)>,
+    active: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
-    let mut col = Column::new().push(
-        Row::new()
-            .push(
-                Container::new(
-                    Row::new()
-                        .push(person_check_icon())
-                        .push(text::simple("  Delegated funds:"))
-                        .align_items(Align::Center),
-                )
-                .width(Length::Fill),
-            )
-            .push(
-                text::bold(text::simple(
-                    &ctx.converter.converts(active_amount).to_string(),
-                ))
-                .size(20),
-            )
-            .push(text::simple(&format!(" {},   ", ctx.converter.unit)))
-            .push(text::bold(text::simple(&nb_active_vaults.to_string())))
-            .push(text::simple(" vaults"))
-            .align_items(Align::End),
-    );
-
-    if let Some((nb_activating_vaults, activating_amount)) = activating {
-        col = col.push(separation().width(Length::Fill)).push(
+    let (nb_active_vaults, active_amount) = active.unwrap_or(&(0, 0));
+    let col = Column::new()
+        .push(
             Row::new()
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::small("funds waiting other stakeholder delegation:"))
+                            .push(person_check_icon())
+                            .push(text::bold(text::simple("  Delegated funds")))
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
                 )
-                .push(text::bold(text::small("+ ")))
-                .push(text::bold(text::small(
-                    &ctx.converter.converts(*activating_amount).to_string(),
-                )))
-                .push(text::small(&format!(" {},   ", ctx.converter.unit)))
-                .push(text::bold(text::small(&nb_activating_vaults.to_string())))
-                .push(text::small(" vaults"))
-                .align_items(Align::End),
+                .push(
+                    Tooltip::new(
+                        tooltip_icon().size(10),
+                        "Delegated funds can be spent by managers,\n but you can still revert any undesired transaction.",
+                        tooltip::Position::Left,
+                    )
+                    .gap(5)
+                    .size(15)
+                    .padding(10)
+                    .style(TooltipStyle),
+                ),
         )
-    }
-
-    card::border_primary(Container::new(col.spacing(5)))
+        .push(
+            Column::new()
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                text::bold(text::simple(
+                                    &ctx.converter.converts(*active_amount).to_string(),
+                                ))
+                                .size(20),
+                            )
+                            .push(text::simple(&format!(
+                                " {:<6}",
+                                // to_string is needed to use format alignment feature
+                                ctx.converter.unit.to_string()
+                            ))),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::End),
+                )
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(text::bold(text::simple(&nb_active_vaults.to_string())))
+                            .push(text::simple(" vaults")),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::End),
+                ),
+        ).push(Container::new(Row::new().push(text::small(" "))));
+    card::white(Container::new(col.spacing(20)))
 }
 
-fn acked_funds_overview_card<'a, T: 'a>(
+fn secured_funds_overview_card<'a, T: 'a>(
     ctx: &Context,
-    nb_secured_vaults: u64,
-    secured_amount: u64,
+    secure: Option<&(u64, u64)>,
     securing: Option<&(u64, u64)>,
+    activating: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
-    let mut col = Column::new().push(
-        Row::new()
-            .push(
-                Container::new(
-                    Row::new()
-                        .push(shield_check_icon())
-                        .push(text::simple("  Acknowledged funds:"))
-                        .align_items(Align::Center),
-                )
-                .width(Length::Fill),
-            )
-            .push(
-                text::bold(text::simple(
-                    &ctx.converter.converts(secured_amount).to_string(),
-                ))
-                .size(20),
-            )
-            .push(text::simple(&format!(" {},   ", ctx.converter.unit)))
-            .push(text::bold(text::simple(&nb_secured_vaults.to_string())))
-            .push(text::simple(" vaults"))
-            .align_items(Align::End),
-    );
-
-    if let Some((nb_securing_vaults, securing_amount)) = securing {
-        col = col.push(separation().width(Length::Fill)).push(
+    let (nb_secured_vaults, secured_amount) = secure.unwrap_or(&(0, 0));
+    let (nb_activating_vaults, activating_amount) = activating.unwrap_or(&(0, 0));
+    let mut col = Column::new()
+        .push(
             Row::new()
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::small(
-                                "funds waiting other stakeholder acknowledgment:",
-                            ))
+                            .push(shield_check_icon())
+                            .push(text::bold(text::simple("  Secured funds")))
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
                 )
-                .push(text::bold(text::small("+ ")))
-                .push(text::bold(text::small(
-                    &ctx.converter.converts(*securing_amount).to_string(),
-                )))
-                .push(text::small(&format!(" {},   ", ctx.converter.unit)))
-                .push(text::bold(text::small(&nb_securing_vaults.to_string())))
-                .push(text::small(" vaults"))
-                .align_items(Align::End),
+                .push(
+                    Tooltip::new(
+                        tooltip_icon().size(10),
+                        "Secured funds are controlled by stakeholders only",
+                        tooltip::Position::Left,
+                    )
+                    .gap(5)
+                    .size(15)
+                    .padding(10)
+                    .style(TooltipStyle),
+                ),
         )
+        .push(
+            Column::new()
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                text::bold(text::simple(
+                                    &ctx.converter
+                                        .converts(*secured_amount + *activating_amount)
+                                        .to_string(),
+                                ))
+                                .size(20),
+                            )
+                            .push(text::simple(&format!(
+                                " {:<6}",
+                                // to_string is needed to use format alignment feature
+                                ctx.converter.unit.to_string()
+                            ))),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::End),
+                )
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(text::bold(text::simple(
+                                &(nb_secured_vaults + nb_activating_vaults).to_string(),
+                            )))
+                            .push(text::simple(" vaults")),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Align::End),
+                ),
+        );
+
+    if let Some((nb_securing_vaults, securing_amount)) = securing {
+        col = col.push(
+            Tooltip::new(
+                Row::new()
+                    .push(Column::new().width(Length::Fill))
+                    .push(text::bold(text::small("+ ")))
+                    .push(text::bold(text::small(
+                        &ctx.converter.converts(*securing_amount).to_string(),
+                    )))
+                    .push(text::small(&format!(" {}, ", ctx.converter.unit)))
+                    .push(text::bold(text::small(&nb_securing_vaults.to_string())))
+                    .push(text::small(" vaults "))
+                    .push(history_icon().size(10))
+                    .align_items(Align::End),
+                "Waiting for other stakeholders' signatures",
+                tooltip::Position::Bottom,
+            )
+            .gap(5)
+            .size(15)
+            .padding(10)
+            .style(TooltipStyle),
+        )
+    } else {
+        // An empty column is created in order to ensure the same card height.
+        col = col.push(Container::new(Row::new().push(text::small(" "))));
     }
-    card::border_secondary(Container::new(col.spacing(5)))
+    card::white(Container::new(col.spacing(20)))
 }
