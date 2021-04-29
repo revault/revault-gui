@@ -1,13 +1,15 @@
-use iced::{scrollable, Align, Column, Container, Element, Length, Row};
-
-use crate::revaultd::model::VaultStatus;
+use iced::{
+    scrollable,
+    tooltip::{self, Tooltip},
+    Align, Column, Container, Element, Length, Row,
+};
 
 use crate::ui::{
-    component::{button, card, navbar, scroll, text, ContainerBackgroundStyle},
+    component::{button, card, icon, scroll, text, ContainerBackgroundStyle, TooltipStyle},
     error::Error,
     menu::Menu,
-    message::{Message, VaultFilterMessage},
-    view::{layout, sidebar::Sidebar, Context},
+    message::Message,
+    view::Context,
 };
 
 #[derive(Debug)]
@@ -64,19 +66,15 @@ impl StakeholderACKFundsView {
 
 #[derive(Debug)]
 pub struct StakeholderDelegateFundsView {
-    sidebar: Sidebar,
     scroll: scrollable::State,
-    active_vaults_button: iced::button::State,
-    secured_vaults_button: iced::button::State,
+    close_button: iced::button::State,
 }
 
 impl StakeholderDelegateFundsView {
     pub fn new() -> Self {
         StakeholderDelegateFundsView {
-            sidebar: Sidebar::new(),
             scroll: scrollable::State::new(),
-            active_vaults_button: iced::button::State::new(),
-            secured_vaults_button: iced::button::State::new(),
+            close_button: iced::button::State::default(),
         }
     }
 
@@ -84,94 +82,113 @@ impl StakeholderDelegateFundsView {
         &'a mut self,
         ctx: &Context,
         active_balance: &u64,
+        activating_balance: &u64,
         vaults: Vec<Element<'a, Message>>,
         warning: Option<&Error>,
-        display_delegated: &bool,
     ) -> Element<'a, Message> {
-        let mut vaults_header = Row::new()
-            .push(
-                Container::new(text::simple(&format!("{} vaults", vaults.len())))
-                    .width(Length::Fill),
-            )
-            .align_items(Align::Center);
-        if *display_delegated {
-            vaults_header = vaults_header
-                .push(
-                    button::transparent(
-                        &mut self.secured_vaults_button,
-                        button::button_content(None, "Available vaults"),
-                    )
-                    .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(&VaultStatus::INACTIVE),
-                    )),
-                )
-                .push(
-                    button::primary(
-                        &mut self.active_vaults_button,
-                        button::button_content(None, "Delegated vaults"),
-                    )
-                    .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(&VaultStatus::ACTIVE),
-                    )),
-                );
-        } else {
-            vaults_header = vaults_header
-                .push(
-                    button::primary(
-                        &mut self.secured_vaults_button,
-                        button::button_content(None, "Available vaults"),
-                    )
-                    .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(&VaultStatus::INACTIVE),
-                    )),
-                )
-                .push(
-                    button::transparent(
-                        &mut self.active_vaults_button,
-                        button::button_content(None, "Delegated vaults"),
-                    )
-                    .on_press(Message::FilterVaults(
-                        VaultFilterMessage::Status(&VaultStatus::ACTIVE),
-                    )),
-                );
+        let mut col = Column::new();
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::simple(&format!(
+                "{}",
+                error
+            )))))
         }
-        let col = Column::new()
-            .push(
-                card::white(Container::new(
-                    Column::new()
-                        .push(
-                            Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(*active_balance)
-                                ))))
-                                .push(text::simple(&ctx.converter.unit.to_string()))
-                                .spacing(10)
-                                .align_items(Align::Center),
-                        )
-                        .push(text::simple("are delegated to the managers")),
-                ))
-                .width(Length::Fill),
-            )
-            .push(
-                card::white(Container::new(
-                    Column::new()
-                        .push(vaults_header)
-                        .push(Column::with_children(vaults).spacing(5))
-                        .spacing(20),
-                ))
-                .width(Length::Fill),
-            )
-            .spacing(15);
 
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(col),
-            ))),
-        )
-        .into()
+        col = col
+            .push(
+                Column::new()
+                    .push(text::bold(text::simple("Delegate funds to your manager team")).size(50))
+                    .spacing(5),
+            )
+            .push(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(
+                                text::bold(text::simple(
+                                    &ctx.converter.converts(*active_balance).to_string(),
+                                ))
+                                .size(30),
+                            )
+                            .push(text::simple(&format!(
+                                " {} are allocated to managers",
+                                ctx.converter.unit
+                            )))
+                            .align_items(Align::Center),
+                    )
+                    .push(
+                        Row::new()
+                            .push(
+                                text::bold(text::simple(&format!(
+                                    "+ {}",
+                                    ctx.converter.converts(*activating_balance)
+                                )))
+                                .size(20),
+                            )
+                            .push(text::simple(&format!(
+                                " {} are waiting for other stakeholders' approval",
+                                ctx.converter.unit
+                            )))
+                            .align_items(Align::Center),
+                    ),
+            );
+        if vaults.len() > 0 {
+            col = col.push(Container::new(
+                Column::new()
+                    .push(text::simple(" Click on the vaults to delegate:"))
+                    .push(Column::with_children(vaults).spacing(5))
+                    .spacing(20),
+            ))
+        } else {
+            col = col.push(
+                Container::new(text::simple("No more funds can be delegated to managers"))
+                    .padding(5),
+            )
+        }
+
+        let modal = Column::new()
+            .push(
+                Row::new()
+                    .push(
+                        Container::new(
+                            Tooltip::new(
+                                Row::new()
+                                    .push(icon::tooltip_icon().size(15))
+                                    .push(text::small(" Help")),
+                                "By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction.",
+                                tooltip::Position::Right,
+                            )
+                            .gap(5)
+                            .size(15)
+                            .padding(10)
+                            .style(TooltipStyle),
+                        )
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
+                            button::cancel(
+                                &mut self.close_button,
+                                Container::new(text::simple("X Close")).padding(10),
+                            )
+                            .on_press(Message::Menu(Menu::Home)),
+                        )
+                        .width(Length::Shrink),
+                    )
+                    .align_items(Align::Center),
+            )
+            .push(
+                Container::new(col.spacing(30).max_width(800))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .spacing(50);
+
+        Container::new(scroll(&mut self.scroll, Container::new(modal)))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(ContainerBackgroundStyle)
+            .padding(20)
+            .into()
     }
 }

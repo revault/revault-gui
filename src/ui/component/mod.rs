@@ -106,6 +106,20 @@ impl iced::pick_list::StyleSheet for TransparentPickListStyle {
     }
 }
 
+pub struct TooltipStyle;
+impl container::StyleSheet for TooltipStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            text_color: iced::Color::BLACK.into(),
+            background: color::FOREGROUND.into(),
+            border_radius: 10.0,
+            border_width: 1.0,
+            border_color: color::SECONDARY,
+            ..container::Style::default()
+        }
+    }
+}
+
 pub mod card {
     use super::color;
     use iced::{container, Container};

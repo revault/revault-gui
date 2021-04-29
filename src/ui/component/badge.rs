@@ -1,12 +1,34 @@
 use super::{
     color,
     icon::{
-        block_icon, deposit_icon, send_icon, shield_check_icon, shield_icon, shield_notif_icon,
-        turnback_icon,
+        block_icon, deposit_icon, person_check_icon, send_icon, shield_check_icon, shield_icon,
+        shield_notif_icon, turnback_icon,
     },
 };
 
 use iced::{container, Container, Length};
+
+pub fn person_check<'a, T: 'a>() -> Container<'a, T> {
+    let icon = person_check_icon().width(Length::Units(20));
+    Container::new(icon)
+        .width(Length::Units(40))
+        .height(Length::Units(40))
+        .style(PersonBadgeStyle)
+        .align_x(iced::Align::Center)
+        .align_y(iced::Align::Center)
+}
+
+struct PersonBadgeStyle;
+impl container::StyleSheet for PersonBadgeStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            border_radius: 40.0,
+            background: color::FOREGROUND.into(),
+            text_color: color::CANCEL.into(),
+            ..container::Style::default()
+        }
+    }
+}
 
 pub fn shield<'a, T: 'a>() -> Container<'a, T> {
     let icon = shield_icon().width(Length::Units(20));
