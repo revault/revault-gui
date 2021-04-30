@@ -35,6 +35,7 @@ impl VaultModal {
         ctx: &Context,
         vlt: &Vault,
         warning: Option<&Error>,
+        panel_title: &str,
         panel: Element<'a, Message>,
     ) -> Element<'a, Message> {
         let mut col = Column::new();
@@ -65,7 +66,7 @@ impl VaultModal {
                         Container::new(
                             Column::new()
                                 .push(
-                                    Container::new(text::simple("Vault Detail"))
+                                    Container::new(text::simple(&panel_title))
                                         .width(Length::Fill)
                                         .align_x(Align::Center),
                                 )

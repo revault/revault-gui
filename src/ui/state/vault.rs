@@ -118,6 +118,7 @@ impl Vault {
             ctx,
             &self.vault,
             self.warning.as_ref(),
+            self.section.title(&self.vault),
             self.section.view(ctx, &self.vault),
         )
     }
@@ -162,6 +163,19 @@ pub enum VaultSection {
 }
 
 impl VaultSection {
+    pub fn title(&self, vault: &model::Vault) -> &'static str {
+        match self {
+            Self::Unloaded => "Loading...",
+            Self::OnchainTransactions { .. } => match vault.status {
+                VaultStatus::Funded | VaultStatus::Unconfirmed => "Deposit detail",
+                _ => "Vault detail",
+            },
+            Self::Delegate { .. } => "Delegate vault",
+            Self::Acknowledge { .. } => "Acknowledge vault",
+            Self::Revault { .. } => "Revault funds",
+        }
+    }
+
     pub fn new_onchain_txs_section(txs: VaultTransactions) -> Self {
         Self::OnchainTransactions {
             txs,
