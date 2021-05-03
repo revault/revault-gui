@@ -1,5 +1,6 @@
 pub mod charging;
 mod deposit;
+mod emergency;
 mod home;
 mod layout;
 pub mod manager;
@@ -13,6 +14,7 @@ pub mod vault;
 mod vaults;
 
 pub use deposit::DepositView;
+pub use emergency::EmergencyView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use network::{ManagerNetworkView, StakeholderNetworkView};
 pub use settings::SettingsView;

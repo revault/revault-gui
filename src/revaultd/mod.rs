@@ -207,6 +207,11 @@ impl RevaultD {
         let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
         Ok(())
     }
+
+    pub fn emergency(&self) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

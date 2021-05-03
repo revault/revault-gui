@@ -8,10 +8,11 @@ use crate::{
         view::{layout, Context},
     },
     ui::{
+        color,
         component::{button, separation, text, TransparentPickListStyle},
         icon::{
             deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, plus_icon,
-            send_icon, settings_icon, vaults_icon,
+            send_icon, settings_icon, vaults_icon, warning_icon,
         },
     },
 };
@@ -21,6 +22,7 @@ pub struct Sidebar {
     pick_role: pick_list::State<Role>,
     deposit_menu_button: iced::button::State,
     delegate_menu_button: iced::button::State,
+    emergency_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
     vaults_menu_button: iced::button::State,
     network_menu_button: iced::button::State,
@@ -34,6 +36,7 @@ impl Sidebar {
             deposit_menu_button: iced::button::State::new(),
             delegate_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
+            emergency_menu_button: iced::button::State::new(),
             vaults_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
             spend_menu_button: iced::button::State::new(),
@@ -126,22 +129,18 @@ impl Sidebar {
             .width(iced::Length::Units(200))
         };
 
-        let actions = if context.role == Role::Manager {
-            let deposit_button = if context.menu == Menu::Deposit {
-                button::primary(
-                    &mut self.deposit_menu_button,
-                    button::button_content(Some(deposit_icon()), "Deposit"),
+        let mut actions = Column::new().spacing(15);
+
+        if context.role == Role::Manager {
+            actions = actions
+                .push(
+                    button::primary(
+                        &mut self.deposit_menu_button,
+                        button::button_content(Some(deposit_icon()), "Deposit"),
+                    )
+                    .on_press(Message::Menu(Menu::Deposit))
+                    .width(Length::Units(200)),
                 )
-                .on_press(Message::Menu(Menu::Deposit))
-            } else {
-                button::transparent(
-                    &mut self.deposit_menu_button,
-                    button::button_content(Some(deposit_icon()), "Deposit"),
-                )
-                .on_press(Message::Menu(Menu::Deposit))
-            };
-            Column::new()
-                .push(deposit_button.width(iced::Length::Units(200)))
                 .push(Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
@@ -149,9 +148,9 @@ impl Sidebar {
                     )
                     .on_press(Message::Menu(Menu::Send))
                     .width(iced::Length::Units(200)),
-                ))
+                ));
         } else {
-            let delegate_funds_button = if context.menu == Menu::DelegateFunds {
+            let action_delegate = if context.menu == Menu::DelegateFunds {
                 Container::new(
                     button::primary(
                         &mut self.delegate_menu_button,
@@ -170,7 +169,7 @@ impl Sidebar {
                     .width(iced::Length::Units(200)),
                 )
             };
-            Column::new()
+            actions = actions
                 .push(
                     button::transparent(
                         &mut self.deposit_menu_button,
@@ -179,8 +178,23 @@ impl Sidebar {
                     .on_press(Message::Menu(Menu::CreateVaults))
                     .width(iced::Length::Units(200)),
                 )
-                .push(delegate_funds_button)
-        };
+                .push(action_delegate)
+                .push(Container::new(
+                    button::transparent(
+                        &mut self.emergency_menu_button,
+                        Container::new(
+                            Row::new()
+                                .push(warning_icon().color(color::PRIMARY))
+                                .push(text::simple("Emergency").color(color::PRIMARY))
+                                .spacing(10)
+                                .align_items(iced::Align::Center),
+                        )
+                        .padding(5),
+                    )
+                    .on_press(Message::Menu(Menu::Emergency))
+                    .width(iced::Length::Units(200)),
+                ));
+        }
         layout::sidebar(
             layout::sidebar_menu(vec![
                 role.width(Length::Units(200)),

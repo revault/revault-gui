@@ -92,6 +92,10 @@ pub fn plus_icon() -> Text {
     icon('\u{F4D7}')
 }
 
+pub fn warning_icon() -> Text {
+    icon('\u{F31B}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

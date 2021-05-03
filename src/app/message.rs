@@ -33,6 +33,8 @@ pub enum Message {
     SpendTransaction(Result<SpendTransaction, RevaultDError>),
     SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
     SpendTx(SpendTxMessage),
+    Emergency,
+    EmergencyBroadcasted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]
