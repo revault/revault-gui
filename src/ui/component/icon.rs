@@ -79,12 +79,17 @@ pub fn person_check_icon() -> Text {
     icon('\u{F4AF}')
 }
 
+#[allow(dead_code)]
 pub fn arrow_up_icon() -> Text {
     icon('\u{F148}')
 }
 
 pub fn tooltip_icon() -> Text {
     icon('\u{F410}')
+}
+
+pub fn plus_icon() -> Text {
+    icon('\u{F4D7}')
 }
 
 #[allow(dead_code)]

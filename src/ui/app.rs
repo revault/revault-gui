@@ -44,7 +44,7 @@ impl App {
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
-                Menu::Deposit => DepositState::new(revaultd).into(),
+                Menu::Deposit => StakeholderHomeState::new(revaultd).into(),
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::Vaults => VaultsState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),

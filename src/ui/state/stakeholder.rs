@@ -12,7 +12,7 @@ use crate::ui::{
     error::Error,
     message::{Message, VaultMessage},
     state::{
-        cmd::{get_blockheight, get_revocation_txs, list_vaults},
+        cmd::{get_blockheight, get_deposit_address, get_revocation_txs, list_vaults},
         vault::{Vault, VaultListItem},
         State,
     },
@@ -228,6 +228,7 @@ pub struct StakeholderCreateVaultsState {
 
     warning: Option<Error>,
     balance: u64,
+    address: Option<bitcoin::Address>,
     deposits: Vec<VaultListItem<AcknowledgeVaultListItemView>>,
     selected_vault: Option<Vault>,
 
@@ -238,6 +239,7 @@ impl StakeholderCreateVaultsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
         StakeholderCreateVaultsState {
             revaultd,
+            address: None,
             warning: None,
             deposits: Vec::new(),
             view: StakeholderCreateVaultsView::new(),
@@ -290,6 +292,18 @@ impl StakeholderCreateVaultsState {
 impl State for StakeholderCreateVaultsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::DepositAddress(res) => match res {
+                Ok(address) => {
+                    // Address is loaded directly in the view in order to cache the created qrcode.
+                    self.view.load(&address);
+                    self.address = Some(address);
+                    return Command::none();
+                }
+                Err(e) => {
+                    self.warning = Some(Error::RevaultDError(e));
+                    return Command::none();
+                }
+            },
             Message::Vault(outpoint, VaultMessage::Select) => self.on_vault_select(outpoint),
             Message::Vault(outpoint, msg) => {
                 if let Some(selected) = &mut self.selected_vault {
@@ -319,15 +333,24 @@ impl State for StakeholderCreateVaultsState {
         if let Some(selected) = &mut self.selected_vault {
             return selected.view(ctx);
         }
-        self.view
-            .view(ctx, self.deposits.iter_mut().map(|v| v.view(ctx)).collect())
+        self.view.view(
+            ctx,
+            self.deposits.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.address.as_ref(),
+        )
     }
 
     fn load(&self) -> Command<Message> {
-        Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded])),
-            Message::Vaults,
-        )])
+        Command::batch(vec![
+            Command::perform(
+                get_deposit_address(self.revaultd.clone()),
+                Message::DepositAddress,
+            ),
+            Command::perform(
+                list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded])),
+                Message::Vaults,
+            ),
+        ])
     }
 }
 

@@ -1,11 +1,13 @@
 use iced::{
     scrollable,
     tooltip::{self, Tooltip},
-    Align, Column, Container, Element, Length, Row,
+    Align, Column, Container, Element, Length, QRCode, Row,
 };
 
 use crate::ui::{
-    component::{button, card, icon, scroll, text, ContainerBackgroundStyle, TooltipStyle},
+    component::{
+        button, card, icon, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
+    },
     error::Error,
     menu::Menu,
     message::Message,
@@ -15,21 +17,31 @@ use crate::ui::{
 #[derive(Debug)]
 pub struct StakeholderCreateVaultsView {
     scroll: scrollable::State,
+    qr_code: Option<iced::qr_code::State>,
     close_button: iced::button::State,
+    copy_button: iced::button::State,
 }
 
 impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
         StakeholderCreateVaultsView {
+            qr_code: None,
             scroll: scrollable::State::new(),
             close_button: iced::button::State::new(),
+            copy_button: iced::button::State::new(),
         }
+    }
+
+    // Address is loaded directly in the view in order to cache the created qrcode.
+    pub fn load(&mut self, address: &bitcoin::Address) {
+        self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
     pub fn view<'a>(
         &'a mut self,
         _ctx: &Context,
         deposits: Vec<Element<'a, Message>>,
+        address: Option<&bitcoin::Address>,
     ) -> Element<'a, Message> {
         let mut content = Column::new()
             .max_width(800)
@@ -45,6 +57,50 @@ impl StakeholderCreateVaultsView {
             ))
         } else {
             content = content.push(Container::new(text::simple("No deposits")).padding(5))
+        }
+
+        if let Some(qr_code) = self.qr_code.as_mut() {
+            if let Some(addr) = address {
+                content = content.push(separation().width(Length::Fill)).push(
+                    card::white(Container::new(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(text::simple(
+                                        "Bitcoin deposits are needed in order to create a vault\n",
+                                    ))
+                                    .push(
+                                        Column::new()
+                                            .push(text::bold(text::simple(
+                                                "Please, use this deposit address:",
+                                            )))
+                                            .push(
+                                                Row::new()
+                                                    .push(Container::new(text::bold(text::small(
+                                                        &addr.to_string(),
+                                                    ))))
+                                                    .push(
+                                                        button::clipboard(
+                                                            &mut self.copy_button,
+                                                            Message::Clipboard(addr.to_string()),
+                                                        )
+                                                        .width(Length::Shrink),
+                                                    )
+                                                    .align_items(Align::Center),
+                                            ),
+                                    )
+                                    .spacing(30)
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(QRCode::new(qr_code).cell_size(5))
+                                    .width(Length::Shrink),
+                            )
+                            .spacing(10),
+                    ))
+                    .width(Length::Fill),
+                );
+            }
         }
 
         let col = Column::new()

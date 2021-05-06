@@ -1,12 +1,12 @@
-use iced::{pick_list, Container, Length, Row};
+use iced::{pick_list, Column, Container, Length, Row};
 
 use crate::revault::Role;
 use crate::ui::{
     component::{
         button,
         icon::{
-            deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, send_icon,
-            settings_icon, vaults_icon,
+            deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, plus_icon,
+            send_icon, settings_icon, vaults_icon,
         },
         separation, text, TransparentPickListStyle,
     },
@@ -109,20 +109,6 @@ impl Sidebar {
             .on_press(Message::Menu(Menu::Network))
         };
 
-        let deposit_button = if context.menu == Menu::Deposit {
-            button::primary(
-                &mut self.deposit_menu_button,
-                button::button_content(Some(deposit_icon()), "Deposit"),
-            )
-            .on_press(Message::Menu(Menu::Deposit))
-        } else {
-            button::transparent(
-                &mut self.deposit_menu_button,
-                button::button_content(Some(deposit_icon()), "Deposit"),
-            )
-            .on_press(Message::Menu(Menu::Deposit))
-        };
-
         let settings_button = if context.menu == Menu::Settings {
             button::primary(
                 &mut self.settings_menu_button,
@@ -140,32 +126,59 @@ impl Sidebar {
         };
 
         let actions = if context.role == Role::Manager {
-            Container::new(
-                button::transparent(
-                    &mut self.spend_menu_button,
-                    button::button_content(Some(send_icon()), "Send"),
-                )
-                .on_press(Message::Menu(Menu::Send))
-                .width(iced::Length::Units(200)),
-            )
-        } else if context.menu == Menu::DelegateFunds {
-            Container::new(
+            let deposit_button = if context.menu == Menu::Deposit {
                 button::primary(
-                    &mut self.delegate_menu_button,
-                    button::button_content(Some(person_check_icon()), "Delegate funds"),
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
                 )
-                .on_press(Message::Menu(Menu::DelegateFunds))
-                .width(iced::Length::Units(200)),
-            )
-        } else {
-            Container::new(
+                .on_press(Message::Menu(Menu::Deposit))
+            } else {
                 button::transparent(
-                    &mut self.delegate_menu_button,
-                    button::button_content(Some(person_check_icon()), "Delegate funds"),
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
                 )
-                .on_press(Message::Menu(Menu::DelegateFunds))
-                .width(iced::Length::Units(200)),
-            )
+                .on_press(Message::Menu(Menu::Deposit))
+            };
+            Column::new()
+                .push(deposit_button.width(iced::Length::Units(200)))
+                .push(Container::new(
+                    button::transparent(
+                        &mut self.spend_menu_button,
+                        button::button_content(Some(send_icon()), "Send"),
+                    )
+                    .on_press(Message::Menu(Menu::Send))
+                    .width(iced::Length::Units(200)),
+                ))
+        } else {
+            let delegate_funds_button = if context.menu == Menu::DelegateFunds {
+                Container::new(
+                    button::primary(
+                        &mut self.delegate_menu_button,
+                        button::button_content(Some(person_check_icon()), "Delegate funds"),
+                    )
+                    .on_press(Message::Menu(Menu::DelegateFunds))
+                    .width(iced::Length::Units(200)),
+                )
+            } else {
+                Container::new(
+                    button::transparent(
+                        &mut self.delegate_menu_button,
+                        button::button_content(Some(person_check_icon()), "Delegate funds"),
+                    )
+                    .on_press(Message::Menu(Menu::DelegateFunds))
+                    .width(iced::Length::Units(200)),
+                )
+            };
+            Column::new()
+                .push(
+                    button::transparent(
+                        &mut self.deposit_menu_button,
+                        button::button_content(Some(plus_icon()), "Create vault"),
+                    )
+                    .on_press(Message::Menu(Menu::CreateVaults))
+                    .width(iced::Length::Units(200)),
+                )
+                .push(delegate_funds_button)
         };
         layout::sidebar(
             layout::sidebar_menu(vec![
@@ -175,8 +188,7 @@ impl Sidebar {
                 Container::new(vaults_button.width(Length::Units(200))),
                 Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
-                Container::new(deposit_button.width(Length::Units(200))),
-                actions,
+                Container::new(actions.width(Length::Units(200))),
             ]),
             Container::new(settings_button),
         )
