@@ -83,6 +83,10 @@ pub fn arrow_up_icon() -> Text {
     icon('\u{F148}')
 }
 
+pub fn tooltip_icon() -> Text {
+    icon('\u{F410}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

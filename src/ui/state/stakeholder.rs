@@ -10,7 +10,7 @@ use crate::revaultd::{
 
 use crate::ui::{
     error::Error,
-    message::{Message, VaultFilterMessage, VaultMessage},
+    message::{Message, VaultMessage},
     state::{
         cmd::{get_blockheight, get_revocation_txs, list_vaults},
         vault::{Vault, VaultListItem},
@@ -343,7 +343,7 @@ pub struct StakeholderDelegateFundsState {
     revaultd: Arc<RevaultD>,
 
     active_balance: u64,
-    vault_status_filter: &'static [VaultStatus],
+    activating_balance: u64,
     vaults: Vec<VaultListItem<DelegateVaultListItemView>>,
     selected_vault: Option<Vault>,
     warning: Option<Error>,
@@ -356,8 +356,8 @@ impl StakeholderDelegateFundsState {
         StakeholderDelegateFundsState {
             revaultd,
             active_balance: 0,
+            activating_balance: 0,
             vaults: Vec::new(),
-            vault_status_filter: &VaultStatus::INACTIVE,
             selected_vault: None,
             warning: None,
             view: StakeholderDelegateFundsView::new(),
@@ -415,38 +415,19 @@ impl StakeholderDelegateFundsState {
         Command::none()
     }
 
-    pub fn on_vault_acknowledge(&mut self, outpoint: String) -> Command<Message> {
-        if let Some(selected) = &mut self.selected_vault {
-            if selected.vault.outpoint() == outpoint {
-                return selected
-                    .update(self.revaultd.clone(), VaultMessage::Acknowledge)
-                    .map(move |msg| Message::Vault(outpoint.clone(), msg));
-            }
-        }
-
-        if let Some(selected) = self
-            .vaults
-            .iter()
-            .find(|vlt| vlt.vault.outpoint() == outpoint)
-        {
-            let mut selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.update(self.revaultd.clone(), VaultMessage::Acknowledge);
-            self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
-        };
-        Command::none()
-    }
-
     pub fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        self.active_balance = 0;
-        for vault in vaults {
-            match vault.status {
-                VaultStatus::Active | VaultStatus::Unvaulting | VaultStatus::Unvaulted => {
-                    self.active_balance += vault.amount
-                }
-                _ => {}
+        let (active_balance, activating_balance) = vaults.iter().fold((0, 0), |acc, vault| {
+            if vault.status == VaultStatus::Active {
+                (acc.0 + vault.amount, acc.1)
+            } else if vault.status == VaultStatus::Activating {
+                (acc.0, acc.1 + vault.amount)
+            } else {
+                acc
             }
-        }
+        });
+
+        self.active_balance = active_balance;
+        self.activating_balance = activating_balance;
     }
 }
 
@@ -459,7 +440,6 @@ impl State for StakeholderDelegateFundsState {
             },
             Message::Vault(outpoint, msg) => match msg {
                 VaultMessage::Select => return self.on_vault_select(outpoint),
-                VaultMessage::Acknowledge => return self.on_vault_acknowledge(outpoint),
                 VaultMessage::Delegate => return self.on_vault_delegate(outpoint),
                 _ => {
                     if let Some(selected) = &mut self.selected_vault {
@@ -472,9 +452,6 @@ impl State for StakeholderDelegateFundsState {
                     return Command::none();
                 }
             },
-            Message::FilterVaults(VaultFilterMessage::Status(statuses)) => {
-                self.vault_status_filter = statuses;
-            }
             _ => {}
         };
         Command::none()
@@ -484,17 +461,16 @@ impl State for StakeholderDelegateFundsState {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
         }
-        let status_filters = &self.vault_status_filter;
         self.view.view(
             ctx,
             &self.active_balance,
+            &self.activating_balance,
             self.vaults
                 .iter_mut()
-                .filter(|v| status_filters.contains(&v.vault.status))
+                .filter(|v| v.vault.status == VaultStatus::Secured)
                 .map(|v| v.view(ctx))
                 .collect(),
             self.warning.as_ref().into(),
-            &self.vault_status_filter.contains(&VaultStatus::Active),
         )
     }
 
@@ -503,8 +479,6 @@ impl State for StakeholderDelegateFundsState {
             list_vaults(
                 self.revaultd.clone(),
                 Some(&[
-                    VaultStatus::Funded,
-                    VaultStatus::Securing,
                     VaultStatus::Secured,
                     VaultStatus::Activating,
                     VaultStatus::Active,
