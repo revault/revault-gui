@@ -13,14 +13,14 @@ use crate::ui::{
 };
 
 #[derive(Debug)]
-pub struct StakeholderACKFundsView {
+pub struct StakeholderCreateVaultsView {
     scroll: scrollable::State,
     close_button: iced::button::State,
 }
 
-impl StakeholderACKFundsView {
+impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
-        StakeholderACKFundsView {
+        StakeholderCreateVaultsView {
             scroll: scrollable::State::new(),
             close_button: iced::button::State::new(),
         }
@@ -31,14 +31,38 @@ impl StakeholderACKFundsView {
         _ctx: &Context,
         deposits: Vec<Element<'a, Message>>,
     ) -> Element<'a, Message> {
-        let mut col_deposits = Column::new();
-        for element in deposits.into_iter() {
-            col_deposits = col_deposits.push(element);
+        let mut content = Column::new()
+            .max_width(800)
+            .push(text::bold(text::simple("Create some vaults")).size(50))
+            .spacing(20);
+
+        if deposits.len() > 0 {
+            content = content.push(Container::new(
+                Column::new()
+                    .push(text::simple(" Click on a deposit to create a vault:"))
+                    .push(Column::with_children(deposits).spacing(5))
+                    .spacing(20),
+            ))
+        } else {
+            content = content.push(Container::new(text::simple("No deposits")).padding(5))
         }
-        let element: Element<_> = col_deposits.spacing(20).max_width(1000).into();
+
         let col = Column::new()
             .push(
-                Row::new().push(Column::new().width(Length::Fill)).push(
+                Row::new().push(Container::new(
+                            Tooltip::new(
+                                Row::new()
+                                    .push(icon::tooltip_icon().size(15))
+                                    .push(text::small(" Help")),
+                                "A vault is a deposit with revocation transactions\nsigned and shared between stakeholders",
+                                tooltip::Position::Right,
+                            )
+                            .gap(5)
+                            .size(15)
+                            .padding(10)
+                            .style(TooltipStyle),
+                        )
+                        .width(Length::Fill)).push(
                     Container::new(
                         button::cancel(
                             &mut self.close_button,
@@ -48,13 +72,8 @@ impl StakeholderACKFundsView {
                     )
                     .width(Length::Shrink),
                 ),
-            )
-            .push(
-                Container::new(element)
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .spacing(50);
+            ).push(content).align_items(Align::Center).spacing(50);
+
         Container::new(scroll(&mut self.scroll, Container::new(col)))
             .width(Length::Fill)
             .height(Length::Fill)

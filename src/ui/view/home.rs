@@ -285,7 +285,7 @@ impl StakeholderOverview {
                                             button::button_content(None, "+ Create vaults")
                                                 .padding(3),
                                         )
-                                        .on_press(Message::Menu(Menu::ACKFunds)),
+                                        .on_press(Message::Menu(Menu::CreateVaults)),
                                     )
                                     .align_items(Align::Center)
                                     .spacing(5),

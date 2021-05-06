@@ -8,8 +8,8 @@ use super::menu::Menu;
 use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use super::state::{
     ChargingState, DepositState, ManagerHomeState, ManagerNetworkState, ManagerSendState,
-    SettingsState, StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
-    StakeholderNetworkState, State, VaultsState,
+    SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
+    StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
 };
 
 use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
@@ -48,7 +48,7 @@ impl App {
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::Vaults => VaultsState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
-                Menu::ACKFunds => StakeholderACKFundsState::new(revaultd).into(),
+                Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
                 Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
                 _ => unreachable!(),

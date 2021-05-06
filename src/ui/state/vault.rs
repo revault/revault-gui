@@ -165,13 +165,13 @@ pub enum VaultSection {
 impl VaultSection {
     pub fn title(&self, vault: &model::Vault) -> &'static str {
         match self {
-            Self::Unloaded => "Loading...",
+            Self::Unloaded => "",
             Self::OnchainTransactions { .. } => match vault.status {
-                VaultStatus::Funded | VaultStatus::Unconfirmed => "Deposit detail",
-                _ => "Vault detail",
+                VaultStatus::Funded | VaultStatus::Unconfirmed => "Deposit details",
+                _ => "Vault details",
             },
             Self::Delegate { .. } => "Delegate vault",
-            Self::Acknowledge { .. } => "Acknowledge vault",
+            Self::Acknowledge { .. } => "Create vault",
             Self::Revault { .. } => "Revault funds",
         }
     }

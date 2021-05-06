@@ -18,7 +18,7 @@ use crate::ui::{
     },
     view::{
         vault::{AcknowledgeVaultListItemView, DelegateVaultListItemView, VaultListItemView},
-        Context, StakeholderACKFundsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
         StakeholderNetworkView,
     },
 };
@@ -223,7 +223,7 @@ impl From<StakeholderNetworkState> for Box<dyn State> {
 }
 
 #[derive(Debug)]
-pub struct StakeholderACKFundsState {
+pub struct StakeholderCreateVaultsState {
     revaultd: Arc<RevaultD>,
 
     warning: Option<Error>,
@@ -231,16 +231,16 @@ pub struct StakeholderACKFundsState {
     deposits: Vec<VaultListItem<AcknowledgeVaultListItemView>>,
     selected_vault: Option<Vault>,
 
-    view: StakeholderACKFundsView,
+    view: StakeholderCreateVaultsView,
 }
 
-impl StakeholderACKFundsState {
+impl StakeholderCreateVaultsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        StakeholderACKFundsState {
+        StakeholderCreateVaultsState {
             revaultd,
             warning: None,
             deposits: Vec::new(),
-            view: StakeholderACKFundsView::new(),
+            view: StakeholderCreateVaultsView::new(),
             balance: 0,
             selected_vault: None,
         }
@@ -287,7 +287,7 @@ impl StakeholderACKFundsState {
     }
 }
 
-impl State for StakeholderACKFundsState {
+impl State for StakeholderCreateVaultsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Vault(outpoint, VaultMessage::Select) => self.on_vault_select(outpoint),
@@ -325,17 +325,14 @@ impl State for StakeholderACKFundsState {
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(
-                self.revaultd.clone(),
-                Some(&[VaultStatus::Securing, VaultStatus::Funded]),
-            ),
+            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded])),
             Message::Vaults,
         )])
     }
 }
 
-impl From<StakeholderACKFundsState> for Box<dyn State> {
-    fn from(s: StakeholderACKFundsState) -> Box<dyn State> {
+impl From<StakeholderCreateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

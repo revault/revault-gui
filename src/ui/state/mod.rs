@@ -17,7 +17,7 @@ pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
 pub use settings::SettingsState;
 pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};
 pub use stakeholder::{
-    StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
+    StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState,
     StakeholderNetworkState,
 };
 pub use vaults::VaultsState;

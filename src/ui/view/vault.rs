@@ -184,7 +184,7 @@ impl VaultOnChainTransactionsPanel {
                         Row::new()
                             .push(
                                 Container::new(text::simple(
-                                    "This vault needs to be acknowledged ",
+                                    "Do you want to create a vault from this deposit?",
                                 ))
                                 .width(Length::Fill),
                             )
@@ -192,7 +192,7 @@ impl VaultOnChainTransactionsPanel {
                                 Container::new(
                                     button::important(
                                         &mut self.action_button,
-                                        button::button_content(None, "Acknowledge"),
+                                        button::button_content(None, "Create vault"),
                                     )
                                     .on_press(Message::Vault(
                                         vault.outpoint(),
