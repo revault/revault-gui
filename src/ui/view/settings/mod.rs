@@ -62,10 +62,6 @@ impl SettingsView {
             }
         };
 
-        column
-            .push(boxes.stakeholder_xpubs.display(config))
-            .push(boxes.manager_xpubs.display(config))
-            .push(boxes.cosigner_keys.display(config))
-            .spacing(20)
+        column.push(boxes.scripts.display(config)).spacing(20)
     }
 }
