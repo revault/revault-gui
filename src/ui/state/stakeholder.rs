@@ -91,8 +91,7 @@ impl StakeholderHomeState {
         let mut balance = HashMap::new();
         for vault in vaults {
             if vault.status == VaultStatus::Unconfirmed
-                || vault.status == VaultStatus::Spent
-                || vault.status == VaultStatus::Spending
+                || VaultStatus::MOVING.contains(&vault.status)
             {
                 continue;
             }
@@ -148,7 +147,10 @@ impl State for StakeholderHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
+            Command::perform(
+                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT)),
+                Message::Vaults,
+            ),
         ])
     }
 }
