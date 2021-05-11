@@ -100,15 +100,26 @@ impl Config {
         let mut path = if let Some(ref datadir) = self.data_dir {
             datadir.clone()
         } else {
-            default_datadir()?
+            default_datadir().map_err(|_| {
+                ConfigError::Unexpected("Could not locate the default datadir.".to_owned())
+            })?
         };
         path.push(&self.bitcoind_config.network.to_string());
         path.push("revaultd_rpc");
         Ok(path)
     }
+
+    /// default_config_path returns the default config location of the revault deamon.
+    pub fn default_path() -> Result<PathBuf, ConfigError> {
+        let mut datadir = default_datadir().map_err(|_| {
+            ConfigError::Unexpected("Could not locate the default datadir.".to_owned())
+        })?;
+        datadir.push("revault.toml");
+        Ok(datadir)
+    }
 }
 
-// From github.com/re-vault/revaultd:
+// From github.com/revault/revaultd:
 // Get the absolute path to the revault configuration folder.
 ///
 /// This a "revault" directory in the XDG standard configuration directory for all OSes but
@@ -116,7 +127,7 @@ impl Config {
 /// Rationale: we want to have the database, RPC socket, etc.. in the same folder as the
 /// configuration file but for Linux the XDG specify a data directory (`~/.local/share/`) different
 /// from the configuration one (`~/.config/`).
-pub fn default_datadir() -> Result<PathBuf, ConfigError> {
+pub fn default_datadir() -> Result<PathBuf, ()> {
     #[cfg(target_os = "linux")]
     let configs_dir = dirs::home_dir();
 
@@ -133,16 +144,7 @@ pub fn default_datadir() -> Result<PathBuf, ConfigError> {
         return Ok(path);
     }
 
-    Err(ConfigError::Unexpected(
-        "Could not locate the configuration directory.".to_owned(),
-    ))
-}
-
-/// default_config_path returns the default config location of the revault deamon.
-pub fn default_config_path() -> Result<PathBuf, ConfigError> {
-    let mut datadir = default_datadir()?;
-    datadir.push("revault.toml");
-    Ok(datadir)
+    Err(())
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -155,9 +157,11 @@ pub enum ConfigError {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::NotFound => write!(f, "Configuration error: not found"),
-            Self::ReadingFile(e) => write!(f, "Configuration error while reading file: {}", e),
-            Self::Unexpected(e) => write!(f, "Configuration error unexpected: {}", e),
+            Self::NotFound => write!(f, "Revaultd Configuration error: not found"),
+            Self::ReadingFile(e) => {
+                write!(f, "Revaultd Configuration error while reading file: {}", e)
+            }
+            Self::Unexpected(e) => write!(f, "Revaultd Configuration error unexpected: {}", e),
         }
     }
 }

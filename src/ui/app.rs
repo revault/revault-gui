@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, Subscription};
@@ -12,7 +10,12 @@ use super::state::{
     StakeholderNetworkState, State, VaultsState,
 };
 
-use crate::{conversion::Converter, revault::Role, revaultd::RevaultD, ui::view::Context};
+use crate::{
+    conversion::Converter,
+    revault::Role,
+    revaultd::RevaultD,
+    ui::{config::Config, view::Context},
+};
 
 pub struct App {
     config: Config,
@@ -134,17 +137,10 @@ impl Application for App {
 
     fn view(&mut self) -> Element<Self::Message> {
         let content = self.state.view(&self.context);
-        if self.config.debug {
+        if let Some(true) = self.config.debug {
             return content.explain(Color::BLACK);
         }
 
         content
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub revaultd_config_path: Option<PathBuf>,
-    pub revaultd_path: Option<PathBuf>,
-    pub debug: bool,
 }

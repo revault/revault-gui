@@ -6,7 +6,7 @@ use iced::{Command, Element};
 
 use super::State;
 use crate::revaultd::{
-    config::{default_config_path, Config, ConfigError},
+    config::{Config, ConfigError},
     start_daemon, RevaultD, RevaultDError,
 };
 use crate::ui::{
@@ -17,7 +17,7 @@ use crate::ui::{
 
 #[derive(Debug, Clone)]
 pub struct ChargingState {
-    revaultd_config_path: Option<PathBuf>,
+    revaultd_config_path: PathBuf,
     revaultd_path: Option<PathBuf>,
     revaultd: Option<Arc<RevaultD>>,
     step: ChargingStep,
@@ -29,11 +29,10 @@ enum ChargingStep {
     StartingDaemon,
     Syncing { progress: f64 },
     Error { error: String },
-    AskInstall { view: ChargingAskInstallView },
 }
 
 impl ChargingState {
-    pub fn new(revaultd_config_path: Option<PathBuf>, revaultd_path: Option<PathBuf>) -> Self {
+    pub fn new(revaultd_config_path: PathBuf, revaultd_path: Option<PathBuf>) -> Self {
         ChargingState {
             revaultd_config_path,
             revaultd_path,
@@ -51,15 +50,9 @@ impl ChargingState {
             }
             Err(e) => match e {
                 Error::ConfigError(ConfigError::NotFound) => {
-                    if let Some(path) = &self.revaultd_config_path {
-                        self.step = ChargingStep::Error {
-                            error: format!("config not found at path: {:?}", path),
-                        };
-                    } else {
-                        self.step = ChargingStep::AskInstall {
-                            view: ChargingAskInstallView::new(),
-                        };
-                    }
+                    self.step = ChargingStep::Error {
+                        error: format!("config not found at path: {:?}", self.revaultd_config_path),
+                    };
                 }
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
@@ -139,7 +132,6 @@ impl State for ChargingState {
             ChargingStep::Connecting => charging_connect_view(),
             ChargingStep::Syncing { progress, .. } => charging_syncing_view(&progress),
             ChargingStep::Error { error } => charging_error_view(&error),
-            ChargingStep::AskInstall { view } => view.view(),
         }
     }
 
@@ -161,14 +153,8 @@ async fn synced(revaultd: Arc<RevaultD>) -> Arc<RevaultD> {
     revaultd
 }
 
-async fn connect(revaultd_config_path: Option<PathBuf>) -> Result<Arc<RevaultD>, Error> {
-    let path = if let Some(ref p) = revaultd_config_path {
-        p.to_owned()
-    } else {
-        default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
-    };
-
-    let cfg = Config::from_file(&path)?;
+async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
+    let cfg = Config::from_file(&revaultd_config_path)?;
     let revaultd = RevaultD::new(&cfg)?;
 
     Ok(Arc::new(revaultd))
@@ -183,15 +169,9 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<f64, RevaultDError
 }
 
 async fn start_daemon_and_connect(
-    revaultd_config_path: Option<PathBuf>,
+    revaultd_config_path: PathBuf,
     revaultd_path: Option<PathBuf>,
 ) -> Result<Arc<RevaultD>, Error> {
-    let revaultd_config_path = if let Some(ref p) = revaultd_config_path {
-        p.to_owned()
-    } else {
-        default_config_path().map_err(|e| Error::UnexpectedError(e.to_string()))?
-    };
-
     let revaultd_path = revaultd_path.unwrap_or_else(|| PathBuf::from("revaultd"));
 
     start_daemon(&revaultd_config_path, &revaultd_path).await?;

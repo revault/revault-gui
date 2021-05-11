@@ -1,4 +1,4 @@
-use iced::{button, Container, Element};
+use iced::Element;
 
 use crate::ui::{component, message::Message, view::layout};
 
@@ -19,21 +19,4 @@ pub fn charging_syncing_view(progress: &f64) -> Element<'static, Message> {
 
 pub fn charging_error_view(error: &str) -> Element<'static, Message> {
     layout::cover(component::text::paragraph(&format!("Error: {}", error)))
-}
-
-#[derive(Debug, Clone)]
-pub struct ChargingAskInstallView {
-    validate_button: button::State,
-}
-
-impl ChargingAskInstallView {
-    pub fn new() -> ChargingAskInstallView {
-        Self {
-            validate_button: button::State::new(),
-        }
-    }
-    pub fn view(&mut self) -> Element<Message> {
-        let text = component::text::paragraph("No config found");
-        layout::cover(Container::new(text))
-    }
 }

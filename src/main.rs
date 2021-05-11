@@ -1,6 +1,5 @@
-use std::env::VarError;
+use std::error::Error;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
@@ -11,78 +10,59 @@ mod revault;
 mod revaultd;
 mod ui;
 
-fn main() {
-    let revaultd_config_path = match std::env::var("REVAULTD_CONF") {
-        Ok(p) => Some(PathBuf::from(p)),
-        Err(VarError::NotPresent) => None,
-        Err(VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTD_CONF path has a wrong unicode format");
-            std::process::exit(1);
-        }
-    };
+use ui::config::Config;
 
-    let debug = match std::env::var("REVAULTGUI_DEBUG") {
-        Ok(var) => match FromStr::from_str(&var) {
-            Ok(v) => v,
-            Err(_) => {
-                println!("Error: REVAULTGUI_DEBUG must be `false` or `true`");
-                std::process::exit(1);
-            }
-        },
-        Err(VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTGUI_DEBUG must be `false` or `true`");
-            std::process::exit(1);
-        }
-        Err(VarError::NotPresent) => false,
-    };
-
-    let logfilter: EnvFilter = match std::env::var("REVAULTGUI_LOG") {
-        Ok(var) => match EnvFilter::try_new(var) {
-            Ok(v) => v,
-            Err(_) => {
-                println!(
-                    "Error: REVAULTGUI_LOG must follow tracing directive like `revaultd=info`"
-                );
-                std::process::exit(1);
-            }
-        },
-        Err(VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTGUI_LOG unicode only");
-            std::process::exit(1);
-        }
-        Err(VarError::NotPresent) => {
-            if debug {
-                EnvFilter::try_new("revault_gui=debug").unwrap()
-            } else {
-                EnvFilter::try_new("revault_gui=info").unwrap()
-            }
-        }
-    };
-
-    let revaultd_path = match std::env::var("REVAULTD_PATH") {
-        Ok(p) => Some(PathBuf::from(p)),
-        Err(VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTD_PATH unicode only");
-            std::process::exit(1);
-        }
-        Err(VarError::NotPresent) => None,
-    };
-
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(logfilter)
-        .finish();
-
-    if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
-        println!("unexpected: {}", e);
-        std::process::exit(1);
+fn config_path_from_args(args: Vec<String>) -> Result<Option<PathBuf>, Box<dyn Error>> {
+    if args.len() == 1 {
+        return Ok(None);
     }
 
-    if let Err(e) = ui::app::run(ui::app::Config {
-        revaultd_config_path,
-        revaultd_path,
-        debug,
-    }) {
-        println!("Error: failed to launch UI: {}", e.to_string());
-        std::process::exit(1);
+    if args.len() != 3 || args[1] != "--conf" {
+        println!("Usage: '--conf <configuration file path>'");
+        return Err(format!("Unknown arguments '{:?}'.", args).into());
+    }
+
+    Ok(Some(PathBuf::from(args[2].to_owned())))
+}
+
+fn log_level_from_config(config: &Config) -> Result<EnvFilter, Box<dyn Error>> {
+    if let Some(level) = &config.log_level {
+        if level == "info" {
+            return EnvFilter::try_new("revault_gui=info").map_err(|e| e.into());
+        } else if level == "debug" {
+            return EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into());
+        } else if level == "trace" {
+            return EnvFilter::try_new("revault_gui=trace").map_err(|e| e.into());
+        } else {
+            return Err(format!("Unknown loglevel '{:?}'.", level).into());
+        }
+    } else if let Some(true) = config.debug {
+        return EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into());
+    } else {
+        return EnvFilter::try_new("revault_gui=info").map_err(|e| e.into());
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = std::env::args().collect();
+
+    let config_path = if let Some(path) = config_path_from_args(args)? {
+        path
+    } else {
+        Config::default_path().map_err(|e| format!("Failed to find revault GUI config: {}", e))?
     };
+
+    let config = Config::from_file(&config_path)
+        .map_err(|e| format!("Failed to read {:?}, {}", &config_path, e))?;
+
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::FmtSubscriber::builder()
+            .with_env_filter(log_level_from_config(&config)?)
+            .finish(),
+    )?;
+
+    if let Err(e) = ui::app::run(config) {
+        return Err(format!("Failed to launch UI: {}", e).into());
+    };
+    Ok(())
 }

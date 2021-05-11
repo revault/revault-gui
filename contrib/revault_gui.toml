@@ -1,0 +1,10 @@
+# Revault GUI configuration file example.
+
+# Path to revaultd configuration file (required).
+revaultd_config_path = "path/to/revault.toml"
+# Path to revaultd binary (optional).
+revaultd_path = "path/to/revaultd/binary"
+# log level, can be "info", "debug", "trace" (optional).
+log_level = "trace"
+# Use iced debug feature if true (optional).
+debug = true
