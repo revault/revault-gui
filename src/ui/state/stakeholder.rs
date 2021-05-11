@@ -17,7 +17,7 @@ use crate::ui::{
         State,
     },
     view::{
-        vault::{AcknowledgeVaultListItemView, DelegateVaultListItemView, VaultListItemView},
+        vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
         Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
         StakeholderNetworkView,
     },
@@ -229,7 +229,7 @@ pub struct StakeholderCreateVaultsState {
     warning: Option<Error>,
     balance: u64,
     address: Option<bitcoin::Address>,
-    deposits: Vec<VaultListItem<AcknowledgeVaultListItemView>>,
+    deposits: Vec<VaultListItem<SecureVaultListItemView>>,
     selected_vault: Option<Vault>,
 
     view: StakeholderCreateVaultsView,

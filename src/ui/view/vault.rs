@@ -196,7 +196,7 @@ impl VaultOnChainTransactionsPanel {
                                     )
                                     .on_press(Message::Vault(
                                         vault.outpoint(),
-                                        VaultMessage::Acknowledge,
+                                        VaultMessage::Secure,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -474,11 +474,11 @@ impl VaultView for VaultListItemView {
 }
 
 #[derive(Debug, Clone)]
-pub struct AcknowledgeVaultListItemView {
+pub struct SecureVaultListItemView {
     select_button: iced::button::State,
 }
 
-impl VaultView for AcknowledgeVaultListItemView {
+impl VaultView for SecureVaultListItemView {
     fn new() -> Self {
         Self {
             select_button: iced::button::State::new(),
@@ -642,13 +642,13 @@ fn vault_delegate<'a>(
 }
 
 #[derive(Debug)]
-pub struct AcknowledgeVaultView {
+pub struct SecureVaultView {
     retry_button: iced::button::State,
 }
 
-impl AcknowledgeVaultView {
+impl SecureVaultView {
     pub fn new() -> Self {
-        AcknowledgeVaultView {
+        SecureVaultView {
             retry_button: iced::button::State::default(),
         }
     }
