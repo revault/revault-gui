@@ -43,9 +43,7 @@ pub trait SettingsBox {
 pub struct SettingsBoxes {
     pub general: GeneralBox,
     pub bitcoind: BitcoindBox,
-    pub stakeholder_xpubs: StakeholderXpubsBox,
-    pub manager_xpubs: ManagerXpubsBox,
-    pub cosigner_keys: CosignerKeysBox,
+    pub scripts: ScriptsBox,
     pub manager: ManagerBox,
     pub stakeholder: StakeholderBox,
 }
@@ -64,7 +62,6 @@ impl SettingsBox for GeneralBox {
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
-            ("Unvault CSV", format!("{}", config.unvault_csv)),
             ("Coordinator host", config.coordinator_host.clone()),
             (
                 "Coordinator noise key",
@@ -155,11 +152,11 @@ impl SettingsBox for BitcoindBox {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct StakeholderXpubsBox {}
+pub struct ScriptsBox {}
 
-impl SettingsBox for StakeholderXpubsBox {
+impl SettingsBox for ScriptsBox {
     fn title(&self) -> &'static str {
-        "Stakeholder xpubs"
+        "Bitcoin scripts"
     }
 
     fn description(&self) -> &'static str {
@@ -167,62 +164,26 @@ impl SettingsBox for StakeholderXpubsBox {
     }
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let mut column = Column::new();
-
-        for x in &config.stakeholders_xpubs {
-            column = column.push(Container::new(
-                text::small(&x.to_string()).width(Length::Fill),
-            ))
-        }
-        column
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ManagerXpubsBox {}
-
-impl SettingsBox for ManagerXpubsBox {
-    fn title(&self) -> &'static str {
-        "Manager xpubs"
-    }
-
-    fn description(&self) -> &'static str {
-        ""
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let mut column = Column::new();
-
-        for x in &config.managers_xpubs {
-            column = column.push(Container::new(
-                text::small(&x.to_string()).width(Length::Fill),
-            ))
-        }
-        column
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct CosignerKeysBox {}
-
-impl SettingsBox for CosignerKeysBox {
-    fn title(&self) -> &'static str {
-        "Cosigner keys"
-    }
-
-    fn description(&self) -> &'static str {
-        ""
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let mut column = Column::new();
-
-        for x in &config.cosigners_keys {
-            column = column.push(Container::new(
-                text::small(&x.to_string()).width(Length::Fill),
-            ))
-        }
-        column
+        Column::new()
+            .push(
+                Column::new()
+                    .spacing(5)
+                    .push(text::bold(text::small("Deposit descriptor")))
+                    .push(text::small(&config.scripts_config.deposit_descriptor)),
+            )
+            .push(
+                Column::new()
+                    .spacing(5)
+                    .push(text::bold(text::small("Unvault descriptor")))
+                    .push(text::small(&config.scripts_config.unvault_descriptor)),
+            )
+            .push(
+                Column::new()
+                    .spacing(5)
+                    .push(text::bold(text::small("CPFP descriptor")))
+                    .push(text::small(&config.scripts_config.cpfp_descriptor)),
+            )
+            .spacing(10)
     }
 }
 

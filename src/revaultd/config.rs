@@ -1,4 +1,4 @@
-use bitcoin::{util::bip32, Network, PublicKey};
+use bitcoin::{util::bip32, Network};
 use serde::Deserialize;
 use std::{
     net::SocketAddr,
@@ -48,6 +48,13 @@ pub struct ManagerConfig {
     pub cosigners: Vec<CosignerConfig>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScriptsConfig {
+    pub deposit_descriptor: String,
+    pub unvault_descriptor: String,
+    pub cpfp_descriptor: String,
+}
+
 /// Static informations we require to operate
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -57,15 +64,8 @@ pub struct Config {
     pub stakeholder_config: Option<StakeholderConfig>,
     /// Some() if we are a manager
     pub manager_config: Option<ManagerConfig>,
-    /// The stakeholders' xpubs
-    pub stakeholders_xpubs: Vec<bip32::ExtendedPubKey>,
-    /// The cosigners' static public keys (must be as many as stakeholders'
-    /// xpubs)
-    pub cosigners_keys: Vec<PublicKey>,
-    /// The managers' xpubs
-    pub managers_xpubs: Vec<bip32::ExtendedPubKey>,
-    /// The unvault output scripts relative timelock
-    pub unvault_csv: u32,
+    /// Descriptors
+    pub scripts_config: ScriptsConfig,
     /// The host of the sync server (may be an IP or a hidden service)
     pub coordinator_host: String,
     /// The Noise static public key of the sync server
