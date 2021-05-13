@@ -1,7 +1,6 @@
 use iced::{pick_list, Column, Container, Length, Row};
 
-use crate::revault::Role;
-use crate::ui::{
+use crate::app::{
     component::{
         button,
         icon::{
@@ -14,6 +13,7 @@ use crate::ui::{
     message::Message,
     view::{layout, Context},
 };
+use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub struct Sidebar {

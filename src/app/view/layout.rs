@@ -1,4 +1,4 @@
-use crate::ui::{
+use crate::app::{
     component::{card, color, image::revault_colored_logo, text},
     error::Error,
 };

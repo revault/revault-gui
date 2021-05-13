@@ -2,7 +2,7 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
-use crate::ui::{
+use crate::app::{
     component::{badge, button, card, icon, scroll, separation, text, ContainerBackgroundStyle},
     error::Error,
     message::{Message, SignMessage, VaultMessage},

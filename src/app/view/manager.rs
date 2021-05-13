@@ -7,7 +7,7 @@ use iced::{
 
 use crate::revaultd::model;
 
-use crate::ui::{
+use crate::app::{
     component::{button, card, scroll, separation, text, ContainerBackgroundStyle},
     error::Error,
     menu::Menu,

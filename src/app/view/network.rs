@@ -1,6 +1,6 @@
 use iced::{scrollable, Column, Container, Element, Length, Row};
 
-use crate::ui::{
+use crate::app::{
     component::{badge, card, color, icon::dot_icon, navbar, scroll, text},
     error::Error,
     message::Message,

@@ -1,6 +1,6 @@
 use iced::{Align, Column, Container, Length, Row};
 
-use crate::ui::{
+use crate::app::{
     component::{card, separation, text},
     message::Message,
 };

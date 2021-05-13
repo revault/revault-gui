@@ -4,7 +4,7 @@ use iced::{
     Align, Column, Container, Element, Length, QRCode, Row,
 };
 
-use crate::ui::{
+use crate::app::{
     component::{
         button, card, icon, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
     },

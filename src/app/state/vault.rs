@@ -3,12 +3,7 @@ use iced::{Command, Element};
 use std::sync::Arc;
 
 use crate::{
-    revault::TransactionKind,
-    revaultd::{
-        model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
-        RevaultD,
-    },
-    ui::{
+    app::{
         error::Error,
         message::{Message, SignMessage, VaultMessage},
         state::{
@@ -25,6 +20,11 @@ use crate::{
             },
             Context,
         },
+    },
+    revault::TransactionKind,
+    revaultd::{
+        model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
+        RevaultD,
     },
 };
 

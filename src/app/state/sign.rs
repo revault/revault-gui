@@ -3,14 +3,14 @@ use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction 
 use iced::{Command, Element};
 
 use crate::{
-    revault::TransactionKind,
-    ui::{
+    app::{
         message::{SignMessage, SignatureSharingStatus},
         view::{
             sign::{DirectSignatureView, IndirectSignatureView},
             Context,
         },
     },
+    revault::TransactionKind,
 };
 
 /// SignState is a general widget to handle the signature of a Psbt.

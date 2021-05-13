@@ -1,12 +1,12 @@
 use iced::{scrollable, Column, Container, Element};
 
-use crate::revault::Role;
-use crate::ui::{
+use crate::app::{
     component::{navbar, scroll},
     error::Error,
     message::Message,
     view::{layout, sidebar::Sidebar, Context},
 };
+use crate::revault::Role;
 
 use crate::revaultd::config::Config;
 

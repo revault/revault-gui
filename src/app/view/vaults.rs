@@ -1,13 +1,13 @@
 use iced::{pick_list, scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::{
-    revaultd::model::VaultStatus,
-    ui::{
+    app::{
         component::{navbar, scroll, text, TransparentPickListStyle},
         error::Error,
         message::{Message, VaultFilterMessage},
         view::{layout, sidebar::Sidebar, Context},
     },
+    revaultd::model::VaultStatus,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

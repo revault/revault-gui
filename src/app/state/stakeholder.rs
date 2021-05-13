@@ -8,7 +8,7 @@ use crate::revaultd::{
     RevaultD,
 };
 
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::{Message, VaultMessage},
     state::{

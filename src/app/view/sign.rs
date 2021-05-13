@@ -2,12 +2,12 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use iced::{Align, Column, Container, Element, Length, Row, TextInput};
 
 use crate::{
-    revault::TransactionKind,
-    ui::{
+    app::{
         component::{button, card, separation, text},
         message::{SignMessage, SignatureSharingStatus},
         view::Context,
     },
+    revault::TransactionKind,
 };
 
 #[derive(Debug)]

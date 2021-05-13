@@ -7,8 +7,7 @@ use iced::{
 };
 
 use crate::{
-    revaultd::model::VaultStatus,
-    ui::{
+    app::{
         component::{
             button, card, color,
             icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
@@ -19,6 +18,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar, Context},
     },
+    revaultd::model::VaultStatus,
 };
 
 #[derive(Debug)]
