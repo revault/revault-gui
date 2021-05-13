@@ -7,11 +7,12 @@ extern crate serde_json;
 
 mod app;
 mod conversion;
+mod installer;
 mod revault;
 mod revaultd;
 mod ui;
 
-use app::config::Config;
+use app::config::{Config, ConfigError};
 
 fn config_path_from_args(args: Vec<String>) -> Result<Option<PathBuf>, Box<dyn Error>> {
     if args.len() == 1 {
@@ -50,8 +51,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         Config::default_path().map_err(|e| format!("Failed to find revault GUI config: {}", e))?
     };
 
-    let config = Config::from_file(&config_path)
-        .map_err(|e| format!("Failed to read {:?}, {}", &config_path, e))?;
+    if let Err(ConfigError::NotFound) = Config::from_file(&config_path) {
+        if let Err(e) = installer::run(config_path.clone()) {
+            return Err(format!("Failed to install: {}", e).into());
+        };
+    }
+
+    let config = Config::from_file(&config_path)?;
 
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
