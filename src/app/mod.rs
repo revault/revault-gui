@@ -1,4 +1,3 @@
-mod component;
 pub mod config;
 mod error;
 mod menu;

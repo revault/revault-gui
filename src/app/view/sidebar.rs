@@ -1,19 +1,20 @@
 use iced::{pick_list, Column, Container, Length, Row};
 
-use crate::app::{
-    component::{
-        button,
+use crate::revault::Role;
+use crate::{
+    app::{
+        menu::Menu,
+        message::Message,
+        view::{layout, Context},
+    },
+    ui::{
+        component::{button, separation, text, TransparentPickListStyle},
         icon::{
             deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, plus_icon,
             send_icon, settings_icon, vaults_icon,
         },
-        separation, text, TransparentPickListStyle,
     },
-    menu::Menu,
-    message::Message,
-    view::{layout, Context},
 };
-use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub struct Sidebar {

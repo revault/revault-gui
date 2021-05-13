@@ -8,17 +8,17 @@ use iced::{
 
 use crate::{
     app::{
-        component::{
-            button, card, color,
-            icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
-            navbar, scroll, text, TooltipStyle,
-        },
         error::Error,
         menu::Menu,
         message::Message,
         view::{layout, sidebar::Sidebar, Context},
     },
     revaultd::model::VaultStatus,
+    ui::{
+        color,
+        component::{button, card, navbar, scroll, text, TooltipStyle},
+        icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
+    },
 };
 
 #[derive(Debug)]

@@ -1,4 +1,4 @@
-use super::{color, icon::clipboard_icon, text};
+use crate::ui::{color, component::text, icon::clipboard_icon};
 use iced::{button, Color, Container, Row, Vector};
 
 macro_rules! button {

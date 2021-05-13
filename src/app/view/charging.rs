@@ -1,6 +1,9 @@
 use iced::Element;
 
-use crate::app::{component, message::Message, view::layout};
+use crate::{
+    app::{message::Message, view::layout},
+    ui::component,
+};
 
 pub fn charging_connect_view() -> Element<'static, Message> {
     layout::cover(component::text::paragraph("Connecting to daemon..."))

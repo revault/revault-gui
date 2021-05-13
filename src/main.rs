@@ -9,6 +9,7 @@ mod app;
 mod conversion;
 mod revault;
 mod revaultd;
+mod ui;
 
 use app::config::Config;
 

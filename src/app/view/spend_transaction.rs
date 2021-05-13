@@ -4,13 +4,13 @@ use iced::{scrollable, Align, Column, Container, Element, Length, Row, TextInput
 
 use crate::{
     app::{
-        component::{badge, button, card, scroll, text, ContainerBackgroundStyle},
         error::Error,
         menu::Menu,
         message::{Message, SpendTxMessage},
         view::{manager::spend_tx_with_feerate_view, Context},
     },
     revaultd::model,
+    ui::component::{badge, button, card, scroll, text, ContainerBackgroundStyle},
 };
 
 #[derive(Debug)]

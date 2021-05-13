@@ -1,8 +1,8 @@
 use iced::{Align, Column, Container, Length, Row};
 
-use crate::app::{
-    component::{card, separation, text},
-    message::Message,
+use crate::{
+    app::message::Message,
+    ui::component::{card, separation, text},
 };
 
 use crate::revaultd::config::Config;

@@ -3,11 +3,11 @@ use iced::{Align, Column, Container, Element, Length, Row, TextInput};
 
 use crate::{
     app::{
-        component::{button, card, separation, text},
         message::{SignMessage, SignatureSharingStatus},
         view::Context,
     },
     revault::TransactionKind,
+    ui::component::{button, card, separation, text},
 };
 
 #[derive(Debug)]

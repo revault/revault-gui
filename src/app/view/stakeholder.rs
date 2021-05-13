@@ -4,14 +4,14 @@ use iced::{
     Align, Column, Container, Element, Length, QRCode, Row,
 };
 
-use crate::app::{
-    component::{
-        button, card, icon, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
+use crate::{
+    app::{error::Error, menu::Menu, message::Message, view::Context},
+    ui::{
+        component::{
+            button, card, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
+        },
+        icon,
     },
-    error::Error,
-    menu::Menu,
-    message::Message,
-    view::Context,
 };
 
 #[derive(Debug)]

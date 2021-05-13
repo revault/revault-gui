@@ -1,4 +1,4 @@
-use super::{
+use crate::ui::{
     color,
     icon::{
         block_icon, deposit_icon, person_check_icon, send_icon, shield_check_icon, shield_icon,

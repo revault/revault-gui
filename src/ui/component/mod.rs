@@ -1,10 +1,9 @@
 pub mod badge;
 pub mod button;
-pub mod color;
-pub mod font;
-pub mod icon;
 pub mod image;
 pub mod text;
+
+use super::{color, font};
 
 use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
 
