@@ -104,7 +104,7 @@ impl State for SpendTransactionState {
     }
 
     fn load(&self) -> Command<Message> {
-        Command::perform(list_spend_txs(self.revaultd.clone()), |res| {
+        Command::perform(list_spend_txs(self.revaultd.clone(), None), |res| {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res))
         })
     }
