@@ -42,21 +42,25 @@ Building the GUI...
 cargo build --release
 ```
 
-### 1. Providing the configuration
-Let's create some aliases:
+### 1. Create the configuration
+
 ```
-alias stake_1_gui="REVAULTD_CONF=\"../revaultd/stake_1_config.toml\" cargo run --release"
-alias stake_2_gui="REVAULTD_CONF=\"../revaultd/stake_2_config.toml\" cargo run --release"
-alias man_1_gui="REVAULTD_CONF=\"../revaultd/man_1_config.toml\" cargo run --release"
+cd ..
+echo "revaultd_config_path=$(pwd)/revaultd/stake_1_config.toml" > revault-gui/stake_1_config_ui.toml
+echo "revaultd_config_path=$(pwd)/revaultd/stake_2_config.toml" > revault-gui/stake_2_config_ui.toml
+echo "revaultd_config_path=$(pwd)/revaultd/stake_3_config.toml" > revault-gui/stake_3_config_ui.toml
+echo "revaultd_config_path=$(pwd)/revaultd/man_1_config.toml" > revault-gui/man_1_config_ui.toml
 ```
 
-### 2. Let the GUI start the binary (optional)
-If you don't want to start `revaultd` manually each time you run the config, you can set the `REVAULTD_PATH` environment variable.
-This will start `revaultd` **only**, you'll need to start yourself `coordinatord` and `cosignerd` anyways.
-Double check that the `revaultd` configuration has `daemon=true`, otherwise the gui won't be able to start.
-Then:
+### 2. Providing the configuration
+
+Let's create some aliases:
 ```
-export REVAULTD_PATH="../revaultd/target/debug/revaultd"
+cd ./revault-gui
+alias stake_1_gui=cargo run --release -- --conf stake_1_config_ui.toml"
+alias stake_2_gui=cargo run --release -- --conf stake_2_config_ui.toml"
+alias stake_3_gui=cargo run --release -- --conf stake_3_config_ui.toml"
+alias man_1_gui="cargo run --release -- --conf  man_1_config_ui.toml"
 ```
 
 ### 3. Starting the GUI
