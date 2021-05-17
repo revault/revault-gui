@@ -125,6 +125,7 @@ impl VaultsView {
                                 Message::FilterVaults(VaultFilterMessage::Status(filter.statuses()))
                             },
                         )
+                        .text_size(15)
                         .padding(10)
                         .width(Length::Units(200))
                         .style(TransparentPickListStyle),
