@@ -20,7 +20,7 @@ use crate::{
         },
         view::{
             vault::{
-                AcknowledgeVaultView, DelegateVaultView, RevaultVaultView, VaultModal,
+                DelegateVaultView, RevaultVaultView, SecureVaultView, VaultModal,
                 VaultOnChainTransactionsPanel, VaultView,
             },
             Context,
@@ -100,7 +100,7 @@ impl Vault {
                     VaultMessage::UnvaultTransaction,
                 );
             }
-            VaultMessage::Acknowledge => {
+            VaultMessage::Secure => {
                 return Command::perform(
                     get_revocation_txs(revaultd.clone(), self.vault.outpoint()),
                     VaultMessage::RevocationTransactions,
@@ -118,6 +118,7 @@ impl Vault {
             ctx,
             &self.vault,
             self.warning.as_ref(),
+            self.section.title(&self.vault),
             self.section.view(ctx, &self.vault),
         )
     }
@@ -142,12 +143,12 @@ pub enum VaultSection {
         view: DelegateVaultView,
         warning: Option<Error>,
     },
-    Acknowledge {
+    Secure {
         emergency_tx: (Psbt, bool),
         emergency_unvault_tx: (Psbt, bool),
         cancel_tx: (Psbt, bool),
         warning: Option<Error>,
-        view: AcknowledgeVaultView,
+        view: SecureVaultView,
         signer: SignState,
     },
     /// Revault action ask the user if the vault that is unvaulting
@@ -162,6 +163,19 @@ pub enum VaultSection {
 }
 
 impl VaultSection {
+    pub fn title(&self, vault: &model::Vault) -> &'static str {
+        match self {
+            Self::Unloaded => "",
+            Self::OnchainTransactions { .. } => match vault.status {
+                VaultStatus::Funded | VaultStatus::Unconfirmed => "Deposit details",
+                _ => "Vault details",
+            },
+            Self::Delegate { .. } => "Delegate vault",
+            Self::Secure { .. } => "Create vault",
+            Self::Revault { .. } => "Revault funds",
+        }
+    }
+
     pub fn new_onchain_txs_section(txs: VaultTransactions) -> Self {
         Self::OnchainTransactions {
             txs,
@@ -187,12 +201,12 @@ impl VaultSection {
     }
 
     pub fn new_ack_section(txs: RevocationTransactions) -> Self {
-        Self::Acknowledge {
+        Self::Secure {
             emergency_tx: (txs.emergency_tx.clone(), false),
             emergency_unvault_tx: (txs.emergency_unvault_tx.clone(), false),
             cancel_tx: (txs.cancel_tx.clone(), false),
             signer: SignState::new(txs.emergency_tx, TransactionKind::Emergency),
-            view: AcknowledgeVaultView::new(),
+            view: SecureVaultView::new(),
             warning: None,
         }
     }
@@ -250,7 +264,7 @@ impl VaultSection {
                         *warning = Some(Error::RevaultDError(e));
                     }
                 },
-                VaultSection::Acknowledge {
+                VaultSection::Secure {
                     warning, signer, ..
                 } => match res {
                     Ok(()) => {
@@ -276,7 +290,7 @@ impl VaultSection {
                         );
                     }
                 }
-                VaultSection::Acknowledge {
+                VaultSection::Secure {
                     signer,
                     emergency_tx,
                     emergency_unvault_tx,
@@ -335,7 +349,7 @@ impl VaultSection {
                 warning,
                 ..
             } => view.view(ctx, &vault, warning.as_ref(), signer.view(ctx)),
-            Self::Acknowledge {
+            Self::Secure {
                 emergency_tx,
                 emergency_unvault_tx,
                 cancel_tx,

@@ -12,13 +12,13 @@ use crate::ui::{
     error::Error,
     message::{Message, VaultMessage},
     state::{
-        cmd::{get_blockheight, get_revocation_txs, list_vaults},
+        cmd::{get_blockheight, get_deposit_address, get_revocation_txs, list_vaults},
         vault::{Vault, VaultListItem},
         State,
     },
     view::{
-        vault::{AcknowledgeVaultListItemView, DelegateVaultListItemView, VaultListItemView},
-        Context, StakeholderACKFundsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
+        Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
         StakeholderNetworkView,
     },
 };
@@ -223,24 +223,26 @@ impl From<StakeholderNetworkState> for Box<dyn State> {
 }
 
 #[derive(Debug)]
-pub struct StakeholderACKFundsState {
+pub struct StakeholderCreateVaultsState {
     revaultd: Arc<RevaultD>,
 
     warning: Option<Error>,
     balance: u64,
-    deposits: Vec<VaultListItem<AcknowledgeVaultListItemView>>,
+    address: Option<bitcoin::Address>,
+    deposits: Vec<VaultListItem<SecureVaultListItemView>>,
     selected_vault: Option<Vault>,
 
-    view: StakeholderACKFundsView,
+    view: StakeholderCreateVaultsView,
 }
 
-impl StakeholderACKFundsState {
+impl StakeholderCreateVaultsState {
     pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        StakeholderACKFundsState {
+        StakeholderCreateVaultsState {
             revaultd,
+            address: None,
             warning: None,
             deposits: Vec::new(),
-            view: StakeholderACKFundsView::new(),
+            view: StakeholderCreateVaultsView::new(),
             balance: 0,
             selected_vault: None,
         }
@@ -287,9 +289,21 @@ impl StakeholderACKFundsState {
     }
 }
 
-impl State for StakeholderACKFundsState {
+impl State for StakeholderCreateVaultsState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::DepositAddress(res) => match res {
+                Ok(address) => {
+                    // Address is loaded directly in the view in order to cache the created qrcode.
+                    self.view.load(&address);
+                    self.address = Some(address);
+                    return Command::none();
+                }
+                Err(e) => {
+                    self.warning = Some(Error::RevaultDError(e));
+                    return Command::none();
+                }
+            },
             Message::Vault(outpoint, VaultMessage::Select) => self.on_vault_select(outpoint),
             Message::Vault(outpoint, msg) => {
                 if let Some(selected) = &mut self.selected_vault {
@@ -319,23 +333,29 @@ impl State for StakeholderACKFundsState {
         if let Some(selected) = &mut self.selected_vault {
             return selected.view(ctx);
         }
-        self.view
-            .view(ctx, self.deposits.iter_mut().map(|v| v.view(ctx)).collect())
+        self.view.view(
+            ctx,
+            self.deposits.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.address.as_ref(),
+        )
     }
 
     fn load(&self) -> Command<Message> {
-        Command::batch(vec![Command::perform(
-            list_vaults(
-                self.revaultd.clone(),
-                Some(&[VaultStatus::Securing, VaultStatus::Funded]),
+        Command::batch(vec![
+            Command::perform(
+                get_deposit_address(self.revaultd.clone()),
+                Message::DepositAddress,
             ),
-            Message::Vaults,
-        )])
+            Command::perform(
+                list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded])),
+                Message::Vaults,
+            ),
+        ])
     }
 }
 
-impl From<StakeholderACKFundsState> for Box<dyn State> {
-    fn from(s: StakeholderACKFundsState) -> Box<dyn State> {
+impl From<StakeholderCreateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

@@ -4,7 +4,7 @@ pub enum Menu {
     Home,
     Network,
     Send,
-    ACKFunds,
+    CreateVaults,
     DelegateFunds,
     Settings,
     Vaults,

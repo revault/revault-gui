@@ -69,7 +69,7 @@ pub enum VaultMessage {
     Signed(Result<(), RevaultDError>),
     Select,
     Delegate,
-    Acknowledge,
+    Secure,
     Retry,
     SelectRevault,
     Revault,

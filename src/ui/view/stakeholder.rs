@@ -1,11 +1,13 @@
 use iced::{
     scrollable,
     tooltip::{self, Tooltip},
-    Align, Column, Container, Element, Length, Row,
+    Align, Column, Container, Element, Length, QRCode, Row,
 };
 
 use crate::ui::{
-    component::{button, card, icon, scroll, text, ContainerBackgroundStyle, TooltipStyle},
+    component::{
+        button, card, icon, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
+    },
     error::Error,
     menu::Menu,
     message::Message,
@@ -13,32 +15,110 @@ use crate::ui::{
 };
 
 #[derive(Debug)]
-pub struct StakeholderACKFundsView {
+pub struct StakeholderCreateVaultsView {
     scroll: scrollable::State,
+    qr_code: Option<iced::qr_code::State>,
     close_button: iced::button::State,
+    copy_button: iced::button::State,
 }
 
-impl StakeholderACKFundsView {
+impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
-        StakeholderACKFundsView {
+        StakeholderCreateVaultsView {
+            qr_code: None,
             scroll: scrollable::State::new(),
             close_button: iced::button::State::new(),
+            copy_button: iced::button::State::new(),
         }
+    }
+
+    // Address is loaded directly in the view in order to cache the created qrcode.
+    pub fn load(&mut self, address: &bitcoin::Address) {
+        self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
     pub fn view<'a>(
         &'a mut self,
         _ctx: &Context,
         deposits: Vec<Element<'a, Message>>,
+        address: Option<&bitcoin::Address>,
     ) -> Element<'a, Message> {
-        let mut col_deposits = Column::new();
-        for element in deposits.into_iter() {
-            col_deposits = col_deposits.push(element);
+        let mut content = Column::new()
+            .max_width(800)
+            .push(text::bold(text::simple("Create some vaults")).size(50))
+            .spacing(20);
+
+        if deposits.len() > 0 {
+            content = content.push(Container::new(
+                Column::new()
+                    .push(text::simple(" Click on a deposit to create a vault:"))
+                    .push(Column::with_children(deposits).spacing(5))
+                    .spacing(20),
+            ))
+        } else {
+            content = content.push(Container::new(text::simple("No deposits")).padding(5))
         }
-        let element: Element<_> = col_deposits.spacing(20).max_width(1000).into();
+
+        if let Some(qr_code) = self.qr_code.as_mut() {
+            if let Some(addr) = address {
+                content = content.push(separation().width(Length::Fill)).push(
+                    card::white(Container::new(
+                        Row::new()
+                            .push(
+                                Column::new()
+                                    .push(text::simple(
+                                        "Bitcoin deposits are needed in order to create a vault\n",
+                                    ))
+                                    .push(
+                                        Column::new()
+                                            .push(text::bold(text::simple(
+                                                "Please, use this deposit address:",
+                                            )))
+                                            .push(
+                                                Row::new()
+                                                    .push(Container::new(text::bold(text::small(
+                                                        &addr.to_string(),
+                                                    ))))
+                                                    .push(
+                                                        button::clipboard(
+                                                            &mut self.copy_button,
+                                                            Message::Clipboard(addr.to_string()),
+                                                        )
+                                                        .width(Length::Shrink),
+                                                    )
+                                                    .align_items(Align::Center),
+                                            ),
+                                    )
+                                    .spacing(30)
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Container::new(QRCode::new(qr_code).cell_size(5))
+                                    .width(Length::Shrink),
+                            )
+                            .spacing(10),
+                    ))
+                    .width(Length::Fill),
+                );
+            }
+        }
+
         let col = Column::new()
             .push(
-                Row::new().push(Column::new().width(Length::Fill)).push(
+                Row::new().push(Container::new(
+                            Tooltip::new(
+                                Row::new()
+                                    .push(icon::tooltip_icon().size(15))
+                                    .push(text::small(" Help")),
+                                "A vault is a deposit with revocation transactions\nsigned and shared between stakeholders",
+                                tooltip::Position::Right,
+                            )
+                            .gap(5)
+                            .size(15)
+                            .padding(10)
+                            .style(TooltipStyle),
+                        )
+                        .width(Length::Fill)).push(
                     Container::new(
                         button::cancel(
                             &mut self.close_button,
@@ -48,13 +128,8 @@ impl StakeholderACKFundsView {
                     )
                     .width(Length::Shrink),
                 ),
-            )
-            .push(
-                Container::new(element)
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .spacing(50);
+            ).push(content).align_items(Align::Center).spacing(50);
+
         Container::new(scroll(&mut self.scroll, Container::new(col)))
             .width(Length::Fill)
             .height(Length::Fill)

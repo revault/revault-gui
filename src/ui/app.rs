@@ -6,8 +6,8 @@ use super::menu::Menu;
 use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use super::state::{
     ChargingState, DepositState, ManagerHomeState, ManagerNetworkState, ManagerSendState,
-    SettingsState, StakeholderACKFundsState, StakeholderDelegateFundsState, StakeholderHomeState,
-    StakeholderNetworkState, State, VaultsState,
+    SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
+    StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
 };
 
 use crate::{
@@ -47,11 +47,11 @@ impl App {
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
-                Menu::Deposit => DepositState::new(revaultd).into(),
+                Menu::Deposit => StakeholderHomeState::new(revaultd).into(),
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::Vaults => VaultsState::new(revaultd).into(),
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
-                Menu::ACKFunds => StakeholderACKFundsState::new(revaultd).into(),
+                Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
                 Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
                 _ => unreachable!(),

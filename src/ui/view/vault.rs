@@ -35,6 +35,7 @@ impl VaultModal {
         ctx: &Context,
         vlt: &Vault,
         warning: Option<&Error>,
+        panel_title: &str,
         panel: Element<'a, Message>,
     ) -> Element<'a, Message> {
         let mut col = Column::new();
@@ -65,7 +66,7 @@ impl VaultModal {
                         Container::new(
                             Column::new()
                                 .push(
-                                    Container::new(text::simple("Vault Detail"))
+                                    Container::new(text::simple(&panel_title))
                                         .width(Length::Fill)
                                         .align_x(Align::Center),
                                 )
@@ -183,7 +184,7 @@ impl VaultOnChainTransactionsPanel {
                         Row::new()
                             .push(
                                 Container::new(text::simple(
-                                    "This vault needs to be acknowledged ",
+                                    "Do you want to create a vault from this deposit?",
                                 ))
                                 .width(Length::Fill),
                             )
@@ -191,11 +192,11 @@ impl VaultOnChainTransactionsPanel {
                                 Container::new(
                                     button::important(
                                         &mut self.action_button,
-                                        button::button_content(None, "Acknowledge"),
+                                        button::button_content(None, "Create vault"),
                                     )
                                     .on_press(Message::Vault(
                                         vault.outpoint(),
-                                        VaultMessage::Acknowledge,
+                                        VaultMessage::Secure,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -473,11 +474,11 @@ impl VaultView for VaultListItemView {
 }
 
 #[derive(Debug, Clone)]
-pub struct AcknowledgeVaultListItemView {
+pub struct SecureVaultListItemView {
     select_button: iced::button::State,
 }
 
-impl VaultView for AcknowledgeVaultListItemView {
+impl VaultView for SecureVaultListItemView {
     fn new() -> Self {
         Self {
             select_button: iced::button::State::new(),
@@ -641,13 +642,13 @@ fn vault_delegate<'a>(
 }
 
 #[derive(Debug)]
-pub struct AcknowledgeVaultView {
+pub struct SecureVaultView {
     retry_button: iced::button::State,
 }
 
-impl AcknowledgeVaultView {
+impl SecureVaultView {
     pub fn new() -> Self {
-        AcknowledgeVaultView {
+        SecureVaultView {
             retry_button: iced::button::State::default(),
         }
     }
