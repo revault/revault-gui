@@ -612,7 +612,7 @@ impl State for ManagerCreateSendTransactionState {
         match &mut self.step {
             ManagerSendStep::WelcomeUser(v) => v.view(),
             ManagerSendStep::SelectOutputs(v) => {
-                let valid = !self.outputs.iter().any(|o| !o.valid());
+                let valid = !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());
                 v.view(
                     self.outputs
                         .iter_mut()
