@@ -7,6 +7,13 @@ pub enum Message {
     Role(&'static [Role]),
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),
+    DefineCpfpDescriptor(DefineCpfpDescriptor),
+}
+
+#[derive(Debug, Clone)]
+pub enum DefineCpfpDescriptor {
+    ManagerXpub(usize, ParticipantXpub),
+    AddXpub,
 }
 
 #[derive(Debug, Clone)]
