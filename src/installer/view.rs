@@ -260,164 +260,374 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
     )
 }
 
-pub fn define_manager_xpubs_as_manager<'a>(
-    our_xpub: &str,
-    our_xpub_input: &'a mut text_input::State,
-    our_xpub_warning: bool,
-    add_xpub_button: &'a mut Button,
-    other_xpubs: Vec<Element<'a, Message>>,
-    add_cosigner_button: &'a mut Button,
-    cosigners: Vec<Element<'a, Message>>,
-    scroll: &'a mut scrollable::State,
-    previous_button: &'a mut Button,
-    save_button: &'a mut Button,
-) -> Element<'a, Message> {
-    let mut col = Column::new()
-        .push(text::bold(text::simple("Your manager xpub:")))
-        .push(
-            TextInput::new(our_xpub_input, "Your manager xpub", our_xpub, |msg| {
-                Message::DefineManagerXpubs(message::DefineManagerXpubs::OurXpubEdited(msg))
-            })
-            .size(15)
-            .padding(10),
-        )
-        .spacing(10);
-
-    if our_xpub_warning {
-        col = col.push(text::simple("Please enter a valid xpub").color(color::WARNING));
-    }
-
-    layout(
-        scroll,
-        previous_button,
-        Column::new()
-            .push(text::bold(text::simple("Define managers")).size(50))
-            .push(col)
-            .push(
-                Column::new()
-                    .push(text::bold(text::simple("Other Managers xpubs:")))
-                    .push(Column::with_children(other_xpubs).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                add_xpub_button,
-                                button::button_content(Some(icon::plus_icon()), "Add manager"),
-                            )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddXpub,
-                            )),
-                        )
-                        .width(Length::Fill),
-                    )
-                    .spacing(10),
-            )
-            .push(
-                Column::new()
-                    .push(text::bold(text::simple("Cosigners keys:")))
-                    .push(Column::with_children(cosigners).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                add_cosigner_button,
-                                button::button_content(Some(icon::plus_icon()), "Add cosigner key"),
-                            )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddCosigner,
-                            )),
-                        )
-                        .width(Length::Fill),
-                    )
-                    .spacing(10),
-            )
-            .push(
-                Row::new()
-                    .push(
-                        button::primary(save_button, button::button_content(None, "Save"))
-                            .on_press(Message::Next),
-                    )
-                    .align_items(Align::Center)
-                    .spacing(20),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center)
-            .into(),
-    )
+pub struct ManagersTreshold {
+    increment_button: Button,
+    decrement_button: Button,
 }
 
-pub fn define_manager_xpubs_as_stakeholder_only<'a>(
-    add_xpub_button: &'a mut Button,
-    manager_xpubs: Vec<Element<'a, Message>>,
-    add_cosigner_button: &'a mut Button,
-    cosigners: Vec<Element<'a, Message>>,
-    scroll: &'a mut scrollable::State,
-    previous_button: &'a mut Button,
-    save_button: &'a mut Button,
-) -> Element<'a, Message> {
-    let mut row = Row::new().align_items(Align::Center).spacing(20);
-    if manager_xpubs.is_empty() {
-        row = row.push(button::primary(
-            save_button,
-            button::button_content(None, "Save"),
-        ));
-    } else {
-        row = row.push(
-            button::primary(save_button, button::button_content(None, "Save"))
-                .on_press(Message::Next),
-        );
+impl ManagersTreshold {
+    pub fn new() -> Self {
+        Self {
+            increment_button: Button::new(),
+            decrement_button: Button::new(),
+        }
     }
 
-    layout(
-        scroll,
-        previous_button,
-        Column::new()
-            .push(text::bold(text::simple("Define managers")).size(50))
+    pub fn render(&mut self, managers_treshold: u32) -> Container<Message> {
+        Container::new(
+            Column::new()
+                .push(text::bold(text::simple("Managers treshold:")))
+                .push(
+                    Row::new()
+                        .push(text::simple(&format!("{}", managers_treshold)).size(50))
+                        .push(
+                            Column::new()
+                                .push(
+                                    button::transparent(
+                                        &mut self.increment_button,
+                                        Container::new(text::simple("+")),
+                                    )
+                                    .on_press(
+                                        Message::DefineManagerXpubs(
+                                            message::DefineManagerXpubs::ManagersTreshold(
+                                                message::Action::Increment,
+                                            ),
+                                        ),
+                                    ),
+                                )
+                                .push(
+                                    button::transparent(
+                                        &mut self.decrement_button,
+                                        Container::new(text::simple("-")),
+                                    )
+                                    .on_press(
+                                        Message::DefineManagerXpubs(
+                                            message::DefineManagerXpubs::ManagersTreshold(
+                                                message::Action::Decrement,
+                                            ),
+                                        ),
+                                    ),
+                                )
+                                .align_items(Align::Center),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .align_items(Align::Center)
+                .spacing(10),
+        )
+    }
+}
+
+pub struct SpendingDelay {
+    increment_button: Button,
+    decrement_button: Button,
+}
+
+impl SpendingDelay {
+    pub fn new() -> Self {
+        Self {
+            increment_button: Button::new(),
+            decrement_button: Button::new(),
+        }
+    }
+
+    pub fn render(&mut self, spending_delay: u32) -> Container<Message> {
+        Container::new(
+            Column::new()
+                .push(text::bold(text::simple("Spending delay in blocks:")))
+                .push(
+                    Row::new()
+                        .push(text::simple(&format!("{}", spending_delay)).size(50))
+                        .push(
+                            Column::new()
+                                .push(
+                                    button::transparent(
+                                        &mut self.increment_button,
+                                        Container::new(text::simple("+")),
+                                    )
+                                    .on_press(
+                                        Message::DefineManagerXpubs(
+                                            message::DefineManagerXpubs::SpendingDelay(
+                                                message::Action::Increment,
+                                            ),
+                                        ),
+                                    ),
+                                )
+                                .push(
+                                    button::transparent(
+                                        &mut self.decrement_button,
+                                        Container::new(text::simple("-")),
+                                    )
+                                    .on_press(
+                                        Message::DefineManagerXpubs(
+                                            message::DefineManagerXpubs::SpendingDelay(
+                                                message::Action::Decrement,
+                                            ),
+                                        ),
+                                    ),
+                                )
+                                .align_items(Align::Center),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .align_items(Align::Center)
+                .spacing(10),
+        )
+    }
+}
+
+pub struct DefineManagerXpubsAsManager {
+    managers_treshold: ManagersTreshold,
+    spending_delay: SpendingDelay,
+    add_xpub_button: Button,
+    add_cosigner_button: Button,
+    our_xpub_input: text_input::State,
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineManagerXpubsAsManager {
+    pub fn new() -> Self {
+        Self {
+            our_xpub_input: text_input::State::new(),
+            add_xpub_button: Button::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+            add_cosigner_button: Button::new(),
+            spending_delay: SpendingDelay::new(),
+            managers_treshold: ManagersTreshold::new(),
+        }
+    }
+
+    pub fn render<'a>(
+        &'a mut self,
+        managers_treshold: u32,
+        spending_delay: u32,
+        our_xpub: &str,
+        our_xpub_warning: bool,
+        other_xpubs: Vec<Element<'a, Message>>,
+        cosigners: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        let mut manager_xpub_col = Column::new()
+            .push(text::bold(text::simple("Your manager xpub:")))
             .push(
-                Column::new()
-                    .spacing(10)
-                    .push(text::bold(text::simple("Managers xpubs:")))
-                    .push(Column::with_children(manager_xpubs).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                add_xpub_button,
-                                button::button_content(Some(icon::plus_icon()), "Add manager"),
-                            )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddXpub,
-                            )),
+                TextInput::new(
+                    &mut self.our_xpub_input,
+                    "Your manager xpub",
+                    our_xpub,
+                    |msg| {
+                        Message::DefineManagerXpubs(message::DefineManagerXpubs::OurXpubEdited(msg))
+                    },
+                )
+                .size(15)
+                .padding(10),
+            )
+            .spacing(10);
+
+        if our_xpub_warning {
+            manager_xpub_col = manager_xpub_col
+                .push(text::simple("Please enter a valid xpub").color(color::WARNING));
+        }
+
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define managers")).size(50))
+                .push(
+                    Row::new()
+                        .push(
+                            Container::new(self.managers_treshold.render(managers_treshold))
+                                .width(Length::FillPortion(1))
+                                .align_x(Align::Center),
+                        )
+                        .push(
+                            Container::new(self.spending_delay.render(spending_delay))
+                                .width(Length::FillPortion(1))
+                                .align_x(Align::Center),
                         )
                         .width(Length::Fill),
-                    ),
-            )
-            .push(
-                Column::new()
-                    .spacing(10)
-                    .push(text::bold(text::simple("Cosigners keys:")))
-                    .push(Column::with_children(cosigners).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                add_cosigner_button,
-                                button::button_content(Some(icon::plus_icon()), "Add cosigner"),
+                )
+                .push(manager_xpub_col)
+                .push(
+                    Column::new()
+                        .push(text::bold(text::simple("Other Managers xpubs:")))
+                        .push(Column::with_children(other_xpubs).spacing(10))
+                        .push(
+                            Container::new(
+                                button::white_card_button(
+                                    &mut self.add_xpub_button,
+                                    button::button_content(Some(icon::plus_icon()), "Add manager"),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::AddXpub,
+                                    ),
+                                ),
                             )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddCosigner,
-                            )),
+                            .width(Length::Fill),
+                        )
+                        .spacing(10),
+                )
+                .push(
+                    Column::new()
+                        .push(text::bold(text::simple("Cosigners keys:")))
+                        .push(Column::with_children(cosigners).spacing(10))
+                        .push(
+                            Container::new(
+                                button::white_card_button(
+                                    &mut self.add_cosigner_button,
+                                    button::button_content(
+                                        Some(icon::plus_icon()),
+                                        "Add cosigner key",
+                                    ),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::AddCosigner,
+                                    ),
+                                ),
+                            )
+                            .width(Length::Fill),
+                        )
+                        .spacing(10),
+                )
+                .push(
+                    Row::new()
+                        .push(
+                            button::primary(
+                                &mut self.save_button,
+                                button::button_content(None, "Save"),
+                            )
+                            .on_press(Message::Next),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
+pub struct DefineManagerXpubsAsStakeholderOnly {
+    managers_treshold: ManagersTreshold,
+    spending_delay: SpendingDelay,
+    add_cosigner_button: Button,
+    add_xpub_button: Button,
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineManagerXpubsAsStakeholderOnly {
+    pub fn new() -> Self {
+        Self {
+            managers_treshold: ManagersTreshold::new(),
+            spending_delay: SpendingDelay::new(),
+            add_cosigner_button: Button::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+            add_xpub_button: Button::new(),
+        }
+    }
+    pub fn render<'a>(
+        &'a mut self,
+        managers_treshold: u32,
+        spending_delay: u32,
+        manager_xpubs: Vec<Element<'a, Message>>,
+        cosigners: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        if manager_xpubs.is_empty() {
+            row = row.push(button::primary(
+                &mut self.save_button,
+                button::button_content(None, "Save"),
+            ));
+        } else {
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Save"))
+                    .on_press(Message::Next),
+            );
+        }
+
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define managers")).size(50))
+                .push(
+                    Row::new()
+                        .push(
+                            Container::new(self.managers_treshold.render(managers_treshold))
+                                .width(Length::FillPortion(1))
+                                .align_x(Align::Center),
+                        )
+                        .push(
+                            Container::new(self.spending_delay.render(spending_delay))
+                                .width(Length::FillPortion(1))
+                                .align_x(Align::Center),
                         )
                         .width(Length::Fill),
-                    ),
-            )
-            .push(row)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center)
-            .into(),
-    )
+                )
+                .push(
+                    Column::new()
+                        .spacing(10)
+                        .push(text::bold(text::simple("Managers xpubs:")))
+                        .push(Column::with_children(manager_xpubs).spacing(10))
+                        .push(
+                            Container::new(
+                                button::white_card_button(
+                                    &mut self.add_xpub_button,
+                                    button::button_content(Some(icon::plus_icon()), "Add manager"),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::AddXpub,
+                                    ),
+                                ),
+                            )
+                            .width(Length::Fill),
+                        ),
+                )
+                .push(
+                    Column::new()
+                        .spacing(10)
+                        .push(text::bold(text::simple("Cosigners keys:")))
+                        .push(Column::with_children(cosigners).spacing(10))
+                        .push(
+                            Container::new(
+                                button::white_card_button(
+                                    &mut self.add_cosigner_button,
+                                    button::button_content(Some(icon::plus_icon()), "Add cosigner"),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::AddCosigner,
+                                    ),
+                                ),
+                            )
+                            .width(Length::Fill),
+                        ),
+                )
+                .push(row)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
 }
 
 fn layout<'a>(

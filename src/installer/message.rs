@@ -18,11 +18,19 @@ pub enum DefineStakeholderXpubs {
 
 #[derive(Debug, Clone)]
 pub enum DefineManagerXpubs {
+    ManagersTreshold(Action),
+    SpendingDelay(Action),
     OurXpubEdited(String),
     ManagerXpub(usize, ParticipantXpub),
     CosignerKey(usize, CosignerKey),
     AddXpub,
     AddCosigner,
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    Increment,
+    Decrement,
 }
 
 #[derive(Debug, Clone)]

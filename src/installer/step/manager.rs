@@ -98,28 +98,22 @@ pub struct DefineManagerXpubs {
     other_xpubs: Vec<ParticipantXpub>,
     our_xpub: String,
     our_xpub_warning: bool,
+    managers_treshold: u32,
+    spending_delay: u32,
 
-    add_xpub_button: Button,
-    add_cosigner_button: Button,
-    our_xpub_input: text_input::State,
-    scroll: scrollable::State,
-    previous_button: Button,
-    save_button: Button,
+    view: view::DefineManagerXpubsAsManager,
 }
 
 impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
+            managers_treshold: 0,
+            spending_delay: 0,
             our_xpub: "".to_string(),
-            our_xpub_input: text_input::State::new(),
             our_xpub_warning: false,
             other_xpubs: Vec::new(),
-            add_xpub_button: Button::new(),
-            scroll: scrollable::State::new(),
-            previous_button: Button::new(),
-            save_button: Button::new(),
             cosigners: Vec::new(),
-            add_cosigner_button: Button::new(),
+            view: view::DefineManagerXpubsAsManager::new(),
         }
     }
 }
@@ -169,16 +163,36 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::AddCosigner => {
                     self.cosigners.push(CosignerKey::new());
                 }
+                message::DefineManagerXpubs::ManagersTreshold(action) => match action {
+                    message::Action::Increment => {
+                        self.managers_treshold = self.managers_treshold + 1;
+                    }
+                    message::Action::Decrement => {
+                        if self.managers_treshold > 0 {
+                            self.managers_treshold = self.managers_treshold - 1;
+                        }
+                    }
+                },
+                message::DefineManagerXpubs::SpendingDelay(action) => match action {
+                    message::Action::Increment => {
+                        self.spending_delay = self.spending_delay + 1;
+                    }
+                    message::Action::Decrement => {
+                        if self.spending_delay > 0 {
+                            self.spending_delay = self.spending_delay - 1;
+                        }
+                    }
+                },
             };
         };
     }
 
     fn view(&mut self) -> Element<Message> {
-        return view::define_manager_xpubs_as_manager(
+        return self.view.render(
+            self.managers_treshold,
+            self.spending_delay,
             &self.our_xpub,
-            &mut self.our_xpub_input,
             self.our_xpub_warning,
-            &mut self.add_xpub_button,
             self.other_xpubs
                 .iter_mut()
                 .enumerate()
@@ -190,7 +204,6 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
-            &mut self.add_cosigner_button,
             self.cosigners
                 .iter_mut()
                 .enumerate()
@@ -202,9 +215,6 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
-            &mut self.scroll,
-            &mut self.previous_button,
-            &mut self.save_button,
         );
     }
 }
