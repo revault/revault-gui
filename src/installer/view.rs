@@ -630,6 +630,59 @@ impl DefineManagerXpubsAsStakeholderOnly {
     }
 }
 
+pub fn define_cpfp_descriptor<'a>(
+    add_xpub_button: &'a mut Button,
+    manager_xpubs: Vec<Element<'a, Message>>,
+    scroll: &'a mut scrollable::State,
+    previous_button: &'a mut Button,
+    save_button: &'a mut Button,
+) -> Element<'a, Message> {
+    let mut row = Row::new().align_items(Align::Center).spacing(20);
+    if manager_xpubs.is_empty() {
+        row = row.push(button::primary(
+            save_button,
+            button::button_content(None, "Save"),
+        ));
+    } else {
+        row = row.push(
+            button::primary(save_button, button::button_content(None, "Save"))
+                .on_press(Message::Next),
+        );
+    }
+
+    layout(
+        scroll,
+        previous_button,
+        Column::new()
+            .push(text::bold(text::simple("Define fee bumping managers")).size(50))
+            .push(
+                Column::new()
+                    .spacing(10)
+                    .push(text::bold(text::simple("Managers xpubs:")))
+                    .push(Column::with_children(manager_xpubs).spacing(10))
+                    .push(
+                        Container::new(
+                            button::white_card_button(
+                                add_xpub_button,
+                                button::button_content(Some(icon::plus_icon()), "Add manager"),
+                            )
+                            .on_press(Message::DefineCpfpDescriptor(
+                                message::DefineCpfpDescriptor::AddXpub,
+                            )),
+                        )
+                        .width(Length::Fill),
+                    ),
+            )
+            .push(row)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(100)
+            .spacing(50)
+            .align_items(Align::Center)
+            .into(),
+    )
+}
+
 fn layout<'a>(
     scroll_state: &'a mut scrollable::State,
     previous_button: &'a mut Button,

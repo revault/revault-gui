@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use crate::revault::Role;
 use message::Message;
-use step::{manager, stakeholder, DefineRole, Step, Welcome};
+use step::{manager, stakeholder, DefineCpfpDescriptor, DefineRole, Step, Welcome};
 
 pub fn run(config_path: PathBuf) -> Result<(), iced::Error> {
     Installer::run(Settings::with_flags(config_path))
@@ -42,6 +42,7 @@ impl Installer {
                 DefineRole::new().into(),
                 manager::DefineStakeholderXpubs::new().into(),
                 manager::DefineManagerXpubs::new().into(),
+                DefineCpfpDescriptor::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
             self.steps = vec![
@@ -49,6 +50,7 @@ impl Installer {
                 DefineRole::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
                 stakeholder::DefineManagerXpubs::new().into(),
+                DefineCpfpDescriptor::new().into(),
             ];
         } else {
             self.steps = vec![
@@ -56,6 +58,7 @@ impl Installer {
                 DefineRole::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
                 manager::DefineManagerXpubs::new().into(),
+                DefineCpfpDescriptor::new().into(),
             ];
         }
     }
