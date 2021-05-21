@@ -66,6 +66,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
+                stakeholder::DefineWatchtowers::new().into(),
             ];
         }
     }

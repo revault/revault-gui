@@ -833,6 +833,127 @@ impl DefineEmergencyAddress {
     }
 }
 
+pub struct Watchtower {
+    noise_key_input: text_input::State,
+    host_input: text_input::State,
+    delete_button: Button,
+}
+
+impl Watchtower {
+    pub fn new() -> Self {
+        Self {
+            noise_key_input: text_input::State::new(),
+            host_input: text_input::State::new(),
+            delete_button: Button::new(),
+        }
+    }
+    pub fn render(
+        &mut self,
+        host: &str,
+        noise_key: &str,
+        warning_host: bool,
+        warning_noise_key: bool,
+    ) -> Element<message::DefineWatchtower> {
+        let mut col = Column::new().push(
+            Row::new()
+                .push(
+                    TextInput::new(
+                        &mut self.host_input,
+                        "Host",
+                        host,
+                        message::DefineWatchtower::HostEdited,
+                    )
+                    .size(15)
+                    .padding(10),
+                )
+                .push(
+                    TextInput::new(
+                        &mut self.noise_key_input,
+                        "Noise key",
+                        noise_key,
+                        message::DefineWatchtower::NoiseKeyEdited,
+                    )
+                    .size(15)
+                    .padding(10),
+                )
+                .push(
+                    button::transparent(
+                        &mut self.delete_button,
+                        Container::new(icon::trash_icon()),
+                    )
+                    .on_press(message::DefineWatchtower::Delete),
+                )
+                .spacing(5)
+                .align_items(Align::Center),
+        );
+
+        if warning_host {
+            col = col.push(text::simple("Please enter a valid host").color(color::WARNING))
+        }
+        if warning_noise_key {
+            col = col.push(text::simple("Please enter a valid noise_key").color(color::WARNING))
+        }
+        Container::new(col.spacing(10)).into()
+    }
+}
+
+pub struct DefineWatchtowers {
+    add_watchtower_button: Button,
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineWatchtowers {
+    pub fn new() -> Self {
+        Self {
+            add_watchtower_button: Button::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
+    }
+    pub fn render<'a>(
+        &'a mut self,
+        watchtowers: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define your watchtowers")).size(50))
+                .push(
+                    Column::new()
+                        .push(
+                            Container::new(text::bold(text::simple("Your watchtowers:")))
+                                .width(Length::Fill),
+                        )
+                        .push(Column::with_children(watchtowers).spacing(10))
+                        .push(
+                            button::transparent(
+                                &mut self.add_watchtower_button,
+                                button::button_content(Some(icon::plus_icon()), "Add a watchtower"),
+                            )
+                            .on_press(Message::DefineWatchtowers(
+                                message::DefineWatchtowers::AddWatchtower,
+                            )),
+                        )
+                        .spacing(10),
+                )
+                .push(
+                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
+                        .on_press(Message::Next),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
 fn layout<'a>(
     scroll_state: &'a mut scrollable::State,
     previous_button: &'a mut Button,
