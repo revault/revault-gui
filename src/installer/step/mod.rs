@@ -7,10 +7,13 @@ use iced::{button::State as Button, scrollable, Element};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::installer::{
-    message::{self, Message},
-    step::common::ParticipantXpub,
-    view,
+use crate::{
+    installer::{
+        message::{self, Message},
+        step::common::ParticipantXpub,
+        view,
+    },
+    revaultd::config::Config,
 };
 
 pub trait Step {
@@ -22,6 +25,7 @@ pub trait Step {
     fn is_correct(&self) -> bool {
         true
     }
+    fn edit_config(&self, config: &mut Config) {}
 }
 
 pub struct Context {
@@ -282,6 +286,57 @@ impl Step for DefineBitcoind {
 
 impl From<DefineBitcoind> for Box<dyn Step> {
     fn from(s: DefineBitcoind) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
+
+pub struct Final {
+    generating: bool,
+    success: bool,
+    warning: Option<String>,
+    view: view::Final,
+}
+
+impl Final {
+    pub fn new() -> Self {
+        Self {
+            generating: false,
+            success: false,
+            warning: None,
+            view: view::Final::new(),
+        }
+    }
+}
+
+impl Step for Final {
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::Installed(res) => {
+                self.generating = false;
+                if let Err(e) = res {
+                    self.success = false;
+                    self.warning = Some(e.to_string());
+                } else {
+                    self.success = true;
+                }
+            }
+            Message::Install => {
+                self.generating = true;
+                self.success = false;
+                self.warning = None;
+            }
+            _ => {}
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view
+            .render(self.generating, self.success, self.warning.as_ref())
+    }
+}
+
+impl From<Final> for Box<dyn Step> {
+    fn from(s: Final) -> Box<dyn Step> {
         Box::new(s)
     }
 }

@@ -10,7 +10,7 @@ use crate::revault::Role;
 use message::Message;
 use step::{
     manager, stakeholder, Context, DefineBitcoind, DefineCoordinator, DefineCpfpDescriptor,
-    DefineRole, Step, Welcome,
+    DefineRole, Final, Step, Welcome,
 };
 
 pub fn run(config_path: PathBuf) -> Result<(), iced::Error> {
@@ -52,6 +52,7 @@ impl Installer {
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
                 DefineBitcoind::new().into(),
+                Final::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
             self.steps = vec![
@@ -63,6 +64,7 @@ impl Installer {
                 DefineCoordinator::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 DefineBitcoind::new().into(),
+                Final::new().into(),
             ];
         } else {
             self.steps = vec![
@@ -76,6 +78,7 @@ impl Installer {
                 stakeholder::DefineWatchtowers::new().into(),
                 manager::DefineCosigners::new().into(),
                 DefineBitcoind::new().into(),
+                Final::new().into(),
             ];
         }
     }
@@ -152,5 +155,20 @@ impl Application for Installer {
 
     fn view(&mut self) -> Element<Self::Message> {
         self.current_step().view()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    CannotCreateFile(String),
+    CannotWriteToFile(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::CannotWriteToFile(e) => write!(f, "Failed to write to file: {}", e),
+            Self::CannotCreateFile(e) => write!(f, "Failed to create file: {}", e),
+        }
     }
 }

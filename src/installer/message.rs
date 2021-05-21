@@ -1,9 +1,12 @@
+use super::Error;
 use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Next,
     Previous,
+    Install,
+    Installed(Result<(), Error>),
     Role(&'static [Role]),
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),
