@@ -55,6 +55,7 @@ impl Installer {
                 stakeholder::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
+                stakeholder::DefineEmergencyAddress::new().into(),
             ];
         } else {
             self.steps = vec![
@@ -64,6 +65,7 @@ impl Installer {
                 manager::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
+                stakeholder::DefineEmergencyAddress::new().into(),
             ];
         }
     }

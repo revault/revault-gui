@@ -9,6 +9,7 @@ pub enum Message {
     DefineManagerXpubs(DefineManagerXpubs),
     DefineCpfpDescriptor(DefineCpfpDescriptor),
     DefineCoordinator(DefineCoordinator),
+    DefineEmergencyAddress(String),
 }
 
 #[derive(Debug, Clone)]
