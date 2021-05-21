@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use crate::revault::Role;
 use message::Message;
 use step::{
-    manager, stakeholder, Context, DefineCoordinator, DefineCpfpDescriptor, DefineRole, Step,
-    Welcome,
+    manager, stakeholder, Context, DefineBitcoind, DefineCoordinator, DefineCpfpDescriptor,
+    DefineRole, Step, Welcome,
 };
 
 pub fn run(config_path: PathBuf) -> Result<(), iced::Error> {
@@ -51,6 +51,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
+                DefineBitcoind::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
             self.steps = vec![
@@ -61,6 +62,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
+                DefineBitcoind::new().into(),
             ];
         } else {
             self.steps = vec![
@@ -73,6 +75,7 @@ impl Installer {
                 stakeholder::DefineEmergencyAddress::new().into(),
                 stakeholder::DefineWatchtowers::new().into(),
                 manager::DefineCosigners::new().into(),
+                DefineBitcoind::new().into(),
             ];
         }
     }

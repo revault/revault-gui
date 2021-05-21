@@ -1055,6 +1055,83 @@ impl DefineCosigners {
     }
 }
 
+pub struct DefineBitcoind {
+    address_input: text_input::State,
+    cookie_path_input: text_input::State,
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineBitcoind {
+    pub fn new() -> Self {
+        Self {
+            address_input: text_input::State::new(),
+            cookie_path_input: text_input::State::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
+    }
+    pub fn render<'a>(
+        &'a mut self,
+        address: &str,
+        cookie_path: &str,
+        warning_address: bool,
+        warning_cookie_path: bool,
+    ) -> Element<'a, Message> {
+        let mut col_address = Column::new()
+            .push(text::bold(text::simple("Address:")))
+            .push(
+                TextInput::new(&mut self.address_input, "Address", address, |msg| {
+                    Message::DefineBitcoind(message::DefineBitcoind::AddressEdited(msg))
+                })
+                .size(15)
+                .padding(10),
+            )
+            .spacing(10);
+        if warning_address {
+            col_address = col_address
+                .push(text::simple("Please enter correct address").color(color::WARNING));
+        }
+        let mut col_cookie = Column::new()
+            .push(text::bold(text::simple("Cookie path:")))
+            .push(
+                TextInput::new(
+                    &mut self.cookie_path_input,
+                    "Cookie path",
+                    cookie_path,
+                    |msg| Message::DefineBitcoind(message::DefineBitcoind::CookiePathEdited(msg)),
+                )
+                .size(15)
+                .padding(10),
+            )
+            .spacing(10);
+        if warning_cookie_path {
+            col_cookie =
+                col_cookie.push(text::simple("Please enter correct path").color(color::WARNING));
+        }
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define bitcoind")).size(50))
+                .push(col_address)
+                .push(col_cookie)
+                .push(
+                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
+                        .on_press(Message::Next),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
 fn layout<'a>(
     scroll_state: &'a mut scrollable::State,
     previous_button: &'a mut Button,

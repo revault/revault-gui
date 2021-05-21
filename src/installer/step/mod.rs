@@ -4,6 +4,7 @@ pub mod stakeholder;
 
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::installer::{
@@ -218,6 +219,69 @@ impl Step for DefineCoordinator {
 
 impl From<DefineCoordinator> for Box<dyn Step> {
     fn from(s: DefineCoordinator) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
+
+pub struct DefineBitcoind {
+    cookie_path: String,
+    address: String,
+
+    warning_cookie: bool,
+    warning_address: bool,
+
+    view: view::DefineBitcoind,
+}
+
+impl DefineBitcoind {
+    pub fn new() -> Self {
+        Self {
+            cookie_path: "".to_string(),
+            address: "".to_string(),
+            warning_cookie: false,
+            warning_address: false,
+            view: view::DefineBitcoind::new(),
+        }
+    }
+}
+
+impl Step for DefineBitcoind {
+    fn is_correct(&self) -> bool {
+        !self.warning_address && !self.warning_cookie
+    }
+
+    fn check(&mut self) {
+        self.warning_cookie = PathBuf::from_str(&self.cookie_path).is_err();
+        // TODO
+    }
+
+    fn update(&mut self, message: Message) {
+        if let Message::DefineBitcoind(msg) = message {
+            match msg {
+                message::DefineBitcoind::AddressEdited(address) => {
+                    self.address = address;
+                    self.warning_address = false;
+                }
+                message::DefineBitcoind::CookiePathEdited(path) => {
+                    self.cookie_path = path;
+                    self.warning_cookie = false;
+                }
+            };
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(
+            &self.address,
+            &self.cookie_path,
+            self.warning_address,
+            self.warning_cookie,
+        )
+    }
+}
+
+impl From<DefineBitcoind> for Box<dyn Step> {
+    fn from(s: DefineBitcoind) -> Box<dyn Step> {
         Box::new(s)
     }
 }
