@@ -6,7 +6,7 @@ use crate::installer::{
     message::{self, Message},
     step::{
         common::{CosignerKey, ParticipantXpub},
-        Step,
+        Context, Step,
     },
     view,
 };
@@ -129,6 +129,10 @@ impl DefineManagerXpubs {
     }
 }
 impl Step for DefineManagerXpubs {
+    fn update_context(&self, ctx: &mut Context) {
+        ctx.number_cosigners = self.cosigners.len();
+    }
+
     fn is_correct(&self) -> bool {
         self.manager_xpubs.iter().any(|xpub| xpub.warning)
             || self.cosigners.iter().any(|key| key.warning)

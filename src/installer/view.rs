@@ -954,6 +954,107 @@ impl DefineWatchtowers {
     }
 }
 
+pub struct Cosigner {
+    noise_key_input: text_input::State,
+    host_input: text_input::State,
+}
+
+impl Cosigner {
+    pub fn new() -> Self {
+        Self {
+            noise_key_input: text_input::State::new(),
+            host_input: text_input::State::new(),
+        }
+    }
+    pub fn render(
+        &mut self,
+        host: &str,
+        noise_key: &str,
+        warning_host: bool,
+        warning_noise_key: bool,
+    ) -> Element<message::DefineCosigner> {
+        let mut col = Column::new().push(
+            Row::new()
+                .push(
+                    TextInput::new(
+                        &mut self.host_input,
+                        "Host",
+                        host,
+                        message::DefineCosigner::HostEdited,
+                    )
+                    .size(15)
+                    .padding(10),
+                )
+                .push(
+                    TextInput::new(
+                        &mut self.noise_key_input,
+                        "Noise key",
+                        noise_key,
+                        message::DefineCosigner::NoiseKeyEdited,
+                    )
+                    .size(15)
+                    .padding(10),
+                )
+                .spacing(5)
+                .align_items(Align::Center),
+        );
+
+        if warning_host {
+            col = col.push(text::simple("Please enter a valid host").color(color::WARNING))
+        }
+        if warning_noise_key {
+            col = col.push(text::simple("Please enter a valid noise_key").color(color::WARNING))
+        }
+        Container::new(col.spacing(10)).into()
+    }
+}
+
+pub struct DefineCosigners {
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineCosigners {
+    pub fn new() -> Self {
+        Self {
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
+    }
+    pub fn render<'a>(
+        &'a mut self,
+        watchtowers: Vec<Element<'a, Message>>,
+    ) -> Element<'a, Message> {
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define the cosigners")).size(50))
+                .push(
+                    Column::new()
+                        .push(
+                            Container::new(text::bold(text::simple("The cosigners:")))
+                                .width(Length::Fill),
+                        )
+                        .push(Column::with_children(watchtowers).spacing(10))
+                        .spacing(10),
+                )
+                .push(
+                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
+                        .on_press(Message::Next),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
 fn layout<'a>(
     scroll_state: &'a mut scrollable::State,
     previous_button: &'a mut Button,
