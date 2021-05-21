@@ -10,6 +10,20 @@ pub enum Message {
     DefineCpfpDescriptor(DefineCpfpDescriptor),
     DefineCoordinator(DefineCoordinator),
     DefineEmergencyAddress(String),
+    DefineWatchtowers(DefineWatchtowers),
+}
+
+#[derive(Debug, Clone)]
+pub enum DefineWatchtowers {
+    EditWatchtower(usize, DefineWatchtower),
+    AddWatchtower,
+}
+
+#[derive(Debug, Clone)]
+pub enum DefineWatchtower {
+    HostEdited(String),
+    NoiseKeyEdited(String),
+    Delete,
 }
 
 #[derive(Debug, Clone)]

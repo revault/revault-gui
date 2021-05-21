@@ -271,3 +271,119 @@ impl From<DefineEmergencyAddress> for Box<dyn Step> {
         Box::new(s)
     }
 }
+
+pub struct Watchtower {
+    pub host: String,
+    pub noise_key: String,
+    warning_host: bool,
+    warning_noise_key: bool,
+
+    view: view::Watchtower,
+}
+
+impl Watchtower {
+    pub fn new() -> Self {
+        Self {
+            host: "".to_string(),
+            noise_key: "".to_string(),
+            warning_host: false,
+            warning_noise_key: false,
+            view: view::Watchtower::new(),
+        }
+    }
+
+    pub fn update(&mut self, msg: message::DefineWatchtower) {
+        match msg {
+            message::DefineWatchtower::HostEdited(host) => {
+                self.host = host;
+                self.warning_host = false;
+            }
+            message::DefineWatchtower::NoiseKeyEdited(key) => {
+                self.noise_key = key;
+                self.warning_noise_key = false;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn view(&mut self) -> Element<message::DefineWatchtower> {
+        self.view.render(
+            &self.host,
+            &self.noise_key,
+            self.warning_host,
+            self.warning_noise_key,
+        )
+    }
+}
+
+pub struct DefineWatchtowers {
+    watchtowers: Vec<Watchtower>,
+    view: view::DefineWatchtowers,
+}
+
+impl DefineWatchtowers {
+    pub fn new() -> Self {
+        Self {
+            watchtowers: vec![Watchtower::new()],
+            view: view::DefineWatchtowers::new(),
+        }
+    }
+}
+
+impl Step for DefineWatchtowers {
+    fn is_correct(&self) -> bool {
+        !self
+            .watchtowers
+            .iter()
+            .any(|wt| wt.warning_host || wt.warning_noise_key)
+    }
+
+    fn check(&mut self) {
+        for _watchtower in &mut self.watchtowers {
+            // TODO
+        }
+    }
+
+    fn update(&mut self, message: Message) {
+        if let Message::DefineWatchtowers(msg) = message {
+            match msg {
+                message::DefineWatchtowers::EditWatchtower(
+                    i,
+                    message::DefineWatchtower::Delete,
+                ) => {
+                    self.watchtowers.remove(i);
+                }
+                message::DefineWatchtowers::EditWatchtower(i, msg) => {
+                    if let Some(watchtower) = self.watchtowers.get_mut(i) {
+                        watchtower.update(msg);
+                    }
+                }
+                message::DefineWatchtowers::AddWatchtower => {
+                    self.watchtowers.push(Watchtower::new());
+                }
+            };
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(
+            self.watchtowers
+                .iter_mut()
+                .enumerate()
+                .map(|(i, xpub)| {
+                    xpub.view().map(move |msg| {
+                        Message::DefineWatchtowers(message::DefineWatchtowers::EditWatchtower(
+                            i, msg,
+                        ))
+                    })
+                })
+                .collect(),
+        )
+    }
+}
+
+impl From<DefineWatchtowers> for Box<dyn Step> {
+    fn from(s: DefineWatchtowers) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
