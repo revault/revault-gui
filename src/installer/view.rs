@@ -683,6 +683,92 @@ pub fn define_cpfp_descriptor<'a>(
     )
 }
 
+pub struct DefineCoordinator {
+    host_input: text_input::State,
+    noise_key_input: text_input::State,
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineCoordinator {
+    pub fn new() -> Self {
+        Self {
+            host_input: text_input::State::new(),
+            noise_key_input: text_input::State::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
+    }
+    pub fn render<'a>(
+        &'a mut self,
+        host: &str,
+        noise_key: &str,
+        warning: bool,
+    ) -> Element<'a, Message> {
+        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        if warning {
+            row = row.push(button::primary(
+                &mut self.save_button,
+                button::button_content(None, "Save"),
+            ));
+        } else {
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Save"))
+                    .on_press(Message::Next),
+            );
+        }
+
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Define coordinator")).size(50))
+                .push(
+                    Column::new()
+                        .push(text::bold(text::simple("Host:")))
+                        .push(
+                            TextInput::new(&mut self.host_input, "Host", host, |msg| {
+                                Message::DefineCoordinator(message::DefineCoordinator::HostEdited(
+                                    msg,
+                                ))
+                            })
+                            .size(15)
+                            .padding(10),
+                        )
+                        .spacing(10),
+                )
+                .push(
+                    Column::new()
+                        .push(text::bold(text::simple("Noise key:")))
+                        .push(
+                            TextInput::new(
+                                &mut self.noise_key_input,
+                                "Noise key",
+                                noise_key,
+                                |msg| {
+                                    Message::DefineCoordinator(
+                                        message::DefineCoordinator::NoiseKeyEdited(msg),
+                                    )
+                                },
+                            )
+                            .size(15)
+                            .padding(10),
+                        )
+                        .spacing(10),
+                )
+                .push(row)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
 fn layout<'a>(
     scroll_state: &'a mut scrollable::State,
     previous_button: &'a mut Button,

@@ -8,6 +8,13 @@ pub enum Message {
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),
     DefineCpfpDescriptor(DefineCpfpDescriptor),
+    DefineCoordinator(DefineCoordinator),
+}
+
+#[derive(Debug, Clone)]
+pub enum DefineCoordinator {
+    HostEdited(String),
+    NoiseKeyEdited(String),
 }
 
 #[derive(Debug, Clone)]

@@ -159,3 +159,51 @@ impl From<DefineCpfpDescriptor> for Box<dyn Step> {
         Box::new(s)
     }
 }
+
+pub struct DefineCoordinator {
+    host: String,
+    noise_key: String,
+    warning: bool,
+
+    view: view::DefineCoordinator,
+}
+
+impl DefineCoordinator {
+    pub fn new() -> Self {
+        Self {
+            host: "".to_string(),
+            noise_key: "".to_string(),
+            warning: false,
+            view: view::DefineCoordinator::new(),
+        }
+    }
+}
+
+impl Step for DefineCoordinator {
+    fn is_correct(&self) -> bool {
+        !self.warning
+    }
+
+    fn check(&mut self) {
+        // TODO
+    }
+
+    fn update(&mut self, message: Message) {
+        if let Message::DefineCoordinator(msg) = message {
+            match msg {
+                message::DefineCoordinator::HostEdited(host) => self.host = host,
+                message::DefineCoordinator::NoiseKeyEdited(key) => self.noise_key = key,
+            };
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(&self.host, &self.noise_key, self.warning)
+    }
+}
+
+impl From<DefineCoordinator> for Box<dyn Step> {
+    fn from(s: DefineCoordinator) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
