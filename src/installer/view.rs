@@ -8,7 +8,9 @@ use crate::{
     revault::Role,
     ui::{
         color,
-        component::{button, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle},
+        component::{
+            button, card, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
+        },
         icon,
     },
 };
@@ -1129,6 +1131,60 @@ impl DefineBitcoind {
                 .align_items(Align::Center)
                 .into(),
         )
+    }
+}
+
+pub struct Final {
+    scroll: scrollable::State,
+    previous_button: Button,
+    generate_button: Button,
+}
+
+impl Final {
+    pub fn new() -> Self {
+        Self {
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            generate_button: Button::new(),
+        }
+    }
+
+    pub fn render(
+        &mut self,
+        generating: bool,
+        success: bool,
+        warning: Option<&String>,
+    ) -> Element<Message> {
+        let mut col = Column::new()
+            .push(text::bold(text::simple("You reached the end")).size(50))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(100)
+            .spacing(50)
+            .align_items(Align::Center);
+
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::simple(error))));
+        }
+
+        if generating {
+            col = col.push(button::primary(
+                &mut self.generate_button,
+                button::button_content(None, "Installing ..."),
+            ))
+        } else if !success {
+            col = col.push(
+                button::primary(
+                    &mut self.generate_button,
+                    button::button_content(None, "Finalize installation"),
+                )
+                .on_press(Message::Install),
+            );
+        } else {
+            col = col.push(card::success(Container::new(text::simple("Installed !"))));
+        }
+
+        layout(&mut self.scroll, &mut self.previous_button, col.into())
     }
 }
 

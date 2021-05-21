@@ -134,8 +134,8 @@ impl Step for DefineManagerXpubs {
     }
 
     fn is_correct(&self) -> bool {
-        self.manager_xpubs.iter().any(|xpub| xpub.warning)
-            || self.cosigners.iter().any(|key| key.warning)
+        !self.manager_xpubs.iter().any(|xpub| xpub.warning)
+            && !self.cosigners.iter().any(|key| key.warning)
     }
 
     fn check(&mut self) {
