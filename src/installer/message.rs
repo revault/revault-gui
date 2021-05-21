@@ -12,11 +12,11 @@ pub enum Message {
     DefineEmergencyAddress(String),
     DefineWatchtowers(DefineWatchtowers),
     DefineCosigners(usize, DefineCosigner),
-    DefineBitcoind(Bitcoind),
+    DefineBitcoind(DefineBitcoind),
 }
 
 #[derive(Debug, Clone)]
-pub enum Bitcoind {
+pub enum DefineBitcoind {
     CookiePathEdited(String),
     AddressEdited(String),
 }
