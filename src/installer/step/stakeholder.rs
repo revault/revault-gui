@@ -110,26 +110,21 @@ impl From<DefineStakeholderXpubs> for Box<dyn Step> {
 }
 
 pub struct DefineManagerXpubs {
+    managers_treshold: u32,
+    spending_delay: u32,
     manager_xpubs: Vec<ParticipantXpub>,
     cosigners: Vec<CosignerKey>,
-
-    add_cosigner_button: Button,
-    add_xpub_button: Button,
-    scroll: scrollable::State,
-    previous_button: Button,
-    save_button: Button,
+    view: view::DefineManagerXpubsAsStakeholderOnly,
 }
 
 impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
-            add_xpub_button: Button::new(),
+            managers_treshold: 0,
+            spending_delay: 0,
             manager_xpubs: Vec::new(),
-            scroll: scrollable::State::new(),
-            previous_button: Button::new(),
-            save_button: Button::new(),
             cosigners: Vec::new(),
-            add_cosigner_button: Button::new(),
+            view: view::DefineManagerXpubsAsStakeholderOnly::new(),
         }
     }
 }
@@ -172,14 +167,35 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::AddCosigner => {
                     self.cosigners.push(CosignerKey::new());
                 }
+                message::DefineManagerXpubs::ManagersTreshold(action) => match action {
+                    message::Action::Increment => {
+                        self.managers_treshold = self.managers_treshold + 1;
+                    }
+                    message::Action::Decrement => {
+                        if self.managers_treshold > 0 {
+                            self.managers_treshold = self.managers_treshold - 1;
+                        }
+                    }
+                },
+                message::DefineManagerXpubs::SpendingDelay(action) => match action {
+                    message::Action::Increment => {
+                        self.spending_delay = self.spending_delay + 1;
+                    }
+                    message::Action::Decrement => {
+                        if self.spending_delay > 0 {
+                            self.spending_delay = self.spending_delay - 1;
+                        }
+                    }
+                },
                 _ => {}
             };
         };
     }
 
     fn view(&mut self) -> Element<Message> {
-        view::define_manager_xpubs_as_stakeholder_only(
-            &mut self.add_xpub_button,
+        self.view.render(
+            self.managers_treshold,
+            self.spending_delay,
             self.manager_xpubs
                 .iter_mut()
                 .enumerate()
@@ -191,7 +207,6 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
-            &mut self.add_cosigner_button,
             self.cosigners
                 .iter_mut()
                 .enumerate()
@@ -203,9 +218,6 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
-            &mut self.scroll,
-            &mut self.previous_button,
-            &mut self.save_button,
         )
     }
 }
