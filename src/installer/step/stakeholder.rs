@@ -227,3 +227,47 @@ impl From<DefineManagerXpubs> for Box<dyn Step> {
         Box::new(s)
     }
 }
+
+pub struct DefineEmergencyAddress {
+    address: String,
+    warning: bool,
+
+    view: view::DefineEmergencyAddress,
+}
+
+impl DefineEmergencyAddress {
+    pub fn new() -> Self {
+        Self {
+            address: "".to_string(),
+            warning: false,
+            view: view::DefineEmergencyAddress::new(),
+        }
+    }
+}
+
+impl Step for DefineEmergencyAddress {
+    fn is_correct(&self) -> bool {
+        !self.warning
+    }
+
+    fn check(&mut self) {
+        self.warning = bitcoin::Address::from_str(&self.address).is_err()
+    }
+
+    fn update(&mut self, message: Message) {
+        if let Message::DefineEmergencyAddress(address) = message {
+            self.address = address;
+            self.warning = false;
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(&self.address, self.warning)
+    }
+}
+
+impl From<DefineEmergencyAddress> for Box<dyn Step> {
+    fn from(s: DefineEmergencyAddress) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
