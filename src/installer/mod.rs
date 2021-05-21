@@ -9,7 +9,8 @@ use std::path::PathBuf;
 use crate::revault::Role;
 use message::Message;
 use step::{
-    manager, stakeholder, DefineCoordinator, DefineCpfpDescriptor, DefineRole, Step, Welcome,
+    manager, stakeholder, Context, DefineCoordinator, DefineCpfpDescriptor, DefineRole, Step,
+    Welcome,
 };
 
 pub fn run(config_path: PathBuf) -> Result<(), iced::Error> {
@@ -22,6 +23,9 @@ pub struct Installer {
 
     current: usize,
     steps: Vec<Box<dyn Step>>,
+
+    /// Context is data passed through each step.
+    context: Context,
 }
 
 impl Installer {
@@ -46,6 +50,7 @@ impl Installer {
                 manager::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
+                manager::DefineCosigners::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
             self.steps = vec![
@@ -67,6 +72,7 @@ impl Installer {
                 DefineCoordinator::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 stakeholder::DefineWatchtowers::new().into(),
+                manager::DefineCosigners::new().into(),
             ];
         }
     }
@@ -90,6 +96,7 @@ impl Application for Installer {
                 exit: false,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
+                context: Context::new(),
             },
             Command::none(),
         )
@@ -110,9 +117,20 @@ impl Application for Installer {
     ) -> Command<Self::Message> {
         match message {
             Message::Next => {
-                self.current_step().check();
-                if self.current_step().is_correct() {
+                let current_step = self
+                    .steps
+                    .get_mut(self.current)
+                    .expect("There is always a step");
+                current_step.check();
+                if current_step.is_correct() {
+                    current_step.update_context(&mut self.context);
                     self.next();
+                    // calculate new current_step.
+                    let current_step = self
+                        .steps
+                        .get_mut(self.current)
+                        .expect("There is always a step");
+                    current_step.load_context(&self.context);
                 }
             }
             Message::Previous => {

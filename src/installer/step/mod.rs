@@ -16,8 +16,22 @@ pub trait Step {
     fn check(&mut self) {}
     fn update(&mut self, message: Message);
     fn view(&mut self) -> Element<Message>;
+    fn update_context(&self, _ctx: &mut Context) {}
+    fn load_context(&mut self, _ctx: &Context) {}
     fn is_correct(&self) -> bool {
         true
+    }
+}
+
+pub struct Context {
+    pub number_cosigners: usize,
+}
+
+impl Context {
+    pub fn new() -> Self {
+        Self {
+            number_cosigners: 0,
+        }
     }
 }
 

@@ -11,6 +11,20 @@ pub enum Message {
     DefineCoordinator(DefineCoordinator),
     DefineEmergencyAddress(String),
     DefineWatchtowers(DefineWatchtowers),
+    DefineCosigners(usize, DefineCosigner),
+    DefineBitcoind(Bitcoind),
+}
+
+#[derive(Debug, Clone)]
+pub enum Bitcoind {
+    CookiePathEdited(String),
+    AddressEdited(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum DefineCosigner {
+    HostEdited(String),
+    NoiseKeyEdited(String),
 }
 
 #[derive(Debug, Clone)]

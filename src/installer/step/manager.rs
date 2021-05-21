@@ -6,7 +6,7 @@ use crate::installer::{
     message::{self, Message},
     step::{
         common::{CosignerKey, ParticipantXpub},
-        Step,
+        Context, Step,
     },
     view,
 };
@@ -119,6 +119,10 @@ impl DefineManagerXpubs {
 }
 
 impl Step for DefineManagerXpubs {
+    fn update_context(&self, ctx: &mut Context) {
+        ctx.number_cosigners = self.cosigners.len();
+    }
+
     fn check(&mut self) {
         for participant in &mut self.other_xpubs {
             if ExtendedPubKey::from_str(&participant.xpub).is_err() {
@@ -221,6 +225,112 @@ impl Step for DefineManagerXpubs {
 
 impl From<DefineManagerXpubs> for Box<dyn Step> {
     fn from(s: DefineManagerXpubs) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
+
+pub struct Cosigner {
+    pub host: String,
+    pub noise_key: String,
+    warning_host: bool,
+    warning_noise_key: bool,
+
+    view: view::Cosigner,
+}
+
+impl Cosigner {
+    pub fn new() -> Self {
+        Self {
+            host: "".to_string(),
+            noise_key: "".to_string(),
+            warning_host: false,
+            warning_noise_key: false,
+            view: view::Cosigner::new(),
+        }
+    }
+
+    pub fn update(&mut self, msg: message::DefineCosigner) {
+        match msg {
+            message::DefineCosigner::HostEdited(host) => {
+                self.host = host;
+                self.warning_host = false;
+            }
+            message::DefineCosigner::NoiseKeyEdited(key) => {
+                self.noise_key = key;
+                self.warning_noise_key = false;
+            }
+        }
+    }
+
+    pub fn view(&mut self) -> Element<message::DefineCosigner> {
+        self.view.render(
+            &self.host,
+            &self.noise_key,
+            self.warning_host,
+            self.warning_noise_key,
+        )
+    }
+}
+
+pub struct DefineCosigners {
+    cosigners: Vec<Cosigner>,
+    view: view::DefineCosigners,
+}
+
+impl DefineCosigners {
+    pub fn new() -> Self {
+        Self {
+            cosigners: Vec::new(),
+            view: view::DefineCosigners::new(),
+        }
+    }
+}
+
+impl Step for DefineCosigners {
+    fn load_context(&mut self, ctx: &Context) {
+        while self.cosigners.len() != ctx.number_cosigners {
+            if self.cosigners.len() > ctx.number_cosigners {
+                self.cosigners.pop();
+            } else if self.cosigners.len() < ctx.number_cosigners {
+                self.cosigners.push(Cosigner::new());
+            }
+        }
+    }
+
+    fn is_correct(&self) -> bool {
+        !self
+            .cosigners
+            .iter()
+            .any(|wt| wt.warning_host || wt.warning_noise_key)
+    }
+
+    fn check(&mut self) {
+        for _cosigner in &mut self.cosigners {
+            // TODO
+        }
+    }
+
+    fn update(&mut self, message: Message) {
+        if let Message::DefineCosigners(i, msg) = message {
+            if let Some(cosigner) = self.cosigners.get_mut(i) {
+                cosigner.update(msg);
+            }
+        };
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(
+            self.cosigners
+                .iter_mut()
+                .enumerate()
+                .map(|(i, xpub)| xpub.view().map(move |msg| Message::DefineCosigners(i, msg)))
+                .collect(),
+        )
+    }
+}
+
+impl From<DefineCosigners> for Box<dyn Step> {
+    fn from(s: DefineCosigners) -> Box<dyn Step> {
         Box::new(s)
     }
 }
