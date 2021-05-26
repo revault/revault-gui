@@ -42,10 +42,14 @@ pub struct ManagerHomeState {
     warning: Option<Error>,
 
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+    spendable_outpoints: Vec<String>,
     selected_vault: Option<Vault>,
 
-    spend_txs: Vec<SpendTransactionListItem>,
+    spend_txs: Vec<model::SpendTx>,
+    spend_txs_item: Vec<SpendTransactionListItem>,
     selected_spend_tx: Option<SpendTransactionState>,
+
+    loading_vaults: bool,
 }
 
 impl ManagerHomeState {
@@ -56,16 +60,37 @@ impl ManagerHomeState {
             inactive_funds: 0,
             view: ManagerHomeView::new(),
             blockheight: 0,
+            spendable_outpoints: Vec::new(),
             moving_vaults: Vec::new(),
             warning: None,
             selected_vault: None,
             spend_txs: Vec::new(),
+            spend_txs_item: Vec::new(),
             selected_spend_tx: None,
+            loading_vaults: true,
         }
     }
 
     pub fn update_spend_txs(&mut self, txs: Vec<model::SpendTx>) {
-        self.spend_txs = txs.into_iter().map(SpendTransactionListItem::new).collect();
+        self.spend_txs = if self.loading_vaults {
+            // Don't filter the txs if we still don't have the vaults!
+            txs
+        } else {
+            txs.into_iter()
+                .filter(|tx| {
+                    tx.deposit_outpoints
+                        .iter()
+                        .all(|outpoint| self.spendable_outpoints.contains(&outpoint))
+                })
+                .collect()
+        };
+
+        self.spend_txs_item = self
+            .spend_txs
+            .clone()
+            .into_iter()
+            .map(SpendTransactionListItem::new)
+            .collect();
     }
 
     pub fn on_spend_tx_select(&mut self, psbt: Psbt) -> Command<Message> {
@@ -79,7 +104,7 @@ impl ManagerHomeState {
         if self
             .spend_txs
             .iter()
-            .find(|item| item.tx.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
+            .find(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
             .is_some()
         {
             let selected_spend_tx = SpendTransactionState::new(self.revaultd.clone(), psbt);
@@ -102,6 +127,17 @@ impl ManagerHomeState {
         self.active_funds = active_funds;
         self.inactive_funds = inactive_funds;
 
+        self.spendable_outpoints = vaults
+            .iter()
+            .filter_map(|vlt| {
+                if vlt.status == VaultStatus::Active {
+                    Some(vlt.outpoint())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         self.moving_vaults = vaults
             .into_iter()
             .filter_map(|vlt| {
@@ -116,6 +152,11 @@ impl ManagerHomeState {
                 }
             })
             .collect();
+
+        self.loading_vaults = false;
+
+        // The spendable outpoints changed, let's update the spend txs
+        self.update_spend_txs(self.spend_txs.clone());
     }
 
     pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
@@ -196,7 +237,7 @@ impl State for ManagerHomeState {
         self.view.view(
             ctx,
             self.warning.as_ref().into(),
-            self.spend_txs
+            self.spend_txs_item
                 .iter_mut()
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
                 .collect(),
@@ -211,7 +252,10 @@ impl State for ManagerHomeState {
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
             Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
             Command::perform(
-                list_spend_txs(self.revaultd.clone()),
+                list_spend_txs(
+                    self.revaultd.clone(),
+                    Some(&[model::SpendTxStatus::NonFinal]),
+                ),
                 Message::SpendTransactions,
             ),
         ])

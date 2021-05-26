@@ -16,8 +16,8 @@ pub mod model;
 use client::Client;
 use config::Config;
 use model::{
-    DepositAddress, RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
-    VaultStatus, VaultTransactions,
+    DepositAddress, RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus,
+    UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
 };
 
 #[derive(Debug, Clone)]
@@ -186,8 +186,11 @@ impl RevaultD {
         Ok(())
     }
 
-    pub fn list_spend_txs(&self) -> Result<ListSpendTransactionsResponse, RevaultDError> {
-        self.call("listspendtxs", Option::<Request>::None)
+    pub fn list_spend_txs(
+        &self,
+        statuses: Option<&[SpendTxStatus]>,
+    ) -> Result<ListSpendTransactionsResponse, RevaultDError> {
+        self.call("listspendtxs", Some(vec![statuses]))
     }
 
     pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {

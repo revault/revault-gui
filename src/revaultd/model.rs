@@ -152,6 +152,16 @@ impl VaultStatus {
     ];
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SpendTxStatus {
+    #[serde(rename = "non_final")]
+    NonFinal,
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "broadcasted")]
+    Broadcasted,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct VaultTransactions {
     pub vault_outpoint: String,
