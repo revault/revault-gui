@@ -12,19 +12,30 @@ mod revault;
 mod revaultd;
 mod ui;
 
-use app::config::{Config, ConfigError};
+use app::config::{Config, ConfigError, DEFAULT_FILE_NAME};
+use revaultd::config::default_datadir;
 
-fn config_path_from_args(args: Vec<String>) -> Result<Option<PathBuf>, Box<dyn Error>> {
+enum Args {
+    ConfigPath(PathBuf),
+    DatadirPath(PathBuf),
+    None,
+}
+
+fn parse_args(args: Vec<String>) -> Result<Args, Box<dyn Error>> {
     if args.len() == 1 {
-        return Ok(None);
+        return Ok(Args::None);
     }
 
-    if args.len() != 3 || args[1] != "--conf" {
-        println!("Usage: '--conf <configuration file path>'");
-        return Err(format!("Unknown arguments '{:?}'.", args).into());
+    if args.len() == 3 {
+        if args[1] == "--conf" {
+            return Ok(Args::ConfigPath(PathBuf::from(args[2].to_owned())));
+        } else if args[1] == "--datadir" {
+            return Ok(Args::DatadirPath(PathBuf::from(args[2].to_owned())));
+        }
     }
 
-    Ok(Some(PathBuf::from(args[2].to_owned())))
+    println!("Usage:\n'--conf <configuration file path>'\n'--datadir <datadir path>'");
+    Err(format!("Unknown arguments '{:?}'.", args).into())
 }
 
 fn log_level_from_config(config: &Config) -> Result<EnvFilter, Box<dyn Error>> {
@@ -45,19 +56,44 @@ fn log_level_from_config(config: &Config) -> Result<EnvFilter, Box<dyn Error>> {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = std::env::args().collect();
 
-    let config_path = if let Some(path) = config_path_from_args(args)? {
-        path
-    } else {
-        Config::default_path().map_err(|e| format!("Failed to find revault GUI config: {}", e))?
+    let config = match parse_args(args)? {
+        Args::ConfigPath(path) => Config::from_file(&path)?,
+        Args::None => {
+            let path = Config::default_path()
+                .map_err(|e| format!("Failed to find revault GUI config: {}", e))?;
+
+            match Config::from_file(&path) {
+                Ok(cfg) => cfg,
+                Err(ConfigError::NotFound) => {
+                    let default_datadir_path =
+                        default_datadir().expect("Unexpected filesystem error");
+                    if let Err(e) = installer::run(default_datadir_path) {
+                        return Err(format!("Failed to install: {}", e).into());
+                    };
+                    Config::from_file(&path)?
+                }
+                Err(e) => {
+                    return Err(format!("Failed to read configuration file: {}", e).into());
+                }
+            }
+        }
+        Args::DatadirPath(datadir_path) => {
+            let mut path = datadir_path.clone();
+            path.push(DEFAULT_FILE_NAME);
+            match Config::from_file(&path) {
+                Ok(cfg) => cfg,
+                Err(ConfigError::NotFound) => {
+                    if let Err(e) = installer::run(datadir_path) {
+                        return Err(format!("Failed to install: {}", e).into());
+                    };
+                    Config::from_file(&path)?
+                }
+                Err(e) => {
+                    return Err(format!("Failed to read configuration file: {}", e).into());
+                }
+            }
+        }
     };
-
-    if let Err(ConfigError::NotFound) = Config::from_file(&config_path) {
-        if let Err(e) = installer::run(config_path.clone()) {
-            return Err(format!("Failed to install: {}", e).into());
-        };
-    }
-
-    let config = Config::from_file(&config_path)?;
 
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
