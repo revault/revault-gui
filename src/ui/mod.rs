@@ -1,8 +1,5 @@
-pub mod app;
-mod component;
-pub mod config;
-mod error;
-mod menu;
-mod message;
-mod state;
-mod view;
+pub mod color;
+/// component are wrappers around iced elements;
+pub mod component;
+pub mod font;
+pub mod icon;

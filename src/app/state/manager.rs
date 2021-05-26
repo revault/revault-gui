@@ -19,7 +19,7 @@ use crate::revaultd::{
 
 use crate::revault::TransactionKind;
 
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
     state::{sign::SignState, SpendTransactionListItem, SpendTransactionState},

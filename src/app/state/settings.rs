@@ -6,7 +6,7 @@ use super::State;
 
 use crate::revaultd::config::Config;
 
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::Message,
     view::{Context, SettingsView},

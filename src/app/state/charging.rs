@@ -5,14 +5,14 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::State;
-use crate::revaultd::{
-    config::{Config, ConfigError},
-    start_daemon, RevaultD, RevaultDError,
-};
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::Message,
     view::{charging::*, Context},
+};
+use crate::revaultd::{
+    config::{Config, ConfigError},
+    start_daemon, RevaultD, RevaultDError,
 };
 
 #[derive(Debug, Clone)]

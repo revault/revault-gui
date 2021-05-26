@@ -7,12 +7,14 @@ use iced::{
 
 use crate::revaultd::model;
 
-use crate::ui::{
-    component::{button, card, scroll, separation, text, ContainerBackgroundStyle},
-    error::Error,
-    menu::Menu,
-    message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
-    view::Context,
+use crate::{
+    app::{
+        error::Error,
+        menu::Menu,
+        message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
+        view::Context,
+    },
+    ui::component::{button, card, scroll, separation, text, ContainerBackgroundStyle},
 };
 
 #[derive(Debug)]

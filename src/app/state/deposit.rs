@@ -7,7 +7,7 @@ use super::{cmd::get_deposit_address, State};
 
 use crate::revaultd::RevaultD;
 
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::Message,
     view::{Context, DepositView},

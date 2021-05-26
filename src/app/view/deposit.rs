@@ -1,10 +1,12 @@
 use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row};
 
-use crate::ui::{
-    component::{button, card, navbar, scroll, text},
-    error::Error,
-    message::Message,
-    view::{layout, sidebar::Sidebar, Context},
+use crate::{
+    app::{
+        error::Error,
+        message::Message,
+        view::{layout, sidebar::Sidebar, Context},
+    },
+    ui::component::{button, card, navbar, scroll, text},
 };
 
 /// DepositView is the view rendering the deposit panel.

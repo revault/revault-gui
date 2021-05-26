@@ -5,12 +5,13 @@ use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
+mod app;
 mod conversion;
 mod revault;
 mod revaultd;
 mod ui;
 
-use ui::config::Config;
+use app::config::Config;
 
 fn config_path_from_args(args: Vec<String>) -> Result<Option<PathBuf>, Box<dyn Error>> {
     if args.len() == 1 {
@@ -61,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .finish(),
     )?;
 
-    if let Err(e) = ui::app::run(config) {
+    if let Err(e) = app::run(config) {
         return Err(format!("Failed to launch UI: {}", e).into());
     };
     Ok(())

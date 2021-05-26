@@ -11,7 +11,7 @@ use super::{
 
 use crate::revaultd::{model, model::VaultStatus, RevaultD};
 
-use crate::ui::{
+use crate::app::{
     error::Error,
     message::{Message, VaultFilterMessage, VaultMessage},
     view::{vault::VaultListItemView, Context, VaultsView},

@@ -5,9 +5,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use crate::{
-    revault::TransactionKind,
-    revaultd::{model, RevaultD},
-    ui::{
+    app::{
         error::Error,
         message::{Message, SignMessage, SpendTxMessage},
         state::{
@@ -24,6 +22,8 @@ use crate::{
         },
         view::Context,
     },
+    revault::TransactionKind,
+    revaultd::{model, RevaultD},
 };
 
 #[derive(Debug)]

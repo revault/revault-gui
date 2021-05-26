@@ -1,20 +1,27 @@
+pub mod config;
+mod error;
+mod menu;
+mod message;
+mod state;
+mod view;
+
 use std::sync::Arc;
 
 use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, Subscription};
 
-use super::menu::Menu;
-use super::message::{Message, SignMessage, SpendTxMessage, VaultMessage};
-use super::state::{
+use menu::Menu;
+use message::{Message, SignMessage, SpendTxMessage, VaultMessage};
+use state::{
     ChargingState, DepositState, ManagerHomeState, ManagerNetworkState, ManagerSendState,
     SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
     StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
 };
 
 use crate::{
+    app::{config::Config, view::Context},
     conversion::Converter,
     revault::Role,
     revaultd::RevaultD,
-    ui::{config::Config, view::Context},
 };
 
 pub struct App {
