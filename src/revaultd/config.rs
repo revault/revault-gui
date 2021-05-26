@@ -80,6 +80,8 @@ pub struct Config {
     pub log_level: Option<String>,
 }
 
+pub const DEFAULT_FILE_NAME: &'static str = "revault.toml";
+
 impl Config {
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let config = std::fs::read(path)
@@ -114,7 +116,7 @@ impl Config {
         let mut datadir = default_datadir().map_err(|_| {
             ConfigError::Unexpected("Could not locate the default datadir.".to_owned())
         })?;
-        datadir.push("revault.toml");
+        datadir.push(DEFAULT_FILE_NAME);
         Ok(datadir)
     }
 }
