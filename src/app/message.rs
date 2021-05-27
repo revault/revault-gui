@@ -39,7 +39,7 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum SpendTxMessage {
-    FeerateEdited(u32),
+    FeerateEdited(String),
     PsbtEdited(String),
     Import,
     Generate,

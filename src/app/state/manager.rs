@@ -398,8 +398,8 @@ impl State for ManagerImportSendTransactionState {
 enum ManagerSendStep {
     WelcomeUser(ManagerSendWelcomeView),
     SelectOutputs(ManagerSelectOutputsView),
-    SelectInputs(ManagerSelectInputsView),
     SelectFee(ManagerSelectFeeView),
+    SelectInputs(ManagerSelectInputsView),
     Sign {
         signer: SignState,
         view: ManagerSignView,
@@ -415,9 +415,10 @@ pub struct ManagerCreateSendTransactionState {
 
     vaults: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
-    feerate: u32,
+    feerate: Option<u32>,
     psbt: Option<(Psbt, u32)>,
     processing: bool,
+    valid_feerate: bool,
 
     step: ManagerSendStep,
 }
@@ -430,13 +431,16 @@ impl ManagerCreateSendTransactionState {
             warning: None,
             vaults: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
-            feerate: 20,
+            feerate: None,
             psbt: None,
             processing: false,
+            valid_feerate: false,
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
+    pub fn update_vaults(&mut self, mut vaults: Vec<model::Vault>) {
+        // Ordering the vaults, the biggest amounts first
+        vaults.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap());
         self.vaults = vaults
             .into_iter()
             .map(|vlt| ManagerSendInput::new(vlt))
@@ -489,6 +493,7 @@ impl State for ManagerCreateSendTransactionState {
                     }
                     Err(e) => self.warning = Some(Error::RevaultDError(e)),
                 }
+                return self.update(Message::Next);
             }
             Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
@@ -506,14 +511,22 @@ impl State for ManagerCreateSendTransactionState {
                     .collect();
 
                 return Command::perform(
-                    get_spend_tx(self.revaultd.clone(), inputs, outputs, self.feerate),
+                    get_spend_tx(
+                        self.revaultd.clone(),
+                        inputs,
+                        outputs,
+                        self.feerate.unwrap(),
+                    ),
                     Message::SpendTransaction,
                 );
             }
             Message::SpendTx(SpendTxMessage::FeerateEdited(feerate)) => {
-                if !self.processing {
-                    self.feerate = feerate;
-                    self.psbt = None;
+                if let Ok(f) = feerate.parse::<u32>() {
+                    self.feerate = Some(f);
+                    self.valid_feerate = true;
+                } else if feerate.is_empty() {
+                    self.feerate = None;
+                    self.valid_feerate = false;
                 }
             }
             Message::Vaults(res) => match res {
@@ -555,12 +568,9 @@ impl State for ManagerCreateSendTransactionState {
                     self.step = ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new());
                 }
                 ManagerSendStep::SelectOutputs(_) => {
-                    self.step = ManagerSendStep::SelectInputs(ManagerSelectInputsView::new());
-                }
-                ManagerSendStep::SelectInputs(_) => {
                     self.step = ManagerSendStep::SelectFee(ManagerSelectFeeView::new());
                 }
-                ManagerSendStep::SelectFee(_) => {
+                ManagerSendStep::SelectInputs(_) => {
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
                             signer: SignState::new(psbt.clone(), TransactionKind::Spend),
@@ -568,18 +578,21 @@ impl State for ManagerCreateSendTransactionState {
                         };
                     }
                 }
+                ManagerSendStep::SelectFee(_) => {
+                    self.step = ManagerSendStep::SelectInputs(ManagerSelectInputsView::new());
+                }
                 _ => (),
             },
             Message::Previous => {
                 self.step = match self.step {
                     ManagerSendStep::SelectInputs(_) => {
-                        ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new())
+                        ManagerSendStep::SelectFee(ManagerSelectFeeView::new())
                     }
                     ManagerSendStep::SelectFee(_) => {
-                        ManagerSendStep::SelectInputs(ManagerSelectInputsView::new())
+                        ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new())
                     }
                     ManagerSendStep::Sign { .. } => {
-                        ManagerSendStep::SelectFee(ManagerSelectFeeView::new())
+                        ManagerSendStep::SelectInputs(ManagerSelectInputsView::new())
                     }
                     _ => ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new()),
                 }
@@ -623,21 +636,21 @@ impl State for ManagerCreateSendTransactionState {
                 )
             }
             ManagerSendStep::SelectInputs(v) => v.view(
+                ctx,
                 self.vaults
                     .iter_mut()
                     .enumerate()
                     .map(|(i, v)| v.view(ctx).map(move |msg| Message::Input(i, msg)))
                     .collect(),
-                input_amount > output_amount,
+                input_amount,
+                output_amount,
+                // TODO actually calculate this! This is true if we generated the tx
+                // and noticed that we don't have enough funds for paying fees
+                false,
             ),
-            ManagerSendStep::SelectFee(v) => v.view(
-                ctx,
-                &selected_inputs,
-                &self.feerate,
-                self.psbt.as_ref(),
-                &self.processing,
-                self.warning.as_ref(),
-            ),
+            ManagerSendStep::SelectFee(v) => {
+                v.view(self.feerate, self.valid_feerate, self.warning.as_ref())
+            }
             ManagerSendStep::Sign { signer, view } => {
                 let (psbt, feerate) = self.psbt.as_ref().unwrap();
                 view.view(
@@ -653,7 +666,7 @@ impl State for ManagerCreateSendTransactionState {
             }
             ManagerSendStep::Success(v) => {
                 let (psbt, _) = self.psbt.as_ref().unwrap();
-                v.view(ctx, &selected_inputs, &psbt, &self.feerate)
+                v.view(ctx, &selected_inputs, &psbt, &self.feerate.unwrap())
             }
         }
     }
@@ -717,12 +730,18 @@ impl ManagerSendOutput {
                 self.address = address;
                 if !self.address.is_empty() {
                     self.warning_address = bitcoin::Address::from_str(&self.address).is_err();
+                } else {
+                    // Make the error disappear if we deleted the invalid address
+                    self.warning_address = false;
                 }
             }
             RecipientMessage::AmountEdited(amount) => {
                 self.amount = amount;
                 if !self.amount.is_empty() {
                     self.warning_amount = self.amount().is_err();
+                } else {
+                    // Make the error disappear if we deleted the invalid amount
+                    self.warning_amount = false;
                 }
             }
             _ => {}
@@ -733,8 +752,8 @@ impl ManagerSendOutput {
         self.view.view(
             &self.address,
             &self.amount,
-            &self.warning_address,
-            &self.warning_amount,
+            self.warning_address,
+            self.warning_amount,
         )
     }
 }

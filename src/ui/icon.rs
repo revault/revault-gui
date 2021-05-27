@@ -105,3 +105,11 @@ pub fn stakeholder_icon() -> Text {
 pub fn manager_icon() -> Text {
     icon('\u{F4B4}')
 }
+
+pub fn done_icon() -> Text {
+    icon('\u{F26B}')
+}
+
+pub fn todo_icon() -> Text {
+    icon('\u{F28A}')
+}
