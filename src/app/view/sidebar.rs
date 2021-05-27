@@ -132,15 +132,22 @@ impl Sidebar {
         let mut actions = Column::new().spacing(15);
 
         if context.role == Role::Manager {
-            actions = actions
-                .push(
-                    button::primary(
-                        &mut self.deposit_menu_button,
-                        button::button_content(Some(deposit_icon()), "Deposit"),
-                    )
-                    .on_press(Message::Menu(Menu::Deposit))
-                    .width(Length::Units(200)),
+            let deposit_button = if context.menu == Menu::Deposit {
+                button::primary(
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
                 )
+                .on_press(Message::Menu(Menu::Deposit))
+            } else {
+                button::transparent(
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
+                )
+                .on_press(Message::Menu(Menu::Deposit))
+            };
+
+            actions = actions
+                .push(deposit_button.width(iced::Length::Units(200)))
                 .push(Container::new(
                     button::transparent(
                         &mut self.spend_menu_button,
