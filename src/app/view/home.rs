@@ -200,7 +200,7 @@ impl StakeholderHomeView {
                             &mut self.deposit_button,
                             button::button_content(None, "Deposit"),
                         )
-                        .on_press(Message::Menu(Menu::Deposit)),
+                        .on_press(Message::Menu(Menu::CreateVaults)),
                     )
                     .align_items(iced::Align::Center),
             )))
