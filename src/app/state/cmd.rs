@@ -108,3 +108,7 @@ pub async fn broadcast_spend_tx(
 pub async fn revault(revaultd: Arc<RevaultD>, outpoint: String) -> Result<(), RevaultDError> {
     revaultd.revault(&outpoint)
 }
+
+pub async fn emergency(revaultd: Arc<RevaultD>) -> Result<(), RevaultDError> {
+    revaultd.emergency()
+}

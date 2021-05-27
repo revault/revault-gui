@@ -12,8 +12,8 @@ use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, 
 use menu::Menu;
 use message::{Message, SignMessage, SpendTxMessage, VaultMessage};
 use state::{
-    ChargingState, DepositState, ManagerHomeState, ManagerNetworkState, ManagerSendState,
-    SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
+    ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerNetworkState,
+    ManagerSendState, SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
     StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
 };
 
@@ -61,6 +61,7 @@ impl App {
                 Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
                 Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
+                Menu::Emergency => EmergencyState::new(revaultd.clone()).into(),
                 _ => unreachable!(),
             },
         };
