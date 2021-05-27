@@ -4,9 +4,11 @@ mod view;
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings};
 
+use std::io::Write;
 use std::path::PathBuf;
 
-use crate::revault::Role;
+use crate::{app::config as gui_config, revault::Role, revaultd::config as revaultd_config};
+
 use message::Message;
 use step::{
     manager, stakeholder, Context, DefineBitcoind, DefineCoordinator, DefineCpfpDescriptor,
@@ -146,6 +148,17 @@ impl Application for Installer {
                 self.update_steps(role);
                 self.next();
             }
+            Message::Install => {
+                self.current_step().update(message);
+                let mut cfg = revaultd_config::Config::new();
+                for step in &self.steps {
+                    step.edit_config(&mut cfg);
+                }
+                return Command::perform(
+                    install(cfg, self.destination_path.clone()),
+                    Message::Installed,
+                );
+            }
             _ => {
                 self.current_step().update(message);
             }
@@ -158,8 +171,42 @@ impl Application for Installer {
     }
 }
 
+pub async fn install(cfg: revaultd_config::Config, datadir_path: PathBuf) -> Result<(), Error> {
+    std::fs::create_dir_all(&datadir_path)
+        .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
+
+    // create revaultd configuration file
+    let mut revaultd_config_path = datadir_path.clone();
+    revaultd_config_path.push(revaultd_config::DEFAULT_FILE_NAME);
+    let mut revaultd_config_file = std::fs::File::create(&revaultd_config_path)
+        .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
+
+    // Step needed because of ValueAfterTable error in the toml serialize implementation.
+    let value = toml::Value::try_from(&cfg)
+        .expect("revaultd::Config has a proper Serialize implementation");
+
+    revaultd_config_file
+        .write_all(value.to_string().as_bytes())
+        .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
+
+    // create revault GUI configuration file
+    let cfg = gui_config::Config::new(revaultd_config_path);
+    let mut gui_config_path = datadir_path.clone();
+    gui_config_path.push(gui_config::DEFAULT_FILE_NAME);
+
+    let mut gui_config_file = std::fs::File::create(gui_config_path)
+        .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
+
+    gui_config_file
+        .write_all(toml::to_string(&cfg).unwrap().as_bytes())
+        .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
+
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub enum Error {
+    CannotCreateDatadir(String),
     CannotCreateFile(String),
     CannotWriteToFile(String),
 }
@@ -167,6 +214,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::CannotCreateDatadir(e) => write!(f, "Failed to create datadir: {}", e),
             Self::CannotWriteToFile(e) => write!(f, "Failed to write to file: {}", e),
             Self::CannotCreateFile(e) => write!(f, "Failed to create file: {}", e),
         }

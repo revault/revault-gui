@@ -1,5 +1,5 @@
 use bitcoin::{util::bip32, Network};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
@@ -8,7 +8,7 @@ use std::{
 // This file is adapted from github.com/re-vault/revaultd:
 
 /// Everything we need to know for talking to bitcoind serenely
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BitcoindConfig {
     /// The network we are operating on, one of "bitcoin", "testnet", "regtest"
     pub network: Network,
@@ -20,14 +20,14 @@ pub struct BitcoindConfig {
     pub poll_interval_secs: Option<u64>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WatchtowerConfig {
     pub host: String,
     pub noise_key: String,
 }
 
 /// If we are a stakeholder, we need to connect to our watchtower(s)
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StakeholderConfig {
     pub xpub: bip32::ExtendedPubKey,
     pub watchtowers: Vec<WatchtowerConfig>,
@@ -35,20 +35,20 @@ pub struct StakeholderConfig {
 }
 
 // Same fields as the WatchtowerConfig struct for now, but leave them separate.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CosignerConfig {
     pub host: String,
     pub noise_key: String,
 }
 
 /// If we are a manager, we need to connect to cosigning servers
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ManagerConfig {
     pub xpub: bip32::ExtendedPubKey,
     pub cosigners: Vec<CosignerConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ScriptsConfig {
     pub deposit_descriptor: String,
     pub unvault_descriptor: String,
@@ -56,7 +56,7 @@ pub struct ScriptsConfig {
 }
 
 /// Static informations we require to operate
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Everything we need to know to talk to bitcoind
     pub bitcoind_config: BitcoindConfig,
@@ -118,6 +118,34 @@ impl Config {
         })?;
         datadir.push(DEFAULT_FILE_NAME);
         Ok(datadir)
+    }
+
+    /// returns a revaultd config with empty or dummy values
+    pub fn new() -> Config {
+        Self {
+            bitcoind_config: BitcoindConfig {
+                network: Network::Bitcoin,
+                cookie_path: PathBuf::new(),
+                addr: SocketAddr::new(
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+                    8080,
+                ),
+                poll_interval_secs: None,
+            },
+            stakeholder_config: None,
+            manager_config: None,
+            scripts_config: ScriptsConfig {
+                deposit_descriptor: "".to_string(),
+                unvault_descriptor: "".to_string(),
+                cpfp_descriptor: "".to_string(),
+            },
+            coordinator_host: "".to_string(),
+            coordinator_noise_key: "".to_string(),
+            coordinator_poll_seconds: None,
+            data_dir: None,
+            daemon: None,
+            log_level: None,
+        }
     }
 }
 
