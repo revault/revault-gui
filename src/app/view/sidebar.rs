@@ -130,25 +130,31 @@ impl Sidebar {
         };
 
         let mut actions = Column::new().spacing(15);
-
         if context.role == Role::Manager {
-            actions = actions
-                .push(
-                    button::primary(
-                        &mut self.deposit_menu_button,
-                        button::button_content(Some(deposit_icon()), "Deposit"),
-                    )
-                    .on_press(Message::Menu(Menu::Deposit))
-                    .width(Length::Units(200)),
+            let deposit_button = if context.menu == Menu::Deposit {
+                button::primary(
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
                 )
-                .push(Container::new(
-                    button::transparent(
-                        &mut self.spend_menu_button,
-                        button::button_content(Some(send_icon()), "Send"),
-                    )
-                    .on_press(Message::Menu(Menu::Send))
-                    .width(iced::Length::Units(200)),
-                ));
+                .on_press(Message::Menu(Menu::Deposit))
+                .width(Length::Units(200))
+            } else {
+                button::transparent(
+                    &mut self.deposit_menu_button,
+                    button::button_content(Some(deposit_icon()), "Deposit"),
+                )
+                .on_press(Message::Menu(Menu::Deposit))
+                .width(Length::Units(200))
+            };
+
+            actions = actions.push(deposit_button).push(Container::new(
+                button::transparent(
+                    &mut self.spend_menu_button,
+                    button::button_content(Some(send_icon()), "Send"),
+                )
+                .on_press(Message::Menu(Menu::Send))
+                .width(iced::Length::Units(200)),
+            ));
         } else {
             let action_delegate = if context.menu == Menu::DelegateFunds {
                 Container::new(
