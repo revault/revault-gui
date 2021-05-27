@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use crate::revaultd::config::default_datadir;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Path to revaultd configuration file.
     pub revaultd_config_path: PathBuf,
@@ -18,6 +18,15 @@ pub struct Config {
 pub const DEFAULT_FILE_NAME: &'static str = "revault_gui.toml";
 
 impl Config {
+    pub fn new(revaultd_config_path: PathBuf) -> Self {
+        Self {
+            revaultd_config_path,
+            revaultd_path: None,
+            log_level: None,
+            debug: None,
+        }
+    }
+
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let config = std::fs::read(path)
             .map_err(|e| match e.kind() {
