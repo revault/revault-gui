@@ -2,10 +2,13 @@ mod common;
 pub mod manager;
 pub mod stakeholder;
 
-use bitcoin::util::bip32::ExtendedPubKey;
-use iced::{button::State as Button, scrollable, Element};
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use bitcoin::{util::bip32::ExtendedPubKey, Network};
+use iced::{button::State as Button, scrollable, Element};
+use miniscript::DescriptorPublicKey;
+use revault_tx::scripts::CpfpDescriptor;
 
 use crate::{
     installer::{
@@ -13,7 +16,7 @@ use crate::{
         step::common::ParticipantXpub,
         view,
     },
-    revaultd::config::Config,
+    revaultd::config,
 };
 
 pub trait Step {
@@ -25,17 +28,19 @@ pub trait Step {
     fn is_correct(&self) -> bool {
         true
     }
-    fn edit_config(&self, config: &mut Config) {}
+    fn edit_config(&self, _config: &mut config::Config) {}
 }
 
 pub struct Context {
     pub number_cosigners: usize,
+    pub stakeholders_xpubs: Vec<String>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Self {
             number_cosigners: 0,
+            stakeholders_xpubs: Vec::new(),
         }
     }
 }
@@ -152,6 +157,23 @@ impl Step for DefineCpfpDescriptor {
         };
     }
 
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut xpubs: Vec<String> = self
+            .manager_xpubs
+            .iter()
+            .map(|participant| format!("{}/*", participant.xpub))
+            .collect();
+
+        xpubs.sort();
+
+        let keys = xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        config.scripts_config.cpfp_descriptor = CpfpDescriptor::new(keys).unwrap().to_string();
+    }
+
     fn view(&mut self) -> Element<Message> {
         return view::define_cpfp_descriptor(
             &mut self.add_xpub_button,
@@ -216,6 +238,11 @@ impl Step for DefineCoordinator {
         };
     }
 
+    fn edit_config(&self, config: &mut config::Config) {
+        config.coordinator_host = self.host.clone();
+        config.coordinator_noise_key = self.noise_key.clone();
+    }
+
     fn view(&mut self) -> Element<Message> {
         self.view.render(&self.host, &self.noise_key, self.warning)
     }
@@ -256,6 +283,7 @@ impl Step for DefineBitcoind {
 
     fn check(&mut self) {
         self.warning_cookie = PathBuf::from_str(&self.cookie_path).is_err();
+        self.warning_address = std::net::SocketAddr::from_str(&self.address).is_err();
         // TODO
     }
 
@@ -272,6 +300,15 @@ impl Step for DefineBitcoind {
                 }
             };
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        config.bitcoind_config = config::BitcoindConfig {
+            network: Network::from_str("bitcoin").expect("already checked"),
+            cookie_path: PathBuf::from_str(&self.cookie_path).expect("already checked"),
+            poll_interval_secs: None,
+            addr: std::net::SocketAddr::from_str(&self.address).expect("already checked"),
+        }
     }
 
     fn view(&mut self) -> Element<Message> {

@@ -275,7 +275,7 @@ impl ManagersTreshold {
         }
     }
 
-    pub fn render(&mut self, managers_treshold: u32) -> Container<Message> {
+    pub fn render(&mut self, managers_treshold: usize) -> Container<Message> {
         Container::new(
             Column::new()
                 .push(text::bold(text::simple("Managers treshold:")))
@@ -407,7 +407,7 @@ impl DefineManagerXpubsAsManager {
 
     pub fn render<'a>(
         &'a mut self,
-        managers_treshold: u32,
+        managers_treshold: usize,
         spending_delay: u32,
         our_xpub: &str,
         our_xpub_warning: bool,
@@ -544,7 +544,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
     }
     pub fn render<'a>(
         &'a mut self,
-        managers_treshold: u32,
+        managers_treshold: usize,
         spending_delay: u32,
         manager_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,

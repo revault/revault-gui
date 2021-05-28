@@ -1,14 +1,19 @@
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, text_input, Element};
+use miniscript::DescriptorPublicKey;
+use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
 use std::str::FromStr;
 
-use crate::installer::{
-    message::{self, Message},
-    step::{
-        common::{CosignerKey, ParticipantXpub},
-        Context, Step,
+use crate::{
+    installer::{
+        message::{self, Message},
+        step::{
+            common::{CosignerKey, ParticipantXpub},
+            Context, Step,
+        },
+        view,
     },
-    view,
+    revaultd::config,
 };
 
 pub struct DefineStakeholderXpubs {
@@ -41,6 +46,16 @@ impl DefineStakeholderXpubs {
 impl Step for DefineStakeholderXpubs {
     fn is_correct(&self) -> bool {
         !self.our_xpub_warning && !self.other_xpubs.iter().any(|xpub| xpub.warning)
+    }
+
+    fn update_context(&self, ctx: &mut Context) {
+        ctx.stakeholders_xpubs = self
+            .other_xpubs
+            .iter()
+            .map(|participant| participant.xpub.clone())
+            .collect();
+
+        ctx.stakeholders_xpubs.push(self.our_xpub.clone());
     }
 
     fn check(&mut self) {
@@ -79,6 +94,31 @@ impl Step for DefineStakeholderXpubs {
         };
     }
 
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut xpubs: Vec<String> = self
+            .other_xpubs
+            .iter()
+            .map(|participant| format!("{}/*", participant.xpub.clone()))
+            .collect();
+        xpubs.push(format!("{}/*", self.our_xpub.clone()));
+
+        xpubs.sort();
+
+        let keys = xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        config.scripts_config.deposit_descriptor =
+            DepositDescriptor::new(keys).unwrap().to_string();
+
+        config.stakeholder_config = Some(config::StakeholderConfig {
+            xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
+            watchtowers: Vec::new(),
+            emergency_address: "".to_string(),
+        });
+    }
+
     fn view(&mut self) -> Element<Message> {
         return view::define_stakeholder_xpubs_as_stakeholder(
             &self.our_xpub,
@@ -110,11 +150,14 @@ impl From<DefineStakeholderXpubs> for Box<dyn Step> {
 }
 
 pub struct DefineManagerXpubs {
-    managers_treshold: u32,
+    managers_treshold: usize,
     spending_delay: u32,
     manager_xpubs: Vec<ParticipantXpub>,
     cosigners: Vec<CosignerKey>,
     view: view::DefineManagerXpubsAsStakeholderOnly,
+
+    /// from previous step
+    stakeholder_xpubs: Vec<String>,
 }
 
 impl DefineManagerXpubs {
@@ -125,12 +168,17 @@ impl DefineManagerXpubs {
             manager_xpubs: Vec::new(),
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsStakeholderOnly::new(),
+            stakeholder_xpubs: Vec::new(),
         }
     }
 }
 impl Step for DefineManagerXpubs {
     fn update_context(&self, ctx: &mut Context) {
         ctx.number_cosigners = self.cosigners.len();
+    }
+
+    fn load_context(&mut self, ctx: &Context) {
+        self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
     }
 
     fn is_correct(&self) -> bool {
@@ -194,6 +242,57 @@ impl Step for DefineManagerXpubs {
                 _ => {}
             };
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut managers_xpubs: Vec<String> = self
+            .manager_xpubs
+            .iter()
+            .map(|participant| format!("{}/*", participant.xpub.clone()))
+            .collect();
+
+        managers_xpubs.sort();
+
+        let managers_keys = managers_xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        let mut stakeholders_xpubs: Vec<String> = self
+            .stakeholder_xpubs
+            .iter()
+            .map(|xpub| format!("{}/*", xpub.clone()))
+            .collect();
+
+        stakeholders_xpubs.sort();
+
+        let stakeholders_keys = stakeholders_xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        let mut cosigners_keys: Vec<String> = self
+            .cosigners
+            .iter()
+            .map(|cosigner| cosigner.key.clone())
+            .collect();
+
+        cosigners_keys.sort();
+
+        let cosigners_keys = cosigners_keys
+            .into_iter()
+            .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
+            .collect();
+
+        config.scripts_config.unvault_descriptor = UnvaultDescriptor::new(
+            stakeholders_keys,
+            managers_keys,
+            self.managers_treshold,
+            cosigners_keys,
+            self.spending_delay,
+        )
+        .unwrap()
+        .to_string();
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -263,6 +362,12 @@ impl Step for DefineEmergencyAddress {
             self.address = address;
             self.warning = false;
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        if let Some(stakeholder_config) = &mut config.stakeholder_config {
+            stakeholder_config.emergency_address = self.address.clone();
+        }
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -367,6 +472,20 @@ impl Step for DefineWatchtowers {
                 }
             };
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut ws = Vec::new();
+        for watchtower in &self.watchtowers {
+            ws.push(config::WatchtowerConfig {
+                host: watchtower.host.clone(),
+                noise_key: watchtower.noise_key.clone(),
+            })
+        }
+
+        if let Some(stakeholder_config) = &mut config.stakeholder_config {
+            stakeholder_config.watchtowers = ws;
+        }
     }
 
     fn view(&mut self) -> Element<Message> {
