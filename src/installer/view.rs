@@ -1137,7 +1137,7 @@ impl DefineBitcoind {
 pub struct Final {
     scroll: scrollable::State,
     previous_button: Button,
-    generate_button: Button,
+    action_button: Button,
 }
 
 impl Final {
@@ -1145,7 +1145,7 @@ impl Final {
         Self {
             scroll: scrollable::State::new(),
             previous_button: Button::new(),
-            generate_button: Button::new(),
+            action_button: Button::new(),
         }
     }
 
@@ -1169,19 +1169,36 @@ impl Final {
 
         if generating {
             col = col.push(button::primary(
-                &mut self.generate_button,
+                &mut self.action_button,
                 button::button_content(None, "Installing ..."),
             ))
         } else if !success {
             col = col.push(
                 button::primary(
-                    &mut self.generate_button,
+                    &mut self.action_button,
                     button::button_content(None, "Finalize installation"),
                 )
                 .on_press(Message::Install),
             );
         } else {
-            col = col.push(card::success(Container::new(text::simple("Installed !"))));
+            col = col.push(card::border_success(
+                Container::new(
+                    Column::new()
+                        .push(Container::new(text::simple("Installed !")))
+                        .push(Container::new(
+                            button::primary(
+                                &mut self.action_button,
+                                button::button_content(None, "Start"),
+                            )
+                            .on_press(Message::Exit),
+                        ))
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .padding(50)
+                .width(Length::Fill)
+                .align_x(Align::Center),
+            ));
         }
 
         layout(&mut self.scroll, &mut self.previous_button, col.into())
