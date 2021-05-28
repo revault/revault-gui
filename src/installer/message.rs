@@ -3,6 +3,7 @@ use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Exit,
     Next,
     Previous,
     Install,

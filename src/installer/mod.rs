@@ -124,6 +124,9 @@ impl Application for Installer {
         _clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
         match message {
+            Message::Exit => {
+                self.exit = true;
+            }
             Message::Next => {
                 let current_step = self
                     .steps
