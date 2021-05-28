@@ -72,3 +72,9 @@ pub const INFO_LIGHT: Color = Color::from_rgba(
     0xBD as f32 / 255.0,
     0.5f32,
 );
+
+pub const DARK_GREY: Color = Color::from_rgb(
+    0x8c as f32 / 255.0,
+    0x97 as f32 / 255.0,
+    0xa6 as f32 / 255.0,
+);

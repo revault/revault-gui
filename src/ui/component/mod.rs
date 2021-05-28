@@ -3,11 +3,13 @@ pub mod button;
 pub mod image;
 pub mod text;
 
-use super::{color, font};
+use super::{color, font, icon};
 
 use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
 
 use image::revault_colored_logo;
+
+use std::cmp::Ordering;
 
 /// scroll is a wrapper for Scrollable in order to fix a bug from iced 0.3.0
 /// scroll add padding to the content in order to give space to the scroll bar.
@@ -258,5 +260,140 @@ pub mod card {
                 ..container::Style::default()
             }
         }
+    }
+
+    pub struct ProgressBarDoneCardStyle;
+    impl container::StyleSheet for ProgressBarDoneCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                background: color::PRIMARY.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    // An empty card used as decoration in the progress bar
+    pub fn progress_done<'a, T: 'a>() -> Container<'a, T> {
+        Container::new(iced::Row::new()).style(ProgressBarDoneCardStyle)
+    }
+
+    pub struct ProgressBarDoingCardStyle;
+    impl container::StyleSheet for ProgressBarDoingCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                background: color::PRIMARY_LIGHT.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    // An empty card used as decoration in the progress bar
+    pub fn progress_doing<'a, T: 'a>() -> Container<'a, T> {
+        Container::new(iced::Row::new()).style(ProgressBarDoingCardStyle)
+    }
+
+    pub struct ProgressBarTodoCardStyle;
+    impl container::StyleSheet for ProgressBarTodoCardStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                border_radius: 10.0,
+                background: color::SECONDARY.into(),
+                ..container::Style::default()
+            }
+        }
+    }
+
+    // An empty card used as decoration in the progress bar
+    pub fn progress_todo<'a, T: 'a>() -> Container<'a, T> {
+        Container::new(iced::Row::new()).style(ProgressBarTodoCardStyle)
+    }
+}
+
+pub struct ProgressBar {
+    steps: Vec<&'static str>,
+}
+
+impl ProgressBar {
+    pub fn spend_bar() -> Self {
+        Self {
+            steps: vec!["Add recipients", "Select fee", "Select coins", "Sign"],
+        }
+    }
+
+    pub fn draw<'a, T: 'a + Clone>(&self, current_step: usize) -> Container<'a, T> {
+        let mut row = Row::new().spacing(20);
+        for (i, step) in self.steps.iter().enumerate() {
+            match i.cmp(&current_step) {
+                Ordering::Less => row = row.push(self.progress_circle_done(step)),
+                Ordering::Equal => row = row.push(self.progress_circle_doing(step)),
+                Ordering::Greater => row = row.push(self.progress_circle_todo(step)),
+            }
+        }
+        Container::new(row)
+    }
+
+    fn progress_circle_todo<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
+        Container::new(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(icon::todo_icon().color(color::DARK_GREY))
+                        .push(text::small(step).color(color::DARK_GREY))
+                        .spacing(10)
+                        .align_items(iced::Align::Center),
+                )
+                .push(
+                    card::progress_todo()
+                        .height(Length::Units(5))
+                        .width(Length::Fill),
+                )
+                .width(Length::Units(120))
+                .align_items(iced::Align::Center)
+                .spacing(10),
+        )
+    }
+
+    fn progress_circle_doing<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
+        Container::new(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(icon::todo_icon().color(color::DARK_GREY))
+                        .push(text::small(step).color(color::DARK_GREY))
+                        .spacing(10)
+                        .align_items(iced::Align::Center),
+                )
+                .push(
+                    card::progress_doing()
+                        .height(Length::Units(5))
+                        .width(Length::Fill),
+                )
+                .width(Length::Units(120))
+                .align_items(iced::Align::Center)
+                .spacing(10),
+        )
+    }
+
+    fn progress_circle_done<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
+        Container::new(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(icon::done_icon())
+                        .push(text::small(step))
+                        .spacing(10)
+                        .align_items(iced::Align::Center),
+                )
+                .push(
+                    card::progress_done()
+                        .height(Length::Units(5))
+                        .width(Length::Fill),
+                )
+                .width(Length::Units(120))
+                .align_items(iced::Align::Center)
+                .spacing(10),
+        )
     }
 }
