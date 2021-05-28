@@ -1,6 +1,7 @@
 use crate::installer::{message, view};
 use iced::{button::State as Button, text_input, Element};
 
+#[derive(Clone)]
 pub struct ParticipantXpub {
     pub xpub: String,
     pub warning: bool,

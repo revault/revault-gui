@@ -1,14 +1,19 @@
 use bitcoin::util::bip32::ExtendedPubKey;
-use iced::{button::State as Button, scrollable, text_input, Element};
+use iced::{button::State as Button, scrollable, Element};
+use miniscript::DescriptorPublicKey;
+use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
 use std::str::FromStr;
 
-use crate::installer::{
-    message::{self, Message},
-    step::{
-        common::{CosignerKey, ParticipantXpub},
-        Context, Step,
+use crate::{
+    installer::{
+        message::{self, Message},
+        step::{
+            common::{CosignerKey, ParticipantXpub},
+            Context, Step,
+        },
+        view,
     },
-    view,
+    revaultd::config,
 };
 
 pub struct DefineStakeholderXpubs {
@@ -32,13 +37,21 @@ impl DefineStakeholderXpubs {
 }
 
 impl Step for DefineStakeholderXpubs {
+    fn update_context(&self, ctx: &mut Context) {
+        ctx.stakeholders_xpubs = self
+            .stakeholder_xpubs
+            .iter()
+            .map(|participant| participant.xpub.clone())
+            .collect();
+    }
+
     fn is_correct(&self) -> bool {
         !self.stakeholder_xpubs.iter().any(|xpub| xpub.warning)
     }
 
     fn check(&mut self) {
         for participant in &mut self.stakeholder_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+            if DescriptorPublicKey::from_str(&participant.xpub).is_err() {
                 participant.warning = true;
             }
         }
@@ -64,6 +77,24 @@ impl Step for DefineStakeholderXpubs {
                 _ => (),
             };
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut xpubs: Vec<String> = self
+            .stakeholder_xpubs
+            .iter()
+            .map(|participant| format!("{}/*", participant.xpub.clone()))
+            .collect();
+
+        xpubs.sort();
+
+        let keys = xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        config.scripts_config.deposit_descriptor =
+            DepositDescriptor::new(keys).unwrap().to_string();
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -98,10 +129,13 @@ pub struct DefineManagerXpubs {
     other_xpubs: Vec<ParticipantXpub>,
     our_xpub: String,
     our_xpub_warning: bool,
-    managers_treshold: u32,
+    managers_treshold: usize,
     spending_delay: u32,
 
     view: view::DefineManagerXpubsAsManager,
+
+    /// from previous step
+    stakeholder_xpubs: Vec<String>,
 }
 
 impl DefineManagerXpubs {
@@ -114,6 +148,7 @@ impl DefineManagerXpubs {
             other_xpubs: Vec::new(),
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsManager::new(),
+            stakeholder_xpubs: Vec::new(),
         }
     }
 }
@@ -123,13 +158,17 @@ impl Step for DefineManagerXpubs {
         ctx.number_cosigners = self.cosigners.len();
     }
 
+    fn load_context(&mut self, ctx: &Context) {
+        self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
+    }
+
     fn check(&mut self) {
         for participant in &mut self.other_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+            if DescriptorPublicKey::from_str(&participant.xpub).is_err() {
                 participant.warning = true;
             }
         }
-        if ExtendedPubKey::from_str(&self.our_xpub).is_err() {
+        if DescriptorPublicKey::from_str(&self.our_xpub).is_err() {
             self.our_xpub_warning = true;
         }
     }
@@ -189,6 +228,63 @@ impl Step for DefineManagerXpubs {
                 },
             };
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut managers_xpubs: Vec<String> = self
+            .other_xpubs
+            .iter()
+            .map(|participant| format!("{}/*", participant.xpub.clone()))
+            .collect();
+        managers_xpubs.push(format!("{}/*", self.our_xpub.clone()));
+
+        managers_xpubs.sort();
+
+        let managers_keys = managers_xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        let mut stakeholders_xpubs: Vec<String> = self
+            .stakeholder_xpubs
+            .iter()
+            .map(|xpub| format!("{}/*", xpub.clone()))
+            .collect();
+
+        stakeholders_xpubs.sort();
+
+        let stakeholders_keys = stakeholders_xpubs
+            .into_iter()
+            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
+            .collect();
+
+        let mut cosigners_keys: Vec<String> = self
+            .cosigners
+            .iter()
+            .map(|cosigner| cosigner.key.clone())
+            .collect();
+
+        cosigners_keys.sort();
+
+        let cosigners_keys = cosigners_keys
+            .into_iter()
+            .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
+            .collect();
+
+        config.scripts_config.unvault_descriptor = UnvaultDescriptor::new(
+            stakeholders_keys,
+            managers_keys,
+            self.managers_treshold,
+            cosigners_keys,
+            self.spending_delay,
+        )
+        .unwrap()
+        .to_string();
+
+        config.manager_config = Some(config::ManagerConfig {
+            xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
+            cosigners: Vec::new(),
+        });
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -316,6 +412,20 @@ impl Step for DefineCosigners {
                 cosigner.update(msg);
             }
         };
+    }
+
+    fn edit_config(&self, config: &mut config::Config) {
+        let mut vec = Vec::new();
+        for cosigner in &self.cosigners {
+            vec.push(config::CosignerConfig {
+                host: cosigner.host.clone(),
+                noise_key: cosigner.noise_key.clone(),
+            })
+        }
+
+        if let Some(manager_config) = &mut config.manager_config {
+            manager_config.cosigners = vec;
+        }
     }
 
     fn view(&mut self) -> Element<Message> {

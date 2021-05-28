@@ -153,10 +153,15 @@ impl Application for Installer {
             }
             Message::Install => {
                 self.current_step().update(message);
+
                 let mut cfg = revaultd_config::Config::new();
+                cfg.data_dir = Some(self.destination_path.clone());
+                cfg.daemon = Some(true);
+
                 for step in &self.steps {
                     step.edit_config(&mut cfg);
                 }
+
                 return Command::perform(
                     install(cfg, self.destination_path.clone()),
                     Message::Installed,
