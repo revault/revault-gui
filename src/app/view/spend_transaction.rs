@@ -503,7 +503,9 @@ impl SpendTransactionListItemView {
             .unsigned_tx
             .output
             .iter()
-            .fold(0, |acc, output| acc + output.value);
+            .enumerate()
+            .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
+            .fold(0, |acc, (_, output)| acc + output.value);
         button::white_card_button(
             &mut self.select_button,
             Container::new(

@@ -248,6 +248,8 @@ pub struct SpendTx {
     #[serde(with = "bitcoin_psbt")]
     pub psbt: PartiallySignedTransaction,
     pub deposit_outpoints: Vec<String>,
+    pub change_index: Option<usize>,
+    pub cpfp_index: usize,
 }
 
 mod bitcoin_transaction {
