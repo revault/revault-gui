@@ -112,8 +112,21 @@ impl std::fmt::Display for VaultStatus {
 }
 
 impl VaultStatus {
-    pub const CURRENT: [VaultStatus; 11] = [
+    pub const DEPOSIT_AND_CURRENT: [VaultStatus; 11] = [
         Self::Funded,
+        Self::Securing,
+        Self::Secured,
+        Self::Activating,
+        Self::Active,
+        Self::Unvaulting,
+        Self::Unvaulted,
+        Self::Canceling,
+        Self::EmergencyVaulting,
+        Self::UnvaultEmergencyVaulting,
+        Self::Spending,
+    ];
+
+    pub const CURRENT: [VaultStatus; 10] = [
         Self::Securing,
         Self::Secured,
         Self::Activating,

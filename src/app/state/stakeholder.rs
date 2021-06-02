@@ -148,7 +148,10 @@ impl State for StakeholderHomeState {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT)),
+                list_vaults(
+                    self.revaultd.clone(),
+                    Some(&VaultStatus::DEPOSIT_AND_CURRENT),
+                ),
                 Message::Vaults,
             ),
         ])
