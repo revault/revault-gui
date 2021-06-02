@@ -98,7 +98,7 @@ impl State for VaultsState {
                 self.loading = true;
                 self.vault_status_filter = statuses;
                 return Command::perform(
-                    list_vaults(self.revaultd.clone(), Some(self.vault_status_filter)),
+                    list_vaults(self.revaultd.clone(), Some(self.vault_status_filter), None),
                     Message::Vaults,
                 );
             }
@@ -128,7 +128,7 @@ impl State for VaultsState {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(self.vault_status_filter)),
+                list_vaults(self.revaultd.clone(), Some(self.vault_status_filter), None),
                 Message::Vaults,
             ),
         ])

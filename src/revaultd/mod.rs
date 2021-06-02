@@ -112,8 +112,13 @@ impl RevaultD {
     pub fn list_vaults(
         &self,
         statuses: Option<&[VaultStatus]>,
+        outpoints: Option<&Vec<String>>,
     ) -> Result<ListVaultsResponse, RevaultDError> {
-        self.call("listvaults", statuses.map(|s| vec![s]))
+        let mut args = vec![json!(statuses.unwrap_or(&[]))];
+        if let Some(outpoints) = outpoints {
+            args.push(json!(outpoints));
+        }
+        self.call("listvaults", Some(args))
     }
 
     pub fn list_onchain_transactions(

@@ -74,7 +74,11 @@ impl State for SpendTransactionState {
                             self.deposit_outpoints = tx.deposit_outpoints;
                             self.psbt = tx.psbt;
                             return Command::perform(
-                                list_vaults(self.revaultd.clone(), None),
+                                list_vaults(
+                                    self.revaultd.clone(),
+                                    None,
+                                    Some(self.deposit_outpoints.clone()),
+                                ),
                                 |res| Message::SpendTx(SpendTxMessage::Inputs(res)),
                             );
                         }

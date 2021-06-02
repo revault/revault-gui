@@ -250,7 +250,7 @@ impl State for ManagerHomeState {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT)),
+                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
                 Message::Vaults,
             ),
             Command::perform(
@@ -669,7 +669,7 @@ impl State for ManagerCreateSendTransactionState {
 
     fn load(&self) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Active])),
+            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Active]), None),
             Message::Vaults,
         )])
     }
