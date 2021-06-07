@@ -275,49 +275,54 @@ impl ManagersTreshold {
         }
     }
 
-    pub fn render(&mut self, managers_treshold: usize) -> Container<Message> {
-        Container::new(
-            Column::new()
-                .push(text::bold(text::simple("Managers treshold:")))
-                .push(
-                    Row::new()
-                        .push(text::simple(&format!("{}", managers_treshold)).size(50))
-                        .push(
-                            Column::new()
-                                .push(
-                                    button::transparent(
-                                        &mut self.increment_button,
-                                        Container::new(text::simple("+")),
-                                    )
-                                    .on_press(
-                                        Message::DefineManagerXpubs(
-                                            message::DefineManagerXpubs::ManagersTreshold(
-                                                message::Action::Increment,
-                                            ),
+    pub fn render(&mut self, managers_treshold: usize, warning: bool) -> Container<Message> {
+        let mut col = Column::new()
+            .push(text::bold(text::simple("Managers treshold:")))
+            .push(
+                Row::new()
+                    .push(text::simple(&format!("{}", managers_treshold)).size(50))
+                    .push(
+                        Column::new()
+                            .push(
+                                button::transparent(
+                                    &mut self.increment_button,
+                                    Container::new(text::simple("+")),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::ManagersTreshold(
+                                            message::Action::Increment,
                                         ),
                                     ),
+                                ),
+                            )
+                            .push(
+                                button::transparent(
+                                    &mut self.decrement_button,
+                                    Container::new(text::simple("-")),
                                 )
-                                .push(
-                                    button::transparent(
-                                        &mut self.decrement_button,
-                                        Container::new(text::simple("-")),
-                                    )
-                                    .on_press(
-                                        Message::DefineManagerXpubs(
-                                            message::DefineManagerXpubs::ManagersTreshold(
-                                                message::Action::Decrement,
-                                            ),
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::ManagersTreshold(
+                                            message::Action::Decrement,
                                         ),
                                     ),
-                                )
-                                .align_items(Align::Center),
-                        )
-                        .align_items(Align::Center)
-                        .spacing(20),
-                )
-                .align_items(Align::Center)
-                .spacing(10),
-        )
+                                ),
+                            )
+                            .align_items(Align::Center),
+                    )
+                    .align_items(Align::Center)
+                    .spacing(20),
+            )
+            .align_items(Align::Center)
+            .spacing(10);
+
+        if warning {
+            col = col.push(card::alert_warning(Container::new(text::small(
+                "Impossible treshold",
+            ))))
+        }
+        Container::new(col)
     }
 }
 
@@ -334,49 +339,53 @@ impl SpendingDelay {
         }
     }
 
-    pub fn render(&mut self, spending_delay: u32) -> Container<Message> {
-        Container::new(
-            Column::new()
-                .push(text::bold(text::simple("Spending delay in blocks:")))
-                .push(
-                    Row::new()
-                        .push(text::simple(&format!("{}", spending_delay)).size(50))
-                        .push(
-                            Column::new()
-                                .push(
-                                    button::transparent(
-                                        &mut self.increment_button,
-                                        Container::new(text::simple("+")),
-                                    )
-                                    .on_press(
-                                        Message::DefineManagerXpubs(
-                                            message::DefineManagerXpubs::SpendingDelay(
-                                                message::Action::Increment,
-                                            ),
+    pub fn render(&mut self, spending_delay: u32, warning: bool) -> Container<Message> {
+        let mut col = Column::new()
+            .push(text::bold(text::simple("Spending delay in blocks:")))
+            .push(
+                Row::new()
+                    .push(text::simple(&format!("{}", spending_delay)).size(50))
+                    .push(
+                        Column::new()
+                            .push(
+                                button::transparent(
+                                    &mut self.increment_button,
+                                    Container::new(text::simple("+")),
+                                )
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::SpendingDelay(
+                                            message::Action::Increment,
                                         ),
                                     ),
+                                ),
+                            )
+                            .push(
+                                button::transparent(
+                                    &mut self.decrement_button,
+                                    Container::new(text::simple("-")),
                                 )
-                                .push(
-                                    button::transparent(
-                                        &mut self.decrement_button,
-                                        Container::new(text::simple("-")),
-                                    )
-                                    .on_press(
-                                        Message::DefineManagerXpubs(
-                                            message::DefineManagerXpubs::SpendingDelay(
-                                                message::Action::Decrement,
-                                            ),
+                                .on_press(
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::SpendingDelay(
+                                            message::Action::Decrement,
                                         ),
                                     ),
-                                )
-                                .align_items(Align::Center),
-                        )
-                        .align_items(Align::Center)
-                        .spacing(20),
-                )
-                .align_items(Align::Center)
-                .spacing(10),
-        )
+                                ),
+                            )
+                            .align_items(Align::Center),
+                    )
+                    .align_items(Align::Center)
+                    .spacing(20),
+            )
+            .align_items(Align::Center)
+            .spacing(10);
+        if warning {
+            col = col.push(card::alert_warning(Container::new(text::small(
+                "Spending delay cannot be equal to zero",
+            ))))
+        }
+        Container::new(col)
     }
 }
 
@@ -408,7 +417,9 @@ impl DefineManagerXpubsAsManager {
     pub fn render<'a>(
         &'a mut self,
         managers_treshold: usize,
+        treshold_warning: bool,
         spending_delay: u32,
+        spending_delay_warning: bool,
         our_xpub: &str,
         our_xpub_warning: bool,
         other_xpubs: Vec<Element<'a, Message>>,
@@ -443,14 +454,20 @@ impl DefineManagerXpubsAsManager {
                 .push(
                     Row::new()
                         .push(
-                            Container::new(self.managers_treshold.render(managers_treshold))
-                                .width(Length::FillPortion(1))
-                                .align_x(Align::Center),
+                            Container::new(
+                                self.managers_treshold
+                                    .render(managers_treshold, treshold_warning),
+                            )
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                         )
                         .push(
-                            Container::new(self.spending_delay.render(spending_delay))
-                                .width(Length::FillPortion(1))
-                                .align_x(Align::Center),
+                            Container::new(
+                                self.spending_delay
+                                    .render(spending_delay, spending_delay_warning),
+                            )
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                         )
                         .width(Length::Fill),
                 )
@@ -545,7 +562,9 @@ impl DefineManagerXpubsAsStakeholderOnly {
     pub fn render<'a>(
         &'a mut self,
         managers_treshold: usize,
+        treshold_warning: bool,
         spending_delay: u32,
+        spending_delay_warning: bool,
         manager_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
     ) -> Element<'a, Message> {
@@ -570,14 +589,20 @@ impl DefineManagerXpubsAsStakeholderOnly {
                 .push(
                     Row::new()
                         .push(
-                            Container::new(self.managers_treshold.render(managers_treshold))
-                                .width(Length::FillPortion(1))
-                                .align_x(Align::Center),
+                            Container::new(
+                                self.managers_treshold
+                                    .render(managers_treshold, treshold_warning),
+                            )
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                         )
                         .push(
-                            Container::new(self.spending_delay.render(spending_delay))
-                                .width(Length::FillPortion(1))
-                                .align_x(Align::Center),
+                            Container::new(
+                                self.spending_delay
+                                    .render(spending_delay, spending_delay_warning),
+                            )
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                         )
                         .width(Length::Fill),
                 )

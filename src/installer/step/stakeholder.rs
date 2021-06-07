@@ -151,7 +151,9 @@ impl From<DefineStakeholderXpubs> for Box<dyn Step> {
 
 pub struct DefineManagerXpubs {
     managers_treshold: usize,
+    treshold_warning: bool,
     spending_delay: u32,
+    spending_delay_warning: bool,
     manager_xpubs: Vec<ParticipantXpub>,
     cosigners: Vec<CosignerKey>,
     view: view::DefineManagerXpubsAsStakeholderOnly,
@@ -164,7 +166,9 @@ impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
             managers_treshold: 0,
+            treshold_warning: false,
             spending_delay: 0,
+            spending_delay_warning: false,
             manager_xpubs: Vec::new(),
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsStakeholderOnly::new(),
@@ -192,6 +196,10 @@ impl Step for DefineManagerXpubs {
                 participant.warning = true;
             }
         }
+
+        self.treshold_warning =
+            self.managers_treshold == 0 || self.managers_treshold > self.manager_xpubs.len();
+        self.spending_delay_warning = self.spending_delay == 0;
     }
 
     fn update(&mut self, message: Message) {
@@ -221,9 +229,11 @@ impl Step for DefineManagerXpubs {
                 }
                 message::DefineManagerXpubs::ManagersTreshold(action) => match action {
                     message::Action::Increment => {
+                        self.treshold_warning = false;
                         self.managers_treshold = self.managers_treshold + 1;
                     }
                     message::Action::Decrement => {
+                        self.treshold_warning = false;
                         if self.managers_treshold > 0 {
                             self.managers_treshold = self.managers_treshold - 1;
                         }
@@ -232,8 +242,10 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::SpendingDelay(action) => match action {
                     message::Action::Increment => {
                         self.spending_delay = self.spending_delay + 1;
+                        self.spending_delay_warning = false;
                     }
                     message::Action::Decrement => {
+                        self.spending_delay_warning = false;
                         if self.spending_delay > 0 {
                             self.spending_delay = self.spending_delay - 1;
                         }
@@ -298,7 +310,9 @@ impl Step for DefineManagerXpubs {
     fn view(&mut self) -> Element<Message> {
         self.view.render(
             self.managers_treshold,
+            self.treshold_warning,
             self.spending_delay,
+            self.spending_delay_warning,
             self.manager_xpubs
                 .iter_mut()
                 .enumerate()
