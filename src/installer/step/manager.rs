@@ -130,7 +130,9 @@ pub struct DefineManagerXpubs {
     our_xpub: String,
     our_xpub_warning: bool,
     managers_treshold: usize,
+    treshold_warning: bool,
     spending_delay: u32,
+    spending_delay_warning: bool,
 
     view: view::DefineManagerXpubsAsManager,
 
@@ -142,7 +144,9 @@ impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
             managers_treshold: 0,
+            treshold_warning: false,
             spending_delay: 0,
+            spending_delay_warning: false,
             our_xpub: "".to_string(),
             our_xpub_warning: false,
             other_xpubs: Vec::new(),
@@ -171,6 +175,11 @@ impl Step for DefineManagerXpubs {
         if DescriptorPublicKey::from_str(&self.our_xpub).is_err() {
             self.our_xpub_warning = true;
         }
+
+        // If user is manager, other_xpubs can be equal to zero and treshold equal to 1.
+        self.treshold_warning =
+            self.managers_treshold == 0 || self.managers_treshold > self.other_xpubs.len() + 1;
+        self.spending_delay_warning = self.spending_delay == 0;
     }
 
     fn is_correct(&self) -> bool {
@@ -208,9 +217,11 @@ impl Step for DefineManagerXpubs {
                 }
                 message::DefineManagerXpubs::ManagersTreshold(action) => match action {
                     message::Action::Increment => {
+                        self.treshold_warning = false;
                         self.managers_treshold = self.managers_treshold + 1;
                     }
                     message::Action::Decrement => {
+                        self.treshold_warning = false;
                         if self.managers_treshold > 0 {
                             self.managers_treshold = self.managers_treshold - 1;
                         }
@@ -218,9 +229,11 @@ impl Step for DefineManagerXpubs {
                 },
                 message::DefineManagerXpubs::SpendingDelay(action) => match action {
                     message::Action::Increment => {
+                        self.spending_delay_warning = false;
                         self.spending_delay = self.spending_delay + 1;
                     }
                     message::Action::Decrement => {
+                        self.spending_delay_warning = false;
                         if self.spending_delay > 0 {
                             self.spending_delay = self.spending_delay - 1;
                         }
@@ -290,7 +303,9 @@ impl Step for DefineManagerXpubs {
     fn view(&mut self) -> Element<Message> {
         return self.view.render(
             self.managers_treshold,
+            self.treshold_warning,
             self.spending_delay,
+            self.spending_delay_warning,
             &self.our_xpub,
             self.our_xpub_warning,
             self.other_xpubs
