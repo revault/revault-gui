@@ -250,7 +250,10 @@ impl State for ManagerHomeState {
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
-            Command::perform(list_vaults(self.revaultd.clone(), None), Message::Vaults),
+            Command::perform(
+                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT)),
+                Message::Vaults,
+            ),
             Command::perform(
                 list_spend_txs(
                     self.revaultd.clone(),
