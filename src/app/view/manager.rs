@@ -956,7 +956,8 @@ impl ManagerSpendTransactionCreatedView {
                         .align_x(Align::Center),
                     )
                     .align_items(Align::Center)
-                    .width(Length::Fill),
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(4)),
                 )
                 .push(
                     Container::new(text::success(text::simple(
