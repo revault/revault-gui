@@ -18,6 +18,7 @@ use crate::revaultd::{
 };
 
 use crate::revault::TransactionKind;
+use crate::ui::component::form;
 
 use crate::app::{
     error::Error,
@@ -506,7 +507,7 @@ impl State for ManagerCreateSendTransactionState {
                 let outputs: HashMap<String, u64> = self
                     .outputs
                     .iter()
-                    .map(|output| (output.address.clone(), output.amount().unwrap()))
+                    .map(|output| (output.address.value.clone(), output.amount().unwrap()))
                     .collect();
 
                 return Command::perform(
@@ -683,11 +684,8 @@ impl From<ManagerSendState> for Box<dyn State> {
 
 #[derive(Debug)]
 struct ManagerSendOutput {
-    address: String,
-    amount: String,
-
-    warning_address: bool,
-    warning_amount: bool,
+    address: form::Value<String>,
+    amount: form::Value<String>,
 
     view: ManagerSendOutputView,
 }
@@ -695,23 +693,22 @@ struct ManagerSendOutput {
 impl ManagerSendOutput {
     fn new() -> Self {
         Self {
-            address: "".to_string(),
-            amount: "".to_string(),
-            warning_address: false,
-            warning_amount: false,
+            address: form::Value::default(),
+            amount: form::Value::default(),
             view: ManagerSendOutputView::new(),
         }
     }
 
     fn amount(&self) -> Result<u64, Error> {
-        if self.amount.is_empty() {
+        if self.amount.value.is_empty() {
             return Err(Error::UnexpectedError(
                 "Amount should be non-zero".to_string(),
             ));
         }
 
-        let amount = bitcoin::Amount::from_str_in(&self.amount, bitcoin::Denomination::Bitcoin)
-            .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
+        let amount =
+            bitcoin::Amount::from_str_in(&self.amount.value, bitcoin::Denomination::Bitcoin)
+                .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
 
         if amount.as_sat() == 0 {
             return Err(Error::UnexpectedError(
@@ -723,30 +720,27 @@ impl ManagerSendOutput {
     }
 
     fn valid(&self) -> bool {
-        !self.address.is_empty()
-            && !self.warning_address
-            && !self.amount.is_empty()
-            && !self.warning_amount
+        !self.address.value.is_empty() && self.address.valid && self.amount.valid
     }
 
     fn update(&mut self, message: RecipientMessage) {
         match message {
             RecipientMessage::AddressEdited(address) => {
-                self.address = address;
-                if !self.address.is_empty() {
-                    self.warning_address = bitcoin::Address::from_str(&self.address).is_err();
+                self.address.value = address;
+                if !self.address.value.is_empty() {
+                    self.address.valid = bitcoin::Address::from_str(&self.address.value).is_ok();
                 } else {
                     // Make the error disappear if we deleted the invalid address
-                    self.warning_address = false;
+                    self.address.valid = true;
                 }
             }
             RecipientMessage::AmountEdited(amount) => {
-                self.amount = amount;
-                if !self.amount.is_empty() {
-                    self.warning_amount = self.amount().is_err();
+                self.amount.value = amount;
+                if !self.amount.value.is_empty() {
+                    self.amount.valid = self.amount().is_ok();
                 } else {
                     // Make the error disappear if we deleted the invalid amount
-                    self.warning_amount = false;
+                    self.amount.valid = true;
                 }
             }
             _ => {}
@@ -754,12 +748,7 @@ impl ManagerSendOutput {
     }
 
     fn view(&mut self) -> Element<RecipientMessage> {
-        self.view.view(
-            &self.address,
-            &self.amount,
-            self.warning_address,
-            self.warning_amount,
-        )
+        self.view.view(&self.address, &self.amount)
     }
 }
 
