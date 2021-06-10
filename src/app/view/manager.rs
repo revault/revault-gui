@@ -353,7 +353,7 @@ impl ManagerSendOutputView {
                 .into(),
             TextInput::new(
                 &mut self.address_input,
-                "Address",
+                "",
                 &address,
                 RecipientMessage::AddressEdited,
             )
@@ -369,7 +369,7 @@ impl ManagerSendOutputView {
         col = col.push(text::bold(text::simple("Enter amount:"))).push(
             TextInput::new(
                 &mut self.amount_input,
-                "0.0",
+                "",
                 &amount.to_string(),
                 RecipientMessage::AmountEdited,
             )
@@ -956,7 +956,8 @@ impl ManagerSpendTransactionCreatedView {
                         .align_x(Align::Center),
                     )
                     .align_items(Align::Center)
-                    .width(Length::Fill),
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(4)),
                 )
                 .push(
                     Container::new(text::success(text::simple(

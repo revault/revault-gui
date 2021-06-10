@@ -712,11 +712,20 @@ impl ManagerSendOutput {
 
     fn amount(&self) -> Result<u64, Error> {
         if self.amount.is_empty() {
-            return Ok(0);
+            return Err(Error::UnexpectedError(
+                "Amount should be non-zero".to_string(),
+            ));
         }
 
         let amount = bitcoin::Amount::from_str_in(&self.amount, bitcoin::Denomination::Bitcoin)
             .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
+
+        if amount.as_sat() == 0 {
+            return Err(Error::UnexpectedError(
+                "Amount should be non-zero".to_string(),
+            ));
+        }
+
         Ok(amount.as_sat())
     }
 
