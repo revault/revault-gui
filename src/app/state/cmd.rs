@@ -33,7 +33,7 @@ pub async fn get_onchain_txs(
     outpoint: String,
 ) -> Result<VaultTransactions, RevaultDError> {
     let list = revaultd.list_onchain_transactions(Some(vec![outpoint]))?;
-    if list.onchain_transactions.len() == 0 {
+    if list.onchain_transactions.is_empty() {
         return Err(RevaultDError::UnexpectedError(
             "vault has no onchain_transactions".to_string(),
         ));

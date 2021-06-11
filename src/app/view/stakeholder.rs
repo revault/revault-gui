@@ -48,7 +48,7 @@ impl StakeholderCreateVaultsView {
             .push(text::bold(text::simple("Create some vaults")).size(50))
             .spacing(20);
 
-        if deposits.len() > 0 {
+        if !deposits.is_empty() {
             content = content.push(Container::new(
                 Column::new()
                     .push(text::simple(" Click on a deposit to create a vault:"))
@@ -207,7 +207,7 @@ impl StakeholderDelegateFundsView {
                             .align_items(Align::Center),
                     ),
             );
-        if vaults.len() > 0 {
+        if !vaults.is_empty() {
             col = col.push(Container::new(
                 Column::new()
                     .push(text::simple(" Click on the vaults to delegate:"))

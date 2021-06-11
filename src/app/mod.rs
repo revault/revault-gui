@@ -61,7 +61,7 @@ impl App {
                 Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
                 Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
-                Menu::Emergency => EmergencyState::new(revaultd.clone()).into(),
+                Menu::Emergency => EmergencyState::new(revaultd).into(),
                 _ => unreachable!(),
             },
         };

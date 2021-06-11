@@ -26,11 +26,11 @@ impl VaultsFilter {
 
     pub fn new(statuses: &[VaultStatus]) -> VaultsFilter {
         if statuses == VaultStatus::MOVING {
-            return VaultsFilter::Moving;
+            VaultsFilter::Moving
         } else if statuses == VaultStatus::MOVED {
-            return VaultsFilter::Moved;
+            VaultsFilter::Moved
         } else {
-            return VaultsFilter::Current;
+            VaultsFilter::Current
         }
     }
 

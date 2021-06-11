@@ -78,8 +78,8 @@ impl button::StyleSheet for ClipboardButtonStyle {
             background: Color::TRANSPARENT.into(),
             border_radius: 10.0,
             border_width: 0.0,
-            border_color: Color::TRANSPARENT.into(),
-            text_color: Color::BLACK.into(),
+            border_color: Color::TRANSPARENT,
+            text_color: Color::BLACK,
         }
     }
 }

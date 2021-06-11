@@ -72,7 +72,7 @@ impl SettingsBox for GeneralBox {
                 config
                     .coordinator_poll_seconds
                     .map(|p| format!("{} seconds", p))
-                    .unwrap_or("Not set".to_string()),
+                    .unwrap_or_else(|| "Not set".to_string()),
             ),
             (
                 "Data dir",
@@ -80,22 +80,21 @@ impl SettingsBox for GeneralBox {
                     .data_dir
                     .clone()
                     .map(|d| format!("{:?}", d))
-                    .unwrap_or("Not set".to_string()),
+                    .unwrap_or_else(|| "Not set".to_string()),
             ),
             (
                 "Daemon",
                 config
                     .daemon
                     .map(|d| d.to_string())
-                    .unwrap_or("Not set".to_string()),
+                    .unwrap_or_else(|| "Not set".to_string()),
             ),
             (
                 "Log level",
                 config
                     .log_level
                     .clone()
-                    .map(|d| d.to_string())
-                    .unwrap_or("Not set".to_string()),
+                    .unwrap_or_else(|| "Not set".to_string()),
             ),
         ];
         let mut column = Column::new();
@@ -136,7 +135,7 @@ impl SettingsBox for BitcoindBox {
                 config
                     .poll_interval_secs
                     .map(|p| format!("{} seconds", p))
-                    .unwrap_or("Not set".to_string()),
+                    .unwrap_or_else(|| "Not set".to_string()),
             ),
         ];
         let mut column = Column::new();

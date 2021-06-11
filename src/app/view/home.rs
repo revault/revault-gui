@@ -186,7 +186,7 @@ impl StakeholderHomeView {
         balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<'a, Message> {
         let mut col_body = Column::new().push(self.overview.view(ctx, balance));
-        if balance.len() == 0 {
+        if balance.is_empty() {
             col_body = col_body.push(card::simple(Container::new(
                 Row::new()
                     .push(

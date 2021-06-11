@@ -202,7 +202,7 @@ impl SpendTransactionAction {
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
                         return Command::perform(
-                            update_spend_tx(revaultd.clone(), psbt.clone()),
+                            update_spend_tx(revaultd, psbt.clone()),
                             SpendTxMessage::Signed,
                         );
                     }
@@ -295,7 +295,7 @@ impl SpendTransactionAction {
                         } else {
                             *processing = true;
                             return Command::perform(
-                                update_spend_tx(revaultd.clone(), p),
+                                update_spend_tx(revaultd, p),
                                 SpendTxMessage::Updated,
                             );
                         }

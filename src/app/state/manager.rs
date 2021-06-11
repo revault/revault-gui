@@ -104,8 +104,7 @@ impl ManagerHomeState {
         if self
             .spend_txs
             .iter()
-            .find(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
-            .is_some()
+            .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
         {
             let selected_spend_tx = SpendTransactionState::new(self.revaultd.clone(), psbt);
             let cmd = selected_spend_tx.load();
@@ -214,7 +213,7 @@ impl State for ManagerHomeState {
             }
             Message::BlockHeight(b) => match b {
                 Ok(height) => {
-                    self.blockheight = height.into();
+                    self.blockheight = height;
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();
@@ -236,7 +235,7 @@ impl State for ManagerHomeState {
 
         self.view.view(
             ctx,
-            self.warning.as_ref().into(),
+            self.warning.as_ref(),
             self.spend_txs_item
                 .iter_mut()
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
@@ -444,10 +443,7 @@ impl ManagerCreateSendTransactionState {
     pub fn update_vaults(&mut self, mut vaults: Vec<model::Vault>) {
         // Ordering the vaults, the biggest amounts first
         vaults.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap());
-        self.vaults = vaults
-            .into_iter()
-            .map(|vlt| ManagerSendInput::new(vlt))
-            .collect();
+        self.vaults = vaults.into_iter().map(ManagerSendInput::new).collect();
     }
 
     pub fn input_amount(&self) -> u64 {
@@ -552,8 +548,8 @@ impl State for ManagerCreateSendTransactionState {
                 }
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
-            Message::SpendTx(SpendTxMessage::Sign(msg)) => match &mut self.step {
-                ManagerSendStep::Sign { signer, .. } => {
+            Message::SpendTx(SpendTxMessage::Sign(msg)) => {
+                if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
                     signer
                         .update(msg)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
@@ -564,8 +560,7 @@ impl State for ManagerCreateSendTransactionState {
                         );
                     }
                 }
-                _ => (),
-            },
+            }
             Message::Next => match self.step {
                 ManagerSendStep::WelcomeUser(_) => {
                     self.step = ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new());
@@ -841,7 +836,7 @@ impl State for ManagerNetworkState {
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view
-            .view(ctx, self.warning.as_ref().into(), self.blockheight.as_ref())
+            .view(ctx, self.warning.as_ref(), self.blockheight.as_ref())
     }
 
     fn load(&self) -> Command<Message> {
