@@ -647,9 +647,7 @@ impl State for ManagerCreateSendTransactionState {
                     .collect(),
                 input_amount,
                 output_amount,
-                // TODO actually calculate this! This is true if we generated the tx
-                // and noticed that we don't have enough funds for paying fees
-                false,
+                self.warning.as_ref(),
             ),
             ManagerSendStep::SelectFee(v) => {
                 v.view(self.feerate, self.valid_feerate, self.warning.as_ref())
