@@ -49,10 +49,7 @@ impl VaultsState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        self.vaults = vaults
-            .into_iter()
-            .map(|vlt| VaultListItem::new(vlt))
-            .collect();
+        self.vaults = vaults.into_iter().map(VaultListItem::new).collect();
         self.loading = false;
     }
 
@@ -106,7 +103,7 @@ impl State for VaultsState {
                 );
             }
             Message::BlockHeight(b) => match b {
-                Ok(height) => self.blockheight = height.into(),
+                Ok(height) => self.blockheight = height,
                 Err(e) => self.warning = Error::from(e).into(),
             },
             _ => {}
@@ -120,7 +117,7 @@ impl State for VaultsState {
         }
         self.view.view(
             ctx,
-            self.warning.as_ref().into(),
+            self.warning.as_ref(),
             self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             self.vault_status_filter,
             self.loading,

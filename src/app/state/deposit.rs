@@ -39,23 +39,22 @@ impl DepositState {
 
 impl State for DepositState {
     fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::DepositAddress(res) => match res {
+        if let Message::DepositAddress(res) = message {
+            match res {
                 Ok(address) => {
                     // Address is loaded directly in the view in order to cache the created qrcode.
                     self.view.load(&address);
                     self.address = Some(address);
                 }
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
-            },
-            _ => {}
+            }
         }
         Command::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view
-            .view(ctx, self.warning.as_ref().into(), self.address.as_ref())
+            .view(ctx, self.warning.as_ref(), self.address.as_ref())
     }
 
     fn load(&self) -> Command<Message> {

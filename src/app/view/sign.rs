@@ -133,9 +133,7 @@ impl IndirectSignatureView {
             .push(
                 Container::new(
                     Row::new()
-                        .push(
-                            Container::new(text::small(&psbt_str.to_string())).width(Length::Fill),
-                        )
+                        .push(Container::new(text::small(&psbt_str)).width(Length::Fill))
                         .push(
                             button::clipboard(
                                 &mut self.copy_button,

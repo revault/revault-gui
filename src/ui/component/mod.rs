@@ -116,7 +116,6 @@ impl container::StyleSheet for TooltipStyle {
             border_radius: 10.0,
             border_width: 1.0,
             border_color: color::SECONDARY,
-            ..container::Style::default()
         }
     }
 }

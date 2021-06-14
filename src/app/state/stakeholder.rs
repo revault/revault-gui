@@ -204,11 +204,8 @@ impl State for StakeholderNetworkState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view.view(
-            ctx,
-            self.warning.as_ref().into(),
-            self.blockheight.as_ref().into(),
-        )
+        self.view
+            .view(ctx, self.warning.as_ref(), self.blockheight.as_ref())
     }
 
     fn load(&self) -> Command<Message> {
@@ -300,11 +297,11 @@ impl State for StakeholderCreateVaultsState {
                     // Address is loaded directly in the view in order to cache the created qrcode.
                     self.view.load(&address);
                     self.address = Some(address);
-                    return Command::none();
+                    Command::none()
                 }
                 Err(e) => {
                     self.warning = Some(Error::RevaultDError(e));
-                    return Command::none();
+                    Command::none()
                 }
             },
             Message::Vault(outpoint, VaultMessage::Select) => self.on_vault_select(outpoint),
@@ -391,10 +388,7 @@ impl StakeholderDelegateFundsState {
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         self.calculate_balance(&vaults);
-        self.vaults = vaults
-            .into_iter()
-            .map(|vlt| VaultListItem::new(vlt))
-            .collect();
+        self.vaults = vaults.into_iter().map(VaultListItem::new).collect();
     }
 
     pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
@@ -495,7 +489,7 @@ impl State for StakeholderDelegateFundsState {
                 .filter(|v| v.vault.status == VaultStatus::Secured)
                 .map(|v| v.view(ctx))
                 .collect(),
-            self.warning.as_ref().into(),
+            self.warning.as_ref(),
         )
     }
 

@@ -133,7 +133,7 @@ impl ManagerSendWelcomeView {
         }
     }
 
-    pub fn view<'a>(&'a mut self) -> Element<'a, Message> {
+    pub fn view(&mut self) -> Element<'_, Message> {
         Container::new(scroll(
             &mut self.scroll,
             Container::new(
@@ -665,7 +665,9 @@ impl ManagerSelectFeeView {
                             TextInput::new(
                                 &mut self.feerate_input,
                                 "",
-                                &feerate.map(|f| f.to_string()).unwrap_or("".to_string()),
+                                &feerate
+                                    .map(|f| f.to_string())
+                                    .unwrap_or_else(|| "".to_string()),
                                 |f| Message::SpendTx(SpendTxMessage::FeerateEdited(f)),
                             )
                             .width(Length::Units(70))

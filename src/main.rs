@@ -28,19 +28,16 @@ fn config_path_from_args(args: Vec<String>) -> Result<Option<PathBuf>, Box<dyn E
 
 fn log_level_from_config(config: &Config) -> Result<EnvFilter, Box<dyn Error>> {
     if let Some(level) = &config.log_level {
-        if level == "info" {
-            return EnvFilter::try_new("revault_gui=info").map_err(|e| e.into());
-        } else if level == "debug" {
-            return EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into());
-        } else if level == "trace" {
-            return EnvFilter::try_new("revault_gui=trace").map_err(|e| e.into());
-        } else {
-            return Err(format!("Unknown loglevel '{:?}'.", level).into());
+        match level.as_ref() {
+            "info" => EnvFilter::try_new("revault_gui=info").map_err(|e| e.into()),
+            "debug" => EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into()),
+            "trace" => EnvFilter::try_new("revault_gui=trace").map_err(|e| e.into()),
+            _ => Err(format!("Unknown loglevel '{:?}'.", level).into()),
         }
     } else if let Some(true) = config.debug {
-        return EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into());
+        EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into())
     } else {
-        return EnvFilter::try_new("revault_gui=info").map_err(|e| e.into());
+        EnvFilter::try_new("revault_gui=info").map_err(|e| e.into())
     }
 }
 

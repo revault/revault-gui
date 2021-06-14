@@ -82,7 +82,7 @@ impl State for EmergencyState {
             ctx,
             self.vaults_number,
             self.funds_amount,
-            self.warning.as_ref().into(),
+            self.warning.as_ref(),
             self.loading,
             self.processing,
             self.success,

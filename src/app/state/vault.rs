@@ -75,7 +75,7 @@ impl Vault {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
-                    get_onchain_txs(revaultd.clone(), self.vault.outpoint()),
+                    get_onchain_txs(revaultd, self.vault.outpoint()),
                     VaultMessage::OnChainTransactions,
                 );
             }
@@ -96,13 +96,13 @@ impl Vault {
             }
             VaultMessage::Delegate => {
                 return Command::perform(
-                    get_unvault_tx(revaultd.clone(), self.vault.outpoint()),
+                    get_unvault_tx(revaultd, self.vault.outpoint()),
                     VaultMessage::UnvaultTransaction,
                 );
             }
             VaultMessage::Secure => {
                 return Command::perform(
-                    get_revocation_txs(revaultd.clone(), self.vault.outpoint()),
+                    get_revocation_txs(revaultd, self.vault.outpoint()),
                     VaultMessage::RevocationTransactions,
                 );
             }
@@ -125,7 +125,7 @@ impl Vault {
 
     pub fn load(&self, revaultd: Arc<RevaultD>) -> Command<VaultMessage> {
         Command::perform(
-            get_onchain_txs(revaultd.clone(), self.vault.outpoint()),
+            get_onchain_txs(revaultd, self.vault.outpoint()),
             VaultMessage::OnChainTransactions,
         )
     }
@@ -228,7 +228,7 @@ impl VaultSection {
                     *processing = true;
                     *warning = None;
                     return Command::perform(
-                        revault(revaultd.clone(), vault.outpoint()),
+                        revault(revaultd, vault.outpoint()),
                         VaultMessage::Revaulted,
                     );
                 }
@@ -285,7 +285,7 @@ impl VaultSection {
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
                         return Command::perform(
-                            set_unvault_tx(revaultd.clone(), vault.outpoint(), psbt.clone()),
+                            set_unvault_tx(revaultd, vault.outpoint(), psbt.clone()),
                             VaultMessage::Signed,
                         );
                     }

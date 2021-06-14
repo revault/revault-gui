@@ -261,32 +261,31 @@ impl VaultOnChainTransactionsPanel {
                 }
                 _ => {}
             };
-        } else {
-            if vault.status == VaultStatus::Unvaulted || vault.status == VaultStatus::Unvaulting {
-                col = col.push(card::white(Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(text::simple(
-                                "Funds are moving, do you want to revault them?",
-                            ))
-                            .width(Length::Fill),
-                        )
-                        .push(
-                            Container::new(
-                                button::primary(
-                                    &mut self.action_button,
-                                    button::button_content(None, "Revault"),
-                                )
-                                .on_press(Message::Vault(
-                                    vault.outpoint(),
-                                    VaultMessage::SelectRevault,
-                                )),
+        } else if vault.status == VaultStatus::Unvaulted || vault.status == VaultStatus::Unvaulting
+        {
+            col = col.push(card::white(Container::new(
+                Row::new()
+                    .push(
+                        Container::new(text::simple(
+                            "Funds are moving, do you want to revault them?",
+                        ))
+                        .width(Length::Fill),
+                    )
+                    .push(
+                        Container::new(
+                            button::primary(
+                                &mut self.action_button,
+                                button::button_content(None, "Revault"),
                             )
-                            .width(Length::Shrink),
+                            .on_press(Message::Vault(
+                                vault.outpoint(),
+                                VaultMessage::SelectRevault,
+                            )),
                         )
-                        .align_items(Align::Center),
-                )))
-            }
+                        .width(Length::Shrink),
+                    )
+                    .align_items(Align::Center),
+            )))
         }
 
         col = col.push(Container::new(text::bold(text::simple(
