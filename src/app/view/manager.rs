@@ -411,8 +411,7 @@ impl ManagerSelectInputsView {
         inputs: Vec<Element<'a, Message>>,
         input_amount: u64,
         output_amount: u64,
-        // Inputs are insufficient for covering fee costs
-        fee_not_covered: bool,
+        warning: Option<&Error>,
     ) -> Element<'a, Message> {
         let header = Row::new()
             .push(
@@ -461,7 +460,12 @@ impl ManagerSelectInputsView {
         }
         let element: Element<_> = col_inputs.max_width(1000).into();
 
-        let mut footer = Column::new();
+        let mut footer = Column::new().spacing(10).align_items(Align::Center);
+        if let Some(error) = warning {
+            footer = footer.push(card::alert_warning(Container::new(text::small(
+                &error.to_string(),
+            ))));
+        }
         if input_amount < output_amount {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
@@ -471,16 +475,6 @@ impl ManagerSelectInputsView {
                     ctx.converter.unit
                 )))
                 .width(Length::Units(200))
-                .align_x(Align::Center)
-                .padding(10),
-            )));
-        } else if fee_not_covered {
-            footer = footer.push(Container::new(button::primary_disable(
-                &mut self.next_button,
-                Container::new(text::simple(
-                    &"Inputs insufficient for covering fees".to_string(),
-                ))
-                .width(Length::Units(300))
                 .align_x(Align::Center)
                 .padding(10),
             )));
