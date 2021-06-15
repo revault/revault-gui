@@ -100,6 +100,7 @@ impl State for EmergencyState {
                     VaultStatus::Unvaulting,
                     VaultStatus::Unvaulted,
                 ]),
+                None,
             ),
             Message::Vaults,
         )])

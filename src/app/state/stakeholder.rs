@@ -151,6 +151,7 @@ impl State for StakeholderHomeState {
                 list_vaults(
                     self.revaultd.clone(),
                     Some(&VaultStatus::DEPOSIT_AND_CURRENT),
+                    None,
                 ),
                 Message::Vaults,
             ),
@@ -347,7 +348,7 @@ impl State for StakeholderCreateVaultsState {
                 Message::DepositAddress,
             ),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded])),
+                list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
                 Message::Vaults,
             ),
         ])
@@ -502,6 +503,7 @@ impl State for StakeholderDelegateFundsState {
                     VaultStatus::Activating,
                     VaultStatus::Active,
                 ]),
+                None,
             ),
             Message::Vaults,
         )

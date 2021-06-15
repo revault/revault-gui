@@ -24,8 +24,11 @@ pub async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDErr
 pub async fn list_vaults(
     revaultd: Arc<RevaultD>,
     statuses: Option<&[VaultStatus]>,
+    outpoints: Option<Vec<String>>,
 ) -> Result<Vec<Vault>, RevaultDError> {
-    revaultd.list_vaults(statuses).map(|res| res.vaults)
+    revaultd
+        .list_vaults(statuses, outpoints.as_ref())
+        .map(|res| res.vaults)
 }
 
 pub async fn get_onchain_txs(
