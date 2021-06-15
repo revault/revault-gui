@@ -14,7 +14,10 @@ use crate::{
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
         view::Context,
     },
-    ui::component::{button, card, scroll, separation, text, ContainerBackgroundStyle},
+    ui::{
+        component::{button, card, form, scroll, separation, text, ContainerBackgroundStyle},
+        icon::trash_icon,
+    },
 };
 
 #[derive(Debug)]
@@ -241,7 +244,7 @@ impl ManagerSelectOutputsView {
             }
             col_outputs = col_outputs.push(element);
         }
-        let element: Element<_> = col_outputs.max_width(500).into();
+        let element: Element<_> = col_outputs.max_width(1000).into();
 
         let mut footer = Row::new()
             .spacing(20)
@@ -330,58 +333,44 @@ impl ManagerSendOutputView {
     }
     pub fn view(
         &mut self,
-        address: &str,
-        amount: &str,
-        warning_address: bool,
-        warning_amount: bool,
+        address: &form::Value<String>,
+        amount: &form::Value<String>,
     ) -> Element<RecipientMessage> {
-        let mut col = Column::with_children(vec![
-            Row::new()
-                .push(Container::new(text::bold(text::simple("Enter address:"))))
-                .push(
-                    Container::new(
-                        button::transparent(
-                            &mut self.delete_button,
-                            Container::new(text::simple("X")),
-                        )
-                        .on_press(RecipientMessage::Delete),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::End),
+        Row::new()
+            .push(
+                form::Form::new(
+                    &mut self.address_input,
+                    "Address",
+                    &address,
+                    RecipientMessage::AddressEdited,
                 )
-                .align_items(Align::End)
-                .into(),
-            TextInput::new(
-                &mut self.address_input,
-                "",
-                &address,
-                RecipientMessage::AddressEdited,
+                .warning("Please enter a valid bitcoin address")
+                .padding(10)
+                .render()
+                .width(Length::FillPortion(2)),
             )
-            .padding(10)
-            .into(),
-        ]);
-
-        if warning_address {
-            col = col.push(card::alert_warning(Container::new(text::simple(
-                "Please enter a valid bitcoin address",
-            ))))
-        }
-        col = col.push(text::bold(text::simple("Enter amount:"))).push(
-            TextInput::new(
-                &mut self.amount_input,
-                "",
-                &amount.to_string(),
-                RecipientMessage::AmountEdited,
+            .push(
+                form::Form::new(
+                    &mut self.amount_input,
+                    "Amount in BTC, ex: 0.123",
+                    &amount,
+                    RecipientMessage::AmountEdited,
+                )
+                .warning("Please enter a valid amount")
+                .padding(10)
+                .render()
+                .width(Length::FillPortion(1)),
             )
-            .padding(10),
-        );
-
-        if warning_amount {
-            col = col.push(card::alert_warning(Container::new(text::simple(
-                "Please enter a valid amount",
-            ))))
-        }
-        card::white(Container::new(col.spacing(10))).into()
+            .push(
+                Container::new(
+                    button::transparent(&mut self.delete_button, Container::new(trash_icon()))
+                        .on_press(RecipientMessage::Delete),
+                )
+                .width(Length::Shrink)
+                .align_x(Align::End),
+            )
+            .spacing(20)
+            .into()
     }
 }
 

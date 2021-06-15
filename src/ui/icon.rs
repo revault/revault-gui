@@ -96,6 +96,10 @@ pub fn warning_icon() -> Text {
     icon('\u{F31B}')
 }
 
+pub fn trash_icon() -> Text {
+    icon('\u{F5A8}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')
