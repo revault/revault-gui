@@ -36,6 +36,12 @@ impl DefineStakeholderXpubs {
     }
 }
 
+impl Default for DefineStakeholderXpubs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Step for DefineStakeholderXpubs {
     fn update_context(&self, ctx: &mut Context) {
         ctx.stakeholders_xpubs = self
@@ -154,6 +160,12 @@ impl DefineManagerXpubs {
             view: view::DefineManagerXpubsAsManager::new(),
             stakeholder_xpubs: Vec::new(),
         }
+    }
+}
+
+impl Default for DefineManagerXpubs {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -383,6 +395,12 @@ impl Cosigner {
     }
 }
 
+impl Default for Cosigner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct DefineCosigners {
     cosigners: Vec<Cosigner>,
     view: view::DefineCosigners,
@@ -451,6 +469,12 @@ impl Step for DefineCosigners {
                 .map(|(i, xpub)| xpub.view().map(move |msg| Message::DefineCosigners(i, msg)))
                 .collect(),
         )
+    }
+}
+
+impl Default for DefineCosigners {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

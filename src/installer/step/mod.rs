@@ -45,6 +45,12 @@ impl Context {
     }
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Welcome {
     install_button: Button,
 }
@@ -61,6 +67,12 @@ impl Step for Welcome {
     fn update(&mut self, _message: Message) {}
     fn view(&mut self) -> Element<Message> {
         view::welcome(&mut self.install_button)
+    }
+}
+
+impl Default for Welcome {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -97,6 +109,12 @@ impl Step for DefineRole {
             &mut self.stakeholder_manager_button,
             &mut self.scroll,
         )
+    }
+}
+
+impl Default for DefineRole {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -195,6 +213,12 @@ impl Step for DefineCpfpDescriptor {
     }
 }
 
+impl Default for DefineCpfpDescriptor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<DefineCpfpDescriptor> for Box<dyn Step> {
     fn from(s: DefineCpfpDescriptor) -> Box<dyn Step> {
         Box::new(s)
@@ -245,6 +269,12 @@ impl Step for DefineCoordinator {
 
     fn view(&mut self) -> Element<Message> {
         self.view.render(&self.host, &self.noise_key, self.warning)
+    }
+}
+
+impl Default for DefineCoordinator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -321,6 +351,12 @@ impl Step for DefineBitcoind {
     }
 }
 
+impl Default for DefineBitcoind {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<DefineBitcoind> for Box<dyn Step> {
     fn from(s: DefineBitcoind) -> Box<dyn Step> {
         Box::new(s)
@@ -369,6 +405,12 @@ impl Step for Final {
     fn view(&mut self) -> Element<Message> {
         self.view
             .render(self.generating, self.success, self.warning.as_ref())
+    }
+}
+
+impl Default for Final {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

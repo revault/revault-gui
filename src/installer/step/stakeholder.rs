@@ -143,6 +143,12 @@ impl Step for DefineStakeholderXpubs {
     }
 }
 
+impl Default for DefineStakeholderXpubs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<DefineStakeholderXpubs> for Box<dyn Step> {
     fn from(s: DefineStakeholderXpubs) -> Box<dyn Step> {
         Box::new(s)
@@ -339,6 +345,12 @@ impl Step for DefineManagerXpubs {
     }
 }
 
+impl Default for DefineManagerXpubs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<DefineManagerXpubs> for Box<dyn Step> {
     fn from(s: DefineManagerXpubs) -> Box<dyn Step> {
         Box::new(s)
@@ -389,6 +401,12 @@ impl Step for DefineEmergencyAddress {
     }
 }
 
+impl Default for DefineEmergencyAddress {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<DefineEmergencyAddress> for Box<dyn Step> {
     fn from(s: DefineEmergencyAddress) -> Box<dyn Step> {
         Box::new(s)
@@ -436,6 +454,12 @@ impl Watchtower {
             self.warning_host,
             self.warning_noise_key,
         )
+    }
+}
+
+impl Default for Watchtower {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -516,6 +540,12 @@ impl Step for DefineWatchtowers {
                 })
                 .collect(),
         )
+    }
+}
+
+impl Default for DefineWatchtowers {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
