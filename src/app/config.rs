@@ -15,7 +15,7 @@ pub struct Config {
     pub debug: Option<bool>,
 }
 
-pub const DEFAULT_FILE_NAME: &'static str = "revault_gui.toml";
+pub const DEFAULT_FILE_NAME: &str = "revault_gui.toml";
 
 impl Config {
     pub fn new(revaultd_config_path: PathBuf) -> Self {
