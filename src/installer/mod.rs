@@ -199,7 +199,7 @@ pub async fn install(cfg: revaultd_config::Config, datadir_path: PathBuf) -> Res
 
     // create revault GUI configuration file
     let cfg = gui_config::Config::new(revaultd_config_path);
-    let mut gui_config_path = datadir_path.clone();
+    let mut gui_config_path = datadir_path;
     gui_config_path.push(gui_config::DEFAULT_FILE_NAME);
 
     let mut gui_config_file = std::fs::File::create(gui_config_path)
