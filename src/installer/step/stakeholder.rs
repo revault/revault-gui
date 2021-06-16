@@ -236,24 +236,24 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::ManagersTreshold(action) => match action {
                     message::Action::Increment => {
                         self.treshold_warning = false;
-                        self.managers_treshold = self.managers_treshold + 1;
+                        self.managers_treshold += 1;
                     }
                     message::Action::Decrement => {
                         self.treshold_warning = false;
                         if self.managers_treshold > 0 {
-                            self.managers_treshold = self.managers_treshold - 1;
+                            self.managers_treshold -= 1;
                         }
                     }
                 },
                 message::DefineManagerXpubs::SpendingDelay(action) => match action {
                     message::Action::Increment => {
-                        self.spending_delay = self.spending_delay + 1;
+                        self.spending_delay += 1;
                         self.spending_delay_warning = false;
                     }
                     message::Action::Decrement => {
                         self.spending_delay_warning = false;
                         if self.spending_delay > 0 {
-                            self.spending_delay = self.spending_delay - 1;
+                            self.spending_delay -= 1;
                         }
                     }
                 },
