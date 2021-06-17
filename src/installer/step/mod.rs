@@ -5,7 +5,7 @@ pub mod stakeholder;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use bitcoin::{util::bip32::ExtendedPubKey, Network};
+use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
 use miniscript::DescriptorPublicKey;
 use revault_tx::scripts::CpfpDescriptor;
@@ -285,6 +285,7 @@ impl From<DefineCoordinator> for Box<dyn Step> {
 }
 
 pub struct DefineBitcoind {
+    network: bitcoin::Network,
     cookie_path: String,
     address: String,
 
@@ -297,6 +298,7 @@ pub struct DefineBitcoind {
 impl DefineBitcoind {
     pub fn new() -> Self {
         Self {
+            network: bitcoin::Network::Bitcoin,
             cookie_path: "".to_string(),
             address: "".to_string(),
             warning_cookie: false,
@@ -328,13 +330,16 @@ impl Step for DefineBitcoind {
                     self.cookie_path = path;
                     self.warning_cookie = false;
                 }
+                message::DefineBitcoind::NetworkEdited(network) => {
+                    self.network = network;
+                }
             };
         };
     }
 
     fn edit_config(&self, config: &mut config::Config) {
         config.bitcoind_config = config::BitcoindConfig {
-            network: Network::from_str("bitcoin").expect("already checked"),
+            network: self.network,
             cookie_path: PathBuf::from_str(&self.cookie_path).expect("already checked"),
             poll_interval_secs: None,
             addr: std::net::SocketAddr::from_str(&self.address).expect("already checked"),
@@ -343,6 +348,7 @@ impl Step for DefineBitcoind {
 
     fn view(&mut self) -> Element<Message> {
         self.view.render(
+            &self.network,
             &self.address,
             &self.cookie_path,
             self.warning_address,

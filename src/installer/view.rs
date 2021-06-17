@@ -1,6 +1,6 @@
 use iced::{
-    button::State as Button, scrollable, text_input, Align, Column, Container, Element, Length,
-    Row, TextInput,
+    button::State as Button, pick_list, scrollable, text_input, Align, Column, Container, Element,
+    Length, Row, TextInput,
 };
 
 use crate::{
@@ -1081,8 +1081,14 @@ impl DefineCosigners {
         )
     }
 }
+const NETWORKS: [bitcoin::Network; 3] = [
+    bitcoin::Network::Bitcoin,
+    bitcoin::Network::Testnet,
+    bitcoin::Network::Regtest,
+];
 
 pub struct DefineBitcoind {
+    network_input: pick_list::State<bitcoin::Network>,
     address_input: text_input::State,
     cookie_path_input: text_input::State,
     scroll: scrollable::State,
@@ -1093,6 +1099,7 @@ pub struct DefineBitcoind {
 impl DefineBitcoind {
     pub fn new() -> Self {
         Self {
+            network_input: pick_list::State::default(),
             address_input: text_input::State::new(),
             cookie_path_input: text_input::State::new(),
             scroll: scrollable::State::new(),
@@ -1102,6 +1109,7 @@ impl DefineBitcoind {
     }
     pub fn render<'a>(
         &'a mut self,
+        network: &bitcoin::Network,
         address: &str,
         cookie_path: &str,
         warning_address: bool,
@@ -1143,6 +1151,15 @@ impl DefineBitcoind {
             &mut self.previous_button,
             Column::new()
                 .push(text::bold(text::simple("Define bitcoind")).size(50))
+                .push(Container::new(
+                    pick_list::PickList::new(
+                        &mut self.network_input,
+                        &NETWORKS[..],
+                        Some(*network),
+                        |msg| Message::DefineBitcoind(message::DefineBitcoind::NetworkEdited(msg)),
+                    )
+                    .padding(10),
+                ))
                 .push(col_address)
                 .push(col_cookie)
                 .push(
