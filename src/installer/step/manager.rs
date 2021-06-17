@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
+use std::str::FromStr;
+
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
 use miniscript::DescriptorPublicKey;
 use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
-use std::str::FromStr;
 
 use crate::{
     installer::{
@@ -418,10 +420,12 @@ impl DefineCosigners {
 impl Step for DefineCosigners {
     fn load_context(&mut self, ctx: &Context) {
         while self.cosigners.len() != ctx.number_cosigners {
-            if self.cosigners.len() > ctx.number_cosigners {
-                self.cosigners.pop();
-            } else if self.cosigners.len() < ctx.number_cosigners {
-                self.cosigners.push(Cosigner::new());
+            match self.cosigners.len().cmp(&ctx.number_cosigners) {
+                Ordering::Greater => {
+                    self.cosigners.pop();
+                }
+                Ordering::Less => self.cosigners.push(Cosigner::new()),
+                Ordering::Equal => (),
             }
         }
     }
