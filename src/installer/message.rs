@@ -21,6 +21,7 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum DefineBitcoind {
+    NetworkEdited(bitcoin::Network),
     CookiePathEdited(String),
     AddressEdited(String),
 }
