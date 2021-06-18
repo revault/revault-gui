@@ -7,32 +7,26 @@ mod view;
 
 use std::sync::Arc;
 
-use iced::{executor, Application, Clipboard, Color, Command, Element, Settings, Subscription};
+use iced::{Clipboard, Color, Command, Element, Subscription};
+
+pub use config::Config;
+pub use message::Message;
 
 use menu::Menu;
-use message::{Message, SignMessage, SpendTxMessage, VaultMessage};
+use message::{SignMessage, SpendTxMessage, VaultMessage};
 use state::{
     ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerNetworkState,
     ManagerSendState, SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
     StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
 };
 
-use crate::{
-    app::{config::Config, view::Context},
-    conversion::Converter,
-    revault::Role,
-    revaultd::RevaultD,
-};
+use crate::{app::view::Context, conversion::Converter, revault::Role, revaultd::RevaultD};
 
 pub struct App {
     config: Config,
     revaultd: Option<Arc<RevaultD>>,
     state: Box<dyn State>,
     context: Context,
-}
-
-pub fn run(config: Config) -> Result<(), iced::Error> {
-    App::run(Settings::with_flags(config))
 }
 
 impl App {
@@ -92,14 +86,8 @@ impl App {
         self.revaultd = Some(revaultd);
         self.load_state(role, Menu::Home)
     }
-}
 
-impl Application for App {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Flags = Config;
-
-    fn new(config: Config) -> (App, Command<Self::Message>) {
+    pub fn new(config: Config) -> (App, Command<Message>) {
         let state = ChargingState::new(
             config.revaultd_config_path.to_owned(),
             config.revaultd_path.to_owned(),
@@ -116,19 +104,11 @@ impl Application for App {
         )
     }
 
-    fn subscription(&self) -> Subscription<Message> {
+    pub fn subscription(&self) -> Subscription<Message> {
         self.state.subscription()
     }
 
-    fn title(&self) -> String {
-        String::from("Revault GUI")
-    }
-
-    fn update(
-        &mut self,
-        message: Self::Message,
-        clipboard: &mut Clipboard,
-    ) -> Command<Self::Message> {
+    pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::Synced(revaultd) => self.on_synced(revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
@@ -143,7 +123,7 @@ impl Application for App {
         }
     }
 
-    fn view(&mut self) -> Element<Self::Message> {
+    pub fn view(&mut self) -> Element<Message> {
         let content = self.state.view(&self.context);
         if let Some(true) = self.config.debug {
             return content.explain(Color::BLACK);
