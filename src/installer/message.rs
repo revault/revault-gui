@@ -1,13 +1,15 @@
+use std::path::PathBuf;
+
 use super::Error;
 use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Exit,
+    Exit(PathBuf),
     Next,
     Previous,
     Install,
-    Installed(Result<(), Error>),
+    Installed(Result<PathBuf, Error>),
     Role(&'static [Role]),
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),

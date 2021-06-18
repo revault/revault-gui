@@ -1194,7 +1194,7 @@ impl Final {
     pub fn render(
         &mut self,
         generating: bool,
-        success: bool,
+        config_path: Option<&std::path::PathBuf>,
         warning: Option<&String>,
     ) -> Element<Message> {
         let mut col = Column::new()
@@ -1214,15 +1214,7 @@ impl Final {
                 &mut self.action_button,
                 button::button_content(None, "Installing ..."),
             ))
-        } else if !success {
-            col = col.push(
-                button::primary(
-                    &mut self.action_button,
-                    button::button_content(None, "Finalize installation"),
-                )
-                .on_press(Message::Install),
-            );
-        } else {
+        } else if let Some(path) = config_path {
             col = col.push(card::border_success(
                 Container::new(
                     Column::new()
@@ -1232,7 +1224,7 @@ impl Final {
                                 &mut self.action_button,
                                 button::button_content(None, "Start"),
                             )
-                            .on_press(Message::Exit),
+                            .on_press(Message::Exit(path.clone())),
                         ))
                         .align_items(Align::Center)
                         .spacing(20),
@@ -1241,6 +1233,14 @@ impl Final {
                 .width(Length::Fill)
                 .align_x(Align::Center),
             ));
+        } else {
+            col = col.push(
+                button::primary(
+                    &mut self.action_button,
+                    button::button_content(None, "Finalize installation"),
+                )
+                .on_press(Message::Install),
+            );
         }
 
         layout(&mut self.scroll, &mut self.previous_button, col.into())

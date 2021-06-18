@@ -371,8 +371,8 @@ impl From<DefineBitcoind> for Box<dyn Step> {
 
 pub struct Final {
     generating: bool,
-    success: bool,
     warning: Option<String>,
+    config_path: Option<PathBuf>,
     view: view::Final,
 }
 
@@ -380,8 +380,8 @@ impl Final {
     pub fn new() -> Self {
         Self {
             generating: false,
-            success: false,
             warning: None,
+            config_path: None,
             view: view::Final::new(),
         }
     }
@@ -392,16 +392,17 @@ impl Step for Final {
         match message {
             Message::Installed(res) => {
                 self.generating = false;
-                if let Err(e) = res {
-                    self.success = false;
-                    self.warning = Some(e.to_string());
-                } else {
-                    self.success = true;
+                match res {
+                    Err(e) => {
+                        self.config_path = None;
+                        self.warning = Some(e.to_string());
+                    }
+                    Ok(path) => self.config_path = Some(path),
                 }
             }
             Message::Install => {
                 self.generating = true;
-                self.success = false;
+                self.config_path = None;
                 self.warning = None;
             }
             _ => {}
@@ -409,8 +410,11 @@ impl Step for Final {
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view
-            .render(self.generating, self.success, self.warning.as_ref())
+        self.view.render(
+            self.generating,
+            self.config_path.as_ref(),
+            self.warning.as_ref(),
+        )
     }
 }
 

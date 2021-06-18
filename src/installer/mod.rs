@@ -2,26 +2,21 @@ mod message;
 mod step;
 mod view;
 
-use iced::{executor, Application, Clipboard, Command, Element, Settings};
+use iced::{Clipboard, Command, Element, Subscription};
 
 use std::io::Write;
 use std::path::PathBuf;
 
 use crate::{app::config as gui_config, revault::Role, revaultd::config as revaultd_config};
 
-use message::Message;
+pub use message::Message;
 use step::{
     manager, stakeholder, Context, DefineBitcoind, DefineCoordinator, DefineCpfpDescriptor,
     DefineRole, Final, Step, Welcome,
 };
 
-pub fn run(config_path: PathBuf) -> Result<(), iced::Error> {
-    Installer::run(Settings::with_flags(config_path))
-}
-
 pub struct Installer {
     destination_path: PathBuf,
-    exit: bool,
 
     current: usize,
     steps: Vec<Box<dyn Step>>,
@@ -90,18 +85,11 @@ impl Installer {
             .get_mut(self.current)
             .expect("There is always a step")
     }
-}
 
-impl Application for Installer {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Flags = PathBuf;
-
-    fn new(destination_path: PathBuf) -> (Installer, Command<Self::Message>) {
+    pub fn new(destination_path: PathBuf) -> (Installer, Command<Message>) {
         (
             Installer {
                 destination_path,
-                exit: false,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
                 context: Context::new(),
@@ -110,23 +98,12 @@ impl Application for Installer {
         )
     }
 
-    fn title(&self) -> String {
-        String::from("Revault Installer")
+    pub fn subscription(&self) -> Subscription<Message> {
+        Subscription::none()
     }
 
-    fn should_exit(&self) -> bool {
-        self.exit
-    }
-
-    fn update(
-        &mut self,
-        message: Self::Message,
-        _clipboard: &mut Clipboard,
-    ) -> Command<Self::Message> {
+    pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
         match message {
-            Message::Exit => {
-                self.exit = true;
-            }
             Message::Next => {
                 let current_step = self
                     .steps
@@ -174,12 +151,15 @@ impl Application for Installer {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::Message> {
+    pub fn view(&mut self) -> Element<Message> {
         self.current_step().view()
     }
 }
 
-pub async fn install(cfg: revaultd_config::Config, datadir_path: PathBuf) -> Result<(), Error> {
+pub async fn install(
+    cfg: revaultd_config::Config,
+    datadir_path: PathBuf,
+) -> Result<PathBuf, Error> {
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
 
@@ -202,14 +182,14 @@ pub async fn install(cfg: revaultd_config::Config, datadir_path: PathBuf) -> Res
     let mut gui_config_path = datadir_path;
     gui_config_path.push(gui_config::DEFAULT_FILE_NAME);
 
-    let mut gui_config_file = std::fs::File::create(gui_config_path)
+    let mut gui_config_file = std::fs::File::create(&gui_config_path)
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
     gui_config_file
         .write_all(toml::to_string(&cfg).unwrap().as_bytes())
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 
-    Ok(())
+    Ok(gui_config_path)
 }
 
 #[derive(Debug, Clone)]
