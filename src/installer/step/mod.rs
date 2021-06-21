@@ -464,7 +464,7 @@ mod tests {
             step.update(Message::DefineStakeholderXpubs(
                 DefineStakeholderXpubs::StakeholderXpub(i, ParticipantXpub::XpubEdited(xpub)),
             ));
-            i = i + 1;
+            i += 1;
         }
     }
 
@@ -475,7 +475,7 @@ mod tests {
             step.update(Message::DefineManagerXpubs(
                 DefineManagerXpubs::ManagerXpub(i, ParticipantXpub::XpubEdited(xpub)),
             ));
-            i = i + 1;
+            i += 1;
         }
     }
 
@@ -486,7 +486,7 @@ mod tests {
             step.update(Message::DefineManagerXpubs(
                 DefineManagerXpubs::CosignerKey(i, CosignerKey::KeyEdited(key)),
             ));
-            i = i + 1;
+            i += 1;
         }
     }
 
@@ -645,5 +645,10 @@ mod tests {
 
         let mut cpfp_2_config = Config::new();
         cpfp_2_step.edit_config(&mut cpfp_2_config);
+
+        assert_eq!(
+            cpfp_1_config.scripts_config.cpfp_descriptor,
+            cpfp_2_config.scripts_config.cpfp_descriptor,
+        );
     }
 }
