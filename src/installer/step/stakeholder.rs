@@ -20,6 +20,7 @@ pub struct DefineStakeholderXpubs {
     other_xpubs: Vec<ParticipantXpub>,
     our_xpub: String,
     our_xpub_warning: bool,
+    warning: Option<String>,
 
     our_xpub_input: text_input::State,
     previous_button: Button,
@@ -31,6 +32,7 @@ pub struct DefineStakeholderXpubs {
 impl DefineStakeholderXpubs {
     pub fn new() -> Self {
         Self {
+            warning: None,
             our_xpub: "".to_string(),
             our_xpub_warning: false,
             other_xpubs: Vec::new(),
@@ -44,31 +46,6 @@ impl DefineStakeholderXpubs {
 }
 
 impl Step for DefineStakeholderXpubs {
-    fn is_correct(&self) -> bool {
-        !self.our_xpub_warning && !self.other_xpubs.iter().any(|xpub| xpub.warning)
-    }
-
-    fn update_context(&self, ctx: &mut Context) {
-        ctx.stakeholders_xpubs = self
-            .other_xpubs
-            .iter()
-            .map(|participant| participant.xpub.clone())
-            .collect();
-
-        ctx.stakeholders_xpubs.push(self.our_xpub.clone());
-    }
-
-    fn check(&mut self) {
-        for participant in &mut self.other_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
-        }
-        if ExtendedPubKey::from_str(&self.our_xpub).is_err() {
-            self.our_xpub_warning = true;
-        }
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineStakeholderXpubs(msg) = message {
             match msg {
@@ -94,29 +71,55 @@ impl Step for DefineStakeholderXpubs {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
-        let mut xpubs: Vec<String> = self
-            .other_xpubs
-            .iter()
-            .map(|participant| format!("{}/*", participant.xpub.clone()))
-            .collect();
-        xpubs.push(format!("{}/*", self.our_xpub.clone()));
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
+        for participant in &mut self.other_xpubs {
+            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+                participant.warning = true;
+            }
+        }
 
-        xpubs.sort();
+        if ExtendedPubKey::from_str(&self.our_xpub).is_err() {
+            self.our_xpub_warning = true;
+        }
 
-        let keys = xpubs
-            .into_iter()
-            .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
-            .collect();
-
-        config.scripts_config.deposit_descriptor =
-            DepositDescriptor::new(keys).unwrap().to_string();
+        if self.our_xpub_warning || self.other_xpubs.iter().any(|xpub| xpub.warning) {
+            return false;
+        }
 
         config.stakeholder_config = Some(config::StakeholderConfig {
             xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
             watchtowers: Vec::new(),
             emergency_address: "".to_string(),
         });
+
+        let mut xpubs: Vec<String> = self
+            .other_xpubs
+            .iter()
+            .map(|participant| participant.xpub.clone())
+            .collect();
+        xpubs.push(self.our_xpub.clone());
+
+        xpubs.sort();
+
+        // update ctx for the unvault descriptor next step
+        ctx.stakeholders_xpubs = xpubs.clone();
+
+        let keys = xpubs
+            .into_iter()
+            .map(|xpub| {
+                DescriptorPublicKey::from_str(&format!("{}/*", xpub)).expect("already checked")
+            })
+            .collect();
+
+        match DepositDescriptor::new(keys) {
+            Ok(descriptor) => {
+                self.warning = None;
+                config.scripts_config.deposit_descriptor = descriptor.to_string();
+            }
+            Err(e) => self.warning = Some(e.to_string()),
+        };
+
+        self.warning.is_none()
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -139,6 +142,7 @@ impl Step for DefineStakeholderXpubs {
             &mut self.scroll,
             &mut self.previous_button,
             &mut self.save_button,
+            self.warning.as_ref(),
         );
     }
 }
@@ -162,6 +166,7 @@ pub struct DefineManagerXpubs {
     spending_delay_warning: bool,
     manager_xpubs: Vec<ParticipantXpub>,
     cosigners: Vec<CosignerKey>,
+    warning: Option<String>,
     view: view::DefineManagerXpubsAsStakeholderOnly,
 
     /// from previous step
@@ -179,33 +184,13 @@ impl DefineManagerXpubs {
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsStakeholderOnly::new(),
             stakeholder_xpubs: Vec::new(),
+            warning: None,
         }
     }
 }
 impl Step for DefineManagerXpubs {
-    fn update_context(&self, ctx: &mut Context) {
-        ctx.number_cosigners = self.cosigners.len();
-    }
-
     fn load_context(&mut self, ctx: &Context) {
         self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
-    }
-
-    fn is_correct(&self) -> bool {
-        !self.manager_xpubs.iter().any(|xpub| xpub.warning)
-            && !self.cosigners.iter().any(|key| key.warning)
-    }
-
-    fn check(&mut self) {
-        for participant in &mut self.manager_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
-        }
-
-        self.treshold_warning =
-            self.managers_treshold == 0 || self.managers_treshold > self.manager_xpubs.len();
-        self.spending_delay_warning = self.spending_delay == 0;
     }
 
     fn update(&mut self, message: Message) {
@@ -262,7 +247,31 @@ impl Step for DefineManagerXpubs {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
+        for participant in &mut self.manager_xpubs {
+            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+                participant.warning = true;
+            }
+        }
+
+        for cosigner in &mut self.cosigners {
+            if DescriptorPublicKey::from_str(&cosigner.key).is_err() {
+                cosigner.warning = true;
+            }
+        }
+
+        self.treshold_warning =
+            self.managers_treshold == 0 || self.managers_treshold > self.manager_xpubs.len();
+        self.spending_delay_warning = self.spending_delay == 0;
+
+        if self.manager_xpubs.iter().any(|xpub| xpub.warning)
+            || self.cosigners.iter().any(|key| key.warning)
+            || self.treshold_warning
+            || self.spending_delay_warning
+        {
+            return false;
+        }
+
         let mut managers_xpubs: Vec<String> = self
             .manager_xpubs
             .iter()
@@ -302,15 +311,23 @@ impl Step for DefineManagerXpubs {
             .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
             .collect();
 
-        config.scripts_config.unvault_descriptor = UnvaultDescriptor::new(
+        ctx.number_cosigners = self.cosigners.len();
+
+        match UnvaultDescriptor::new(
             stakeholders_keys,
             managers_keys,
             self.managers_treshold,
             cosigners_keys,
             self.spending_delay,
-        )
-        .unwrap()
-        .to_string();
+        ) {
+            Ok(descriptor) => {
+                self.warning = None;
+                config.scripts_config.unvault_descriptor = descriptor.to_string()
+            }
+            Err(e) => self.warning = Some(e.to_string()),
+        };
+
+        self.warning.is_none()
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -341,6 +358,7 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
+            self.warning.as_ref(),
         )
     }
 }
@@ -375,14 +393,6 @@ impl DefineEmergencyAddress {
 }
 
 impl Step for DefineEmergencyAddress {
-    fn is_correct(&self) -> bool {
-        !self.warning
-    }
-
-    fn check(&mut self) {
-        self.warning = bitcoin::Address::from_str(&self.address).is_err()
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineEmergencyAddress(address) = message {
             self.address = address;
@@ -390,9 +400,19 @@ impl Step for DefineEmergencyAddress {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
-        if let Some(stakeholder_config) = &mut config.stakeholder_config {
-            stakeholder_config.emergency_address = self.address.clone();
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
+        match bitcoin::Address::from_str(&self.address) {
+            Ok(_) => {
+                if let Some(stakeholder_config) = &mut config.stakeholder_config {
+                    stakeholder_config.emergency_address = self.address.clone();
+                }
+                self.warning = false;
+                true
+            }
+            Err(_) => {
+                self.warning = true;
+                false
+            }
         }
     }
 
@@ -416,6 +436,8 @@ impl From<DefineEmergencyAddress> for Box<dyn Step> {
 pub struct Watchtower {
     pub host: String,
     pub noise_key: String,
+
+    // TODO: verify
     warning_host: bool,
     warning_noise_key: bool,
 
@@ -478,19 +500,6 @@ impl DefineWatchtowers {
 }
 
 impl Step for DefineWatchtowers {
-    fn is_correct(&self) -> bool {
-        !self
-            .watchtowers
-            .iter()
-            .any(|wt| wt.warning_host || wt.warning_noise_key)
-    }
-
-    fn check(&mut self) {
-        for _watchtower in &mut self.watchtowers {
-            // TODO
-        }
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineWatchtowers(msg) = message {
             match msg {
@@ -512,7 +521,7 @@ impl Step for DefineWatchtowers {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         let mut ws = Vec::new();
         for watchtower in &self.watchtowers {
             ws.push(config::WatchtowerConfig {
@@ -524,6 +533,8 @@ impl Step for DefineWatchtowers {
         if let Some(stakeholder_config) = &mut config.stakeholder_config {
             stakeholder_config.watchtowers = ws;
         }
+
+        true
     }
 
     fn view(&mut self) -> Element<Message> {

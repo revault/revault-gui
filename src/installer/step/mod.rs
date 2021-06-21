@@ -20,15 +20,12 @@ use crate::{
 };
 
 pub trait Step {
-    fn check(&mut self) {}
     fn update(&mut self, message: Message);
     fn view(&mut self) -> Element<Message>;
-    fn update_context(&self, _ctx: &mut Context) {}
     fn load_context(&mut self, _ctx: &Context) {}
-    fn is_correct(&self) -> bool {
+    fn apply(&mut self, _ctx: &mut Context, _config: &mut config::Config) -> bool {
         true
     }
-    fn edit_config(&self, _config: &mut config::Config) {}
 }
 
 pub struct Context {
@@ -130,6 +127,7 @@ pub struct DefineCpfpDescriptor {
     scroll: scrollable::State,
     previous_button: Button,
     save_button: Button,
+    warning: Option<String>,
 }
 
 impl DefineCpfpDescriptor {
@@ -140,23 +138,12 @@ impl DefineCpfpDescriptor {
             scroll: scrollable::State::new(),
             previous_button: Button::new(),
             save_button: Button::new(),
+            warning: None,
         }
     }
 }
 
 impl Step for DefineCpfpDescriptor {
-    fn is_correct(&self) -> bool {
-        !self.manager_xpubs.iter().any(|xpub| xpub.warning)
-    }
-
-    fn check(&mut self) {
-        for participant in &mut self.manager_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
-        }
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineCpfpDescriptor(msg) = message {
             match msg {
@@ -175,7 +162,17 @@ impl Step for DefineCpfpDescriptor {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
+        for participant in &mut self.manager_xpubs {
+            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+                participant.warning = true;
+            }
+        }
+
+        if self.manager_xpubs.iter().any(|xpub| xpub.warning) {
+            return false;
+        }
+
         let mut xpubs: Vec<String> = self
             .manager_xpubs
             .iter()
@@ -189,7 +186,12 @@ impl Step for DefineCpfpDescriptor {
             .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
             .collect();
 
-        config.scripts_config.cpfp_descriptor = CpfpDescriptor::new(keys).unwrap().to_string();
+        match CpfpDescriptor::new(keys) {
+            Ok(descriptor) => config.scripts_config.cpfp_descriptor = descriptor.to_string(),
+            Err(e) => self.warning = Some(e.to_string()),
+        }
+
+        self.warning.is_none()
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -209,6 +211,7 @@ impl Step for DefineCpfpDescriptor {
             &mut self.scroll,
             &mut self.previous_button,
             &mut self.save_button,
+            self.warning.as_ref(),
         );
     }
 }
@@ -245,14 +248,6 @@ impl DefineCoordinator {
 }
 
 impl Step for DefineCoordinator {
-    fn is_correct(&self) -> bool {
-        !self.warning
-    }
-
-    fn check(&mut self) {
-        // TODO
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineCoordinator(msg) = message {
             match msg {
@@ -262,9 +257,10 @@ impl Step for DefineCoordinator {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         config.coordinator_host = self.host.clone();
         config.coordinator_noise_key = self.noise_key.clone();
+        true
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -309,16 +305,6 @@ impl DefineBitcoind {
 }
 
 impl Step for DefineBitcoind {
-    fn is_correct(&self) -> bool {
-        !self.warning_address && !self.warning_cookie
-    }
-
-    fn check(&mut self) {
-        self.warning_cookie = PathBuf::from_str(&self.cookie_path).is_err();
-        self.warning_address = std::net::SocketAddr::from_str(&self.address).is_err();
-        // TODO
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineBitcoind(msg) = message {
             match msg {
@@ -337,12 +323,33 @@ impl Step for DefineBitcoind {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
-        config.bitcoind_config = config::BitcoindConfig {
-            network: self.network,
-            cookie_path: PathBuf::from_str(&self.cookie_path).expect("already checked"),
-            poll_interval_secs: None,
-            addr: std::net::SocketAddr::from_str(&self.address).expect("already checked"),
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
+        match (
+            PathBuf::from_str(&self.cookie_path),
+            std::net::SocketAddr::from_str(&self.address),
+        ) {
+            (Err(_), Ok(_)) => {
+                self.warning_cookie = true;
+                false
+            }
+            (Ok(_), Err(_)) => {
+                self.warning_address = true;
+                false
+            }
+            (Err(_), Err(_)) => {
+                self.warning_address = true;
+                self.warning_cookie = true;
+                false
+            }
+            (Ok(path), Ok(addr)) => {
+                config.bitcoind_config = config::BitcoindConfig {
+                    network: self.network,
+                    cookie_path: path,
+                    poll_interval_secs: None,
+                    addr,
+                };
+                true
+            }
         }
     }
 
@@ -492,6 +499,7 @@ mod tests {
 
     #[test]
     fn define_deposit_descriptor() {
+        let mut ctx = Context::new();
         let mut manager_step = manager::DefineStakeholderXpubs::new();
         load_stakeholders_xpubs(
             &mut manager_step,
@@ -504,7 +512,7 @@ mod tests {
         );
 
         let mut manager_config = Config::new();
-        manager_step.edit_config(&mut manager_config);
+        manager_step.apply(&mut ctx, &mut manager_config);
 
         let mut stakeholder_step = stakeholder::DefineStakeholderXpubs::new();
         load_stakeholders_xpubs(
@@ -520,7 +528,7 @@ mod tests {
         ));
 
         let mut stakeholder_config = Config::new();
-        stakeholder_step.edit_config(&mut stakeholder_config);
+        stakeholder_step.apply(&mut ctx, &mut stakeholder_config);
 
         assert_eq!(
             manager_config.scripts_config.deposit_descriptor,
@@ -530,6 +538,7 @@ mod tests {
 
     #[test]
     fn define_unvault_descriptor() {
+        let mut ctx = Context::new();
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
             number_cosigners: 4,
@@ -564,7 +573,7 @@ mod tests {
         ));
 
         let mut manager_config = Config::new();
-        manager_step.edit_config(&mut manager_config);
+        manager_step.apply(&mut ctx, &mut manager_config);
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
@@ -598,7 +607,7 @@ mod tests {
         ));
 
         let mut stakeholder_config = Config::new();
-        stakeholder_step.edit_config(&mut stakeholder_config);
+        stakeholder_step.apply(&mut ctx, &mut stakeholder_config);
 
         assert_eq!(
             manager_config.scripts_config.unvault_descriptor,
@@ -608,6 +617,7 @@ mod tests {
 
     #[test]
     fn define_cpfp_descriptor() {
+        let mut ctx = Context::new();
         let mut cpfp_1_step = DefineCpfpDescriptorStep::new();
         cpfp_1_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
         cpfp_1_step.update(Message::DefineCpfpDescriptor(
@@ -625,7 +635,7 @@ mod tests {
         ));
 
         let mut cpfp_1_config = Config::new();
-        cpfp_1_step.edit_config(&mut cpfp_1_config);
+        cpfp_1_step.apply(&mut ctx, &mut cpfp_1_config);
 
         let mut cpfp_2_step = DefineCpfpDescriptorStep::new();
         cpfp_2_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
@@ -644,7 +654,7 @@ mod tests {
         ));
 
         let mut cpfp_2_config = Config::new();
-        cpfp_2_step.edit_config(&mut cpfp_2_config);
+        cpfp_2_step.apply(&mut ctx, &mut cpfp_2_config);
 
         assert_eq!(
             cpfp_1_config.scripts_config.cpfp_descriptor,

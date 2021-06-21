@@ -24,6 +24,7 @@ pub struct DefineStakeholderXpubs {
     scroll: scrollable::State,
     previous_button: Button,
     save_button: Button,
+    warning: Option<String>,
 }
 
 impl DefineStakeholderXpubs {
@@ -34,6 +35,7 @@ impl DefineStakeholderXpubs {
             scroll: scrollable::State::new(),
             previous_button: Button::new(),
             save_button: Button::new(),
+            warning: None,
         }
     }
 }
@@ -45,26 +47,6 @@ impl Default for DefineStakeholderXpubs {
 }
 
 impl Step for DefineStakeholderXpubs {
-    fn update_context(&self, ctx: &mut Context) {
-        ctx.stakeholders_xpubs = self
-            .stakeholder_xpubs
-            .iter()
-            .map(|participant| participant.xpub.clone())
-            .collect();
-    }
-
-    fn is_correct(&self) -> bool {
-        !self.stakeholder_xpubs.iter().any(|xpub| xpub.warning)
-    }
-
-    fn check(&mut self) {
-        for participant in &mut self.stakeholder_xpubs {
-            if DescriptorPublicKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
-        }
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineStakeholderXpubs(msg) = message {
             match msg {
@@ -87,7 +69,17 @@ impl Step for DefineStakeholderXpubs {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
+        for participant in &mut self.stakeholder_xpubs {
+            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
+                participant.warning = true;
+            }
+        }
+
+        if self.stakeholder_xpubs.iter().any(|xpub| xpub.warning) {
+            return false;
+        }
+
         let mut xpubs: Vec<String> = self
             .stakeholder_xpubs
             .iter()
@@ -101,8 +93,25 @@ impl Step for DefineStakeholderXpubs {
             .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
             .collect();
 
-        config.scripts_config.deposit_descriptor =
-            DepositDescriptor::new(keys).unwrap().to_string();
+        match DepositDescriptor::new(keys) {
+            Ok(descriptor) => {
+                self.warning = None;
+                config.scripts_config.deposit_descriptor = descriptor.to_string()
+            }
+            Err(e) => self.warning = Some(e.to_string()),
+        }
+
+        if self.warning.is_some() {
+            return false;
+        }
+
+        ctx.stakeholders_xpubs = self
+            .stakeholder_xpubs
+            .iter()
+            .map(|participant| participant.xpub.clone())
+            .collect();
+
+        true
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -122,6 +131,7 @@ impl Step for DefineStakeholderXpubs {
             &mut self.scroll,
             &mut self.previous_button,
             &mut self.save_button,
+            self.warning.as_ref(),
         );
     }
 }
@@ -141,6 +151,7 @@ pub struct DefineManagerXpubs {
     treshold_warning: bool,
     spending_delay: u32,
     spending_delay_warning: bool,
+    warning: Option<String>,
 
     view: view::DefineManagerXpubsAsManager,
 
@@ -161,6 +172,7 @@ impl DefineManagerXpubs {
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsManager::new(),
             stakeholder_xpubs: Vec::new(),
+            warning: None,
         }
     }
 }
@@ -172,32 +184,8 @@ impl Default for DefineManagerXpubs {
 }
 
 impl Step for DefineManagerXpubs {
-    fn update_context(&self, ctx: &mut Context) {
-        ctx.number_cosigners = self.cosigners.len();
-    }
-
     fn load_context(&mut self, ctx: &Context) {
         self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
-    }
-
-    fn check(&mut self) {
-        for participant in &mut self.other_xpubs {
-            if DescriptorPublicKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
-        }
-        if DescriptorPublicKey::from_str(&self.our_xpub).is_err() {
-            self.our_xpub_warning = true;
-        }
-
-        // If user is manager, other_xpubs can be equal to zero and treshold equal to 1.
-        self.treshold_warning =
-            self.managers_treshold == 0 || self.managers_treshold > self.other_xpubs.len() + 1;
-        self.spending_delay_warning = self.spending_delay == 0;
-    }
-
-    fn is_correct(&self) -> bool {
-        !self.our_xpub_warning && !self.other_xpubs.iter().any(|xpub| xpub.warning)
     }
 
     fn update(&mut self, message: Message) {
@@ -257,7 +245,36 @@ impl Step for DefineManagerXpubs {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
+        for participant in &mut self.other_xpubs {
+            if DescriptorPublicKey::from_str(&participant.xpub).is_err() {
+                participant.warning = true;
+            }
+        }
+        if DescriptorPublicKey::from_str(&self.our_xpub).is_err() {
+            self.our_xpub_warning = true;
+        }
+
+        for cosigner in &mut self.cosigners {
+            if DescriptorPublicKey::from_str(&cosigner.key).is_err() {
+                cosigner.warning = true;
+            }
+        }
+
+        // If user is manager, other_xpubs can be equal to zero and treshold equal to 1.
+        self.treshold_warning =
+            self.managers_treshold == 0 || self.managers_treshold > self.other_xpubs.len() + 1;
+        self.spending_delay_warning = self.spending_delay == 0;
+
+        if self.our_xpub_warning
+            || self.other_xpubs.iter().any(|xpub| xpub.warning)
+            || self.cosigners.iter().any(|key| key.warning)
+            || self.treshold_warning
+            || self.spending_delay_warning
+        {
+            return false;
+        }
+
         let mut managers_xpubs: Vec<String> = self
             .other_xpubs
             .iter()
@@ -298,20 +315,28 @@ impl Step for DefineManagerXpubs {
             .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
             .collect();
 
-        config.scripts_config.unvault_descriptor = UnvaultDescriptor::new(
-            stakeholders_keys,
-            managers_keys,
-            self.managers_treshold,
-            cosigners_keys,
-            self.spending_delay,
-        )
-        .unwrap()
-        .to_string();
+        ctx.number_cosigners = self.cosigners.len();
 
         config.manager_config = Some(config::ManagerConfig {
             xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
             cosigners: Vec::new(),
         });
+
+        match UnvaultDescriptor::new(
+            stakeholders_keys,
+            managers_keys,
+            self.managers_treshold,
+            cosigners_keys,
+            self.spending_delay,
+        ) {
+            Ok(descriptor) => {
+                self.warning = None;
+                config.scripts_config.unvault_descriptor = descriptor.to_string()
+            }
+            Err(e) => self.warning = Some(e.to_string()),
+        };
+
+        self.warning.is_none()
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -344,6 +369,7 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
+            self.warning.as_ref(),
         );
     }
 }
@@ -357,6 +383,8 @@ impl From<DefineManagerXpubs> for Box<dyn Step> {
 pub struct Cosigner {
     pub host: String,
     pub noise_key: String,
+
+    // TODO: check host and noise_key
     warning_host: bool,
     warning_noise_key: bool,
 
@@ -430,19 +458,6 @@ impl Step for DefineCosigners {
         }
     }
 
-    fn is_correct(&self) -> bool {
-        !self
-            .cosigners
-            .iter()
-            .any(|wt| wt.warning_host || wt.warning_noise_key)
-    }
-
-    fn check(&mut self) {
-        for _cosigner in &mut self.cosigners {
-            // TODO
-        }
-    }
-
     fn update(&mut self, message: Message) {
         if let Message::DefineCosigners(i, msg) = message {
             if let Some(cosigner) = self.cosigners.get_mut(i) {
@@ -451,7 +466,7 @@ impl Step for DefineCosigners {
         };
     }
 
-    fn edit_config(&self, config: &mut config::Config) {
+    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         let mut vec = Vec::new();
         for cosigner in &self.cosigners {
             vec.push(config::CosignerConfig {
@@ -463,6 +478,8 @@ impl Step for DefineCosigners {
         if let Some(manager_config) = &mut config.manager_config {
             manager_config.cosigners = vec;
         }
+
+        true
     }
 
     fn view(&mut self) -> Element<Message> {
