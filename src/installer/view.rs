@@ -25,7 +25,8 @@ pub fn welcome(install_button: &mut Button) -> Element<Message> {
             ))
             .push(
                 button::primary(install_button, button::button_content(None, "Install"))
-                    .on_press(Message::Next),
+                    .on_press(Message::Next)
+                    .min_width(200),
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -194,7 +195,7 @@ pub fn define_stakeholder_xpubs_as_stakeholder<'a>(
             .push(
                 Row::new()
                     .push(
-                        button::primary(save_button, button::button_content(None, "Save"))
+                        button::primary(save_button, button::button_content(None, "Next"))
                             .on_press(Message::Next),
                     )
                     .align_items(Align::Center)
@@ -218,14 +219,14 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
 ) -> Element<'a, Message> {
     let mut row = Row::new().align_items(Align::Center).spacing(20);
     if stakeholder_xpubs.is_empty() {
-        row = row.push(button::primary(
-            save_button,
-            button::button_content(None, "Save"),
-        ));
+        row = row.push(
+            button::primary(save_button, button::button_content(None, "Next")).min_width(200),
+        );
     } else {
         row = row.push(
-            button::primary(save_button, button::button_content(None, "Save"))
-                .on_press(Message::Next),
+            button::primary(save_button, button::button_content(None, "Next"))
+                .on_press(Message::Next)
+                .min_width(200),
         );
     }
 
@@ -520,9 +521,10 @@ impl DefineManagerXpubsAsManager {
                         .push(
                             button::primary(
                                 &mut self.save_button,
-                                button::button_content(None, "Save"),
+                                button::button_content(None, "Next"),
                             )
-                            .on_press(Message::Next),
+                            .on_press(Message::Next)
+                            .min_width(200),
                         )
                         .align_items(Align::Center)
                         .spacing(20),
@@ -570,14 +572,18 @@ impl DefineManagerXpubsAsStakeholderOnly {
     ) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
         if manager_xpubs.is_empty() {
-            row = row.push(button::primary(
-                &mut self.save_button,
-                button::button_content(None, "Save"),
-            ));
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .min_width(200),
+            );
         } else {
             row = row.push(
-                button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                    .on_press(Message::Next),
+                button::primary(
+                    &mut self.save_button,
+                    button::button_content(None, "Next").width(Length::Fill),
+                )
+                .on_press(Message::Next)
+                .min_width(200),
             );
         }
 
@@ -666,14 +672,14 @@ pub fn define_cpfp_descriptor<'a>(
 ) -> Element<'a, Message> {
     let mut row = Row::new().align_items(Align::Center).spacing(20);
     if manager_xpubs.is_empty() {
-        row = row.push(button::primary(
-            save_button,
-            button::button_content(None, "Save"),
-        ));
+        row = row.push(
+            button::primary(save_button, button::button_content(None, "Next")).min_width(200),
+        );
     } else {
         row = row.push(
-            button::primary(save_button, button::button_content(None, "Save"))
-                .on_press(Message::Next),
+            button::primary(save_button, button::button_content(None, "Next"))
+                .on_press(Message::Next)
+                .min_width(200),
         );
     }
 
@@ -736,14 +742,15 @@ impl DefineCoordinator {
     ) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
         if warning {
-            row = row.push(button::primary(
-                &mut self.save_button,
-                button::button_content(None, "Save"),
-            ));
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .min_width(200),
+            );
         } else {
             row = row.push(
-                button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                    .on_press(Message::Next),
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .on_press(Message::Next)
+                    .min_width(200),
             );
         }
 
@@ -815,14 +822,15 @@ impl DefineEmergencyAddress {
     pub fn render<'a>(&'a mut self, address: &str, warning: bool) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
         if warning {
-            row = row.push(button::primary(
-                &mut self.save_button,
-                button::button_content(None, "Save"),
-            ));
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .min_width(200),
+            );
         } else {
             row = row.push(
-                button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                    .on_press(Message::Next),
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .on_press(Message::Next)
+                    .min_width(200),
             );
         }
         let mut col = Column::new()
@@ -968,8 +976,9 @@ impl DefineWatchtowers {
                         .spacing(10),
                 )
                 .push(
-                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                        .on_press(Message::Next),
+                    button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                        .on_press(Message::Next)
+                        .min_width(200),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -1069,8 +1078,9 @@ impl DefineCosigners {
                         .spacing(10),
                 )
                 .push(
-                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                        .on_press(Message::Next),
+                    button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                        .on_press(Message::Next)
+                        .min_width(200),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -1163,8 +1173,9 @@ impl DefineBitcoind {
                 .push(col_address)
                 .push(col_cookie)
                 .push(
-                    button::primary(&mut self.save_button, button::button_content(None, "Save"))
-                        .on_press(Message::Next),
+                    button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                        .on_press(Message::Next)
+                        .min_width(200),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -1210,10 +1221,13 @@ impl Final {
         }
 
         if generating {
-            col = col.push(button::primary(
-                &mut self.action_button,
-                button::button_content(None, "Installing ..."),
-            ))
+            col = col.push(
+                button::primary(
+                    &mut self.action_button,
+                    button::button_content(None, "Installing ..."),
+                )
+                .min_width(200),
+            )
         } else if let Some(path) = config_path {
             col = col.push(card::border_success(
                 Container::new(
@@ -1224,7 +1238,8 @@ impl Final {
                                 &mut self.action_button,
                                 button::button_content(None, "Start"),
                             )
-                            .on_press(Message::Exit(path.clone())),
+                            .on_press(Message::Exit(path.clone()))
+                            .min_width(200),
                         ))
                         .align_items(Align::Center)
                         .spacing(20),
@@ -1239,7 +1254,8 @@ impl Final {
                     &mut self.action_button,
                     button::button_content(None, "Finalize installation"),
                 )
-                .on_press(Message::Install),
+                .on_press(Message::Install)
+                .min_width(200),
             );
         }
 
