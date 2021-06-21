@@ -16,13 +16,12 @@ use step::{
 };
 
 pub struct Installer {
-    destination_path: PathBuf,
-
     current: usize,
     steps: Vec<Box<dyn Step>>,
 
     /// Context is data passed through each step.
     context: Context,
+    config: revaultd_config::Config,
 }
 
 impl Installer {
@@ -87,9 +86,12 @@ impl Installer {
     }
 
     pub fn new(destination_path: PathBuf) -> (Installer, Command<Message>) {
+        let mut config = revaultd_config::Config::new();
+        config.data_dir = Some(destination_path.clone());
+        config.daemon = Some(true);
         (
             Installer {
-                destination_path,
+                config,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
                 context: Context::new(),
@@ -109,9 +111,7 @@ impl Installer {
                     .steps
                     .get_mut(self.current)
                     .expect("There is always a step");
-                current_step.check();
-                if current_step.is_correct() {
-                    current_step.update_context(&mut self.context);
+                if current_step.apply(&mut self.context, &mut self.config) {
                     self.next();
                     // calculate new current_step.
                     let current_step = self
@@ -125,24 +125,18 @@ impl Installer {
                 self.previous();
             }
             Message::Role(role) => {
+                // reset config
+                let mut config = revaultd_config::Config::new();
+                config.data_dir = self.config.data_dir.clone();
+                config.daemon = Some(true);
+                self.config = config;
+
                 self.update_steps(role);
                 self.next();
             }
             Message::Install => {
                 self.current_step().update(message);
-
-                let mut cfg = revaultd_config::Config::new();
-                cfg.data_dir = Some(self.destination_path.clone());
-                cfg.daemon = Some(true);
-
-                for step in &self.steps {
-                    step.edit_config(&mut cfg);
-                }
-
-                return Command::perform(
-                    install(cfg, self.destination_path.clone()),
-                    Message::Installed,
-                );
+                return Command::perform(install(self.config.clone()), Message::Installed);
             }
             _ => {
                 self.current_step().update(message);
@@ -156,10 +150,8 @@ impl Installer {
     }
 }
 
-pub async fn install(
-    cfg: revaultd_config::Config,
-    datadir_path: PathBuf,
-) -> Result<PathBuf, Error> {
+pub async fn install(cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
+    let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
 
