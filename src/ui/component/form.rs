@@ -5,7 +5,7 @@ use iced::{
 
 use crate::ui::{color, component::text};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Value<T> {
     pub value: T,
     pub valid: bool,
@@ -65,6 +65,12 @@ where
         self
     }
 
+    /// Sets the [`Form`] with a text size
+    pub fn size(mut self, size: u16) -> Self {
+        self.input = self.input.size(size);
+        self
+    }
+
     pub fn render(self) -> Container<'a, Message> {
         if !self.valid {
             if let Some(message) = self.warning {
@@ -75,11 +81,12 @@ where
                     ])
                     .width(Length::Fill)
                     .spacing(5),
-                );
+                )
+                .width(Length::Fill);
             }
         }
 
-        Container::new(self.input)
+        Container::new(self.input).width(Length::Fill)
     }
 }
 

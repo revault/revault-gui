@@ -73,16 +73,19 @@ impl Step for DefineStakeholderXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.other_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
+            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok();
         }
 
         if ExtendedPubKey::from_str(&self.our_xpub).is_err() {
             self.our_xpub_warning = true;
         }
 
-        if self.our_xpub_warning || self.other_xpubs.iter().any(|xpub| xpub.warning) {
+        if self.our_xpub_warning
+            || self
+                .other_xpubs
+                .iter()
+                .any(|participant| !participant.xpub.valid)
+        {
             return false;
         }
 
@@ -95,7 +98,7 @@ impl Step for DefineStakeholderXpubs {
         let mut xpubs: Vec<String> = self
             .other_xpubs
             .iter()
-            .map(|participant| participant.xpub.clone())
+            .map(|participant| participant.xpub.value.clone())
             .collect();
         xpubs.push(self.our_xpub.clone());
 
@@ -249,23 +252,22 @@ impl Step for DefineManagerXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.manager_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
+            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok();
         }
 
         for cosigner in &mut self.cosigners {
-            if DescriptorPublicKey::from_str(&cosigner.key).is_err() {
-                cosigner.warning = true;
-            }
+            cosigner.key.valid = DescriptorPublicKey::from_str(&cosigner.key.value).is_ok();
         }
 
         self.treshold_warning =
             self.managers_treshold == 0 || self.managers_treshold > self.manager_xpubs.len();
         self.spending_delay_warning = self.spending_delay == 0;
 
-        if self.manager_xpubs.iter().any(|xpub| xpub.warning)
-            || self.cosigners.iter().any(|key| key.warning)
+        if self
+            .manager_xpubs
+            .iter()
+            .any(|participant| !participant.xpub.valid)
+            || self.cosigners.iter().any(|cosigner| !cosigner.key.valid)
             || self.treshold_warning
             || self.spending_delay_warning
         {
@@ -275,7 +277,7 @@ impl Step for DefineManagerXpubs {
         let mut managers_xpubs: Vec<String> = self
             .manager_xpubs
             .iter()
-            .map(|participant| format!("{}/*", participant.xpub.clone()))
+            .map(|participant| format!("{}/*", participant.xpub.value.clone()))
             .collect();
 
         managers_xpubs.sort();
@@ -301,7 +303,7 @@ impl Step for DefineManagerXpubs {
         let mut cosigners_keys: Vec<String> = self
             .cosigners
             .iter()
-            .map(|cosigner| cosigner.key.clone())
+            .map(|cosigner| cosigner.key.value.clone())
             .collect();
 
         cosigners_keys.sort();

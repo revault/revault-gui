@@ -1,10 +1,13 @@
-use crate::installer::{message, view};
+use crate::{
+    installer::{message, view},
+    ui::component::form,
+};
+
 use iced::{button::State as Button, text_input, Element};
 
 #[derive(Clone)]
 pub struct ParticipantXpub {
-    pub xpub: String,
-    pub warning: bool,
+    pub xpub: form::Value<String>,
 
     xpub_input: text_input::State,
     delete_button: Button,
@@ -13,33 +16,26 @@ pub struct ParticipantXpub {
 impl ParticipantXpub {
     pub fn new() -> Self {
         Self {
-            xpub: "".to_string(),
+            xpub: form::Value::default(),
             xpub_input: text_input::State::new(),
             delete_button: Button::new(),
-            warning: false,
         }
     }
 
     pub fn update(&mut self, msg: message::ParticipantXpub) {
         if let message::ParticipantXpub::XpubEdited(xpub) = msg {
-            self.xpub = xpub;
-            self.warning = false;
+            self.xpub.value = xpub;
+            self.xpub.valid = true;
         }
     }
 
     pub fn view(&mut self) -> Element<message::ParticipantXpub> {
-        view::participant_xpub(
-            &self.xpub,
-            &mut self.xpub_input,
-            &mut self.delete_button,
-            self.warning,
-        )
+        view::participant_xpub(&self.xpub, &mut self.xpub_input, &mut self.delete_button)
     }
 }
 
 pub struct CosignerKey {
-    pub key: String,
-    pub warning: bool,
+    pub key: form::Value<String>,
 
     key_input: text_input::State,
     delete_button: Button,
@@ -48,26 +44,20 @@ pub struct CosignerKey {
 impl CosignerKey {
     pub fn new() -> Self {
         Self {
-            key: "".to_string(),
+            key: form::Value::default(),
             key_input: text_input::State::new(),
             delete_button: Button::new(),
-            warning: false,
         }
     }
 
     pub fn update(&mut self, msg: message::CosignerKey) {
         if let message::CosignerKey::KeyEdited(key) = msg {
-            self.key = key;
-            self.warning = false;
+            self.key.value = key;
+            self.key.valid = true;
         }
     }
 
     pub fn view(&mut self) -> Element<message::CosignerKey> {
-        view::cosigner_key(
-            &self.key,
-            &mut self.key_input,
-            &mut self.delete_button,
-            self.warning,
-        )
+        view::cosigner_key(&self.key, &mut self.key_input, &mut self.delete_button)
     }
 }
