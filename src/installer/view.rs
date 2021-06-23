@@ -840,9 +840,9 @@ impl DefineEmergencyAddress {
             save_button: Button::new(),
         }
     }
-    pub fn render<'a>(&'a mut self, address: &str, warning: bool) -> Element<'a, Message> {
+    pub fn render<'a>(&'a mut self, address: &form::Value<String>) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
-        if warning {
+        if !address.valid {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
                     .min_width(200),
@@ -854,23 +854,21 @@ impl DefineEmergencyAddress {
                     .min_width(200),
             );
         }
-        let mut col = Column::new()
+        let col = Column::new()
             .push(text::bold(text::simple("address:")))
             .push(
-                TextInput::new(
+                form::Form::new(
                     &mut self.address_input,
                     "address",
                     address,
                     Message::DefineEmergencyAddress,
                 )
+                .warning("Please enter a valid address")
                 .size(15)
-                .padding(10),
+                .padding(10)
+                .render(),
             )
             .spacing(10);
-
-        if warning {
-            col = col.push(text::simple("Please enter a valid address").color(color::WARNING))
-        }
 
         layout(
             &mut self.scroll,
@@ -905,51 +903,50 @@ impl Watchtower {
     }
     pub fn render(
         &mut self,
-        host: &str,
-        noise_key: &str,
-        warning_host: bool,
-        warning_noise_key: bool,
+        host: &form::Value<String>,
+        noise_key: &form::Value<String>,
     ) -> Element<message::DefineWatchtower> {
-        let mut col = Column::new().push(
-            Row::new()
+        Container::new(
+            Column::new()
                 .push(
-                    TextInput::new(
-                        &mut self.host_input,
-                        "Host",
-                        host,
-                        message::DefineWatchtower::HostEdited,
-                    )
-                    .size(15)
-                    .padding(10),
+                    Row::new()
+                        .push(
+                            form::Form::new(
+                                &mut self.host_input,
+                                "Host",
+                                host,
+                                message::DefineWatchtower::HostEdited,
+                            )
+                            .warning("Please enter a valid Host")
+                            .size(15)
+                            .padding(10)
+                            .render(),
+                        )
+                        .push(
+                            form::Form::new(
+                                &mut self.noise_key_input,
+                                "Noise key",
+                                noise_key,
+                                message::DefineWatchtower::NoiseKeyEdited,
+                            )
+                            .warning("Please enter a valid noise key with length > 66")
+                            .size(15)
+                            .padding(10)
+                            .render(),
+                        )
+                        .push(
+                            button::transparent(
+                                &mut self.delete_button,
+                                Container::new(icon::trash_icon()),
+                            )
+                            .on_press(message::DefineWatchtower::Delete),
+                        )
+                        .spacing(5)
+                        .align_items(Align::Center),
                 )
-                .push(
-                    TextInput::new(
-                        &mut self.noise_key_input,
-                        "Noise key",
-                        noise_key,
-                        message::DefineWatchtower::NoiseKeyEdited,
-                    )
-                    .size(15)
-                    .padding(10),
-                )
-                .push(
-                    button::transparent(
-                        &mut self.delete_button,
-                        Container::new(icon::trash_icon()),
-                    )
-                    .on_press(message::DefineWatchtower::Delete),
-                )
-                .spacing(5)
-                .align_items(Align::Center),
-        );
-
-        if warning_host {
-            col = col.push(text::simple("Please enter a valid host").color(color::WARNING))
-        }
-        if warning_noise_key {
-            col = col.push(text::simple("Please enter a valid noise_key").color(color::WARNING))
-        }
-        Container::new(col.spacing(10)).into()
+                .spacing(10),
+        )
+        .into()
     }
 }
 
