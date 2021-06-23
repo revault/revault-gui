@@ -9,7 +9,7 @@ use crate::{
     ui::{
         color,
         component::{
-            button, card, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
+            button, card, form, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
         },
         icon,
     },
@@ -85,62 +85,64 @@ pub fn define_role<'a>(
 }
 
 pub fn participant_xpub<'a>(
-    xpub: &str,
+    xpub: &form::Value<String>,
     xpub_input: &'a mut text_input::State,
     delete_button: &'a mut Button,
-    warning: bool,
 ) -> Element<'a, message::ParticipantXpub> {
-    let mut col = Column::new().push(
-        Row::new()
+    Container::new(
+        Column::new()
             .push(
-                TextInput::new(
-                    xpub_input,
-                    "Xpub",
-                    xpub,
-                    message::ParticipantXpub::XpubEdited,
-                )
-                .size(15)
-                .padding(10),
+                Row::new()
+                    .push(
+                        form::Form::new(
+                            xpub_input,
+                            "Xpub",
+                            xpub,
+                            message::ParticipantXpub::XpubEdited,
+                        )
+                        .warning("Please enter a valid xpub")
+                        .size(15)
+                        .padding(10)
+                        .render(),
+                    )
+                    .push(
+                        button::transparent(delete_button, Container::new(icon::trash_icon()))
+                            .on_press(message::ParticipantXpub::Delete),
+                    )
+                    .spacing(5)
+                    .align_items(Align::Center),
             )
-            .push(
-                button::transparent(delete_button, Container::new(icon::trash_icon()))
-                    .on_press(message::ParticipantXpub::Delete),
-            )
-            .spacing(5)
-            .align_items(Align::Center),
-    );
-
-    if warning {
-        col = col.push(text::simple("Please enter a valid xpub").color(color::WARNING))
-    }
-    Container::new(col.spacing(10)).into()
+            .spacing(10),
+    )
+    .into()
 }
 
 pub fn cosigner_key<'a>(
-    key: &str,
+    key: &form::Value<String>,
     key_input: &'a mut text_input::State,
     delete_button: &'a mut Button,
-    warning: bool,
 ) -> Element<'a, message::CosignerKey> {
-    let mut col = Column::new().push(
-        Row::new()
+    Container::new(
+        Column::new()
             .push(
-                TextInput::new(key_input, "Key", key, message::CosignerKey::KeyEdited)
-                    .size(15)
-                    .padding(10),
+                Row::new()
+                    .push(
+                        form::Form::new(key_input, "Key", key, message::CosignerKey::KeyEdited)
+                            .warning("Please enter a valid key")
+                            .size(15)
+                            .padding(10)
+                            .render(),
+                    )
+                    .push(
+                        button::transparent(delete_button, Container::new(icon::trash_icon()))
+                            .on_press(message::CosignerKey::Delete),
+                    )
+                    .spacing(5)
+                    .align_items(Align::Center),
             )
-            .push(
-                button::transparent(delete_button, Container::new(icon::trash_icon()))
-                    .on_press(message::CosignerKey::Delete),
-            )
-            .spacing(5)
-            .align_items(Align::Center),
-    );
-
-    if warning {
-        col = col.push(text::simple("Please enter a valid key").color(color::WARNING))
-    }
-    Container::new(col.spacing(10)).into()
+            .spacing(10),
+    )
+    .into()
 }
 
 pub fn define_stakeholder_xpubs_as_stakeholder<'a>(

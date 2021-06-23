@@ -164,19 +164,21 @@ impl Step for DefineCpfpDescriptor {
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.manager_xpubs {
-            if ExtendedPubKey::from_str(&participant.xpub).is_err() {
-                participant.warning = true;
-            }
+            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok()
         }
 
-        if self.manager_xpubs.iter().any(|xpub| xpub.warning) {
+        if self
+            .manager_xpubs
+            .iter()
+            .any(|participant| !participant.xpub.valid)
+        {
             return false;
         }
 
         let mut xpubs: Vec<String> = self
             .manager_xpubs
             .iter()
-            .map(|participant| format!("{}/*", participant.xpub))
+            .map(|participant| format!("{}/*", participant.xpub.value))
             .collect();
 
         xpubs.sort();
