@@ -14,6 +14,7 @@ use crate::{
         view,
     },
     revaultd::config,
+    ui::component::form,
 };
 
 pub struct DefineStakeholderXpubs {
@@ -378,8 +379,7 @@ impl From<DefineManagerXpubs> for Box<dyn Step> {
 }
 
 pub struct DefineEmergencyAddress {
-    address: String,
-    warning: bool,
+    address: form::Value<String>,
 
     view: view::DefineEmergencyAddress,
 }
@@ -387,8 +387,7 @@ pub struct DefineEmergencyAddress {
 impl DefineEmergencyAddress {
     pub fn new() -> Self {
         Self {
-            address: "".to_string(),
-            warning: false,
+            address: form::Value::default(),
             view: view::DefineEmergencyAddress::new(),
         }
     }
@@ -397,29 +396,29 @@ impl DefineEmergencyAddress {
 impl Step for DefineEmergencyAddress {
     fn update(&mut self, message: Message) {
         if let Message::DefineEmergencyAddress(address) = message {
-            self.address = address;
-            self.warning = false;
+            self.address.value = address;
+            self.address.valid = true;
         };
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
-        match bitcoin::Address::from_str(&self.address) {
+        match bitcoin::Address::from_str(&self.address.value) {
             Ok(_) => {
                 if let Some(stakeholder_config) = &mut config.stakeholder_config {
-                    stakeholder_config.emergency_address = self.address.clone();
+                    stakeholder_config.emergency_address = self.address.value.clone();
                 }
-                self.warning = false;
+                self.address.valid = true;
                 true
             }
             Err(_) => {
-                self.warning = true;
+                self.address.valid = false;
                 false
             }
         }
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.render(&self.address, self.warning)
+        self.view.render(&self.address)
     }
 }
 
@@ -436,12 +435,8 @@ impl From<DefineEmergencyAddress> for Box<dyn Step> {
 }
 
 pub struct Watchtower {
-    pub host: String,
-    pub noise_key: String,
-
-    // TODO: verify
-    warning_host: bool,
-    warning_noise_key: bool,
+    pub host: form::Value<String>,
+    pub noise_key: form::Value<String>,
 
     view: view::Watchtower,
 }
@@ -449,10 +444,8 @@ pub struct Watchtower {
 impl Watchtower {
     pub fn new() -> Self {
         Self {
-            host: "".to_string(),
-            noise_key: "".to_string(),
-            warning_host: false,
-            warning_noise_key: false,
+            host: form::Value::default(),
+            noise_key: form::Value::default(),
             view: view::Watchtower::new(),
         }
     }
@@ -460,24 +453,19 @@ impl Watchtower {
     pub fn update(&mut self, msg: message::DefineWatchtower) {
         match msg {
             message::DefineWatchtower::HostEdited(host) => {
-                self.host = host;
-                self.warning_host = false;
+                self.host.value = host;
+                self.host.valid = true;
             }
             message::DefineWatchtower::NoiseKeyEdited(key) => {
-                self.noise_key = key;
-                self.warning_noise_key = false;
+                self.noise_key.value = key;
+                self.noise_key.valid = true;
             }
             _ => {}
         }
     }
 
     pub fn view(&mut self) -> Element<message::DefineWatchtower> {
-        self.view.render(
-            &self.host,
-            &self.noise_key,
-            self.warning_host,
-            self.warning_noise_key,
-        )
+        self.view.render(&self.host, &self.noise_key)
     }
 }
 
@@ -527,8 +515,8 @@ impl Step for DefineWatchtowers {
         let mut ws = Vec::new();
         for watchtower in &self.watchtowers {
             ws.push(config::WatchtowerConfig {
-                host: watchtower.host.clone(),
-                noise_key: watchtower.noise_key.clone(),
+                host: watchtower.host.value.clone(),
+                noise_key: watchtower.noise_key.value.clone(),
             })
         }
 
