@@ -1,5 +1,5 @@
 use bitcoin::util::bip32::ExtendedPubKey;
-use iced::{button::State as Button, scrollable, text_input, Element};
+use iced::Element;
 use miniscript::DescriptorPublicKey;
 use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
 use std::str::FromStr;
@@ -19,29 +19,19 @@ use crate::{
 
 pub struct DefineStakeholderXpubs {
     other_xpubs: Vec<ParticipantXpub>,
-    our_xpub: String,
-    our_xpub_warning: bool,
+    our_xpub: form::Value<String>,
     warning: Option<String>,
 
-    our_xpub_input: text_input::State,
-    previous_button: Button,
-    save_button: Button,
-    add_xpub_button: Button,
-    scroll: scrollable::State,
+    view: view::DefineStakeholderXpubsAsStakeholder,
 }
 
 impl DefineStakeholderXpubs {
     pub fn new() -> Self {
         Self {
             warning: None,
-            our_xpub: "".to_string(),
-            our_xpub_warning: false,
+            our_xpub: form::Value::default(),
             other_xpubs: Vec::new(),
-            our_xpub_input: text_input::State::new(),
-            add_xpub_button: Button::new(),
-            scroll: scrollable::State::new(),
-            previous_button: Button::new(),
-            save_button: Button::new(),
+            view: view::DefineStakeholderXpubsAsStakeholder::new(),
         }
     }
 }
@@ -51,8 +41,8 @@ impl Step for DefineStakeholderXpubs {
         if let Message::DefineStakeholderXpubs(msg) = message {
             match msg {
                 message::DefineStakeholderXpubs::OurXpubEdited(xpub) => {
-                    self.our_xpub = xpub;
-                    self.our_xpub_warning = false;
+                    self.our_xpub.value = xpub;
+                    self.our_xpub.valid = true;
                 }
                 message::DefineStakeholderXpubs::StakeholderXpub(
                     i,
@@ -77,11 +67,9 @@ impl Step for DefineStakeholderXpubs {
             participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok();
         }
 
-        if ExtendedPubKey::from_str(&self.our_xpub).is_err() {
-            self.our_xpub_warning = true;
-        }
+        self.our_xpub.valid = ExtendedPubKey::from_str(&self.our_xpub.value).is_ok();
 
-        if self.our_xpub_warning
+        if !self.our_xpub.valid
             || self
                 .other_xpubs
                 .iter()
@@ -91,7 +79,7 @@ impl Step for DefineStakeholderXpubs {
         }
 
         config.stakeholder_config = Some(config::StakeholderConfig {
-            xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
+            xpub: ExtendedPubKey::from_str(&self.our_xpub.value).expect("already checked"),
             watchtowers: Vec::new(),
             emergency_address: "".to_string(),
         });
@@ -101,7 +89,7 @@ impl Step for DefineStakeholderXpubs {
             .iter()
             .map(|participant| participant.xpub.value.clone())
             .collect();
-        xpubs.push(self.our_xpub.clone());
+        xpubs.push(self.our_xpub.value.clone());
 
         xpubs.sort();
 
@@ -127,11 +115,8 @@ impl Step for DefineStakeholderXpubs {
     }
 
     fn view(&mut self) -> Element<Message> {
-        return view::define_stakeholder_xpubs_as_stakeholder(
+        return self.view.render(
             &self.our_xpub,
-            &mut self.our_xpub_input,
-            self.our_xpub_warning,
-            &mut self.add_xpub_button,
             self.other_xpubs
                 .iter_mut()
                 .enumerate()
@@ -143,9 +128,6 @@ impl Step for DefineStakeholderXpubs {
                     })
                 })
                 .collect(),
-            &mut self.scroll,
-            &mut self.previous_button,
-            &mut self.save_button,
             self.warning.as_ref(),
         );
     }

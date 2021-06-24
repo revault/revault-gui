@@ -145,79 +145,101 @@ pub fn cosigner_key<'a>(
     .into()
 }
 
-pub fn define_stakeholder_xpubs_as_stakeholder<'a>(
-    our_xpub: &str,
-    our_xpub_input: &'a mut text_input::State,
-    our_xpub_warning: bool,
-    add_xpub_button: &'a mut Button,
-    other_xpubs: Vec<Element<'a, Message>>,
-    scroll: &'a mut scrollable::State,
-    previous_button: &'a mut Button,
-    save_button: &'a mut Button,
-    warning: Option<&String>,
-) -> Element<'a, Message> {
-    let mut col = Column::new()
-        .push(text::bold(text::simple("Your stakeholder xpub:")))
-        .push(
-            TextInput::new(our_xpub_input, "Your stakeholder xpub", our_xpub, |msg| {
-                Message::DefineStakeholderXpubs(message::DefineStakeholderXpubs::OurXpubEdited(msg))
-            })
-            .size(15)
-            .padding(10),
-        )
-        .spacing(10);
+pub struct DefineStakeholderXpubsAsStakeholder {
+    our_xpub_input: text_input::State,
+    previous_button: Button,
+    save_button: Button,
+    add_xpub_button: Button,
+    scroll: scrollable::State,
+}
 
-    if our_xpub_warning {
-        col = col.push(text::simple("Please enter a valid xpub").color(color::WARNING));
+impl DefineStakeholderXpubsAsStakeholder {
+    pub fn new() -> Self {
+        Self {
+            our_xpub_input: text_input::State::new(),
+            add_xpub_button: Button::new(),
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
     }
-
-    let mut content = Column::new()
-        .push(text::bold(text::simple("Define stakeholders")).size(50))
-        .push(col)
-        .push(
-            Column::new()
-                .spacing(10)
-                .push(text::bold(text::simple("Other stakeholders xpubs:")))
-                .push(Column::with_children(other_xpubs).spacing(10))
-                .push(
-                    Container::new(
-                        button::white_card_button(
-                            add_xpub_button,
-                            button::button_content(Some(icon::plus_icon()), "Add stakeholder"),
+    pub fn render<'a>(
+        &'a mut self,
+        our_xpub: &form::Value<String>,
+        other_xpubs: Vec<Element<'a, Message>>,
+        warning: Option<&String>,
+    ) -> Element<'a, Message> {
+        let mut content = Column::new()
+            .push(text::bold(text::simple("Define stakeholders")).size(50))
+            .push(
+                Column::new()
+                    .push(text::bold(text::simple("Your stakeholder xpub:")))
+                    .push(
+                        form::Form::new(
+                            &mut self.our_xpub_input,
+                            "Your stakeholder xpub",
+                            our_xpub,
+                            |msg| {
+                                Message::DefineStakeholderXpubs(
+                                    message::DefineStakeholderXpubs::OurXpubEdited(msg),
+                                )
+                            },
                         )
-                        .on_press(Message::DefineStakeholderXpubs(
-                            message::DefineStakeholderXpubs::AddXpub,
-                        )),
+                        .warning("Please enter a valid xpub")
+                        .size(15)
+                        .padding(10)
+                        .render(),
                     )
-                    .width(Length::Fill),
-                ),
-        )
-        .push(
-            Row::new()
-                .push(
-                    button::primary(save_button, button::button_content(None, "Next"))
+                    .spacing(10),
+            )
+            .push(
+                Column::new()
+                    .spacing(10)
+                    .push(text::bold(text::simple("Other stakeholders xpubs:")))
+                    .push(Column::with_children(other_xpubs).spacing(10))
+                    .push(
+                        Container::new(
+                            button::white_card_button(
+                                &mut self.add_xpub_button,
+                                button::button_content(Some(icon::plus_icon()), "Add stakeholder"),
+                            )
+                            .on_press(Message::DefineStakeholderXpubs(
+                                message::DefineStakeholderXpubs::AddXpub,
+                            )),
+                        )
+                        .width(Length::Fill),
+                    ),
+            )
+            .push(
+                Row::new()
+                    .push(
+                        button::primary(
+                            &mut self.save_button,
+                            button::button_content(None, "Next"),
+                        )
                         .on_press(Message::Next)
                         .min_width(200),
-                )
+                    )
+                    .align_items(Align::Center)
+                    .spacing(20),
+            );
+
+        if let Some(error) = warning {
+            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+        }
+
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            content
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
                 .align_items(Align::Center)
-                .spacing(20),
-        );
-
-    if let Some(error) = warning {
-        content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+                .into(),
+        )
     }
-
-    layout(
-        scroll,
-        previous_button,
-        content
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center)
-            .into(),
-    )
 }
 
 pub fn define_stakeholder_xpubs_as_manager_only<'a>(
