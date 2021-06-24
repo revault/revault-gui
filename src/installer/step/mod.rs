@@ -17,6 +17,7 @@ use crate::{
         view,
     },
     revaultd::config,
+    ui::component::form,
 };
 
 pub trait Step {
@@ -284,11 +285,8 @@ impl From<DefineCoordinator> for Box<dyn Step> {
 
 pub struct DefineBitcoind {
     network: bitcoin::Network,
-    cookie_path: String,
-    address: String,
-
-    warning_cookie: bool,
-    warning_address: bool,
+    cookie_path: form::Value<String>,
+    address: form::Value<String>,
 
     view: view::DefineBitcoind,
 }
@@ -297,10 +295,8 @@ impl DefineBitcoind {
     pub fn new() -> Self {
         Self {
             network: bitcoin::Network::Bitcoin,
-            cookie_path: "".to_string(),
-            address: "".to_string(),
-            warning_cookie: false,
-            warning_address: false,
+            cookie_path: form::Value::default(),
+            address: form::Value::default(),
             view: view::DefineBitcoind::new(),
         }
     }
@@ -311,12 +307,12 @@ impl Step for DefineBitcoind {
         if let Message::DefineBitcoind(msg) = message {
             match msg {
                 message::DefineBitcoind::AddressEdited(address) => {
-                    self.address = address;
-                    self.warning_address = false;
+                    self.address.value = address;
+                    self.address.valid = true;
                 }
                 message::DefineBitcoind::CookiePathEdited(path) => {
-                    self.cookie_path = path;
-                    self.warning_cookie = false;
+                    self.cookie_path.value = path;
+                    self.address.valid = true;
                 }
                 message::DefineBitcoind::NetworkEdited(network) => {
                     self.network = network;
@@ -327,20 +323,20 @@ impl Step for DefineBitcoind {
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         match (
-            PathBuf::from_str(&self.cookie_path),
-            std::net::SocketAddr::from_str(&self.address),
+            PathBuf::from_str(&self.cookie_path.value),
+            std::net::SocketAddr::from_str(&self.address.value),
         ) {
             (Err(_), Ok(_)) => {
-                self.warning_cookie = true;
+                self.cookie_path.valid = false;
                 false
             }
             (Ok(_), Err(_)) => {
-                self.warning_address = true;
+                self.address.valid = false;
                 false
             }
             (Err(_), Err(_)) => {
-                self.warning_address = true;
-                self.warning_cookie = true;
+                self.cookie_path.valid = false;
+                self.cookie_path.valid = false;
                 false
             }
             (Ok(path), Ok(addr)) => {
@@ -356,13 +352,8 @@ impl Step for DefineBitcoind {
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.render(
-            &self.network,
-            &self.address,
-            &self.cookie_path,
-            self.warning_address,
-            self.warning_cookie,
-        )
+        self.view
+            .render(&self.network, &self.address, &self.cookie_path)
     }
 }
 
