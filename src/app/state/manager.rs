@@ -42,7 +42,7 @@ pub struct ManagerHomeState {
     warning: Option<Error>,
 
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
-    spendable_outpoints: Vec<String>,
+    spendable_outpoints: HashMap<String, u64>,
     selected_vault: Option<Vault>,
 
     spend_txs: Vec<model::SpendTx>,
@@ -60,7 +60,7 @@ impl ManagerHomeState {
             inactive_funds: 0,
             view: ManagerHomeView::new(),
             blockheight: 0,
-            spendable_outpoints: Vec::new(),
+            spendable_outpoints: HashMap::new(),
             moving_vaults: Vec::new(),
             warning: None,
             selected_vault: None,
@@ -76,21 +76,43 @@ impl ManagerHomeState {
             // Don't filter the txs if we still don't have the vaults!
             txs
         } else {
+            // Displaying only the txs that spend non-spent vaults. This way
+            // we're hiding to the user spend transactions that can't be spent
+            // anymore, as one of the inputs got spent.
+            // FIXME: this might be a bug? I absolutely don't remember why I introduced
+            // this check in the first place
             txs.into_iter()
                 .filter(|tx| {
                     tx.deposit_outpoints
                         .iter()
-                        .all(|outpoint| self.spendable_outpoints.contains(&outpoint))
+                        .all(|outpoint| self.spendable_outpoints.get(outpoint).is_some())
                 })
                 .collect()
         };
 
-        self.spend_txs_item = self
-            .spend_txs
-            .clone()
-            .into_iter()
-            .map(SpendTransactionListItem::new)
-            .collect();
+        self.spend_txs_item = if self.loading_vaults {
+            // Let's avoid displaying txs if I don't have the vaults
+            vec![]
+        } else {
+            self.spend_txs
+                .clone()
+                .into_iter()
+                .map(|s| {
+                    (
+                        if self.loading_vaults {
+                            0
+                        } else {
+                            // Amounts of the vaults being spent
+                            s.deposit_outpoints.iter().fold(0, |acc, x| {
+                                acc + *self.spendable_outpoints.get(x).expect("Must be spendable")
+                            })
+                        },
+                        s,
+                    )
+                })
+                .map(|(vaults_amount, s)| SpendTransactionListItem::new(s, vaults_amount))
+                .collect()
+        };
     }
 
     pub fn on_spend_tx_select(&mut self, psbt: Psbt) -> Command<Message> {
@@ -131,7 +153,7 @@ impl ManagerHomeState {
             .iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Active {
-                    Some(vlt.outpoint())
+                    Some((vlt.outpoint(), vlt.amount))
                 } else {
                     None
                 }

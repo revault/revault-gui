@@ -717,6 +717,9 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     psbt: &Psbt,
     feerate: Option<&u32>,
 ) -> Container<'a, T> {
+    // TODO: This is not the total fees, as it is missing the unvault fees
+    // (and it's different from the one displayed in the home, which is
+    // confusing)
     let mut total_fees = 0;
     let mut col_input = Column::new()
         .push(text::bold(text::simple("Inputs")))
