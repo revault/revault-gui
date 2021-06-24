@@ -1131,42 +1131,38 @@ impl DefineBitcoind {
     pub fn render<'a>(
         &'a mut self,
         network: &bitcoin::Network,
-        address: &str,
-        cookie_path: &str,
-        warning_address: bool,
-        warning_cookie_path: bool,
+        address: &form::Value<String>,
+        cookie_path: &form::Value<String>,
     ) -> Element<'a, Message> {
-        let mut col_address = Column::new()
+        let col_address = Column::new()
             .push(text::bold(text::simple("Address:")))
             .push(
-                TextInput::new(&mut self.address_input, "Address", address, |msg| {
+                form::Form::new(&mut self.address_input, "Address", address, |msg| {
                     Message::DefineBitcoind(message::DefineBitcoind::AddressEdited(msg))
                 })
+                .warning("Please enter correct address")
                 .size(15)
-                .padding(10),
+                .padding(10)
+                .render(),
             )
             .spacing(10);
-        if warning_address {
-            col_address = col_address
-                .push(text::simple("Please enter correct address").color(color::WARNING));
-        }
-        let mut col_cookie = Column::new()
+
+        let col_cookie = Column::new()
             .push(text::bold(text::simple("Cookie path:")))
             .push(
-                TextInput::new(
+                form::Form::new(
                     &mut self.cookie_path_input,
                     "Cookie path",
                     cookie_path,
                     |msg| Message::DefineBitcoind(message::DefineBitcoind::CookiePathEdited(msg)),
                 )
+                .warning("Please enter correct path")
                 .size(15)
-                .padding(10),
+                .padding(10)
+                .render(),
             )
             .spacing(10);
-        if warning_cookie_path {
-            col_cookie =
-                col_cookie.push(text::simple("Please enter correct path").color(color::WARNING));
-        }
+
         layout(
             &mut self.scroll,
             &mut self.previous_button,
