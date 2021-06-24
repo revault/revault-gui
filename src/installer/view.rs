@@ -436,16 +436,15 @@ impl DefineManagerXpubsAsManager {
         treshold_warning: bool,
         spending_delay: u32,
         spending_delay_warning: bool,
-        our_xpub: &str,
-        our_xpub_warning: bool,
+        our_xpub: &form::Value<String>,
         other_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
-        let mut manager_xpub_col = Column::new()
+        let manager_xpub_col = Column::new()
             .push(text::bold(text::simple("Your manager xpub:")))
             .push(
-                TextInput::new(
+                form::Form::new(
                     &mut self.our_xpub_input,
                     "Your manager xpub",
                     our_xpub,
@@ -453,15 +452,12 @@ impl DefineManagerXpubsAsManager {
                         Message::DefineManagerXpubs(message::DefineManagerXpubs::OurXpubEdited(msg))
                     },
                 )
+                .warning("Please enter a valid xpub")
                 .size(15)
-                .padding(10),
+                .padding(10)
+                .render(),
             )
             .spacing(10);
-
-        if our_xpub_warning {
-            manager_xpub_col = manager_xpub_col
-                .push(text::simple("Please enter a valid xpub").color(color::WARNING));
-        }
 
         let mut content = Column::new()
             .push(text::bold(text::simple("Define managers")).size(50))

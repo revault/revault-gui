@@ -16,6 +16,7 @@ use crate::{
         view,
     },
     revaultd::config,
+    ui::component::form,
 };
 
 pub struct DefineStakeholderXpubs {
@@ -147,8 +148,7 @@ impl From<DefineStakeholderXpubs> for Box<dyn Step> {
 pub struct DefineManagerXpubs {
     cosigners: Vec<CosignerKey>,
     other_xpubs: Vec<ParticipantXpub>,
-    our_xpub: String,
-    our_xpub_warning: bool,
+    our_xpub: form::Value<String>,
     managers_treshold: usize,
     treshold_warning: bool,
     spending_delay: u32,
@@ -168,8 +168,7 @@ impl DefineManagerXpubs {
             treshold_warning: false,
             spending_delay: 0,
             spending_delay_warning: false,
-            our_xpub: "".to_string(),
-            our_xpub_warning: false,
+            our_xpub: form::Value::default(),
             other_xpubs: Vec::new(),
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsManager::new(),
@@ -194,8 +193,8 @@ impl Step for DefineManagerXpubs {
         if let Message::DefineManagerXpubs(msg) = message {
             match msg {
                 message::DefineManagerXpubs::OurXpubEdited(xpub) => {
-                    self.our_xpub = xpub;
-                    self.our_xpub_warning = false;
+                    self.our_xpub.value = xpub;
+                    self.our_xpub.valid = true;
                 }
                 message::DefineManagerXpubs::ManagerXpub(i, message::ParticipantXpub::Delete) => {
                     self.other_xpubs.remove(i);
@@ -252,7 +251,7 @@ impl Step for DefineManagerXpubs {
             participant.xpub.valid = DescriptorPublicKey::from_str(&participant.xpub.value).is_ok();
         }
 
-        self.our_xpub_warning = DescriptorPublicKey::from_str(&self.our_xpub).is_err();
+        self.our_xpub.valid = DescriptorPublicKey::from_str(&self.our_xpub.value).is_ok();
 
         for cosigner in &mut self.cosigners {
             cosigner.key.valid = DescriptorPublicKey::from_str(&cosigner.key.value).is_ok();
@@ -263,7 +262,7 @@ impl Step for DefineManagerXpubs {
             self.managers_treshold == 0 || self.managers_treshold > self.other_xpubs.len() + 1;
         self.spending_delay_warning = self.spending_delay == 0;
 
-        if self.our_xpub_warning
+        if !self.our_xpub.valid
             || self
                 .other_xpubs
                 .iter()
@@ -280,7 +279,7 @@ impl Step for DefineManagerXpubs {
             .iter()
             .map(|participant| format!("{}/*", participant.xpub.value.clone()))
             .collect();
-        managers_xpubs.push(format!("{}/*", self.our_xpub.clone()));
+        managers_xpubs.push(format!("{}/*", self.our_xpub.value.clone()));
 
         managers_xpubs.sort();
 
@@ -318,7 +317,7 @@ impl Step for DefineManagerXpubs {
         ctx.number_cosigners = self.cosigners.len();
 
         config.manager_config = Some(config::ManagerConfig {
-            xpub: ExtendedPubKey::from_str(&self.our_xpub).expect("already checked"),
+            xpub: ExtendedPubKey::from_str(&self.our_xpub.value).expect("already checked"),
             cosigners: Vec::new(),
         });
 
@@ -346,7 +345,6 @@ impl Step for DefineManagerXpubs {
             self.spending_delay,
             self.spending_delay_warning,
             &self.our_xpub,
-            self.our_xpub_warning,
             self.other_xpubs
                 .iter_mut()
                 .enumerate()
