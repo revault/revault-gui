@@ -300,12 +300,12 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
     )
 }
 
-pub struct ManagersTreshold {
+pub struct ManagersThreshold {
     increment_button: Button,
     decrement_button: Button,
 }
 
-impl ManagersTreshold {
+impl ManagersThreshold {
     pub fn new() -> Self {
         Self {
             increment_button: Button::new(),
@@ -313,12 +313,12 @@ impl ManagersTreshold {
         }
     }
 
-    pub fn render(&mut self, managers_treshold: usize, warning: bool) -> Container<Message> {
+    pub fn render(&mut self, managers_threshold: usize, warning: bool) -> Container<Message> {
         let mut col = Column::new()
-            .push(text::bold(text::simple("Managers treshold:")))
+            .push(text::bold(text::simple("Managers threshold:")))
             .push(
                 Row::new()
-                    .push(text::simple(&format!("{}", managers_treshold)).size(50))
+                    .push(text::simple(&format!("{}", managers_threshold)).size(50))
                     .push(
                         Column::new()
                             .push(
@@ -328,7 +328,7 @@ impl ManagersTreshold {
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
-                                        message::DefineManagerXpubs::ManagersTreshold(
+                                        message::DefineManagerXpubs::ManagersThreshold(
                                             message::Action::Increment,
                                         ),
                                     ),
@@ -341,7 +341,7 @@ impl ManagersTreshold {
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
-                                        message::DefineManagerXpubs::ManagersTreshold(
+                                        message::DefineManagerXpubs::ManagersThreshold(
                                             message::Action::Decrement,
                                         ),
                                     ),
@@ -357,7 +357,7 @@ impl ManagersTreshold {
 
         if warning {
             col = col.push(card::alert_warning(Container::new(text::small(
-                "Impossible treshold",
+                "Impossible threshold",
             ))))
         }
         Container::new(col)
@@ -428,7 +428,7 @@ impl SpendingDelay {
 }
 
 pub struct DefineManagerXpubsAsManager {
-    managers_treshold: ManagersTreshold,
+    managers_threshold: ManagersThreshold,
     spending_delay: SpendingDelay,
     add_xpub_button: Button,
     add_cosigner_button: Button,
@@ -448,14 +448,14 @@ impl DefineManagerXpubsAsManager {
             save_button: Button::new(),
             add_cosigner_button: Button::new(),
             spending_delay: SpendingDelay::new(),
-            managers_treshold: ManagersTreshold::new(),
+            managers_threshold: ManagersThreshold::new(),
         }
     }
 
     pub fn render<'a>(
         &'a mut self,
-        managers_treshold: usize,
-        treshold_warning: bool,
+        managers_threshold: usize,
+        threshold_warning: bool,
         spending_delay: u32,
         spending_delay_warning: bool,
         our_xpub: &form::Value<String>,
@@ -487,8 +487,8 @@ impl DefineManagerXpubsAsManager {
                 Row::new()
                     .push(
                         Container::new(
-                            self.managers_treshold
-                                .render(managers_treshold, treshold_warning),
+                            self.managers_threshold
+                                .render(managers_threshold, threshold_warning),
                         )
                         .width(Length::FillPortion(1))
                         .align_x(Align::Center),
@@ -573,7 +573,7 @@ impl DefineManagerXpubsAsManager {
 }
 
 pub struct DefineManagerXpubsAsStakeholderOnly {
-    managers_treshold: ManagersTreshold,
+    managers_threshold: ManagersThreshold,
     spending_delay: SpendingDelay,
     add_cosigner_button: Button,
     add_xpub_button: Button,
@@ -585,7 +585,7 @@ pub struct DefineManagerXpubsAsStakeholderOnly {
 impl DefineManagerXpubsAsStakeholderOnly {
     pub fn new() -> Self {
         Self {
-            managers_treshold: ManagersTreshold::new(),
+            managers_threshold: ManagersThreshold::new(),
             spending_delay: SpendingDelay::new(),
             add_cosigner_button: Button::new(),
             scroll: scrollable::State::new(),
@@ -596,8 +596,8 @@ impl DefineManagerXpubsAsStakeholderOnly {
     }
     pub fn render<'a>(
         &'a mut self,
-        managers_treshold: usize,
-        treshold_warning: bool,
+        managers_threshold: usize,
+        threshold_warning: bool,
         spending_delay: u32,
         spending_delay_warning: bool,
         manager_xpubs: Vec<Element<'a, Message>>,
@@ -627,8 +627,8 @@ impl DefineManagerXpubsAsStakeholderOnly {
                 Row::new()
                     .push(
                         Container::new(
-                            self.managers_treshold
-                                .render(managers_treshold, treshold_warning),
+                            self.managers_threshold
+                                .render(managers_threshold, threshold_warning),
                         )
                         .width(Length::FillPortion(1))
                         .align_x(Align::Center),

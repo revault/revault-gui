@@ -68,7 +68,7 @@ pub enum DefineStakeholderXpubs {
 
 #[derive(Debug, Clone)]
 pub enum DefineManagerXpubs {
-    ManagersTreshold(Action),
+    ManagersThreshold(Action),
     SpendingDelay(Action),
     OurXpubEdited(String),
     ManagerXpub(usize, ParticipantXpub),

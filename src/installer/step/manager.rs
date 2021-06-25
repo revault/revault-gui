@@ -149,8 +149,8 @@ pub struct DefineManagerXpubs {
     cosigners: Vec<CosignerKey>,
     other_xpubs: Vec<ParticipantXpub>,
     our_xpub: form::Value<String>,
-    managers_treshold: usize,
-    treshold_warning: bool,
+    managers_threshold: usize,
+    threshold_warning: bool,
     spending_delay: u32,
     spending_delay_warning: bool,
     warning: Option<String>,
@@ -164,8 +164,8 @@ pub struct DefineManagerXpubs {
 impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
-            managers_treshold: 0,
-            treshold_warning: false,
+            managers_threshold: 0,
+            threshold_warning: false,
             spending_delay: 0,
             spending_delay_warning: false,
             our_xpub: form::Value::default(),
@@ -218,15 +218,15 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::AddCosigner => {
                     self.cosigners.push(CosignerKey::new());
                 }
-                message::DefineManagerXpubs::ManagersTreshold(action) => match action {
+                message::DefineManagerXpubs::ManagersThreshold(action) => match action {
                     message::Action::Increment => {
-                        self.treshold_warning = false;
-                        self.managers_treshold += 1;
+                        self.threshold_warning = false;
+                        self.managers_threshold += 1;
                     }
                     message::Action::Decrement => {
-                        self.treshold_warning = false;
-                        if self.managers_treshold > 0 {
-                            self.managers_treshold -= 1;
+                        self.threshold_warning = false;
+                        if self.managers_threshold > 0 {
+                            self.managers_threshold -= 1;
                         }
                     }
                 },
@@ -257,9 +257,9 @@ impl Step for DefineManagerXpubs {
             cosigner.key.valid = DescriptorPublicKey::from_str(&cosigner.key.value).is_ok();
         }
 
-        // If user is manager, other_xpubs can be equal to zero and treshold equal to 1.
-        self.treshold_warning =
-            self.managers_treshold == 0 || self.managers_treshold > self.other_xpubs.len() + 1;
+        // If user is manager, other_xpubs can be equal to zero and threshold equal to 1.
+        self.threshold_warning =
+            self.managers_threshold == 0 || self.managers_threshold > self.other_xpubs.len() + 1;
         self.spending_delay_warning = self.spending_delay == 0;
 
         if !self.our_xpub.valid
@@ -268,7 +268,7 @@ impl Step for DefineManagerXpubs {
                 .iter()
                 .any(|participant| !participant.xpub.valid)
             || self.cosigners.iter().any(|cosigner| !cosigner.key.valid)
-            || self.treshold_warning
+            || self.threshold_warning
             || self.spending_delay_warning
         {
             return false;
@@ -324,7 +324,7 @@ impl Step for DefineManagerXpubs {
         match UnvaultDescriptor::new(
             stakeholders_keys,
             managers_keys,
-            self.managers_treshold,
+            self.managers_threshold,
             cosigners_keys,
             self.spending_delay,
         ) {
@@ -340,8 +340,8 @@ impl Step for DefineManagerXpubs {
 
     fn view(&mut self) -> Element<Message> {
         return self.view.render(
-            self.managers_treshold,
-            self.treshold_warning,
+            self.managers_threshold,
+            self.threshold_warning,
             self.spending_delay,
             self.spending_delay_warning,
             &self.our_xpub,

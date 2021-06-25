@@ -559,7 +559,7 @@ mod tests {
         ));
 
         manager_step.update(Message::DefineManagerXpubs(
-            DefineManagerXpubs::ManagersTreshold(Action::Increment),
+            DefineManagerXpubs::ManagersThreshold(Action::Increment),
         ));
         manager_step.update(Message::DefineManagerXpubs(
             DefineManagerXpubs::SpendingDelay(Action::Increment),
@@ -593,7 +593,7 @@ mod tests {
             ],
         );
         stakeholder_step.update(Message::DefineManagerXpubs(
-            DefineManagerXpubs::ManagersTreshold(Action::Increment),
+            DefineManagerXpubs::ManagersThreshold(Action::Increment),
         ));
         stakeholder_step.update(Message::DefineManagerXpubs(
             DefineManagerXpubs::SpendingDelay(Action::Increment),
