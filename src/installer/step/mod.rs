@@ -484,9 +484,8 @@ mod tests {
     fn load_cosigners_keys(step: &mut dyn Step, keys: Vec<String>) {
         let mut i = 0;
         for key in keys {
-            step.update(Message::DefineManagerXpubs(DefineManagerXpubs::AddCosigner));
             step.update(Message::DefineManagerXpubs(
-                DefineManagerXpubs::CosignerKey(i, CosignerKey::KeyEdited(key)),
+                DefineManagerXpubs::CosignerKey(i, key),
             ));
             i += 1;
         }
@@ -536,6 +535,7 @@ mod tests {
         let mut ctx = Context::new();
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
+            number_managers: 1,
             number_cosigners: 4,
             stakeholders_xpubs: vec![
                 STAKEHOLDERS_XPUBS[2].to_string(),
@@ -572,6 +572,7 @@ mod tests {
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
+            number_managers: 1,
             number_cosigners: 4,
             stakeholders_xpubs: vec![
                 STAKEHOLDERS_XPUBS[3].to_string(),
