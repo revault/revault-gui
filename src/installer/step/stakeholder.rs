@@ -162,9 +162,9 @@ pub struct DefineManagerXpubs {
 impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
-            managers_threshold: 0,
+            managers_threshold: 1,
             threshold_warning: false,
-            spending_delay: 0,
+            spending_delay: 10,
             spending_delay_warning: false,
             manager_xpubs: Vec::new(),
             cosigners: Vec::new(),
