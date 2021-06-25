@@ -38,7 +38,6 @@ pub struct CosignerKey {
     pub key: form::Value<String>,
 
     key_input: text_input::State,
-    delete_button: Button,
 }
 
 impl CosignerKey {
@@ -46,18 +45,15 @@ impl CosignerKey {
         Self {
             key: form::Value::default(),
             key_input: text_input::State::new(),
-            delete_button: Button::new(),
         }
     }
 
-    pub fn update(&mut self, msg: message::CosignerKey) {
-        if let message::CosignerKey::KeyEdited(key) = msg {
-            self.key.value = key;
-            self.key.valid = true;
-        }
+    pub fn update(&mut self, key: String) {
+        self.key.value = key;
+        self.key.valid = true;
     }
 
-    pub fn view(&mut self) -> Element<message::CosignerKey> {
-        view::cosigner_key(&self.key, &mut self.key_input, &mut self.delete_button)
+    pub fn view(&mut self) -> Element<String> {
+        view::cosigner_key(&self.key, &mut self.key_input)
     }
 }

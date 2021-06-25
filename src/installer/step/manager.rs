@@ -113,6 +113,7 @@ impl Step for DefineStakeholderXpubs {
             .iter()
             .map(|participant| participant.xpub.value.clone())
             .collect();
+        ctx.number_cosigners = ctx.stakeholders_xpubs.len();
 
         true
     }
@@ -187,6 +188,15 @@ impl Default for DefineManagerXpubs {
 impl Step for DefineManagerXpubs {
     fn load_context(&mut self, ctx: &Context) {
         self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
+        while self.cosigners.len() != ctx.number_cosigners {
+            match self.cosigners.len().cmp(&ctx.number_cosigners) {
+                Ordering::Greater => {
+                    self.cosigners.pop();
+                }
+                Ordering::Less => self.cosigners.push(CosignerKey::new()),
+                Ordering::Equal => (),
+            }
+        }
     }
 
     fn update(&mut self, message: Message) {
@@ -207,16 +217,10 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::AddXpub => {
                     self.other_xpubs.push(ParticipantXpub::new());
                 }
-                message::DefineManagerXpubs::CosignerKey(i, message::CosignerKey::Delete) => {
-                    self.cosigners.remove(i);
-                }
                 message::DefineManagerXpubs::CosignerKey(i, msg) => {
                     if let Some(key) = self.cosigners.get_mut(i) {
                         key.update(msg)
                     };
-                }
-                message::DefineManagerXpubs::AddCosigner => {
-                    self.cosigners.push(CosignerKey::new());
                 }
                 message::DefineManagerXpubs::ManagersThreshold(action) => match action {
                     message::Action::Increment => {

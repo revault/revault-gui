@@ -72,9 +72,8 @@ pub enum DefineManagerXpubs {
     SpendingDelay(Action),
     OurXpubEdited(String),
     ManagerXpub(usize, ParticipantXpub),
-    CosignerKey(usize, CosignerKey),
+    CosignerKey(usize, String),
     AddXpub,
-    AddCosigner,
 }
 
 #[derive(Debug, Clone)]
@@ -87,10 +86,4 @@ pub enum Action {
 pub enum ParticipantXpub {
     Delete,
     XpubEdited(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum CosignerKey {
-    Delete,
-    KeyEdited(String),
 }

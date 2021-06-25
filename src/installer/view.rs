@@ -120,22 +120,17 @@ pub fn participant_xpub<'a>(
 pub fn cosigner_key<'a>(
     key: &form::Value<String>,
     key_input: &'a mut text_input::State,
-    delete_button: &'a mut Button,
-) -> Element<'a, message::CosignerKey> {
+) -> Element<'a, String> {
     Container::new(
         Column::new()
             .push(
                 Row::new()
                     .push(
-                        form::Form::new(key_input, "Key", key, message::CosignerKey::KeyEdited)
+                        form::Form::new(key_input, "Key", key, |msg| msg)
                             .warning("Please enter a valid key")
                             .size(15)
                             .padding(10)
                             .render(),
-                    )
-                    .push(
-                        button::transparent(delete_button, Container::new(icon::trash_icon()))
-                            .on_press(message::CosignerKey::Delete),
                     )
                     .spacing(5)
                     .align_items(Align::Center),
@@ -431,7 +426,6 @@ pub struct DefineManagerXpubsAsManager {
     managers_threshold: ManagersThreshold,
     spending_delay: SpendingDelay,
     add_xpub_button: Button,
-    add_cosigner_button: Button,
     our_xpub_input: text_input::State,
     scroll: scrollable::State,
     previous_button: Button,
@@ -446,7 +440,6 @@ impl DefineManagerXpubsAsManager {
             scroll: scrollable::State::new(),
             previous_button: Button::new(),
             save_button: Button::new(),
-            add_cosigner_button: Button::new(),
             spending_delay: SpendingDelay::new(),
             managers_threshold: ManagersThreshold::new(),
         }
@@ -524,20 +517,8 @@ impl DefineManagerXpubsAsManager {
             )
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Cosigners keys:")))
+                    .push(text::bold(text::simple("Cosigning servers keys:")))
                     .push(Column::with_children(cosigners).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                &mut self.add_cosigner_button,
-                                button::button_content(Some(icon::plus_icon()), "Add cosigner key"),
-                            )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddCosigner,
-                            )),
-                        )
-                        .width(Length::Fill),
-                    )
                     .spacing(10),
             )
             .push(
@@ -575,7 +556,6 @@ impl DefineManagerXpubsAsManager {
 pub struct DefineManagerXpubsAsStakeholderOnly {
     managers_threshold: ManagersThreshold,
     spending_delay: SpendingDelay,
-    add_cosigner_button: Button,
     add_xpub_button: Button,
     scroll: scrollable::State,
     previous_button: Button,
@@ -587,7 +567,6 @@ impl DefineManagerXpubsAsStakeholderOnly {
         Self {
             managers_threshold: ManagersThreshold::new(),
             spending_delay: SpendingDelay::new(),
-            add_cosigner_button: Button::new(),
             scroll: scrollable::State::new(),
             previous_button: Button::new(),
             save_button: Button::new(),
@@ -622,7 +601,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         }
 
         let mut content = Column::new()
-            .push(text::bold(text::simple("Define managers")).size(50))
+            .push(text::bold(text::simple("Fill fund management information:")).size(50))
             .push(
                 Row::new()
                     .push(
@@ -664,20 +643,8 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .push(
                 Column::new()
                     .spacing(10)
-                    .push(text::bold(text::simple("Cosigners keys:")))
-                    .push(Column::with_children(cosigners).spacing(10))
-                    .push(
-                        Container::new(
-                            button::white_card_button(
-                                &mut self.add_cosigner_button,
-                                button::button_content(Some(icon::plus_icon()), "Add cosigner"),
-                            )
-                            .on_press(Message::DefineManagerXpubs(
-                                message::DefineManagerXpubs::AddCosigner,
-                            )),
-                        )
-                        .width(Length::Fill),
-                    ),
+                    .push(text::bold(text::simple("Cosigning servers keys:")))
+                    .push(Column::with_children(cosigners).spacing(10)),
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -720,7 +687,7 @@ pub fn define_cpfp_descriptor<'a>(
 
     let mut content = Column::new()
         .spacing(10)
-        .push(text::bold(text::simple("Managers xpubs:")))
+        .push(text::bold(text::simple("Managers CPFP xpubs:")))
         .push(Column::with_children(manager_xpubs).spacing(10))
         .push(
             Container::new(
@@ -743,7 +710,7 @@ pub fn define_cpfp_descriptor<'a>(
         scroll,
         previous_button,
         Column::new()
-            .push(text::bold(text::simple("Define fee bumping managers")).size(50))
+            .push(text::bold(text::simple("Fill in the managers CPFP xpubs")).size(50))
             .push(content)
             .push(row)
             .width(Length::Fill)
@@ -797,7 +764,7 @@ impl DefineCoordinator {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Define coordinator")).size(50))
+                .push(text::bold(text::simple("Fill in coordinator information")).size(50))
                 .push(
                     Column::new()
                         .push(text::bold(text::simple("Host:")))
@@ -892,7 +859,7 @@ impl DefineEmergencyAddress {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Define emergency address")).size(50))
+                .push(text::bold(text::simple("Fill in emergency information")).size(50))
                 .push(col)
                 .push(row)
                 .width(Length::Fill)
@@ -992,7 +959,7 @@ impl DefineWatchtowers {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Define your watchtowers")).size(50))
+                .push(text::bold(text::simple("Fill in watchtowers information")).size(50))
                 .push(
                     Column::new()
                         .push(
@@ -1100,11 +1067,11 @@ impl DefineCosigners {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Define the cosigners")).size(50))
+                .push(text::bold(text::simple("Fill in cosigning servers information")).size(50))
                 .push(
                     Column::new()
                         .push(
-                            Container::new(text::bold(text::simple("The cosigners:")))
+                            Container::new(text::bold(text::simple("The cosigning servers:")))
                                 .width(Length::Fill),
                         )
                         .push(Column::with_children(cosigners).spacing(10))
@@ -1189,7 +1156,9 @@ impl DefineBitcoind {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Define bitcoind")).size(50))
+                .push(
+                    text::bold(text::simple("Set up connection to the Bitcoin full node")).size(50),
+                )
                 .push(Container::new(
                     pick_list::PickList::new(
                         &mut self.network_input,
@@ -1238,7 +1207,6 @@ impl Final {
         warning: Option<&String>,
     ) -> Element<Message> {
         let mut col = Column::new()
-            .push(text::bold(text::simple("You reached the end")).size(50))
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(100)

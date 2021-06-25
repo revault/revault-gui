@@ -30,6 +30,7 @@ pub trait Step {
 }
 
 pub struct Context {
+    pub number_managers: usize,
     pub number_cosigners: usize,
     pub stakeholders_xpubs: Vec<String>,
 }
@@ -37,6 +38,7 @@ pub struct Context {
 impl Context {
     pub fn new() -> Self {
         Self {
+            number_managers: 0,
             number_cosigners: 0,
             stakeholders_xpubs: Vec::new(),
         }

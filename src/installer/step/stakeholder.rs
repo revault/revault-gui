@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
+use std::str::FromStr;
+
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::Element;
 use miniscript::DescriptorPublicKey;
 use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
-use std::str::FromStr;
 
 use crate::{
     installer::{
@@ -95,6 +97,7 @@ impl Step for DefineStakeholderXpubs {
 
         // update ctx for the unvault descriptor next step
         ctx.stakeholders_xpubs = xpubs.clone();
+        ctx.number_cosigners = ctx.stakeholders_xpubs.len();
 
         let keys = xpubs
             .into_iter()
@@ -177,6 +180,15 @@ impl DefineManagerXpubs {
 impl Step for DefineManagerXpubs {
     fn load_context(&mut self, ctx: &Context) {
         self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
+        while self.cosigners.len() != ctx.number_cosigners {
+            match self.cosigners.len().cmp(&ctx.number_cosigners) {
+                Ordering::Greater => {
+                    self.cosigners.pop();
+                }
+                Ordering::Less => self.cosigners.push(CosignerKey::new()),
+                Ordering::Equal => (),
+            }
+        }
     }
 
     fn update(&mut self, message: Message) {
@@ -193,16 +205,10 @@ impl Step for DefineManagerXpubs {
                 message::DefineManagerXpubs::AddXpub => {
                     self.manager_xpubs.push(ParticipantXpub::new());
                 }
-                message::DefineManagerXpubs::CosignerKey(i, message::CosignerKey::Delete) => {
-                    self.cosigners.remove(i);
-                }
                 message::DefineManagerXpubs::CosignerKey(i, msg) => {
                     if let Some(key) = self.cosigners.get_mut(i) {
                         key.update(msg)
                     };
-                }
-                message::DefineManagerXpubs::AddCosigner => {
-                    self.cosigners.push(CosignerKey::new());
                 }
                 message::DefineManagerXpubs::ManagersThreshold(action) => match action {
                     message::Action::Increment => {
