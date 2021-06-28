@@ -2,9 +2,11 @@ mod common;
 pub mod manager;
 pub mod stakeholder;
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
 use miniscript::DescriptorPublicKey;
@@ -234,9 +236,8 @@ impl From<DefineCpfpDescriptor> for Box<dyn Step> {
 }
 
 pub struct DefineCoordinator {
-    host: String,
-    noise_key: String,
-    warning: bool,
+    host: form::Value<String>,
+    noise_key: form::Value<String>,
 
     view: view::DefineCoordinator,
 }
@@ -244,9 +245,8 @@ pub struct DefineCoordinator {
 impl DefineCoordinator {
     pub fn new() -> Self {
         Self {
-            host: "".to_string(),
-            noise_key: "".to_string(),
-            warning: false,
+            host: form::Value::default(),
+            noise_key: form::Value::default(),
             view: view::DefineCoordinator::new(),
         }
     }
@@ -256,20 +256,40 @@ impl Step for DefineCoordinator {
     fn update(&mut self, message: Message) {
         if let Message::DefineCoordinator(msg) = message {
             match msg {
-                message::DefineCoordinator::HostEdited(host) => self.host = host,
-                message::DefineCoordinator::NoiseKeyEdited(key) => self.noise_key = key,
+                message::DefineCoordinator::HostEdited(host) => {
+                    self.host.value = host;
+                    self.host.valid = true;
+                }
+                message::DefineCoordinator::NoiseKeyEdited(key) => {
+                    self.noise_key.value = key;
+                    self.noise_key.valid = true;
+                }
             };
         };
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
-        config.coordinator_host = self.host.clone();
-        config.coordinator_noise_key = self.noise_key.clone();
+        if let Ok(bytes) = Vec::from_hex(&self.noise_key.value) {
+            if bytes.len() != 32 {
+                self.noise_key.valid = false;
+            }
+        } else {
+            self.noise_key.valid = false;
+        }
+
+        self.host.valid = SocketAddr::from_str(&self.host.value).is_ok();
+
+        if !self.host.valid || !self.noise_key.valid {
+            return false;
+        }
+
+        config.coordinator_host = self.host.value.clone();
+        config.coordinator_noise_key = self.noise_key.value.clone();
         true
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.render(&self.host, &self.noise_key, self.warning)
+        self.view.render(&self.host, &self.noise_key)
     }
 }
 
@@ -338,7 +358,7 @@ impl Step for DefineBitcoind {
             }
             (Err(_), Err(_)) => {
                 self.cookie_path.valid = false;
-                self.cookie_path.valid = false;
+                self.address.valid = false;
                 false
             }
             (Ok(path), Ok(addr)) => {

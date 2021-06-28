@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::str::FromStr;
 
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::Element;
 use miniscript::DescriptorPublicKey;
@@ -500,16 +501,25 @@ impl Step for DefineWatchtowers {
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
-        let mut ws = Vec::new();
-        for watchtower in &self.watchtowers {
-            ws.push(config::WatchtowerConfig {
-                host: watchtower.host.value.clone(),
-                noise_key: watchtower.noise_key.value.clone(),
-            })
+        for watchtower in &mut self.watchtowers {
+            if let Ok(bytes) = Vec::from_hex(&watchtower.noise_key.value) {
+                if bytes.len() != 32 {
+                    watchtower.noise_key.valid = false;
+                }
+            } else {
+                watchtower.noise_key.valid = false;
+            }
         }
 
         if let Some(stakeholder_config) = &mut config.stakeholder_config {
-            stakeholder_config.watchtowers = ws;
+            stakeholder_config.watchtowers = self
+                .watchtowers
+                .iter()
+                .map(|watchtower| config::WatchtowerConfig {
+                    host: watchtower.host.value.clone(),
+                    noise_key: watchtower.noise_key.value.clone(),
+                })
+                .collect();
         }
 
         true

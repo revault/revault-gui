@@ -1,13 +1,12 @@
 use iced::{
     button::State as Button, pick_list, scrollable, text_input, Align, Column, Container, Element,
-    Length, Row, TextInput,
+    Length, Row,
 };
 
 use crate::{
     installer::message::{self, Message},
     revault::Role,
     ui::{
-        color,
         component::{
             button, card, form, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
         },
@@ -742,24 +741,9 @@ impl DefineCoordinator {
     }
     pub fn render<'a>(
         &'a mut self,
-        host: &str,
-        noise_key: &str,
-        warning: bool,
+        host: &form::Value<String>,
+        noise_key: &form::Value<String>,
     ) -> Element<'a, Message> {
-        let mut row = Row::new().align_items(Align::Center).spacing(20);
-        if warning {
-            row = row.push(
-                button::primary(&mut self.save_button, button::button_content(None, "Next"))
-                    .min_width(200),
-            );
-        } else {
-            row = row.push(
-                button::primary(&mut self.save_button, button::button_content(None, "Next"))
-                    .on_press(Message::Next)
-                    .min_width(200),
-            );
-        }
-
         layout(
             &mut self.scroll,
             &mut self.previous_button,
@@ -769,13 +753,15 @@ impl DefineCoordinator {
                     Column::new()
                         .push(text::bold(text::simple("Host:")))
                         .push(
-                            TextInput::new(&mut self.host_input, "Host", host, |msg| {
+                            form::Form::new(&mut self.host_input, "Host", host, |msg| {
                                 Message::DefineCoordinator(message::DefineCoordinator::HostEdited(
                                     msg,
                                 ))
                             })
+                            .warning("Incorrect format for a socket address")
                             .size(15)
-                            .padding(10),
+                            .padding(10)
+                            .render(),
                         )
                         .spacing(10),
                 )
@@ -783,7 +769,7 @@ impl DefineCoordinator {
                     Column::new()
                         .push(text::bold(text::simple("Noise key:")))
                         .push(
-                            TextInput::new(
+                            form::Form::new(
                                 &mut self.noise_key_input,
                                 "Noise key",
                                 noise_key,
@@ -793,12 +779,17 @@ impl DefineCoordinator {
                                     )
                                 },
                             )
+                            .warning("key must be hex encoded and 32 bytes long")
                             .size(15)
-                            .padding(10),
+                            .padding(10)
+                            .render(),
                         )
                         .spacing(10),
                 )
-                .push(row)
+                .push(
+                    button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                        .min_width(200),
+                )
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .padding(100)
@@ -1007,44 +998,39 @@ impl Cosigner {
     }
     pub fn render(
         &mut self,
-        host: &str,
-        noise_key: &str,
-        warning_host: bool,
-        warning_noise_key: bool,
+        host: &form::Value<String>,
+        noise_key: &form::Value<String>,
     ) -> Element<message::DefineCosigner> {
-        let mut col = Column::new().push(
+        Container::new(
             Row::new()
                 .push(
-                    TextInput::new(
+                    form::Form::new(
                         &mut self.host_input,
                         "Host",
                         host,
                         message::DefineCosigner::HostEdited,
                     )
+                    .warning("Please enter a valid host")
                     .size(15)
-                    .padding(10),
+                    .padding(10)
+                    .render(),
                 )
                 .push(
-                    TextInput::new(
+                    form::Form::new(
                         &mut self.noise_key_input,
                         "Noise key",
                         noise_key,
                         message::DefineCosigner::NoiseKeyEdited,
                     )
+                    .warning("key must be hex encoded and 32 bytes long")
                     .size(15)
-                    .padding(10),
+                    .padding(10)
+                    .render(),
                 )
                 .spacing(5)
                 .align_items(Align::Center),
-        );
-
-        if warning_host {
-            col = col.push(text::simple("Please enter a valid host").color(color::WARNING))
-        }
-        if warning_noise_key {
-            col = col.push(text::simple("Please enter a valid noise_key").color(color::WARNING))
-        }
-        Container::new(col.spacing(10)).into()
+        )
+        .into()
     }
 }
 

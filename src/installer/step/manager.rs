@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
+use std::net::SocketAddr;
 use std::str::FromStr;
 
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
 use miniscript::DescriptorPublicKey;
@@ -383,12 +385,8 @@ impl From<DefineManagerXpubs> for Box<dyn Step> {
 }
 
 pub struct Cosigner {
-    pub host: String,
-    pub noise_key: String,
-
-    // TODO: check host and noise_key
-    warning_host: bool,
-    warning_noise_key: bool,
+    pub host: form::Value<String>,
+    pub noise_key: form::Value<String>,
 
     view: view::Cosigner,
 }
@@ -396,10 +394,8 @@ pub struct Cosigner {
 impl Cosigner {
     pub fn new() -> Self {
         Self {
-            host: "".to_string(),
-            noise_key: "".to_string(),
-            warning_host: false,
-            warning_noise_key: false,
+            host: form::Value::default(),
+            noise_key: form::Value::default(),
             view: view::Cosigner::new(),
         }
     }
@@ -407,23 +403,18 @@ impl Cosigner {
     pub fn update(&mut self, msg: message::DefineCosigner) {
         match msg {
             message::DefineCosigner::HostEdited(host) => {
-                self.host = host;
-                self.warning_host = false;
+                self.host.value = host;
+                self.host.valid = true;
             }
             message::DefineCosigner::NoiseKeyEdited(key) => {
-                self.noise_key = key;
-                self.warning_noise_key = false;
+                self.noise_key.value = key;
+                self.noise_key.valid = true;
             }
         }
     }
 
     pub fn view(&mut self) -> Element<message::DefineCosigner> {
-        self.view.render(
-            &self.host,
-            &self.noise_key,
-            self.warning_host,
-            self.warning_noise_key,
-        )
+        self.view.render(&self.host, &self.noise_key)
     }
 }
 
@@ -469,16 +460,35 @@ impl Step for DefineCosigners {
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
-        let mut vec = Vec::new();
-        for cosigner in &self.cosigners {
-            vec.push(config::CosignerConfig {
-                host: cosigner.host.clone(),
-                noise_key: cosigner.noise_key.clone(),
-            })
+        for cosigner in &mut self.cosigners {
+            if let Ok(bytes) = Vec::from_hex(&cosigner.noise_key.value) {
+                if bytes.len() != 32 {
+                    cosigner.noise_key.valid = false;
+                }
+            } else {
+                cosigner.noise_key.valid = false;
+            }
+
+            cosigner.host.valid = SocketAddr::from_str(&cosigner.host.value).is_ok();
+        }
+
+        if self
+            .cosigners
+            .iter()
+            .any(|cosigner| !cosigner.noise_key.valid || !cosigner.host.valid)
+        {
+            return false;
         }
 
         if let Some(manager_config) = &mut config.manager_config {
-            manager_config.cosigners = vec;
+            manager_config.cosigners = self
+                .cosigners
+                .iter()
+                .map(|cosigner| config::CosignerConfig {
+                    host: cosigner.host.value.clone(),
+                    noise_key: cosigner.noise_key.value.clone(),
+                })
+                .collect();
         }
 
         true
