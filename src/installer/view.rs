@@ -165,7 +165,7 @@ impl DefineStakeholderXpubsAsStakeholder {
         warning: Option<&String>,
     ) -> Element<'a, Message> {
         let mut content = Column::new()
-            .push(text::bold(text::simple("Define stakeholders")).size(50))
+            .push(text::bold(text::simple("Stakeholders information")).size(50))
             .push(
                 Column::new()
                     .push(text::bold(text::simple("Your stakeholder xpub:")))
@@ -283,7 +283,7 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
         scroll,
         previous_button,
         Column::new()
-            .push(text::bold(text::simple("Define stakeholders")).size(50))
+            .push(text::bold(text::simple("Stakeholders information")).size(50))
             .push(content)
             .push(row)
             .width(Length::Fill)
@@ -601,7 +601,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         }
 
         let mut content = Column::new()
-            .push(text::bold(text::simple("Fill fund management information:")).size(50))
+            .push(text::bold(text::simple("Fund management configuration")).size(50))
             .push(
                 Row::new()
                     .push(
