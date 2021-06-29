@@ -788,6 +788,7 @@ impl DefineCoordinator {
                 )
                 .push(
                     button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                        .on_press(Message::Next)
                         .min_width(200),
                 )
                 .width(Length::Fill)
