@@ -80,7 +80,7 @@ pub struct Config {
     pub log_level: Option<String>,
 }
 
-pub const DEFAULT_FILE_NAME: &'static str = "revault.toml";
+pub const DEFAULT_FILE_NAME: &str = "revaultd.toml";
 
 impl Config {
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
