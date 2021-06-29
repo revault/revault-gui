@@ -313,12 +313,37 @@ pub struct DefineBitcoind {
     view: view::DefineBitcoind,
 }
 
+fn bitcoin_cookie_path() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    let configs_dir = dirs::home_dir();
+
+    #[cfg(not(target_os = "linux"))]
+    let configs_dir = dirs::config_dir();
+
+    if let Some(mut path) = configs_dir {
+        #[cfg(target_os = "linux")]
+        path.push(".bitcoin/.cookie");
+
+        #[cfg(not(target_os = "linux"))]
+        path.push("Bitcoin/.cookie");
+
+        return path.to_str().map(|s| s.to_string());
+    }
+    None
+}
+
 impl DefineBitcoind {
     pub fn new() -> Self {
         Self {
             network: bitcoin::Network::Bitcoin,
-            cookie_path: form::Value::default(),
-            address: form::Value::default(),
+            cookie_path: form::Value {
+                value: bitcoin_cookie_path().unwrap_or("".to_string()),
+                valid: true,
+            },
+            address: form::Value {
+                value: "127.0.0.1:8332".to_string(),
+                valid: true,
+            },
             view: view::DefineBitcoind::new(),
         }
     }
