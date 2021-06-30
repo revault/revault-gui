@@ -496,14 +496,32 @@ impl SpendTransactionListItemView {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context, tx: &model::SpendTx) -> Element<SpendTxMessage> {
-        let amount = tx
+    pub fn view(
+        &mut self,
+        ctx: &Context,
+        tx: &model::SpendTx,
+        vaults_amount: u64,
+    ) -> Element<SpendTxMessage> {
+        let spend_amount = tx
             .psbt
             .global
             .unsigned_tx
             .output
             .iter()
-            .fold(0, |acc, output| acc + output.value);
+            .enumerate()
+            .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
+            .fold(0, |acc, (_, output)| acc + output.value);
+        let change_amount = if let Some(i) = tx.change_index {
+            tx.psbt.global.unsigned_tx.output[i].value
+        } else {
+            0
+        };
+        let fees = if vaults_amount == 0 {
+            // Vaults are still loading
+            0
+        } else {
+            vaults_amount - spend_amount - change_amount
+        };
         button::white_card_button(
             &mut self.select_button,
             Container::new(
@@ -522,13 +540,26 @@ impl SpendTransactionListItemView {
                     )
                     .push(
                         Container::new(
-                            Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(amount),
-                                ))))
-                                .push(text::small(&format!(" {}", ctx.converter.unit)))
-                                .align_items(Align::Center),
+                            Column::new()
+                                .push(
+                                    Row::new()
+                                        .push(text::bold(text::simple(&format!(
+                                            "{}",
+                                            ctx.converter.converts(spend_amount),
+                                        ))))
+                                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                        .align_items(Align::Center),
+                                )
+                                .push(
+                                    Row::new()
+                                        .push(text::small(&format!(
+                                            "Fees: {}",
+                                            ctx.converter.converts(fees),
+                                        )))
+                                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                        .align_items(Align::Center),
+                                )
+                                .align_items(Align::End),
                         )
                         .width(Length::Shrink),
                     )

@@ -377,18 +377,21 @@ impl SpendTransactionAction {
 #[derive(Debug)]
 pub struct SpendTransactionListItem {
     pub tx: model::SpendTx,
+    // Sum of the amounts of the vaults this tx is spending
+    pub vaults_amount: u64,
     view: SpendTransactionListItemView,
 }
 
 impl SpendTransactionListItem {
-    pub fn new(tx: model::SpendTx) -> Self {
+    pub fn new(tx: model::SpendTx, vaults_amount: u64) -> Self {
         Self {
             tx,
             view: SpendTransactionListItemView::new(),
+            vaults_amount,
         }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
-        self.view.view(ctx, &self.tx)
+        self.view.view(ctx, &self.tx, self.vaults_amount)
     }
 }
