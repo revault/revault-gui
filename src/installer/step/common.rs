@@ -34,6 +34,31 @@ impl ParticipantXpub {
     }
 }
 
+#[derive(Clone)]
+pub struct RequiredXpub {
+    pub xpub: form::Value<String>,
+
+    xpub_input: text_input::State,
+}
+
+impl RequiredXpub {
+    pub fn new() -> Self {
+        Self {
+            xpub: form::Value::default(),
+            xpub_input: text_input::State::new(),
+        }
+    }
+
+    pub fn update(&mut self, msg: String) {
+        self.xpub.value = msg;
+        self.xpub.valid = true;
+    }
+
+    pub fn view(&mut self) -> Element<String> {
+        view::required_xpub(&self.xpub, &mut self.xpub_input)
+    }
+}
+
 pub struct CosignerKey {
     pub key: form::Value<String>,
 

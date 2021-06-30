@@ -272,7 +272,7 @@ impl Step for DefineManagerXpubs {
 
         managers_xpubs.sort();
 
-        let managers_keys = managers_xpubs
+        let managers_keys: Vec<DescriptorPublicKey> = managers_xpubs
             .into_iter()
             .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
             .collect();
@@ -304,6 +304,7 @@ impl Step for DefineManagerXpubs {
             .collect();
 
         ctx.number_cosigners = self.cosigners.len();
+        ctx.number_managers = managers_keys.len();
 
         match UnvaultDescriptor::new(
             stakeholders_keys,

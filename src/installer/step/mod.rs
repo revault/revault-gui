@@ -2,6 +2,7 @@ mod common;
 pub mod manager;
 pub mod stakeholder;
 
+use std::cmp::Ordering;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -15,7 +16,7 @@ use revault_tx::scripts::CpfpDescriptor;
 use crate::{
     installer::{
         message::{self, Message},
-        step::common::ParticipantXpub,
+        step::common::RequiredXpub,
         view,
     },
     revaultd::config,
@@ -127,41 +128,42 @@ impl From<DefineRole> for Box<dyn Step> {
 }
 
 pub struct DefineCpfpDescriptor {
-    manager_xpubs: Vec<ParticipantXpub>,
-    add_xpub_button: Button,
-    scroll: scrollable::State,
-    previous_button: Button,
-    save_button: Button,
+    manager_xpubs: Vec<RequiredXpub>,
     warning: Option<String>,
+
+    view: view::DefineCpfpDescriptorView,
 }
 
 impl DefineCpfpDescriptor {
     pub fn new() -> Self {
         Self {
-            add_xpub_button: Button::new(),
             manager_xpubs: Vec::new(),
-            scroll: scrollable::State::new(),
-            previous_button: Button::new(),
-            save_button: Button::new(),
             warning: None,
+            view: view::DefineCpfpDescriptorView::new(),
         }
     }
 }
 
 impl Step for DefineCpfpDescriptor {
+    fn load_context(&mut self, ctx: &Context) {
+        while self.manager_xpubs.len() != ctx.number_managers {
+            match self.manager_xpubs.len().cmp(&ctx.number_managers) {
+                Ordering::Greater => {
+                    self.manager_xpubs.pop();
+                }
+                Ordering::Less => self.manager_xpubs.push(RequiredXpub::new()),
+                Ordering::Equal => (),
+            }
+        }
+    }
+
     fn update(&mut self, message: Message) {
         if let Message::DefineCpfpDescriptor(msg) = message {
             match msg {
-                message::DefineCpfpDescriptor::ManagerXpub(i, message::ParticipantXpub::Delete) => {
-                    self.manager_xpubs.remove(i);
-                }
                 message::DefineCpfpDescriptor::ManagerXpub(i, msg) => {
                     if let Some(xpub) = self.manager_xpubs.get_mut(i) {
                         xpub.update(msg);
                     }
-                }
-                message::DefineCpfpDescriptor::AddXpub => {
-                    self.manager_xpubs.push(ParticipantXpub::new());
                 }
             };
         };
@@ -202,8 +204,7 @@ impl Step for DefineCpfpDescriptor {
     }
 
     fn view(&mut self) -> Element<Message> {
-        return view::define_cpfp_descriptor(
-            &mut self.add_xpub_button,
+        return self.view.render(
             self.manager_xpubs
                 .iter_mut()
                 .enumerate()
@@ -215,9 +216,6 @@ impl Step for DefineCpfpDescriptor {
                     })
                 })
                 .collect(),
-            &mut self.scroll,
-            &mut self.previous_button,
-            &mut self.save_button,
             self.warning.as_ref(),
         );
     }
@@ -659,39 +657,26 @@ mod tests {
     #[test]
     fn define_cpfp_descriptor() {
         let mut ctx = Context::new();
+        ctx.number_managers = 2;
         let mut cpfp_1_step = DefineCpfpDescriptorStep::new();
-        cpfp_1_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
+        cpfp_1_step.load_context(&ctx);
         cpfp_1_step.update(Message::DefineCpfpDescriptor(
-            DefineCpfpDescriptor::ManagerXpub(
-                0,
-                ParticipantXpub::XpubEdited(MANAGERS_XPUBS[0].to_string()),
-            ),
+            DefineCpfpDescriptor::ManagerXpub(0, MANAGERS_XPUBS[0].to_string()),
         ));
-        cpfp_1_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
         cpfp_1_step.update(Message::DefineCpfpDescriptor(
-            DefineCpfpDescriptor::ManagerXpub(
-                1,
-                ParticipantXpub::XpubEdited(MANAGERS_XPUBS[1].to_string()),
-            ),
+            DefineCpfpDescriptor::ManagerXpub(1, MANAGERS_XPUBS[1].to_string()),
         ));
 
         let mut cpfp_1_config = Config::new();
         cpfp_1_step.apply(&mut ctx, &mut cpfp_1_config);
 
         let mut cpfp_2_step = DefineCpfpDescriptorStep::new();
-        cpfp_2_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
+        cpfp_2_step.load_context(&ctx);
         cpfp_2_step.update(Message::DefineCpfpDescriptor(
-            DefineCpfpDescriptor::ManagerXpub(
-                0,
-                ParticipantXpub::XpubEdited(MANAGERS_XPUBS[1].to_string()),
-            ),
+            DefineCpfpDescriptor::ManagerXpub(0, MANAGERS_XPUBS[1].to_string()),
         ));
-        cpfp_2_step.update(Message::DefineCpfpDescriptor(DefineCpfpDescriptor::AddXpub));
         cpfp_2_step.update(Message::DefineCpfpDescriptor(
-            DefineCpfpDescriptor::ManagerXpub(
-                1,
-                ParticipantXpub::XpubEdited(MANAGERS_XPUBS[0].to_string()),
-            ),
+            DefineCpfpDescriptor::ManagerXpub(1, MANAGERS_XPUBS[0].to_string()),
         ));
 
         let mut cpfp_2_config = Config::new();

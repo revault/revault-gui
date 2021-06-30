@@ -116,6 +116,24 @@ pub fn participant_xpub<'a>(
     .into()
 }
 
+pub fn required_xpub<'a>(
+    xpub: &form::Value<String>,
+    xpub_input: &'a mut text_input::State,
+) -> Element<'a, String> {
+    Container::new(
+        Column::new()
+            .push(
+                form::Form::new(xpub_input, "Xpub", xpub, |msg| msg)
+                    .warning("Please enter a valid xpub")
+                    .size(15)
+                    .padding(10)
+                    .render(),
+            )
+            .spacing(10),
+    )
+    .into()
+}
+
 pub fn cosigner_key<'a>(
     key: &form::Value<String>,
     key_input: &'a mut text_input::State,
@@ -663,62 +681,64 @@ impl DefineManagerXpubsAsStakeholderOnly {
     }
 }
 
-pub fn define_cpfp_descriptor<'a>(
-    add_xpub_button: &'a mut Button,
-    manager_xpubs: Vec<Element<'a, Message>>,
-    scroll: &'a mut scrollable::State,
-    previous_button: &'a mut Button,
-    save_button: &'a mut Button,
-    warning: Option<&String>,
-) -> Element<'a, Message> {
-    let mut row = Row::new().align_items(Align::Center).spacing(20);
-    if manager_xpubs.is_empty() {
-        row = row.push(
-            button::primary(save_button, button::button_content(None, "Next")).min_width(200),
-        );
-    } else {
-        row = row.push(
-            button::primary(save_button, button::button_content(None, "Next"))
-                .on_press(Message::Next)
-                .min_width(200),
-        );
+pub struct DefineCpfpDescriptorView {
+    scroll: scrollable::State,
+    previous_button: Button,
+    save_button: Button,
+}
+
+impl DefineCpfpDescriptorView {
+    pub fn new() -> Self {
+        Self {
+            scroll: scrollable::State::new(),
+            previous_button: Button::new(),
+            save_button: Button::new(),
+        }
     }
 
-    let mut content = Column::new()
-        .spacing(10)
-        .push(text::bold(text::simple("Managers CPFP xpubs:")))
-        .push(Column::with_children(manager_xpubs).spacing(10))
-        .push(
-            Container::new(
-                button::white_card_button(
-                    add_xpub_button,
-                    button::button_content(Some(icon::plus_icon()), "Add manager"),
-                )
-                .on_press(Message::DefineCpfpDescriptor(
-                    message::DefineCpfpDescriptor::AddXpub,
-                )),
-            )
-            .width(Length::Fill),
-        );
+    pub fn render<'a>(
+        &'a mut self,
+        manager_xpubs: Vec<Element<'a, Message>>,
+        warning: Option<&String>,
+    ) -> Element<'a, Message> {
+        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        if manager_xpubs.is_empty() {
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .min_width(200),
+            );
+        } else {
+            row = row.push(
+                button::primary(&mut self.save_button, button::button_content(None, "Next"))
+                    .on_press(Message::Next)
+                    .min_width(200),
+            );
+        }
 
-    if let Some(error) = warning {
-        content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+        let mut content = Column::new()
+            .spacing(10)
+            .push(text::bold(text::simple("Managers CPFP xpubs:")))
+            .push(Column::with_children(manager_xpubs).spacing(10));
+
+        if let Some(error) = warning {
+            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+        }
+
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Fill in the managers CPFP xpubs")).size(50))
+                .push(content)
+                .push(row)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
     }
-
-    layout(
-        scroll,
-        previous_button,
-        Column::new()
-            .push(text::bold(text::simple("Fill in the managers CPFP xpubs")).size(50))
-            .push(content)
-            .push(row)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center)
-            .into(),
-    )
 }
 
 pub struct DefineCoordinator {

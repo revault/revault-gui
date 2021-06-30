@@ -55,8 +55,7 @@ pub enum DefineCoordinator {
 
 #[derive(Debug, Clone)]
 pub enum DefineCpfpDescriptor {
-    ManagerXpub(usize, ParticipantXpub),
-    AddXpub,
+    ManagerXpub(usize, String),
 }
 
 #[derive(Debug, Clone)]
