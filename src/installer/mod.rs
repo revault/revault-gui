@@ -12,7 +12,7 @@ use crate::{app::config as gui_config, revault::Role, revaultd::config as revaul
 pub use message::Message;
 use step::{
     manager, stakeholder, Context, DefineBitcoind, DefineCoordinator, DefineCpfpDescriptor,
-    DefineRole, Final, Step, Welcome,
+    DefinePrivateNoiseKey, DefineRole, Final, Step, Welcome,
 };
 
 pub struct Installer {
@@ -42,6 +42,7 @@ impl Installer {
             self.steps = vec![
                 Welcome::new().into(),
                 DefineRole::new().into(),
+                DefinePrivateNoiseKey::new().into(),
                 manager::DefineStakeholderXpubs::new().into(),
                 manager::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
@@ -54,6 +55,7 @@ impl Installer {
             self.steps = vec![
                 Welcome::new().into(),
                 DefineRole::new().into(),
+                DefinePrivateNoiseKey::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
                 stakeholder::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
@@ -66,6 +68,7 @@ impl Installer {
             self.steps = vec![
                 Welcome::new().into(),
                 DefineRole::new().into(),
+                DefinePrivateNoiseKey::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
                 manager::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
@@ -136,7 +139,10 @@ impl Installer {
             }
             Message::Install => {
                 self.current_step().update(message);
-                return Command::perform(install(self.config.clone()), Message::Installed);
+                return Command::perform(
+                    install(self.context.clone(), self.config.clone()),
+                    Message::Installed,
+                );
             }
             _ => {
                 self.current_step().update(message);
@@ -150,14 +156,25 @@ impl Installer {
     }
 }
 
-pub async fn install(cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
+fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
+    if *network == bitcoin::Network::Bitcoin {
+        name.to_string()
+    } else {
+        format!("{}_{}.toml", name.strip_suffix(".toml").unwrap(), network)
+    }
+}
+
+pub async fn install(ctx: Context, cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
 
     // create revaultd configuration file
     let mut revaultd_config_path = datadir_path.clone();
-    revaultd_config_path.push(revaultd_config::DEFAULT_FILE_NAME);
+    revaultd_config_path.push(append_network_suffix(
+        revaultd_config::DEFAULT_FILE_NAME,
+        &cfg.bitcoind_config.network,
+    ));
     let mut revaultd_config_file = std::fs::File::create(&revaultd_config_path)
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
@@ -169,16 +186,38 @@ pub async fn install(cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
         .write_all(value.to_string().as_bytes())
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 
+    // create network datadir
+    let mut network_datadir = datadir_path.clone();
+    network_datadir.push(cfg.bitcoind_config.network.to_string());
+    std::fs::create_dir_all(&network_datadir)
+        .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
+
+    // create noise_secret file
+    let mut noise_secret_path = network_datadir;
+    noise_secret_path.push("noise_secret");
+    let mut noise_secret_file = std::fs::File::create(&noise_secret_path)
+        .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
+
+    noise_secret_file
+        .write_all(ctx.private_noise_key.as_bytes())
+        .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
+
     // create revault GUI configuration file
-    let cfg = gui_config::Config::new(revaultd_config_path);
     let mut gui_config_path = datadir_path;
-    gui_config_path.push(gui_config::DEFAULT_FILE_NAME);
+    gui_config_path.push(append_network_suffix(
+        gui_config::DEFAULT_FILE_NAME,
+        &cfg.bitcoind_config.network,
+    ));
 
     let mut gui_config_file = std::fs::File::create(&gui_config_path)
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
     gui_config_file
-        .write_all(toml::to_string(&cfg).unwrap().as_bytes())
+        .write_all(
+            toml::to_string(&gui_config::Config::new(revaultd_config_path))
+                .unwrap()
+                .as_bytes(),
+        )
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 
     Ok(gui_config_path)

@@ -157,6 +157,58 @@ pub fn cosigner_key<'a>(
     .into()
 }
 
+pub struct DefinePrivateNoiseKey {
+    key_input: text_input::State,
+    next_button: Button,
+    previous_button: Button,
+    scroll: scrollable::State,
+}
+
+impl DefinePrivateNoiseKey {
+    pub fn new() -> Self {
+        Self {
+            key_input: text_input::State::new(),
+            next_button: Button::new(),
+            previous_button: Button::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+
+    pub fn render<'a>(&'a mut self, key: &form::Value<String>) -> Element<Message> {
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(text::bold(text::simple("Fill private noise key:")).size(50))
+                .push(
+                    Column::new().spacing(10).push(
+                        form::Form::new(
+                            &mut self.key_input,
+                            "The private noise key",
+                            key,
+                            Message::PrivateNoiseKey,
+                        )
+                        .warning("Noise key must be 32 bytes long")
+                        .size(15)
+                        .padding(10)
+                        .render(),
+                    ),
+                )
+                .push(
+                    button::primary(&mut self.next_button, button::button_content(None, "Next"))
+                        .on_press(Message::Next)
+                        .min_width(200),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
+}
+
 pub struct DefineStakeholderXpubsAsStakeholder {
     our_xpub_input: text_input::State,
     previous_button: Button,

@@ -11,6 +11,7 @@ pub enum Message {
     Install,
     Installed(Result<PathBuf, Error>),
     Role(&'static [Role]),
+    PrivateNoiseKey(String),
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),
     DefineCpfpDescriptor(DefineCpfpDescriptor),

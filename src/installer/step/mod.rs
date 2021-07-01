@@ -32,7 +32,9 @@ pub trait Step {
     }
 }
 
+#[derive(Clone)]
 pub struct Context {
+    pub private_noise_key: String,
     pub number_managers: usize,
     pub number_cosigners: usize,
     pub stakeholders_xpubs: Vec<String>,
@@ -41,6 +43,7 @@ pub struct Context {
 impl Context {
     pub fn new() -> Self {
         Self {
+            private_noise_key: "".to_string(),
             number_managers: 0,
             number_cosigners: 0,
             stakeholders_xpubs: Vec::new(),
@@ -123,6 +126,49 @@ impl Default for DefineRole {
 
 impl From<DefineRole> for Box<dyn Step> {
     fn from(s: DefineRole) -> Box<dyn Step> {
+        Box::new(s)
+    }
+}
+
+pub struct DefinePrivateNoiseKey {
+    key: form::Value<String>,
+    view: view::DefinePrivateNoiseKey,
+}
+
+impl DefinePrivateNoiseKey {
+    pub fn new() -> Self {
+        Self {
+            key: form::Value::default(),
+            view: view::DefinePrivateNoiseKey::new(),
+        }
+    }
+}
+
+impl Step for DefinePrivateNoiseKey {
+    fn update(&mut self, message: Message) {
+        if let Message::PrivateNoiseKey(msg) = message {
+            self.key.value = msg;
+            self.key.valid = true;
+        }
+    }
+    fn apply(&mut self, ctx: &mut Context, _config: &mut config::Config) -> bool {
+        self.key.valid = self.key.value.as_bytes().len() == 32;
+        ctx.private_noise_key = self.key.value.clone();
+        self.key.valid
+    }
+    fn view(&mut self) -> Element<Message> {
+        self.view.render(&self.key)
+    }
+}
+
+impl Default for DefinePrivateNoiseKey {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<DefinePrivateNoiseKey> for Box<dyn Step> {
+    fn from(s: DefinePrivateNoiseKey) -> Box<dyn Step> {
         Box::new(s)
     }
 }
@@ -578,6 +624,7 @@ mod tests {
         let mut ctx = Context::new();
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
+            private_noise_key: "".to_string(),
             number_managers: 1,
             number_cosigners: 4,
             stakeholders_xpubs: vec![
@@ -615,6 +662,7 @@ mod tests {
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
+            private_noise_key: "".to_string(),
             number_managers: 1,
             number_cosigners: 4,
             stakeholders_xpubs: vec![
