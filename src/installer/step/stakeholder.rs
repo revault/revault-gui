@@ -370,6 +370,7 @@ impl From<DefineManagerXpubs> for Box<dyn Step> {
 
 pub struct DefineEmergencyAddress {
     address: form::Value<String>,
+    warning: Option<String>,
 
     view: view::DefineEmergencyAddress,
 }
@@ -379,6 +380,7 @@ impl DefineEmergencyAddress {
         Self {
             address: form::Value::default(),
             view: view::DefineEmergencyAddress::new(),
+            warning: None,
         }
     }
 }
@@ -388,12 +390,20 @@ impl Step for DefineEmergencyAddress {
         if let Message::DefineEmergencyAddress(address) = message {
             self.address.value = address;
             self.address.valid = true;
+            self.warning = None;
         };
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         match bitcoin::Address::from_str(&self.address.value) {
-            Ok(_) => {
+            Ok(address) => {
+                if address.network != config.bitcoind_config.network {
+                    self.warning = Some(format!(
+                        "address is not not usable with the specified bitcoind network: {}",
+                        config.bitcoind_config.network
+                    ));
+                    return false;
+                }
                 if let Some(stakeholder_config) = &mut config.stakeholder_config {
                     stakeholder_config.emergency_address = self.address.value.clone();
                 }
@@ -408,7 +418,7 @@ impl Step for DefineEmergencyAddress {
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view.render(&self.address)
+        self.view.render(&self.address, self.warning.as_ref())
     }
 }
 

@@ -868,7 +868,11 @@ impl DefineEmergencyAddress {
             save_button: Button::new(),
         }
     }
-    pub fn render<'a>(&'a mut self, address: &form::Value<String>) -> Element<'a, Message> {
+    pub fn render<'a>(
+        &'a mut self,
+        address: &form::Value<String>,
+        warning: Option<&String>,
+    ) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
         if !address.valid {
             row = row.push(
@@ -882,7 +886,7 @@ impl DefineEmergencyAddress {
                     .min_width(200),
             );
         }
-        let col = Column::new()
+        let mut col = Column::new()
             .push(text::bold(text::simple("Address:")))
             .push(
                 form::Form::new(
@@ -897,6 +901,10 @@ impl DefineEmergencyAddress {
                 .render(),
             )
             .spacing(10);
+
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(text::simple(&error))));
+        }
 
         layout(
             &mut self.scroll,

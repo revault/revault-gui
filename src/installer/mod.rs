@@ -60,8 +60,8 @@ impl Installer {
                 stakeholder::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
-                stakeholder::DefineEmergencyAddress::new().into(),
                 DefineBitcoind::new().into(),
+                stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
         } else {
@@ -73,10 +73,10 @@ impl Installer {
                 manager::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
-                stakeholder::DefineEmergencyAddress::new().into(),
                 stakeholder::DefineWatchtowers::new().into(),
                 manager::DefineCosigners::new().into(),
                 DefineBitcoind::new().into(),
+                stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
         }
