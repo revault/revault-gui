@@ -90,7 +90,7 @@ impl Installer {
 
     pub fn new(destination_path: PathBuf) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
-        config.data_dir = Some(destination_path.clone());
+        config.data_dir = Some(destination_path);
         config.daemon = Some(true);
         (
             Installer {
