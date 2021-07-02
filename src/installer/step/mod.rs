@@ -381,7 +381,7 @@ impl DefineBitcoind {
         Self {
             network: bitcoin::Network::Bitcoin,
             cookie_path: form::Value {
-                value: bitcoin_cookie_path().unwrap_or("".to_string()),
+                value: bitcoin_cookie_path().unwrap_or_else(String::new),
                 valid: true,
             },
             address: form::Value {

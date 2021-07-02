@@ -377,12 +377,12 @@ impl ManagersThreshold {
         }
     }
 
-    pub fn render(&mut self, managers_threshold: usize, warning: bool) -> Container<Message> {
+    pub fn render(&mut self, managers_threshold: &form::Value<usize>) -> Container<Message> {
         let mut col = Column::new()
             .push(text::bold(text::simple("Managers threshold:")))
             .push(
                 Row::new()
-                    .push(text::simple(&format!("{}", managers_threshold)).size(50))
+                    .push(text::simple(&format!("{}", managers_threshold.value)).size(50))
                     .push(
                         Column::new()
                             .push(
@@ -419,7 +419,7 @@ impl ManagersThreshold {
             .align_items(Align::Center)
             .spacing(10);
 
-        if warning {
+        if !managers_threshold.valid {
             col = col.push(card::alert_warning(Container::new(text::small(
                 "Impossible threshold",
             ))))
@@ -441,12 +441,12 @@ impl SpendingDelay {
         }
     }
 
-    pub fn render(&mut self, spending_delay: u32, warning: bool) -> Container<Message> {
+    pub fn render(&mut self, spending_delay: &form::Value<u32>) -> Container<Message> {
         let mut col = Column::new()
             .push(text::bold(text::simple("Spending delay in blocks:")))
             .push(
                 Row::new()
-                    .push(text::simple(&format!("{}", spending_delay)).size(50))
+                    .push(text::simple(&format!("{}", spending_delay.value)).size(50))
                     .push(
                         Column::new()
                             .push(
@@ -482,7 +482,7 @@ impl SpendingDelay {
             )
             .align_items(Align::Center)
             .spacing(10);
-        if warning {
+        if !spending_delay.valid {
             col = col.push(card::alert_warning(Container::new(text::small(
                 "Spending delay cannot be equal to zero",
             ))))
@@ -516,10 +516,8 @@ impl DefineManagerXpubsAsManager {
 
     pub fn render<'a>(
         &'a mut self,
-        managers_threshold: usize,
-        threshold_warning: bool,
-        spending_delay: u32,
-        spending_delay_warning: bool,
+        managers_threshold: &form::Value<usize>,
+        spending_delay: &form::Value<u32>,
         our_xpub: &form::Value<String>,
         other_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
@@ -548,20 +546,14 @@ impl DefineManagerXpubsAsManager {
             .push(
                 Row::new()
                     .push(
-                        Container::new(
-                            self.managers_threshold
-                                .render(managers_threshold, threshold_warning),
-                        )
-                        .width(Length::FillPortion(1))
-                        .align_x(Align::Center),
+                        Container::new(self.managers_threshold.render(managers_threshold))
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                     )
                     .push(
-                        Container::new(
-                            self.spending_delay
-                                .render(spending_delay, spending_delay_warning),
-                        )
-                        .width(Length::FillPortion(1))
-                        .align_x(Align::Center),
+                        Container::new(self.spending_delay.render(spending_delay))
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                     )
                     .width(Length::Fill),
             )
@@ -644,10 +636,8 @@ impl DefineManagerXpubsAsStakeholderOnly {
     }
     pub fn render<'a>(
         &'a mut self,
-        managers_threshold: usize,
-        threshold_warning: bool,
-        spending_delay: u32,
-        spending_delay_warning: bool,
+        managers_threshold: &form::Value<usize>,
+        spending_delay: &form::Value<u32>,
         manager_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
         warning: Option<&String>,
@@ -674,20 +664,14 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .push(
                 Row::new()
                     .push(
-                        Container::new(
-                            self.managers_threshold
-                                .render(managers_threshold, threshold_warning),
-                        )
-                        .width(Length::FillPortion(1))
-                        .align_x(Align::Center),
+                        Container::new(self.managers_threshold.render(managers_threshold))
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                     )
                     .push(
-                        Container::new(
-                            self.spending_delay
-                                .render(spending_delay, spending_delay_warning),
-                        )
-                        .width(Length::FillPortion(1))
-                        .align_x(Align::Center),
+                        Container::new(self.spending_delay.render(spending_delay))
+                            .width(Length::FillPortion(1))
+                            .align_x(Align::Center),
                     )
                     .width(Length::Fill),
             )
