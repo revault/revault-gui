@@ -179,19 +179,14 @@ impl DefinePrivateNoiseKey {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill private noise key:")).size(50))
+                .push(text::bold(text::simple("Fill your private noise key:")).size(50))
                 .push(
                     Column::new().spacing(10).push(
-                        form::Form::new(
-                            &mut self.key_input,
-                            "The private noise key",
-                            key,
-                            Message::PrivateNoiseKey,
-                        )
-                        .warning("Noise key must be 32 bytes long")
-                        .size(15)
-                        .padding(10)
-                        .render(),
+                        form::Form::new(&mut self.key_input, "", key, Message::PrivateNoiseKey)
+                            .warning("Noise key must be 32 bytes long")
+                            .size(15)
+                            .padding(10)
+                            .render(),
                     ),
                 )
                 .push(
