@@ -149,6 +149,12 @@ impl Config {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // From github.com/revault/revaultd:
 // Get the absolute path to the revault configuration folder.
 ///
