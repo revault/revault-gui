@@ -888,11 +888,11 @@ impl DefineEmergencyAddress {
             );
         }
         let col = Column::new()
-            .push(text::bold(text::simple("address:")))
+            .push(text::bold(text::simple("Address:")))
             .push(
                 form::Form::new(
                     &mut self.address_input,
-                    "address",
+                    "",
                     address,
                     Message::DefineEmergencyAddress,
                 )
