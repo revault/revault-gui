@@ -29,7 +29,7 @@ jobs:
           override: true
           profile: minimal
       - name: Build on Rust ${{ matrix.toolchain }}
-        run: cargo build --verbose --color always
+        run: cargo update && cargo build --verbose --color always
       - name: Test on Rust ${{ matrix.toolchain }}
         run: cargo test --verbose --color always
 

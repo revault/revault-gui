@@ -3,17 +3,17 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::Path;
 use std::process::Command;
+use std::time;
 
 use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
+use jsonrpc::{simple_uds::UdsTransport, Client};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, span, Level};
 
-mod client;
 pub mod config;
 pub mod model;
 
-use client::Client;
 use config::Config;
 use model::{
     DepositAddress, RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus,
@@ -41,7 +41,7 @@ impl std::fmt::Display for RevaultDError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RevaultD {
     client: Client,
     pub config: Config,
@@ -52,14 +52,18 @@ impl RevaultD {
         let span = span!(Level::INFO, "revaultd");
         let _enter = span.enter();
 
-        let socket_path = config.socket_path().map_err(|e| {
+        let sockpath = config.socket_path().map_err(|e| {
             RevaultDError::UnexpectedError(format!(
                 "Failed to find revaultd socket path: {}",
                 e.to_string()
             ))
         })?;
 
-        let client = Client::new(socket_path);
+        let transport = UdsTransport {
+            sockpath,
+            timeout: Some(time::Duration::from_secs(60)),
+        };
+        let client = Client::with_transport(transport);
         let revaultd = RevaultD {
             client,
             config: config.to_owned(),
@@ -79,22 +83,22 @@ impl RevaultD {
     }
 
     /// Generic call function for RPC calls.
-    fn call<T: Serialize + Debug, U: DeserializeOwned + Debug>(
+    fn call<U: DeserializeOwned + Debug>(
         &self,
         method: &str,
-        input: Option<T>,
+        params: &[Box<serde_json::value::RawValue>],
     ) -> Result<U, RevaultDError> {
         let span = span!(Level::INFO, "request");
         let _guard = span.enter();
         info!(method);
+        info!("{:?}", self.client);
+        let req = self.client.build_request(method, params);
         self.client
-            .send_request(method, input)
-            .and_then(|res| res.into_result())
+            .send_request(req)
+            .and_then(|res| res.result())
             .map_err(|e| {
                 error!("method {} failed: {}", method, e);
                 match e {
-                    client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
-                    client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
                     _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
                 }
             })
@@ -102,11 +106,11 @@ impl RevaultD {
 
     /// get a new deposit address.
     pub fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
-        self.call("getdepositaddress", Option::<Request>::None)
+        self.call("getdepositaddress", &[])
     }
 
     pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
-        self.call("getinfo", Option::<Request>::None)
+        self.call("getinfo", &[])
     }
 
     pub fn list_vaults(
@@ -114,31 +118,24 @@ impl RevaultD {
         statuses: Option<&[VaultStatus]>,
         outpoints: Option<&Vec<String>>,
     ) -> Result<ListVaultsResponse, RevaultDError> {
-        let mut args = vec![json!(statuses.unwrap_or(&[]))];
-        if let Some(outpoints) = outpoints {
-            args.push(json!(outpoints));
-        }
-        self.call("listvaults", Some(args))
+        self.call(
+            "listvaults",
+            &[jsonrpc::arg(statuses), jsonrpc::arg(outpoints)],
+        )
     }
 
     pub fn list_onchain_transactions(
         &self,
         outpoints: Option<Vec<String>>,
     ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
-        match outpoints {
-            Some(list) => self.call(
-                "listonchaintransactions",
-                Some(vec![ListTransactionsRequest(list)]),
-            ),
-            None => self.call("listonchaintransactions", Option::<Request>::None),
-        }
+        self.call("listonchaintransactions", &[jsonrpc::arg(outpoints)])
     }
 
     pub fn get_revocation_txs(
         &self,
         outpoint: &str,
     ) -> Result<RevocationTransactions, RevaultDError> {
-        self.call("getrevocationtxs", Some(vec![outpoint]))
+        self.call("getrevocationtxs", &[jsonrpc::arg(outpoint)])
     }
 
     pub fn set_revocation_txs(
@@ -153,19 +150,26 @@ impl RevaultD {
         let cancel = base64::encode(&consensus::serialize(cancel_tx));
         let _res: serde_json::value::Value = self.call(
             "revocationtxs",
-            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+            &[
+                jsonrpc::arg(outpoint),
+                jsonrpc::arg(cancel),
+                jsonrpc::arg(emergency),
+                jsonrpc::arg(emergency_unvault),
+            ],
         )?;
         Ok(())
     }
 
     pub fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
-        self.call("getunvaulttx", Some(vec![outpoint]))
+        self.call("getunvaulttx", &[jsonrpc::arg(outpoint)])
     }
 
     pub fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
         let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
-        let _res: serde_json::value::Value =
-            self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
+        let _res: serde_json::value::Value = self.call(
+            "unvaulttx",
+            &[jsonrpc::arg(outpoint), jsonrpc::arg(unvault_tx)],
+        )?;
         Ok(())
     }
 
@@ -177,7 +181,11 @@ impl RevaultD {
     ) -> Result<SpendTransaction, RevaultDError> {
         self.call(
             "getspendtx",
-            Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
+            &[
+                jsonrpc::arg(inputs),
+                jsonrpc::arg(outputs),
+                jsonrpc::arg(feerate),
+            ],
         )
         .map(|mut res: SpendTransaction| {
             res.feerate = *feerate;
@@ -187,7 +195,8 @@ impl RevaultD {
 
     pub fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
         let spend_tx = base64::encode(&consensus::serialize(psbt));
-        let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
+        let _res: serde_json::value::Value =
+            self.call("updatespendtx", &[jsonrpc::arg(spend_tx)])?;
         Ok(())
     }
 
@@ -195,26 +204,26 @@ impl RevaultD {
         &self,
         statuses: Option<&[SpendTxStatus]>,
     ) -> Result<ListSpendTransactionsResponse, RevaultDError> {
-        self.call("listspendtxs", Some(vec![statuses]))
+        self.call("listspendtxs", &[jsonrpc::arg(statuses)])
     }
 
     pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
+        let _res: serde_json::value::Value = self.call("delspendtx", &[jsonrpc::arg(txid)])?;
         Ok(())
     }
 
     pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
+        let _res: serde_json::value::Value = self.call("setspendtx", &[jsonrpc::arg(txid)])?;
         Ok(())
     }
 
     pub fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
+        let _res: serde_json::value::Value = self.call("revault", &[jsonrpc::arg(outpoint)])?;
         Ok(())
     }
 
     pub fn emergency(&self) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
+        let _res: serde_json::value::Value = self.call("emergency", &[])?;
         Ok(())
     }
 }
