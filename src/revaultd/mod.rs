@@ -302,7 +302,7 @@ pub async fn start_daemon(config_path: &Path, revaultd_path: &Path) -> Result<()
         }
     }
 
-    return Err(RevaultDError::StartError(
+    Err(RevaultDError::StartError(
         "Child did not terminate, do you have `daemon=false` in Revault conf?".to_string(),
-    ));
+    ))
 }

@@ -49,14 +49,20 @@ button!(
 
 pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Container<'a, T> {
     match icon {
-        None => Container::new(text::simple(text)).padding(5),
+        None => Container::new(text::simple(text))
+            .width(iced::Length::Fill)
+            .align_x(iced::Align::Center)
+            .padding(5),
         Some(i) => Container::new(
             Row::new()
                 .push(i)
                 .push(text::simple(text))
                 .spacing(10)
+                .width(iced::Length::Fill)
                 .align_items(iced::Align::Center),
         )
+        .width(iced::Length::Fill)
+        .align_x(iced::Align::Center)
         .padding(5),
     }
 }

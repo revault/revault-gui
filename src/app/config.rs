@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use crate::revaultd::config::default_datadir;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Path to revaultd configuration file.
     pub revaultd_config_path: PathBuf,
@@ -15,7 +15,18 @@ pub struct Config {
     pub debug: Option<bool>,
 }
 
+pub const DEFAULT_FILE_NAME: &str = "revault_gui.toml";
+
 impl Config {
+    pub fn new(revaultd_config_path: PathBuf) -> Self {
+        Self {
+            revaultd_config_path,
+            revaultd_path: None,
+            log_level: None,
+            debug: None,
+        }
+    }
+
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let config = std::fs::read(path)
             .map_err(|e| match e.kind() {
@@ -34,7 +45,7 @@ impl Config {
         let mut datadir = default_datadir().map_err(|_| {
             ConfigError::Unexpected("Could not locate the default datadir directory.".to_owned())
         })?;
-        datadir.push("revault_gui.toml");
+        datadir.push(DEFAULT_FILE_NAME);
         Ok(datadir)
     }
 }
