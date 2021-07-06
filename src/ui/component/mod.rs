@@ -1,14 +1,11 @@
 pub mod badge;
 pub mod button;
 pub mod form;
-pub mod image;
 pub mod text;
 
 use super::{color, font, icon};
 
 use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
-
-use image::revault_colored_logo;
 
 use std::cmp::Ordering;
 
@@ -23,13 +20,10 @@ pub fn scroll<'a, T: 'a>(
 }
 
 pub fn navbar<'a, T: 'a>(notification: Option<Container<'a, T>>) -> Container<'a, T> {
-    let svg = revault_colored_logo()
-        .width(Length::Units(100))
-        .height(Length::Fill);
     let mut content = Row::new()
         .push(Column::new().width(Length::Units(10)))
         .push(
-            Container::new(svg)
+            Container::new(text::bold(text::simple("REVAULT")))
                 .padding(5)
                 .center_x()
                 .width(Length::Shrink),

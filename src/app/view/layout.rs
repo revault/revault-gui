@@ -2,7 +2,7 @@ use crate::{
     app::error::Error,
     ui::{
         color,
-        component::{card, image::revault_colored_logo, text},
+        component::{card, text},
     },
 };
 
@@ -31,11 +31,7 @@ pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
 }
 
 pub fn large_logo<T>() -> Container<'static, T> {
-    Container::new(
-        revault_colored_logo()
-            .width(Length::Units(300))
-            .height(Length::Fill),
-    )
+    Container::new(text::bold(text::simple("REVAULT")).size(100))
 }
 
 pub fn dashboard<'a, T: 'a>(

@@ -7,9 +7,7 @@ use crate::{
     installer::message::{self, Message},
     revault::Role,
     ui::{
-        component::{
-            button, card, form, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
-        },
+        component::{button, card, form, scroll, text, ContainerBackgroundStyle},
         icon,
     },
 };
@@ -17,11 +15,10 @@ use crate::{
 pub fn welcome(install_button: &mut Button) -> Element<Message> {
     Container::new(Container::new(
         Column::new()
-            .push(Container::new(
-                revault_colored_logo()
-                    .width(Length::Units(400))
-                    .height(Length::Fill),
-            ))
+            .push(
+                Container::new(text::bold(text::simple("REVAULT")).size(100))
+                    .align_x(Align::Center),
+            )
             .push(
                 button::primary(install_button, button::button_content(None, "Install"))
                     .on_press(Message::Next)
