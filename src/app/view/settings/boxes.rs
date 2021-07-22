@@ -42,7 +42,6 @@ pub trait SettingsBox {
 #[derive(Debug, Clone, Default)]
 pub struct SettingsBoxes {
     pub general: GeneralBox,
-    pub bitcoind: BitcoindBox,
     pub scripts: ScriptsBox,
     pub manager: ManagerBox,
     pub stakeholder: StakeholderBox,
@@ -94,47 +93,6 @@ impl SettingsBox for GeneralBox {
                 config
                     .log_level
                     .clone()
-                    .unwrap_or_else(|| "Not set".to_string()),
-            ),
-        ];
-        let mut column = Column::new();
-        for (k, v) in rows {
-            column = column.push(
-                Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
-            );
-        }
-        column
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct BitcoindBox {}
-
-impl SettingsBox for BitcoindBox {
-    fn title(&self) -> &'static str {
-        "Bitcoind"
-    }
-
-    fn description(&self) -> &'static str {
-        ""
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let config = &config.bitcoind_config;
-        let rows = vec![
-            ("Network", config.network.to_string()),
-            (
-                "Cookie file path",
-                config.cookie_path.to_str().unwrap().to_string(),
-            ),
-            ("Socket address", config.addr.to_string()),
-            (
-                "Poll interval",
-                config
-                    .poll_interval_secs
-                    .map(|p| format!("{} seconds", p))
                     .unwrap_or_else(|| "Not set".to_string()),
             ),
         ];

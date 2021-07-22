@@ -44,7 +44,7 @@ impl App {
                 Menu::Send => ManagerSendState::new(revaultd).into(),
                 // Manager cannot delegate funds, the user is redirected to the home.
                 Menu::DelegateFunds => ManagerHomeState::new(revaultd).into(),
-                Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
+                Menu::Settings => SettingsState::new(revaultd, self.config.clone()).into(),
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
@@ -54,7 +54,7 @@ impl App {
                 Menu::Network => StakeholderNetworkState::new(revaultd).into(),
                 Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
-                Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
+                Menu::Settings => SettingsState::new(revaultd, self.config.clone()).into(),
                 Menu::Emergency => EmergencyState::new(revaultd).into(),
                 _ => unreachable!(),
             },

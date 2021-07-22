@@ -1,12 +1,21 @@
 use crate::ui::{
     color,
     icon::{
-        block_icon, deposit_icon, person_check_icon, send_icon, shield_check_icon, shield_icon,
-        shield_notif_icon, turnback_icon,
+        block_icon, deposit_icon, network_icon, person_check_icon, send_icon, shield_check_icon,
+        shield_icon, shield_notif_icon, turnback_icon,
     },
 };
 
 use iced::{container, Container, Length};
+
+pub fn network<'a, T: 'a>() -> Container<'a, T> {
+    let icon = network_icon().width(Length::Units(20));
+    Container::new(icon)
+        .width(Length::Units(40))
+        .height(Length::Units(40))
+        .align_x(iced::Align::Center)
+        .align_y(iced::Align::Center)
+}
 
 pub fn person_check<'a, T: 'a>() -> Container<'a, T> {
     let icon = person_check_icon().width(Length::Units(20));
