@@ -15,12 +15,11 @@ use iced::{Command, Element, Subscription};
 pub use charging::ChargingState;
 pub use deposit::DepositState;
 pub use emergency::EmergencyState;
-pub use manager::{ManagerHomeState, ManagerNetworkState, ManagerSendState};
+pub use manager::{ManagerHomeState, ManagerSendState};
 pub use settings::SettingsState;
 pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};
 pub use stakeholder::{
     StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState,
-    StakeholderNetworkState,
 };
 pub use vaults::VaultsState;
 

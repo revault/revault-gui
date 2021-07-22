@@ -20,7 +20,3 @@ pub fn bold(t: Text) -> Text {
 pub fn success(t: Text) -> Text {
     t.color(color::SUCCESS)
 }
-
-pub fn danger(t: Text) -> Text {
-    t.color(color::PRIMARY)
-}

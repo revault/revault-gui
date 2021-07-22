@@ -3,7 +3,6 @@ pub enum Menu {
     Deposit,
     Emergency,
     Home,
-    Network,
     Send,
     CreateVaults,
     DelegateFunds,

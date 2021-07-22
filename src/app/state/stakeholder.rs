@@ -19,7 +19,6 @@ use crate::app::{
     view::{
         vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
         Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
-        StakeholderNetworkView,
     },
 };
 
@@ -161,64 +160,6 @@ impl State for StakeholderHomeState {
 
 impl From<StakeholderHomeState> for Box<dyn State> {
     fn from(s: StakeholderHomeState) -> Box<dyn State> {
-        Box::new(s)
-    }
-}
-
-#[derive(Debug)]
-pub struct StakeholderNetworkState {
-    revaultd: Arc<RevaultD>,
-
-    blockheight: Option<u64>,
-    warning: Option<Error>,
-
-    view: StakeholderNetworkView,
-}
-
-impl StakeholderNetworkState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        StakeholderNetworkState {
-            revaultd,
-            blockheight: None,
-            warning: None,
-            view: StakeholderNetworkView::new(),
-        }
-    }
-}
-
-impl State for StakeholderNetworkState {
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::BlockHeight(b) => {
-                match b {
-                    Ok(height) => {
-                        self.blockheight = height.into();
-                    }
-                    Err(e) => {
-                        self.warning = Error::from(e).into();
-                    }
-                };
-                Command::none()
-            }
-            _ => Command::none(),
-        }
-    }
-
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view
-            .view(ctx, self.warning.as_ref(), self.blockheight.as_ref())
-    }
-
-    fn load(&self) -> Command<Message> {
-        Command::batch(vec![Command::perform(
-            get_blockheight(self.revaultd.clone()),
-            Message::BlockHeight,
-        )])
-    }
-}
-
-impl From<StakeholderNetworkState> for Box<dyn State> {
-    fn from(s: StakeholderNetworkState) -> Box<dyn State> {
         Box::new(s)
     }
 }
