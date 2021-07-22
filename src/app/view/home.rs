@@ -107,55 +107,41 @@ fn manager_overview<'a, T: 'a>(
     active_funds: u64,
     inactive_funds: u64,
 ) -> Container<'a, T> {
-    card::white(Container::new(
-        Column::new()
-            .push(text::bold(text::simple("overview:")))
-            .push(
-                Column::new()
-                    .push(
-                        Row::new()
-                            .push(Column::new().width(Length::Fill))
-                            .push(
-                                text::bold(text::simple(
-                                    &ctx.converter.converts(active_funds).to_string(),
-                                ))
-                                .size(50),
-                            )
-                            .push(text::simple(&format!(" {}", ctx.converter.unit)))
-                            .align_items(Align::Center),
-                    )
-                    .push(
-                        Container::new(
-                            text::simple("are available to managers")
-                                .horizontal_alignment(HorizontalAlignment::Right)
-                                .width(Length::Fill),
+    Container::new(
+        Column::new().push(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(Column::new().width(Length::Fill))
+                        .push(
+                            text::bold(text::simple(
+                                &ctx.converter.converts(active_funds).to_string(),
+                            ))
+                            .size(50),
                         )
-                        .width(Length::Fill),
+                        .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                        .align_items(Align::Center),
+                )
+                .push(Column::new().padding(5))
+                .push(
+                    Row::new()
+                        .push(Column::new().width(Length::Fill))
+                        .push(text::bold(text::simple(
+                            &ctx.converter.converts(inactive_funds).to_string(),
+                        )))
+                        .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                        .align_items(Align::Center),
+                )
+                .push(
+                    Container::new(
+                        text::simple("are held by stakeholders")
+                            .horizontal_alignment(HorizontalAlignment::Right)
+                            .width(Length::Fill),
                     )
-                    .push(Column::new().padding(5))
-                    .push(
-                        Row::new()
-                            .push(Column::new().width(Length::Fill))
-                            .push(
-                                text::bold(text::simple(
-                                    &ctx.converter.converts(inactive_funds).to_string(),
-                                ))
-                                .color(color::SECONDARY)
-                                .size(40),
-                            )
-                            .push(text::simple(&format!(" {}", ctx.converter.unit)))
-                            .align_items(Align::Center),
-                    )
-                    .push(
-                        Container::new(
-                            text::simple("are held by stakeholders")
-                                .horizontal_alignment(HorizontalAlignment::Right)
-                                .width(Length::Fill),
-                        )
-                        .width(Length::Fill),
-                    ),
-            ),
-    ))
+                    .width(Length::Fill),
+                ),
+        ),
+    )
 }
 
 #[derive(Debug)]
