@@ -94,13 +94,13 @@ impl Vault {
             VaultMessage::SelectRevault => {
                 self.section = VaultSection::new_revault_section();
             }
-            VaultMessage::Delegate => {
+            VaultMessage::SelectDelegate => {
                 return Command::perform(
                     get_unvault_tx(revaultd, self.vault.outpoint()),
                     VaultMessage::UnvaultTransaction,
                 );
             }
-            VaultMessage::Secure => {
+            VaultMessage::SelectSecure => {
                 return Command::perform(
                     get_revocation_txs(revaultd, self.vault.outpoint()),
                     VaultMessage::RevocationTransactions,
@@ -252,52 +252,63 @@ impl VaultSection {
                     }
                 }
             }
-            VaultMessage::Signed(res) => match self {
-                VaultSection::Delegate {
-                    warning, signer, ..
-                } => match res {
-                    Ok(()) => {
-                        *warning = None;
-                        signer.update(SignMessage::Success);
-                    }
-                    Err(e) => {
-                        *warning = Some(Error::RevaultDError(e));
-                    }
-                },
-                VaultSection::Secure {
-                    warning, signer, ..
-                } => match res {
-                    Ok(()) => {
-                        *warning = None;
-                        signer.update(SignMessage::Success);
-                    }
-                    Err(e) => {
-                        *warning = Some(Error::RevaultDError(e));
-                    }
-                },
-                _ => {}
-            },
-            VaultMessage::Sign(msg) => match self {
-                VaultSection::Delegate {
+            VaultMessage::Delegate(msg) => {
+                if let VaultSection::Delegate {
                     signer, warning, ..
-                } => {
+                } = self
+                {
                     *warning = None;
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
                         return Command::perform(
                             set_unvault_tx(revaultd, vault.outpoint(), psbt.clone()),
-                            VaultMessage::Signed,
+                            VaultMessage::Delegated,
                         );
                     }
                 }
-                VaultSection::Secure {
+            }
+            VaultMessage::Delegated(res) => {
+                if let Self::Delegate {
+                    warning, signer, ..
+                } = self
+                {
+                    match res {
+                        Ok(()) => {
+                            *warning = None;
+                            signer.update(SignMessage::Success);
+                        }
+                        Err(e) => {
+                            *warning = Some(Error::RevaultDError(e));
+                        }
+                    }
+                }
+            }
+            VaultMessage::Secured(res) => {
+                if let VaultSection::Secure {
+                    warning, signer, ..
+                } = self
+                {
+                    match res {
+                        Ok(()) => {
+                            *warning = None;
+                            signer.update(SignMessage::Success);
+                        }
+                        Err(e) => {
+                            *warning = Some(Error::RevaultDError(e));
+                        }
+                    }
+                }
+            }
+            VaultMessage::Secure(msg) => {
+                if let VaultSection::Secure {
                     signer,
                     emergency_tx,
                     emergency_unvault_tx,
                     cancel_tx,
                     warning,
                     ..
-                } => {
+                } = self
+                {
                     *warning = None;
                     signer.update(msg);
                     if let Some(psbt) = &signer.signed_psbt {
@@ -324,15 +335,14 @@ impl VaultSection {
                                         emergency_unvault_tx.0.clone(),
                                         cancel_tx.0.clone(),
                                     ),
-                                    VaultMessage::Signed,
+                                    VaultMessage::Secured,
                                 );
                             }
                             _ => {}
                         }
                     }
                 }
-                _ => {}
-            },
+            }
             _ => {}
         };
         Command::none()
@@ -364,7 +374,7 @@ impl VaultSection {
                     &emergency_tx,
                     &emergency_unvault_tx,
                     &cancel_tx,
-                    signer.view(ctx).map(VaultMessage::Sign),
+                    signer.view(ctx).map(VaultMessage::Secure),
                 )
                 .map(move |msg| Message::Vault(outpoint.clone(), msg)),
             Self::Revault {

@@ -201,7 +201,7 @@ impl VaultOnChainTransactionsPanel {
                                     )
                                     .on_press(Message::Vault(
                                         vault.outpoint(),
-                                        VaultMessage::Secure,
+                                        VaultMessage::SelectSecure,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -226,7 +226,7 @@ impl VaultOnChainTransactionsPanel {
                                     )
                                     .on_press(Message::Vault(
                                         vault.outpoint(),
-                                        VaultMessage::Delegate,
+                                        VaultMessage::SelectDelegate,
                                     )),
                                 )
                                 .width(Length::Shrink),
@@ -640,7 +640,7 @@ fn vault_delegate<'a>(
                     .align_items(Align::Center),
             ),
         )
-        .on_press(VaultMessage::Delegate),
+        .on_press(VaultMessage::SelectDelegate),
     )
     .into()
 }
@@ -849,7 +849,7 @@ impl DelegateVaultView {
                     )
                     .push(signer.map(move |msg| match msg {
                         SignMessage::Clipboard(s) => Message::Clipboard(s),
-                        _ => Message::Vault(outpoint.clone(), VaultMessage::Sign(msg)),
+                        _ => Message::Vault(outpoint.clone(), VaultMessage::Delegate(msg)),
                     }))
                     .spacing(20),
             )))
