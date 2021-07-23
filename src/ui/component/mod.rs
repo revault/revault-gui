@@ -134,8 +134,8 @@ pub mod card {
         fn style(&self) -> container::Style {
             container::Style {
                 border_color: color::SUCCESS,
-                background: color::SUCCESS_LIGHT.into(),
-                text_color: color::FOREGROUND.into(),
+                background: color::FOREGROUND.into(),
+                text_color: color::SUCCESS.into(),
                 border_radius: 10.0,
                 border_width: 1.0,
             }
@@ -256,7 +256,8 @@ pub mod card {
             container::Style {
                 border_radius: 10.0,
                 text_color: color::WARNING.into(),
-                background: color::WARNING_LIGHT.into(),
+                background: color::FOREGROUND.into(),
+                border_color: color::WARNING_LIGHT.into(),
                 ..container::Style::default()
             }
         }

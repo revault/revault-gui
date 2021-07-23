@@ -309,6 +309,13 @@ impl State for ManagerSendState {
     fn update(&mut self, message: Message) -> Command<Message> {
         match self {
             Self::CreateSendTransaction(state) => match message {
+                Message::SpendTx(SpendTxMessage::Select(psbt)) => {
+                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
+                        state.revaultd.clone(),
+                        psbt,
+                    ));
+                    self.load()
+                }
                 Message::SpendTx(SpendTxMessage::Import) => {
                     *self = ManagerSendState::ImportSendTransaction(
                         ManagerImportSendTransactionState::new(state.revaultd.clone()),
