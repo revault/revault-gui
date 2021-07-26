@@ -15,7 +15,6 @@ use crate::{
     },
     revaultd::model::VaultStatus,
     ui::{
-        color,
         component::{button, card, navbar, scroll, text, TooltipStyle},
         icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
     },
