@@ -1,42 +1,70 @@
 use std::convert::From;
+use std::sync::Arc;
 
 use iced::{Command, Element};
 
 use super::State;
 
-use crate::revaultd::config::Config;
+use crate::app::config::Config;
+use crate::revaultd::RevaultD;
 
 use crate::app::{
     error::Error,
     message::Message,
+    state::cmd::get_blockheight,
     view::{Context, SettingsView},
 };
 
 #[derive(Debug)]
 pub struct SettingsState {
-    view: SettingsView,
-    warning: Option<Error>,
+    blockheight: u64,
+    revaultd: Arc<RevaultD>,
     config: Config,
+    warning: Option<Error>,
+    view: SettingsView,
 }
 
 impl SettingsState {
-    pub fn new(config: Config) -> Self {
+    pub fn new(revaultd: Arc<RevaultD>, config: Config) -> Self {
         SettingsState {
-            view: SettingsView::new(),
+            blockheight: 0,
+            revaultd,
             config,
+            view: SettingsView::new(),
             warning: None,
         }
     }
 }
 
 impl State for SettingsState {
-    fn update(&mut self, _message: Message) -> Command<Message> {
-        Command::none()
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::BlockHeight(b) => {
+                match b {
+                    Ok(height) => {
+                        self.blockheight = height.into();
+                    }
+                    Err(e) => {
+                        self.warning = Error::from(e).into();
+                    }
+                };
+                Command::none()
+            }
+            _ => Command::none(),
+        }
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view
-            .view(ctx, self.warning.as_ref(), self.config.clone())
+        self.view.view(
+            ctx,
+            self.warning.as_ref(),
+            self.blockheight,
+            &self.revaultd.config,
+        )
+    }
+
+    fn load(&self) -> Command<Message> {
+        Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight)
     }
 }
 

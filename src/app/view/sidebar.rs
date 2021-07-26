@@ -11,8 +11,8 @@ use crate::{
         color,
         component::{button, separation, text, TransparentPickListStyle},
         icon::{
-            deposit_icon, dot_icon, home_icon, network_icon, person_check_icon, plus_icon,
-            send_icon, settings_icon, vaults_icon, warning_icon,
+            deposit_icon, home_icon, person_check_icon, plus_icon, send_icon, settings_icon,
+            vaults_icon, warning_icon,
         },
     },
 };
@@ -86,31 +86,6 @@ impl Sidebar {
                 button::button_content(Some(vaults_icon()), "Vaults"),
             )
             .on_press(Message::Menu(Menu::Vaults))
-        };
-        let network_button = if context.menu == Menu::Network {
-            button::primary(
-                &mut self.network_menu_button,
-                button::button_content(Some(network_icon()), "Network"),
-            )
-            .on_press(Message::Menu(Menu::Network))
-        } else {
-            let mut row = Row::new()
-                .push(network_icon())
-                .push(text::simple("Network"))
-                .spacing(10)
-                .align_items(iced::Align::Center);
-
-            if context.network_up {
-                row = row.push(text::success(dot_icon().size(7)))
-            } else {
-                row = row.push(text::danger(dot_icon().size(7)))
-            }
-
-            button::transparent(
-                &mut self.network_menu_button,
-                Container::new(row).padding(5),
-            )
-            .on_press(Message::Menu(Menu::Network))
         };
 
         let settings_button = if context.menu == Menu::Settings {
@@ -207,7 +182,6 @@ impl Sidebar {
                 separation().width(iced::Length::Units(200)),
                 Container::new(home_button.width(Length::Units(200))),
                 Container::new(vaults_button.width(Length::Units(200))),
-                Container::new(network_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
                 Container::new(actions.width(Length::Units(200))),
             ]),

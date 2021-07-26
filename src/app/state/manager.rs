@@ -29,7 +29,7 @@ use crate::app::{
         ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
         ManagerSendWelcomeView, ManagerSignView, ManagerSpendTransactionCreatedView,
     },
-    view::{vault::VaultListItemView, Context, ManagerHomeView, ManagerNetworkView},
+    view::{vault::VaultListItemView, Context, ManagerHomeView},
 };
 
 #[derive(Debug)]
@@ -801,63 +801,5 @@ impl ManagerSendInput {
         match msg {
             InputMessage::Selected(selected) => self.selected = selected,
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct ManagerNetworkState {
-    revaultd: Arc<RevaultD>,
-
-    blockheight: Option<u64>,
-    warning: Option<Error>,
-
-    view: ManagerNetworkView,
-}
-
-impl ManagerNetworkState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        ManagerNetworkState {
-            revaultd,
-            blockheight: None,
-            warning: None,
-            view: ManagerNetworkView::new(),
-        }
-    }
-}
-
-impl State for ManagerNetworkState {
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::BlockHeight(b) => {
-                match b {
-                    Ok(height) => {
-                        self.blockheight = height.into();
-                    }
-                    Err(e) => {
-                        self.warning = Error::from(e).into();
-                    }
-                };
-                Command::none()
-            }
-            _ => Command::none(),
-        }
-    }
-
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view
-            .view(ctx, self.warning.as_ref(), self.blockheight.as_ref())
-    }
-
-    fn load(&self) -> Command<Message> {
-        Command::batch(vec![Command::perform(
-            get_blockheight(self.revaultd.clone()),
-            Message::BlockHeight,
-        )])
-    }
-}
-
-impl From<ManagerNetworkState> for Box<dyn State> {
-    fn from(s: ManagerNetworkState) -> Box<dyn State> {
-        Box::new(s)
     }
 }

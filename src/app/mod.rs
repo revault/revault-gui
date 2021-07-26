@@ -15,9 +15,9 @@ pub use message::Message;
 use menu::Menu;
 use message::{SignMessage, SpendTxMessage, VaultMessage};
 use state::{
-    ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerNetworkState,
-    ManagerSendState, SettingsState, StakeholderCreateVaultsState, StakeholderDelegateFundsState,
-    StakeholderHomeState, StakeholderNetworkState, State, VaultsState,
+    ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerSendState, SettingsState,
+    StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState, State,
+    VaultsState,
 };
 
 use crate::{app::view::Context, conversion::Converter, revault::Role, revaultd::RevaultD};
@@ -40,21 +40,19 @@ impl App {
                 Menu::Deposit => DepositState::new(revaultd).into(),
                 Menu::Home => ManagerHomeState::new(revaultd).into(),
                 Menu::Vaults => VaultsState::new(revaultd).into(),
-                Menu::Network => ManagerNetworkState::new(revaultd).into(),
                 Menu::Send => ManagerSendState::new(revaultd).into(),
                 // Manager cannot delegate funds, the user is redirected to the home.
                 Menu::DelegateFunds => ManagerHomeState::new(revaultd).into(),
-                Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
+                Menu::Settings => SettingsState::new(revaultd, self.config.clone()).into(),
                 _ => unreachable!(),
             },
             Role::Stakeholder => match self.context.menu {
                 Menu::Deposit => StakeholderHomeState::new(revaultd).into(),
                 Menu::Home => StakeholderHomeState::new(revaultd).into(),
                 Menu::Vaults => VaultsState::new(revaultd).into(),
-                Menu::Network => StakeholderNetworkState::new(revaultd).into(),
                 Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
                 Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
-                Menu::Settings => SettingsState::new(revaultd.config.clone()).into(),
+                Menu::Settings => SettingsState::new(revaultd, self.config.clone()).into(),
                 Menu::Emergency => EmergencyState::new(revaultd).into(),
                 _ => unreachable!(),
             },
