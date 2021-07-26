@@ -700,15 +700,19 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     ctx: &Context,
     inputs: &[model::Vault],
     psbt: &Psbt,
+    change_index: Option<usize>,
+    cpfp_index: usize,
     feerate: Option<&u32>,
 ) -> Container<'a, T> {
-    // TODO: This is not the total fees, as it is missing the unvault fees
-    // (and it's different from the one displayed in the home, which is
-    // confusing)
     let mut total_fees = 0;
     let mut col_input = Column::new()
-        .push(text::bold(text::simple("Inputs")))
+        .push(text::bold(text::simple(&format!(
+            "{} {} consumed",
+            inputs.len(),
+            if inputs.len() == 1 { "Vault" } else { "Vaults" }
+        ))))
         .spacing(10);
+
     for input in inputs {
         total_fees += input.amount;
         col_input = col_input.push(card::simple(Container::new(
@@ -725,15 +729,40 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 .align_items(Align::Center),
         )));
     }
+
+    // number recipients = number output - change output - cpfp output
+    let number_recipients = if change_index.is_some() {
+        psbt.global.unsigned_tx.output.len() - 2
+    } else {
+        psbt.global.unsigned_tx.output.len() - 1
+    };
+
     let mut col_output = Column::new()
-        .push(text::bold(text::simple("Outputs")))
+        .push(text::bold(text::simple(&format!(
+            "{} {}",
+            number_recipients,
+            if number_recipients == 1 {
+                "Recipient"
+            } else {
+                "Recipients"
+            }
+        ))))
         .spacing(10);
-    for output in &psbt.global.unsigned_tx.output {
+    for (i, output) in psbt.global.unsigned_tx.output.iter().enumerate() {
+        if i == cpfp_index {
+            continue;
+        }
+
         if total_fees > output.value {
             total_fees -= output.value;
         } else {
             total_fees = 0;
         }
+
+        if Some(i) == change_index {
+            continue;
+        }
+
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network).unwrap();
         col_output = col_output.push(card::simple(Container::new(
             Row::new()
@@ -757,6 +786,38 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 .push(text::bold(text::simple(&format!("{} sats/vbyte", feerate)))),
         )
     }
+
+    let right_column = if let Some(index) = change_index {
+        let change_output = &psbt.global.unsigned_tx.output[index];
+        let addr =
+            bitcoin::Address::from_script(&change_output.script_pubkey, ctx.network).unwrap();
+        Column::new()
+            .push(
+                Column::new()
+                    .push(text::bold(text::simple("Change")))
+                    .push(card::simple(Container::new(
+                        Row::new()
+                            .push(
+                                Container::new(text::small(&addr.to_string())).width(Length::Fill),
+                            )
+                            .push(Container::new(
+                                text::bold(text::small(&format!(
+                                    "{}",
+                                    ctx.converter.converts(change_output.value)
+                                )))
+                                .width(Length::Shrink),
+                            ))
+                            .spacing(5)
+                            .align_items(Align::Center),
+                    )))
+                    .spacing(10),
+            )
+            .push(col_output)
+            .spacing(10)
+    } else {
+        col_output
+    };
+
     Container::new(
         Column::new()
             .push(
@@ -773,7 +834,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
             .push(
                 Row::new()
                     .push(col_input.width(Length::FillPortion(1)))
-                    .push(col_output.width(Length::FillPortion(1)))
+                    .push(right_column.width(Length::FillPortion(1)))
                     .spacing(20),
             )
             .spacing(20),
@@ -803,6 +864,8 @@ impl ManagerSignView {
         ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
+        cpfp_index: usize,
+        change_index: Option<usize>,
         feerate: &u32,
         warning: Option<&Error>,
         signer: Element<'a, Message>,
@@ -844,7 +907,14 @@ impl ManagerSignView {
             .padding(10)
             .spacing(10);
         let mut col = Column::new()
-            .push(spend_tx_with_feerate_view(ctx, inputs, psbt, Some(feerate)))
+            .push(spend_tx_with_feerate_view(
+                ctx,
+                inputs,
+                psbt,
+                change_index,
+                cpfp_index,
+                Some(feerate),
+            ))
             .spacing(20)
             .max_width(1000);
         if let Some(error) = warning {
@@ -904,6 +974,8 @@ impl ManagerSpendTransactionCreatedView {
         ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
+        cpfp_index: usize,
+        change_index: Option<usize>,
         feerate: &u32,
     ) -> Element<'a, Message> {
         Container::new(
@@ -936,7 +1008,14 @@ impl ManagerSpendTransactionCreatedView {
                         &mut self.scroll,
                         Container::new(
                             Column::new()
-                                .push(spend_tx_with_feerate_view(ctx, inputs, psbt, Some(feerate)))
+                                .push(spend_tx_with_feerate_view(
+                                    ctx,
+                                    inputs,
+                                    psbt,
+                                    change_index,
+                                    cpfp_index,
+                                    Some(feerate),
+                                ))
                                 .spacing(20)
                                 .max_width(1000),
                         )

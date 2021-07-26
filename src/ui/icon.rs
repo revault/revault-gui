@@ -93,6 +93,20 @@ pub fn trash_icon() -> Text {
     icon('\u{F5DE}')
 }
 
+pub fn key_icon() -> Text {
+    icon('\u{F44F}')
+}
+
+#[allow(dead_code)]
+pub fn stakeholder_icon() -> Text {
+    icon('\u{F4AE}')
+}
+
+#[allow(dead_code)]
+pub fn manager_icon() -> Text {
+    icon('\u{F4B4}')
+}
+
 pub fn done_icon() -> Text {
     icon('\u{F26B}')
 }

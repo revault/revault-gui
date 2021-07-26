@@ -449,6 +449,8 @@ pub struct ManagerCreateSendTransactionState {
     outputs: Vec<ManagerSendOutput>,
     feerate: Option<u32>,
     psbt: Option<(Psbt, u32)>,
+    cpfp_index: usize,
+    change_index: Option<usize>,
     processing: bool,
     valid_feerate: bool,
 
@@ -465,6 +467,8 @@ impl ManagerCreateSendTransactionState {
             outputs: vec![ManagerSendOutput::new()],
             feerate: None,
             psbt: None,
+            cpfp_index: 0,
+            change_index: None,
             processing: false,
             valid_feerate: false,
         }
@@ -683,6 +687,8 @@ impl State for ManagerCreateSendTransactionState {
                     ctx,
                     &selected_inputs,
                     &psbt,
+                    self.cpfp_index,
+                    self.change_index,
                     &feerate,
                     self.warning.as_ref(),
                     signer
@@ -692,7 +698,14 @@ impl State for ManagerCreateSendTransactionState {
             }
             ManagerSendStep::Success(v) => {
                 let (psbt, _) = self.psbt.as_ref().unwrap();
-                v.view(ctx, &selected_inputs, &psbt, &self.feerate.unwrap())
+                v.view(
+                    ctx,
+                    &selected_inputs,
+                    &psbt,
+                    self.cpfp_index,
+                    self.change_index,
+                    &self.feerate.unwrap(),
+                )
             }
         }
     }
