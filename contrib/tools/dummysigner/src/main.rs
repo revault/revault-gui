@@ -1,3 +1,7 @@
+mod app;
+
 fn main() {
-    println!("Hello, world!");
+    if let Err(e) = app::run() {
+        println!("{}", e);
+    }
 }
