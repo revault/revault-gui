@@ -445,7 +445,7 @@ impl VaultView for VaultListItemView {
                                 .push(vault_badge(&vault))
                                 .push(
                                     Column::new()
-                                        .push(text::bold(text::small(&vault.address)))
+                                        .push(text::bold(text::small(&vault.outpoint())))
                                         .push(text::small(&format!(
                                             "{} ( {} )",
                                             &vault.status, updated_at
