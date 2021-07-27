@@ -358,7 +358,7 @@ impl StakeholderDelegateFundsState {
         if let Some(selected) = &mut self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 return selected
-                    .update(self.revaultd.clone(), VaultMessage::Delegate)
+                    .update(self.revaultd.clone(), VaultMessage::SelectDelegate)
                     .map(move |msg| Message::Vault(outpoint.clone(), msg));
             }
         }
@@ -369,7 +369,7 @@ impl StakeholderDelegateFundsState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let mut selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.update(self.revaultd.clone(), VaultMessage::Delegate);
+            let cmd = selected_vault.update(self.revaultd.clone(), VaultMessage::SelectDelegate);
             self.selected_vault = Some(selected_vault);
             return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
         };
@@ -401,7 +401,7 @@ impl State for StakeholderDelegateFundsState {
             },
             Message::Vault(outpoint, msg) => match msg {
                 VaultMessage::Select => return self.on_vault_select(outpoint),
-                VaultMessage::Delegate => return self.on_vault_delegate(outpoint),
+                VaultMessage::SelectDelegate => return self.on_vault_delegate(outpoint),
                 _ => {
                     if let Some(selected) = &mut self.selected_vault {
                         if selected.vault.outpoint() == outpoint {
