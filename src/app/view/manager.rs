@@ -944,13 +944,23 @@ impl ManagerSpendTransactionCreatedView {
                         .align_x(Align::Center),
                     )
                     .align_items(Align::Center)
-                    .width(Length::Fill)
-                    .height(Length::FillPortion(4)),
+                    .width(Length::Fill),
                 )
                 .push(
-                    Container::new(text::success(text::simple(
-                        "Your transaction has been saved",
-                    )))
+                    card::success(Container::new(
+                        Column::new()
+                            .push(text::simple("Your transaction has been saved"))
+                            .push(
+                                button::success(
+                                    &mut self.next_button,
+                                    button::button_content(None, "Continue"),
+                                )
+                                .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
+                            )
+                            .spacing(20)
+                            .align_items(Align::Center),
+                    ))
+                    .padding(20)
                     .width(Length::Fill)
                     .align_x(Align::Center),
                 )
