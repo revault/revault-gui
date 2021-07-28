@@ -13,8 +13,16 @@ fn icon(unicode: char) -> Text {
         .size(20)
 }
 
+pub fn bitcoin_icon() -> Text {
+    icon('\u{F635}')
+}
+
+pub fn history_icon() -> Text {
+    icon('\u{F292}')
+}
+
 pub fn home_icon() -> Text {
-    icon('\u{F3DC}')
+    icon('\u{F3FC}')
 }
 
 pub fn send_icon() -> Text {
@@ -25,18 +33,8 @@ pub fn deposit_icon() -> Text {
     icon('\u{F123}')
 }
 
-#[allow(dead_code)]
-pub fn withdrawal_icon() -> Text {
-    icon('\u{F144}')
-}
-
 pub fn turnback_icon() -> Text {
     icon('\u{F131}')
-}
-
-#[allow(dead_code)]
-pub fn history_icon() -> Text {
-    icon('\u{F292}')
 }
 
 pub fn vaults_icon() -> Text {
@@ -44,7 +42,7 @@ pub fn vaults_icon() -> Text {
 }
 
 pub fn settings_icon() -> Text {
-    icon('\u{F3C5}')
+    icon('\u{F3E5}')
 }
 
 pub fn block_icon() -> Text {
@@ -52,7 +50,7 @@ pub fn block_icon() -> Text {
 }
 
 pub fn network_icon() -> Text {
-    icon('\u{F3ED}')
+    icon('\u{F40D}')
 }
 
 pub fn dot_icon() -> Text {
@@ -64,50 +62,35 @@ pub fn clipboard_icon() -> Text {
 }
 
 pub fn shield_icon() -> Text {
-    icon('\u{F517}')
+    icon('\u{F53F}')
 }
 
 pub fn shield_notif_icon() -> Text {
-    icon('\u{F50A}')
+    icon('\u{F530}')
 }
 
 pub fn shield_check_icon() -> Text {
-    icon('\u{F509}')
+    icon('\u{F52F}')
 }
 
 pub fn person_check_icon() -> Text {
-    icon('\u{F4AF}')
-}
-
-#[allow(dead_code)]
-pub fn arrow_up_icon() -> Text {
-    icon('\u{F148}')
+    icon('\u{F4D6}')
 }
 
 pub fn tooltip_icon() -> Text {
-    icon('\u{F410}')
+    icon('\u{F431}')
 }
 
 pub fn plus_icon() -> Text {
-    icon('\u{F4D7}')
+    icon('\u{F4FE}')
 }
 
 pub fn warning_icon() -> Text {
-    icon('\u{F31B}')
+    icon('\u{F33B}')
 }
 
 pub fn trash_icon() -> Text {
-    icon('\u{F5A8}')
-}
-
-#[allow(dead_code)]
-pub fn stakeholder_icon() -> Text {
-    icon('\u{F4AE}')
-}
-
-#[allow(dead_code)]
-pub fn manager_icon() -> Text {
-    icon('\u{F4B4}')
+    icon('\u{F5DE}')
 }
 
 pub fn done_icon() -> Text {
