@@ -185,7 +185,7 @@ impl ManagerHomeState {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return Command::none();
+                return self.load();
             }
         }
 
