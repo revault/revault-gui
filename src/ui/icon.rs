@@ -13,6 +13,10 @@ fn icon(unicode: char) -> Text {
         .size(20)
 }
 
+pub fn bitcoin_icon() -> Text {
+    icon('\u{F635}')
+}
+
 pub fn history_icon() -> Text {
     icon('\u{F292}')
 }

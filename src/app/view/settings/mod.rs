@@ -81,7 +81,14 @@ pub fn bitcoind<'a, T: 'a>(blockheight: u64, config: &Config) -> Container<'a, T
     let mut col = Column::new()
         .push(
             Row::new()
-                .push(Container::new(text::bold(text::simple("Bitcoin Core"))).width(Length::Fill))
+                .push(
+                    Row::new()
+                        .push(badge::bitcoin_core())
+                        .push(text::bold(text::simple("Bitcoin Core")))
+                        .spacing(10)
+                        .align_items(iced::Align::Center)
+                        .width(Length::Fill),
+                )
                 .push(
                     Container::new(
                         Row::new()
@@ -93,6 +100,8 @@ pub fn bitcoind<'a, T: 'a>(blockheight: u64, config: &Config) -> Container<'a, T
                 ),
         )
         .spacing(20);
+
+    col = col.push(separation().width(Length::Fill));
 
     if blockheight != 0 {
         col = col.push(
@@ -123,8 +132,6 @@ pub fn bitcoind<'a, T: 'a>(blockheight: u64, config: &Config) -> Container<'a, T
                 ),
         );
     }
-
-    col = col.push(separation().width(Length::Fill));
 
     let config = &config.bitcoind_config;
     let rows = vec![
