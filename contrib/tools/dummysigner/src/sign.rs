@@ -1,4 +1,10 @@
-use revault_tx::bitcoin::util::{bip32::DerivationPath, psbt::PartiallySignedTransaction};
+use revault_tx::bitcoin::{
+    secp256k1,
+    util::{
+        bip32::{DerivationPath, ExtendedPrivKey},
+        psbt::PartiallySignedTransaction,
+    },
+};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
@@ -79,11 +85,17 @@ where
 #[derive(Debug)]
 pub struct Error(String);
 
-pub struct Signer {}
+pub struct Signer {
+    keys: Vec<ExtendedPrivKey>,
+    curve: secp256k1::Secp256k1<secp256k1::SignOnly>,
+}
 
 impl Signer {
-    pub fn new() -> Signer {
-        Self {}
+    pub fn new(keys: Vec<ExtendedPrivKey>) -> Signer {
+        Self {
+            keys,
+            curve: secp256k1::Secp256k1::signing_only(),
+        }
     }
 
     pub fn sign_unvault_tx(

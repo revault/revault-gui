@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use iced::{executor, Application, Clipboard, Command, Container, Element, Settings};
-use revault_tx::bitcoin::util::bip32::DerivationPath;
+use revault_tx::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use serde_json::json;
 
 use std::sync::Arc;
@@ -9,9 +9,13 @@ use tokio::sync::Mutex;
 
 use crate::{server, sign, view};
 
-pub fn run() -> iced::Result {
-    let settings = Settings::default();
+pub fn run(cfg: Config) -> iced::Result {
+    let settings = Settings::with_flags(cfg);
     App::run(settings)
+}
+
+pub struct Config {
+    pub keys: Vec<ExtendedPrivKey>,
 }
 
 pub struct App {
@@ -37,12 +41,12 @@ pub enum Message {
 impl Application for App {
     type Executor = executor::Default;
     type Message = Message;
-    type Flags = ();
+    type Flags = Config;
 
-    fn new(_flags: ()) -> (App, Command<Message>) {
+    fn new(cfg: Config) -> (App, Command<Message>) {
         (
             App {
-                signer: sign::Signer::new(),
+                signer: sign::Signer::new(cfg.keys),
                 status: AppStatus::Waiting,
             },
             Command::none(),
