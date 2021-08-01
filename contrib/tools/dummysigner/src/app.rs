@@ -99,6 +99,32 @@ impl Application for App {
                             )
                             .map(Message::Server);
                         }
+                        Some(Method::SignSpendTx {
+                            derivation_path,
+                            req,
+                            ..
+                        }) => {
+                            self.signer.sign_spend_tx(derivation_path, req).unwrap();
+                            return Command::perform(
+                                server::respond(writer.clone(), json!(req)),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
+                        Some(Method::SignRevocationTxs {
+                            derivation_path,
+                            req,
+                            ..
+                        }) => {
+                            self.signer
+                                .sign_revocation_txs(derivation_path, req)
+                                .unwrap();
+                            return Command::perform(
+                                server::respond(writer.clone(), json!(req)),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
                         _ => {}
                     }
                 }

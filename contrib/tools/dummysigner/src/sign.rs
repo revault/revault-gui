@@ -1,9 +1,11 @@
 use revault_tx::bitcoin::{
     secp256k1,
     util::{
+        bip143::SigHashCache,
         bip32::{DerivationPath, ExtendedPrivKey},
         psbt::PartiallySignedTransaction,
     },
+    SigHashType,
 };
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
@@ -98,11 +100,78 @@ impl Signer {
         }
     }
 
+    pub fn sign_spend_tx(
+        &self,
+        derivation_path: &DerivationPath,
+        spend_tx: &mut SpendTransaction,
+    ) -> Result<(), Error> {
+        self.sign_psbt(derivation_path, &mut spend_tx.spend_tx)
+    }
+
     pub fn sign_unvault_tx(
         &self,
         derivation_path: &DerivationPath,
         unvault_tx: &mut UnvaultTransaction,
     ) -> Result<(), Error> {
+        self.sign_psbt(derivation_path, &mut unvault_tx.unvault_tx)
+    }
+
+    pub fn sign_revocation_txs(
+        &self,
+        derivation_path: &DerivationPath,
+        revocation_txs: &mut RevocationTransactions,
+    ) -> Result<(), Error> {
+        self.sign_psbt(derivation_path, &mut revocation_txs.emergency_tx)?;
+        self.sign_psbt(derivation_path, &mut revocation_txs.emergency_unvault_tx)?;
+        self.sign_psbt(derivation_path, &mut revocation_txs.cancel_tx)
+    }
+
+    fn sign_psbt(
+        &self,
+        derivation_path: &DerivationPath,
+        psbt: &mut PartiallySignedTransaction,
+    ) -> Result<(), Error> {
+        for (input_index, input) in psbt.inputs.iter_mut().enumerate() {
+            let prev_value = input
+                .witness_utxo
+                .as_ref()
+                .ok_or_else(|| Error(format!("Psbt has no witness utxo for input '{:?}'", input)))?
+                .value;
+
+            let script_code = input.witness_script.as_ref().ok_or_else(|| {
+                Error("Psbt input has no witness Script. P2WSH is only supported".to_string())
+            })?;
+
+            let sighash_type = input.sighash_type.unwrap_or(SigHashType::All);
+
+            let sighash = SigHashCache::new(&psbt.global.unsigned_tx).signature_hash(
+                input_index,
+                &script_code,
+                prev_value,
+                sighash_type,
+            );
+
+            let sighash = secp256k1::Message::from_slice(&sighash).expect("Sighash is 32 bytes");
+
+            for xkey in &self.keys {
+                let pkey = xkey
+                    .derive_priv(&self.curve, derivation_path)
+                    .map_err(|e| Error(e.to_string()))?
+                    .private_key;
+
+                let mut signature = self
+                    .curve
+                    .sign(&sighash, &pkey.key)
+                    .serialize_der()
+                    .to_vec();
+                signature.push(sighash_type.as_u32() as u8);
+
+                let pubkey = pkey.public_key(&self.curve);
+
+                input.partial_sigs.insert(pubkey, signature);
+            }
+        }
+
         Ok(())
     }
 }
