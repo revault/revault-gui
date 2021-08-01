@@ -25,12 +25,10 @@ pub async fn main() {
     // Send the value
     sender
         .send(json!({
-            "name": "John Doe",
-            "age": 43,
-            "phones": [
-                "+44 1234567",
-                "+44 2345678"
-            ]
+            "derivation_path": "m/1",
+            "target": {
+                "unvault_tx": "cHNidP8BAIkCAAAAAfBWbcYqgFOgIg3ZhP6ywga8XHfyJIz7d/kOhMaOWFUKAAAAAAD9////ArQ9mjsAAAAAIgAgsGOkiWJaOOkFty2IXvkOqnF/gfseMK5YVBN2T6yy/1kwdQAAAAAAACIAIOD4aW9ds/RNXcNihA2bsw1c+bmg65auhz/3DoPPEg7oAAAAAAABASsAypo7AAAAACIAIAEbB6Bw50wTKaZFeZ4idQ6ARKNfgLYsjX7xAXfs9uRaAQMEAQAAAAEFi1QhAvuWyyfoIfsyrTwNoR8N80zSBdfJrGff+D9XKBRL7aEFIQJDFo5gffr4sTpOPvcI45wr3VtVCTh/yw/SiCJaCIjiVyECFG7jo1GSz0jtafAJHkLYmGRXwHA/RczAbYVG9HkXgeshAuFvKB3+S1vvSrL7uL1T3AfK8N0fPeVs9/qpxDkEugJTVK4AAQH9RwFSIQIGcwwFZVqf0EVFaTWYlQmxQ4oTCIkj+5KOstDoG1vgOSECV9gzXyTBD0h6wFIUbmaRf0g9PVPE3DR16px9x/AKz+tSrmR2qRRvoS9lQLcmcOnmhvvrvSYgPxBG3oisa3apFEWuYAoAKnNlB7Zvc0vqNpOAwYMciKxsk2t2qRRPt/TRROBIvMaRJ5knCEwt9Ruyq4isbJNrdqkU2Cc/EKsxI3LBbmYh2aZXI+cYREiIrGyTVIdnVCEDD2S5Iq7i/Vl/EEvGyztnDxyixsSbEHGhpsAQV12U/lohAqvkdbGZ7D1i+ldvruFqM0/bhv+ybc51vs66rt8yisP+IQMU89wzWVsNAWu1Ivb+OmdoByPYQsG5uK5rWf3Yq1zMtCECXrozBb08gp5OFVGqxzWOQXiDLHOeT8Rynv/kKN4DmKtUrwESsmgAAQElIQJYONwJSgKF2+Ox+K8SgruNIwYM+5dbLzkhSvjfoCCjnaxRhwA=",
+            }
         }))
         .await
         .unwrap();
