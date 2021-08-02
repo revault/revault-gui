@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use iced::{executor, Application, Clipboard, Command, Container, Element, Settings};
+use iced::{executor, Application, Clipboard, Command, Element, Settings};
 use revault_tx::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use serde_json::json;
 
@@ -90,9 +90,11 @@ impl Application for App {
                         Some(Method::SignUnvaultTx {
                             derivation_path,
                             req,
+                            signed,
                             ..
                         }) => {
                             self.signer.sign_unvault_tx(derivation_path, req).unwrap();
+                            *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(req)),
                                 server::ServerMessage::Responded,
@@ -102,9 +104,11 @@ impl Application for App {
                         Some(Method::SignSpendTx {
                             derivation_path,
                             req,
+                            signed,
                             ..
                         }) => {
                             self.signer.sign_spend_tx(derivation_path, req).unwrap();
+                            *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(req)),
                                 server::ServerMessage::Responded,
@@ -114,11 +118,13 @@ impl Application for App {
                         Some(Method::SignRevocationTxs {
                             derivation_path,
                             req,
+                            signed,
                             ..
                         }) => {
                             self.signer
                                 .sign_revocation_txs(derivation_path, req)
                                 .unwrap();
+                            *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(req)),
                                 server::ServerMessage::Responded,
@@ -127,6 +133,17 @@ impl Application for App {
                         }
                         _ => {}
                     }
+                }
+                Command::none()
+            }
+            Message::View(view::ViewMessage::Cancel) => {
+                if let AppStatus::Connected { method, writer, .. } = &mut self.status {
+                    *method = None;
+                    return Command::perform(
+                        server::respond(writer.clone(), json!({"request_status": "refused"})),
+                        server::ServerMessage::Responded,
+                    )
+                    .map(Message::Server);
                 }
                 Command::none()
             }
@@ -143,10 +160,7 @@ impl Application for App {
             AppStatus::Waiting => view::waiting_connection().map(Message::View),
             AppStatus::Connected { addr, method, .. } => match method {
                 Some(m) => m.render().map(Message::View),
-                None => Container::new(iced::Text::new(format!("Connected to {}", addr)))
-                    .align_x(iced::Align::Center)
-                    .align_y(iced::Align::Center)
-                    .into(),
+                None => view::connected(addr).map(Message::View),
             },
         }
     }
@@ -156,16 +170,19 @@ pub enum Method {
     SignSpendTx {
         derivation_path: DerivationPath,
         req: sign::SpendTransaction,
+        signed: bool,
         view: view::SignSpendTxView,
     },
     SignUnvaultTx {
         derivation_path: DerivationPath,
         req: sign::UnvaultTransaction,
+        signed: bool,
         view: view::SignUnvaultTxView,
     },
     SignRevocationTxs {
         derivation_path: DerivationPath,
         req: sign::RevocationTransactions,
+        signed: bool,
         view: view::SignRevocationTxsView,
     },
 }
@@ -177,25 +194,34 @@ impl Method {
             sign::SignTarget::SpendTransaction(req) => Method::SignSpendTx {
                 derivation_path,
                 req,
+                signed: false,
                 view: view::SignSpendTxView::new(),
             },
             sign::SignTarget::UnvaultTransaction(req) => Method::SignUnvaultTx {
                 derivation_path,
                 req,
+                signed: false,
                 view: view::SignUnvaultTxView::new(),
             },
             sign::SignTarget::RevocationTransactions(req) => Method::SignRevocationTxs {
                 derivation_path,
                 req,
+                signed: false,
                 view: view::SignRevocationTxsView::new(),
             },
         }
     }
     pub fn render(&mut self) -> Element<view::ViewMessage> {
         match self {
-            Self::SignSpendTx { view, req, .. } => view.render(),
-            Self::SignUnvaultTx { view, req, .. } => view.render(),
-            Self::SignRevocationTxs { view, req, .. } => view.render(),
+            Self::SignSpendTx {
+                view, req, signed, ..
+            } => view.render(&req, *signed),
+            Self::SignUnvaultTx {
+                view, req, signed, ..
+            } => view.render(&req, *signed),
+            Self::SignRevocationTxs {
+                view, req, signed, ..
+            } => view.render(&req, *signed),
         }
     }
 }
