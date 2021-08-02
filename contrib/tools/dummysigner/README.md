@@ -109,5 +109,5 @@ cargo run -- xprv9zFeRZgUZaUZBEUq1vPFLpUavHPK5YZ6N2qeqCYe7GLxGVY9SRHuN5Uwd5YN56t
 then run the client:
 
 ```
-cargo run --example client
+cargo run --example stakeholder_client
 ```
