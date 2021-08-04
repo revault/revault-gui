@@ -1,18 +1,23 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
-use super::{error::Error, menu::Menu};
-use crate::revault::Role;
-use crate::revaultd::{
-    model::{
-        RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault, VaultStatus,
-        VaultTransactions,
+use crate::{
+    app::error::Error,
+    app::menu::Menu,
+    hw,
+    revault::Role,
+    revaultd::{
+        model::{
+            RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
+            VaultStatus, VaultTransactions,
+        },
+        RevaultD, RevaultDError,
     },
-    RevaultD, RevaultDError,
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Tick(Instant),
     Clipboard(String),
     ChangeRole(Role),
     Syncing(Result<f64, RevaultDError>),
@@ -87,19 +92,9 @@ pub enum VaultFilterMessage {
 
 #[derive(Debug, Clone)]
 pub enum SignMessage {
-    ChangeMethod,
-    Sign,
-    Success,
-    SharingStatus(SignatureSharingStatus),
-    Clipboard(String),
-    PsbtEdited(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum SignatureSharingStatus {
-    Unshared,
-    Processing,
-    Success,
+    SelectSign,
+    Connected(Result<Arc<hw::Channel>, hw::Error>),
+    Signed(Result<Box<Vec<Psbt>>, hw::Error>),
 }
 
 #[derive(Debug, Clone)]

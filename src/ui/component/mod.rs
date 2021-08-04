@@ -142,25 +142,6 @@ pub mod card {
         }
     }
 
-    pub fn border_black<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
-        Container::new(content)
-            .padding(15)
-            .style(BorderBlackCardStyle)
-    }
-
-    pub struct BorderBlackCardStyle;
-    impl container::StyleSheet for BorderBlackCardStyle {
-        fn style(&self) -> container::Style {
-            container::Style {
-                border_radius: 10.0,
-                border_color: iced::Color::BLACK,
-                border_width: 2.0,
-                background: color::FOREGROUND.into(),
-                ..container::Style::default()
-            }
-        }
-    }
-
     pub fn border_primary<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
         Container::new(content)
             .padding(15)
@@ -195,23 +176,6 @@ pub mod card {
                 border_width: 2.0,
                 background: color::FOREGROUND.into(),
                 ..container::Style::default()
-            }
-        }
-    }
-
-    pub fn grey<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
-        Container::new(content).padding(15).style(GreyCardStyle)
-    }
-
-    pub struct GreyCardStyle;
-    impl container::StyleSheet for GreyCardStyle {
-        fn style(&self) -> container::Style {
-            container::Style {
-                border_radius: 10.0,
-                border_color: color::INFO_LIGHT,
-                border_width: 2.0,
-                background: color::FOREGROUND.into(),
-                text_color: color::INFO_LIGHT.into(),
             }
         }
     }

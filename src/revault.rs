@@ -23,12 +23,3 @@ impl Role {
     pub const STAKEHOLDER_ONLY: [Role; 1] = [Role::Stakeholder];
     pub const STAKEHOLDER_AND_MANAGER: [Role; 2] = [Role::Stakeholder, Role::Manager];
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransactionKind {
-    Emergency,
-    EmergencyUnvault,
-    Unvault,
-    Cancel,
-    Spend,
-}

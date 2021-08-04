@@ -5,15 +5,14 @@ mod message;
 mod state;
 mod view;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use iced::{Clipboard, Color, Command, Element, Subscription};
+use iced::{time, Clipboard, Color, Command, Element, Subscription};
 
 pub use config::Config;
 pub use message::Message;
 
 use menu::Menu;
-use message::{SignMessage, SpendTxMessage, VaultMessage};
 use state::{
     ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerSendState, SettingsState,
     StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState, State,
@@ -103,7 +102,10 @@ impl App {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        self.state.subscription()
+        Subscription::batch(vec![
+            time::every(Duration::from_secs(1)).map(Message::Tick),
+            self.state.subscription(),
+        ])
     }
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
@@ -111,10 +113,7 @@ impl App {
             Message::Synced(revaultd) => self.on_synced(revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
-            Message::Clipboard(text)
-            | Message::SpendTx(SpendTxMessage::Sign(SignMessage::Clipboard(text)))
-            | Message::Vault(_, VaultMessage::Delegate(SignMessage::Clipboard(text)))
-            | Message::Vault(_, VaultMessage::Secure(SignMessage::Clipboard(text))) => {
+            Message::Clipboard(text) => {
                 clipboard.write(text);
                 Command::none()
             }

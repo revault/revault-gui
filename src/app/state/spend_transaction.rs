@@ -7,12 +7,12 @@ use iced::{Command, Element};
 use crate::{
     app::{
         error::Error,
-        message::{Message, SignMessage, SpendTxMessage},
+        message::{Message, SpendTxMessage},
         state::{
             cmd::{
                 broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults, update_spend_tx,
             },
-            sign::SignState,
+            sign::{Signer, SpendTransactionTarget},
             State,
         },
         view::spend_transaction::{
@@ -22,7 +22,6 @@ use crate::{
         },
         view::Context,
     },
-    revault::TransactionKind,
     revaultd::{model, RevaultD},
 };
 
@@ -135,7 +134,7 @@ pub enum SpendTransactionAction {
     },
     Sign {
         warning: Option<Error>,
-        signer: SignState,
+        signer: Signer<SpendTransactionTarget>,
         view: SpendTransactionSignView,
     },
     Broadcast {
@@ -207,16 +206,18 @@ impl SpendTransactionAction {
             SpendTxMessage::SelectSign => {
                 *self = Self::Sign {
                     warning: None,
-                    signer: SignState::new(psbt.clone(), TransactionKind::Spend),
+                    signer: Signer::new(SpendTransactionTarget {
+                        spend_tx: psbt.clone(),
+                    }),
                     view: SpendTransactionSignView::new(),
                 };
             }
             SpendTxMessage::Sign(msg) => {
                 if let Self::Sign { signer, .. } = self {
                     signer.update(msg);
-                    if let Some(psbt) = &signer.signed_psbt {
+                    if signer.signed() {
                         return Command::perform(
-                            update_spend_tx(revaultd, psbt.clone()),
+                            update_spend_tx(revaultd, signer.target.spend_tx.clone()),
                             SpendTxMessage::Signed,
                         );
                     }
@@ -231,12 +232,8 @@ impl SpendTransactionAction {
                         Ok(_) => {
                             // During this step state has a generated psbt
                             // and signer has a signed psbt.
-                            *psbt = signer
-                                .signed_psbt
-                                .as_ref()
-                                .expect("A signed message means signer has a signed psbt")
-                                .clone();
-                            signer.update(SignMessage::Success);
+                            *warning = None;
+                            *psbt = signer.target.spend_tx.clone();
                         }
 
                         Err(e) => *warning = Some(Error::RevaultDError(e)),

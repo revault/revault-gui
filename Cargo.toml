@@ -13,8 +13,11 @@ bitcoin = { version = "0.25.2", features = ["base64", "use-serde"] }
 revault_tx = "0.2.1"
 miniscript = "5.1.0"
 
-iced = { version = "0.3", features = ["wgpu", "svg", "debug", "qr_code"] }
+iced = { version = "0.3", features = ["tokio", "wgpu", "svg", "debug", "qr_code"] }
 
+tokio = {version = "1.9.0", features = ["net", "io-util"]}
+tokio-util = { version = "0.6", features = ["codec"] }
+tokio-serde = {version = "0.8", features = ["json"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

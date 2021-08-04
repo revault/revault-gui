@@ -1,4 +1,3 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
@@ -8,10 +7,7 @@ use crate::{
         message::{Message, SignMessage, VaultMessage},
         view::Context,
     },
-    ui::{
-        component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
-        icon,
-    },
+    ui::component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
 };
 
 use crate::{
@@ -662,95 +658,8 @@ impl SecureVaultView {
         ctx: &Context,
         warning: Option<&Error>,
         deposit: &Vault,
-        emergency_tx: &(Psbt, bool),
-        emergency_unvault_tx: &(Psbt, bool),
-        cancel_tx: &(Psbt, bool),
         signer: Element<'a, VaultMessage>,
     ) -> Element<'a, VaultMessage> {
-        let mut row_transactions = Row::new();
-        let (_, emergency_signed) = emergency_tx;
-        if *emergency_signed {
-            row_transactions = row_transactions.push(
-                card::success(Container::new(
-                    Row::new()
-                        .push(text::success(icon::shield_check_icon()))
-                        .push(text::success(text::bold(text::simple("   Emergency TX")))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        } else {
-            row_transactions = row_transactions.push(
-                card::border_black(Container::new(
-                    Row::new()
-                        .push(icon::shield_icon())
-                        .push(text::bold(text::simple("   Emergency TX"))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        };
-
-        let (_, emergency_unvault_signed) = emergency_unvault_tx;
-        if *emergency_unvault_signed {
-            row_transactions = row_transactions.push(
-                card::success(Container::new(
-                    Row::new()
-                        .push(text::success(icon::shield_check_icon()))
-                        .push(text::success(text::bold(text::simple(
-                            "   Emergency unvault TX",
-                        )))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        } else if *emergency_signed {
-            row_transactions = row_transactions.push(
-                card::border_black(Container::new(
-                    Row::new()
-                        .push(icon::shield_icon())
-                        .push(text::bold(text::simple("   Emergency Unvault TX"))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        } else {
-            row_transactions = row_transactions.push(
-                card::grey(Container::new(
-                    Row::new()
-                        .push(icon::shield_icon())
-                        .push(text::bold(text::simple("   Emergency Unvault TX"))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        };
-
-        let (_, cancel_signed) = cancel_tx;
-        if *cancel_signed {
-            row_transactions = row_transactions.push(
-                card::success(Container::new(
-                    Row::new()
-                        .push(text::success(icon::shield_check_icon()))
-                        .push(text::success(text::bold(text::simple("   Cancel TX")))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        } else if *emergency_unvault_signed {
-            row_transactions = row_transactions.push(
-                card::border_black(Container::new(
-                    Row::new()
-                        .push(icon::shield_icon())
-                        .push(text::bold(text::simple("   Cancel TX"))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        } else {
-            row_transactions = row_transactions.push(
-                card::grey(Container::new(
-                    Row::new()
-                        .push(icon::shield_icon())
-                        .push(text::bold(text::simple("   Cancel TX"))),
-                ))
-                .width(Length::FillPortion(1)),
-            );
-        };
-
         let mut col = Column::new()
             .push(Container::new(
                 Row::new()
@@ -783,7 +692,6 @@ impl SecureVaultView {
                     .align_items(Align::Center),
             ))
             .push(separation().width(Length::Fill))
-            .push(row_transactions.spacing(10))
             .push(signer)
             .spacing(20)
             .push(Column::new());
@@ -848,7 +756,6 @@ impl DelegateVaultView {
                             .push(text::simple("the unvault transaction must be signed in order to delegate the fund to the managers.")),
                     )
                     .push(signer.map(move |msg| match msg {
-                        SignMessage::Clipboard(s) => Message::Clipboard(s),
                         _ => Message::Vault(outpoint.clone(), VaultMessage::Delegate(msg)),
                     }))
                     .spacing(20),

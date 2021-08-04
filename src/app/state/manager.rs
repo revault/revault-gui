@@ -17,13 +17,15 @@ use crate::revaultd::{
     RevaultD,
 };
 
-use crate::revault::TransactionKind;
 use crate::ui::component::form;
 
 use crate::app::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
-    state::{sign::SignState, SpendTransactionListItem, SpendTransactionState},
+    message::{InputMessage, Message, RecipientMessage, SpendTxMessage, VaultMessage},
+    state::{
+        sign::{Signer, SpendTransactionTarget},
+        SpendTransactionListItem, SpendTransactionState,
+    },
     view::manager::{
         manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
         ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
@@ -433,7 +435,7 @@ enum ManagerSendStep {
     SelectFee(ManagerSelectFeeView),
     SelectInputs(ManagerSelectInputsView),
     Sign {
-        signer: SignState,
+        signer: Signer<SpendTransactionTarget>,
         view: ManagerSignView,
     },
     Success(ManagerSpendTransactionCreatedView),
@@ -572,10 +574,9 @@ impl State for ManagerCreateSendTransactionState {
                         // During this step state has a generated psbt
                         // and signer has a signed psbt.
                         self.psbt = Some((
-                            signer.signed_psbt.clone().expect("As the received message is a sign success, the psbt should not be None"),
+                            signer.target.spend_tx.clone(),
                             self.psbt.clone().expect("As the received message is a sign success, the psbt should not be None").1,
                         ));
-                        signer.update(SignMessage::Success);
                         self.step =
                             ManagerSendStep::Success(ManagerSpendTransactionCreatedView::new());
                     };
@@ -587,9 +588,9 @@ impl State for ManagerCreateSendTransactionState {
                     signer
                         .update(msg)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
-                    if let Some(psbt) = &signer.signed_psbt {
+                    if signer.signed() {
                         return Command::perform(
-                            update_spend_tx(self.revaultd.clone(), psbt.clone()),
+                            update_spend_tx(self.revaultd.clone(), signer.target.spend_tx.clone()),
                             |res| Message::SpendTx(SpendTxMessage::Signed(res)),
                         );
                     }
@@ -605,7 +606,9 @@ impl State for ManagerCreateSendTransactionState {
                 ManagerSendStep::SelectInputs(_) => {
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
-                            signer: SignState::new(psbt.clone(), TransactionKind::Spend),
+                            signer: Signer::new(SpendTransactionTarget {
+                                spend_tx: psbt.clone(),
+                            }),
                             view: ManagerSignView::new(),
                         };
                     }
