@@ -89,44 +89,46 @@ impl Application for App {
                     match method {
                         Some(Method::SignUnvaultTx {
                             derivation_path,
-                            req,
+                            target,
                             signed,
                             ..
                         }) => {
-                            self.signer.sign_unvault_tx(derivation_path, req).unwrap();
+                            self.signer
+                                .sign_unvault_tx(derivation_path, target)
+                                .unwrap();
                             *signed = true;
                             return Command::perform(
-                                server::respond(writer.clone(), json!(req)),
+                                server::respond(writer.clone(), json!(target)),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
                         }
                         Some(Method::SignSpendTx {
-                            derivation_path,
-                            req,
+                            derivation_paths,
+                            target,
                             signed,
                             ..
                         }) => {
-                            self.signer.sign_spend_tx(derivation_path, req).unwrap();
+                            self.signer.sign_spend_tx(derivation_paths, target).unwrap();
                             *signed = true;
                             return Command::perform(
-                                server::respond(writer.clone(), json!(req)),
+                                server::respond(writer.clone(), json!(target)),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
                         }
                         Some(Method::SignRevocationTxs {
                             derivation_path,
-                            req,
+                            target,
                             signed,
                             ..
                         }) => {
                             self.signer
-                                .sign_revocation_txs(derivation_path, req)
+                                .sign_revocation_txs(derivation_path, target)
                                 .unwrap();
                             *signed = true;
                             return Command::perform(
-                                server::respond(writer.clone(), json!(req)),
+                                server::respond(writer.clone(), json!(target)),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
@@ -168,20 +170,20 @@ impl Application for App {
 
 pub enum Method {
     SignSpendTx {
-        derivation_path: DerivationPath,
-        req: sign::SpendTransaction,
+        derivation_paths: Vec<DerivationPath>,
+        target: sign::SpendTransaction,
         signed: bool,
         view: view::SignSpendTxView,
     },
     SignUnvaultTx {
         derivation_path: DerivationPath,
-        req: sign::UnvaultTransaction,
+        target: sign::UnvaultTransaction,
         signed: bool,
         view: view::SignUnvaultTxView,
     },
     SignRevocationTxs {
         derivation_path: DerivationPath,
-        req: sign::RevocationTransactions,
+        target: sign::RevocationTransactions,
         signed: bool,
         view: view::SignRevocationTxsView,
     },
@@ -189,23 +191,31 @@ pub enum Method {
 
 impl Method {
     pub fn new(request: sign::SignRequest) -> Method {
-        let derivation_path = request.derivation_path;
-        match request.target {
-            sign::SignTarget::SpendTransaction(req) => Method::SignSpendTx {
-                derivation_path,
-                req,
+        match request {
+            sign::SignRequest::SpendTransaction {
+                derivation_paths,
+                target,
+            } => Method::SignSpendTx {
+                derivation_paths,
+                target,
                 signed: false,
                 view: view::SignSpendTxView::new(),
             },
-            sign::SignTarget::UnvaultTransaction(req) => Method::SignUnvaultTx {
+            sign::SignRequest::UnvaultTransaction {
                 derivation_path,
-                req,
+                target,
+            } => Method::SignUnvaultTx {
+                derivation_path,
+                target,
                 signed: false,
                 view: view::SignUnvaultTxView::new(),
             },
-            sign::SignTarget::RevocationTransactions(req) => Method::SignRevocationTxs {
+            sign::SignRequest::RevocationTransactions {
                 derivation_path,
-                req,
+                target,
+            } => Method::SignRevocationTxs {
+                derivation_path,
+                target,
                 signed: false,
                 view: view::SignRevocationTxsView::new(),
             },
@@ -214,14 +224,23 @@ impl Method {
     pub fn render(&mut self) -> Element<view::ViewMessage> {
         match self {
             Self::SignSpendTx {
-                view, req, signed, ..
-            } => view.render(&req, *signed),
+                view,
+                target,
+                signed,
+                ..
+            } => view.render(&target, *signed),
             Self::SignUnvaultTx {
-                view, req, signed, ..
-            } => view.render(&req, *signed),
+                view,
+                target,
+                signed,
+                ..
+            } => view.render(&target, *signed),
             Self::SignRevocationTxs {
-                view, req, signed, ..
-            } => view.render(&req, *signed),
+                view,
+                target,
+                signed,
+                ..
+            } => view.render(&target, *signed),
         }
     }
 }
