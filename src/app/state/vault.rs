@@ -317,7 +317,6 @@ impl VaultSection {
     }
 
     pub fn view(&mut self, ctx: &Context, vault: &model::Vault) -> Element<Message> {
-        let outpoint = vault.outpoint();
         match self {
             Self::Unloaded => iced::Container::new(iced::Column::new()).into(),
             Self::OnchainTransactions { txs, view } => view.view(ctx, &vault, &txs),
@@ -338,7 +337,7 @@ impl VaultSection {
                     vault,
                     signer.view(ctx).map(VaultMessage::Secure),
                 )
-                .map(move |msg| Message::Vault(outpoint.clone(), msg)),
+                .map(Message::Vault),
             Self::Revault {
                 processing,
                 success,

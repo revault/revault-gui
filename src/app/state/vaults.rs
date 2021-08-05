@@ -69,7 +69,7 @@ impl VaultsState {
             let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
+            return cmd.map(Message::Vault);
         };
         Command::none()
     }
@@ -82,16 +82,12 @@ impl State for VaultsState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::Vault(outpoint, VaultMessage::Select) => {
-                return self.on_vault_select(outpoint)
-            }
-            Message::Vault(outpoint, msg) => {
+            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    if selected.vault.outpoint() == outpoint {
-                        return selected
-                            .update(self.revaultd.clone(), msg)
-                            .map(move |msg| Message::Vault(outpoint.clone(), msg));
-                    }
+                    return selected
+                        .update(self.revaultd.clone(), msg)
+                        .map(Message::Vault);
                 }
             }
             Message::FilterVaults(VaultFilterMessage::Status(statuses)) => {

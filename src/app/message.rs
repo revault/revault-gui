@@ -24,7 +24,9 @@ pub enum Message {
     Synced(Arc<RevaultD>),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    Vault(String, VaultMessage),
+    SelectVault(String),
+    DelegateVault(String),
+    Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
@@ -68,11 +70,11 @@ pub enum SpendTxMessage {
 
 #[derive(Debug, Clone)]
 pub enum VaultMessage {
+    Tick(Instant),
     ListOnchainTransaction,
     RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
-    Select,
     SelectDelegate,
     Delegate(SignMessage),
     Delegated(Result<(), RevaultDError>),
