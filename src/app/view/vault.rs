@@ -112,7 +112,9 @@ fn vault<'a>(
                                     Column::new()
                                         .push(
                                             Row::new()
-                                                .push(text::bold(text::simple(&vlt.txid)))
+                                                .push(text::bold(text::simple(
+                                                    &vlt.txid.to_string(),
+                                                )))
                                                 .push(button::clipboard(
                                                     copy_button,
                                                     Message::Clipboard(vlt.txid.to_string()),
@@ -577,7 +579,7 @@ impl VaultView for DelegateVaultListItemView {
     }
 
     fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
-        vault_delegate(&mut self.select_button, ctx, vault).map(Message::Vault)
+        vault_delegate(&mut self.select_button, ctx, vault)
     }
 }
 
@@ -585,7 +587,7 @@ fn vault_delegate<'a>(
     state: &'a mut iced::button::State,
     ctx: &Context,
     deposit: &Vault,
-) -> Element<'a, VaultMessage> {
+) -> Element<'a, Message> {
     Container::new(
         button::white_card_button(
             state,
@@ -620,7 +622,7 @@ fn vault_delegate<'a>(
                     .align_items(Align::Center),
             ),
         )
-        .on_press(VaultMessage::SelectDelegate),
+        .on_press(Message::DelegateVault(deposit.outpoint())),
     )
     .into()
 }

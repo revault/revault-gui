@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use crate::revaultd::{
     model::{self, VaultStatus},
@@ -139,6 +139,13 @@ impl State for StakeholderHomeState {
         )
     }
 
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
+    }
+
     fn load(&self) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
@@ -261,6 +268,13 @@ impl State for StakeholderCreateVaultsState {
             },
             _ => Command::none(),
         }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
@@ -423,6 +437,13 @@ impl State for StakeholderDelegateFundsState {
                 .collect(),
             self.warning.as_ref(),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn load(&self) -> Command<Message> {

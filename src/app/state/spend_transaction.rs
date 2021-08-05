@@ -2,7 +2,7 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::convert::From;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use crate::{
     app::{
@@ -94,12 +94,22 @@ impl State for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(self.revaultd.clone(), &mut self.psbt, msg)
+                    .update(self.revaultd.clone(), &self.deposits, &mut self.psbt, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
         };
         Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let SpendTransactionAction::Sign { signer, .. } = &self.action {
+            signer
+                .subscription()
+                .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg)))
+        } else {
+            Subscription::none()
+        }
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
@@ -164,6 +174,7 @@ impl SpendTransactionAction {
     fn update(
         &mut self,
         revaultd: Arc<RevaultD>,
+        deposits: &Vec<model::Vault>,
         psbt: &mut Psbt,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
@@ -207,6 +218,17 @@ impl SpendTransactionAction {
                 *self = Self::Sign {
                     warning: None,
                     signer: Signer::new(SpendTransactionTarget {
+                        derivation_indexes: {
+                            let mut indexes = Vec::new();
+                            for input in &psbt.global.unsigned_tx.input {
+                                for deposit in deposits {
+                                    if input.previous_output.to_string() == deposit.outpoint() {
+                                        indexes.push(deposit.derivation_index);
+                                    }
+                                }
+                            }
+                            indexes
+                        },
                         spend_tx: psbt.clone(),
                     }),
                     view: SpendTransactionSignView::new(),
@@ -214,13 +236,14 @@ impl SpendTransactionAction {
             }
             SpendTxMessage::Sign(msg) => {
                 if let Self::Sign { signer, .. } = self {
-                    signer.update(msg);
+                    let cmd = signer.update(msg);
                     if signer.signed() {
                         return Command::perform(
                             update_spend_tx(revaultd, signer.target.spend_tx.clone()),
                             SpendTxMessage::Signed,
                         );
                     }
+                    return cmd.map(SpendTxMessage::Sign);
                 }
             }
             SpendTxMessage::Signed(res) => {

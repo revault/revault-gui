@@ -1,5 +1,5 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 use std::sync::Arc;
 
 use crate::{
@@ -83,11 +83,18 @@ impl Vault {
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::UnvaultTransaction(res) => match res {
-                Ok(tx) => self.section = VaultSection::new_delegate_section(tx.unvault_tx),
+                Ok(tx) => {
+                    self.section = VaultSection::new_delegate_section(
+                        self.vault.derivation_index,
+                        tx.unvault_tx,
+                    )
+                }
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::RevocationTransactions(res) => match res {
-                Ok(tx) => self.section = VaultSection::new_ack_section(tx),
+                Ok(tx) => {
+                    self.section = VaultSection::new_ack_section(self.vault.derivation_index, tx)
+                }
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::SelectRevault => {
@@ -110,6 +117,16 @@ impl Vault {
             }
         };
         Command::none()
+    }
+
+    pub fn subscription(&self) -> Subscription<VaultMessage> {
+        match &self.section {
+            VaultSection::Secure { signer, .. } => signer.subscription().map(VaultMessage::Secure),
+            VaultSection::Delegate { signer, .. } => {
+                signer.subscription().map(VaultMessage::Delegate)
+            }
+            __ => Subscription::none(),
+        }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<Message> {
@@ -179,9 +196,12 @@ impl VaultSection {
         }
     }
 
-    pub fn new_delegate_section(unvault_tx: Psbt) -> Self {
+    pub fn new_delegate_section(derivation_index: u32, unvault_tx: Psbt) -> Self {
         Self::Delegate {
-            signer: Signer::new(UnvaultTransactionTarget { unvault_tx }),
+            signer: Signer::new(UnvaultTransactionTarget {
+                derivation_index,
+                unvault_tx,
+            }),
             view: DelegateVaultView::new(),
             warning: None,
         }
@@ -196,9 +216,10 @@ impl VaultSection {
         }
     }
 
-    pub fn new_ack_section(txs: RevocationTransactions) -> Self {
+    pub fn new_ack_section(derivation_index: u32, txs: RevocationTransactions) -> Self {
         Self::Secure {
             signer: Signer::new(RevocationTransactionsTarget {
+                derivation_index,
                 emergency_tx: txs.emergency_tx,
                 emergency_unvault_tx: txs.emergency_unvault_tx,
                 cancel_tx: txs.cancel_tx,
@@ -255,7 +276,7 @@ impl VaultSection {
                 } = self
                 {
                     *warning = None;
-                    signer.update(msg);
+                    let cmd = signer.update(msg);
                     if signer.signed() {
                         return Command::perform(
                             set_unvault_tx(
@@ -266,6 +287,7 @@ impl VaultSection {
                             VaultMessage::Delegated,
                         );
                     }
+                    return cmd.map(VaultMessage::Delegate);
                 }
             }
             VaultMessage::Delegated(res) => {
@@ -298,17 +320,20 @@ impl VaultSection {
                 } = self
                 {
                     *warning = None;
-                    signer.update(msg);
-                    return Command::perform(
-                        set_revocation_txs(
-                            revaultd,
-                            vault.outpoint(),
-                            signer.target.emergency_tx.clone(),
-                            signer.target.emergency_unvault_tx.clone(),
-                            signer.target.cancel_tx.clone(),
-                        ),
-                        VaultMessage::Secured,
-                    );
+                    let cmd = signer.update(msg);
+                    if signer.signed() {
+                        return Command::perform(
+                            set_revocation_txs(
+                                revaultd,
+                                vault.outpoint(),
+                                signer.target.emergency_tx.clone(),
+                                signer.target.emergency_unvault_tx.clone(),
+                                signer.target.cancel_tx.clone(),
+                            ),
+                            VaultMessage::Secured,
+                        );
+                    }
+                    return cmd.map(VaultMessage::Secure);
                 }
             }
             _ => {}

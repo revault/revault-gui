@@ -1,4 +1,4 @@
-use iced::{Column, Container, Element};
+use iced::{Column, Container, Element, Length};
 
 use crate::{
     app::{message::SignMessage, view::Context},
@@ -22,7 +22,17 @@ impl SignerView {
         _ctx: &Context,
         connected: bool,
         processing: bool,
+        signed: bool,
     ) -> Element<SignMessage> {
+        if signed {
+            return card::success(
+                Container::new(text::success(text::simple("Signed")))
+                    .width(Length::Fill)
+                    .align_x(iced::Align::Center)
+                    .padding(50),
+            )
+            .into();
+        }
         if connected {
             let mut sign_button =
                 button::primary(&mut self.sign_button, button::button_content(None, " Sign"));

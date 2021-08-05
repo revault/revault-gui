@@ -68,13 +68,20 @@ impl Application for App {
                 Command::none()
             }
             Message::Server(server::ServerMessage::Request(msg)) => {
-                if let AppStatus::Connected { method, .. } = &mut self.status {
+                if let AppStatus::Connected { method, writer, .. } = &mut self.status {
                     match serde_json::from_value(msg) {
                         Ok(req) => {
                             *method = Some(Method::new(req));
                         }
-                        Err(e) => {
-                            println!("{}", e);
+                        Err(_) => {
+                            return Command::perform(
+                                server::respond(
+                                    writer.clone(),
+                                    json!({"error": "request unknown"}),
+                                ),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
                         }
                     }
                 }

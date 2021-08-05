@@ -1,7 +1,7 @@
 use std::convert::From;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use super::{
     cmd::{get_blockheight, list_vaults},
@@ -13,7 +13,7 @@ use crate::revaultd::{model, model::VaultStatus, RevaultD};
 
 use crate::app::{
     error::Error,
-    message::{Message, VaultFilterMessage, VaultMessage},
+    message::{Message, VaultFilterMessage},
     view::{vault::VaultListItemView, Context, VaultsView},
 };
 
@@ -105,6 +105,13 @@ impl State for VaultsState {
             _ => {}
         };
         Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {

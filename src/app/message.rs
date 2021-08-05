@@ -1,5 +1,6 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::{sync::Arc, time::Instant};
+use tokio::sync::Mutex;
 
 use crate::{
     app::error::Error,
@@ -17,7 +18,6 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Tick(Instant),
     Clipboard(String),
     ChangeRole(Role),
     Syncing(Result<f64, RevaultDError>),
@@ -94,8 +94,10 @@ pub enum VaultFilterMessage {
 
 #[derive(Debug, Clone)]
 pub enum SignMessage {
+    CheckConnection,
+    Ping(Result<(), hw::Error>),
     SelectSign,
-    Connected(Result<Arc<hw::Channel>, hw::Error>),
+    Connected(Result<Arc<Mutex<hw::Channel>>, hw::Error>),
     Signed(Result<Box<Vec<Psbt>>, hw::Error>),
 }
 

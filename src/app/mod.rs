@@ -5,9 +5,9 @@ mod message;
 mod state;
 mod view;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use iced::{time, Clipboard, Color, Command, Element, Subscription};
+use iced::{Clipboard, Color, Command, Element, Subscription};
 
 pub use config::Config;
 pub use message::Message;
@@ -102,10 +102,7 @@ impl App {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch(vec![
-            time::every(Duration::from_secs(1)).map(Message::Tick),
-            self.state.subscription(),
-        ])
+        self.state.subscription()
     }
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {

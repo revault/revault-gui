@@ -4,7 +4,7 @@ use std::convert::From;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use super::{
     cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
@@ -21,7 +21,7 @@ use crate::ui::component::form;
 
 use crate::app::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, SpendTxMessage, VaultMessage},
+    message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
@@ -245,6 +245,16 @@ impl State for ManagerHomeState {
         Command::none()
     }
 
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        if let Some(v) = &self.selected_spend_tx {
+            return v.subscription();
+        }
+        Subscription::none()
+    }
+
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
@@ -333,6 +343,14 @@ impl State for ManagerSendState {
                 _ => state.update(message),
             },
             Self::SendTransactionDetail(state) => state.update(message),
+        }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        match self {
+            ManagerSendState::SendTransactionDetail(s) => s.subscription(),
+            ManagerSendState::CreateSendTransaction(s) => s.subscription(),
+            _ => Subscription::none(),
         }
     }
 
@@ -581,7 +599,7 @@ impl State for ManagerCreateSendTransactionState {
             },
             Message::SpendTx(SpendTxMessage::Sign(msg)) => {
                 if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
-                    signer
+                    let cmd = signer
                         .update(msg)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
                     if signer.signed() {
@@ -590,6 +608,7 @@ impl State for ManagerCreateSendTransactionState {
                             |res| Message::SpendTx(SpendTxMessage::Signed(res)),
                         );
                     }
+                    return cmd;
                 }
             }
             Message::Next => match self.step {
@@ -603,6 +622,17 @@ impl State for ManagerCreateSendTransactionState {
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
                             signer: Signer::new(SpendTransactionTarget {
+                                derivation_indexes: self
+                                    .vaults
+                                    .iter()
+                                    .filter_map(|v| {
+                                        if v.selected {
+                                            Some(v.vault.derivation_index)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .collect(),
                                 spend_tx: psbt.clone(),
                             }),
                             view: ManagerSignView::new(),
@@ -647,6 +677,15 @@ impl State for ManagerCreateSendTransactionState {
             _ => {}
         };
         Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let ManagerSendStep::Sign { signer, .. } = &self.step {
+            return signer
+                .subscription()
+                .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg)));
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
