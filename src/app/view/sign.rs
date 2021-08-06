@@ -2,7 +2,10 @@ use iced::{Column, Container, Element, Length};
 
 use crate::{
     app::{message::SignMessage, view::Context},
-    ui::component::{button, card, text},
+    ui::{
+        component::{button, card, text},
+        icon,
+    },
 };
 
 #[derive(Debug)]
@@ -25,27 +28,48 @@ impl SignerView {
         signed: bool,
     ) -> Element<SignMessage> {
         if signed {
-            return card::success(
-                Container::new(text::success(text::simple("Signed")))
-                    .width(Length::Fill)
-                    .align_x(iced::Align::Center)
-                    .padding(50),
-            )
+            return card::success(Container::new(
+                Column::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(text::success(icon::done_icon().size(20)))
+                    .push(text::success(text::simple("Signed"))),
+            ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
             .into();
         }
         if connected {
-            let mut sign_button =
-                button::primary(&mut self.sign_button, button::button_content(None, " Sign"));
+            let mut sign_button = button::primary(
+                &mut self.sign_button,
+                button::button_content(None, " Sign ").width(Length::Units(200)),
+            );
             if !processing {
                 sign_button = sign_button.on_press(SignMessage::SelectSign);
             }
-            Container::new(Column::new().push(sign_button).spacing(10)).into()
+            card::white(Container::new(
+                Column::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(icon::connected_device_icon().size(20))
+                    .push(sign_button),
+            ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
+            .into()
         } else {
             card::white(Container::new(
                 Column::new()
-                    .push(text::simple("waiting connection"))
-                    .spacing(10),
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(icon::connect_device_icon().size(20))
+                    .push(text::simple("Connect hardware wallet")),
             ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
             .into()
         }
     }

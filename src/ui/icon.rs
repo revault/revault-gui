@@ -29,6 +29,14 @@ pub fn send_icon() -> Text {
     icon('\u{F144}')
 }
 
+pub fn connect_device_icon() -> Text {
+    icon('\u{F348}')
+}
+
+pub fn connected_device_icon() -> Text {
+    icon('\u{F350}')
+}
+
 pub fn deposit_icon() -> Text {
     icon('\u{F123}')
 }
