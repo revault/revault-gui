@@ -628,15 +628,11 @@ fn vault_delegate<'a>(
 }
 
 #[derive(Debug)]
-pub struct SecureVaultView {
-    retry_button: iced::button::State,
-}
+pub struct SecureVaultView {}
 
 impl SecureVaultView {
     pub fn new() -> Self {
-        SecureVaultView {
-            retry_button: iced::button::State::default(),
-        }
+        SecureVaultView {}
     }
 
     pub fn view<'a>(
@@ -689,13 +685,6 @@ impl SecureVaultView {
                         "Failed to connect to revaultd: {}",
                         error
                     ))))
-                    .push(
-                        button::primary(
-                            &mut self.retry_button,
-                            button::button_content(None, "Retry"),
-                        )
-                        .on_press(VaultMessage::Retry),
-                    )
                     .spacing(20),
             )))
         }

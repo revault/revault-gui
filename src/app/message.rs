@@ -81,7 +81,6 @@ pub enum VaultMessage {
     SelectSecure,
     Secure(SignMessage),
     Secured(Result<(), RevaultDError>),
-    Retry,
     SelectRevault,
     Revault,
     Revaulted(Result<(), RevaultDError>),
