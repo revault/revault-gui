@@ -36,6 +36,7 @@ pub struct Context {
     pub menu: Menu,
     pub role: Role,
     pub role_edit: bool,
+    pub managers_threshold: usize,
 }
 
 impl Context {
@@ -45,6 +46,7 @@ impl Context {
         role_edit: bool,
         role: Role,
         menu: Menu,
+        managers_threshold: usize,
     ) -> Self {
         Self {
             converter,
@@ -53,6 +55,7 @@ impl Context {
             menu,
             network,
             network_up: false,
+            managers_threshold,
         }
     }
 }
@@ -66,6 +69,7 @@ impl std::default::Default for Context {
             role: Role::Manager,
             menu: Menu::Home,
             role_edit: false,
+            managers_threshold: 1,
         }
     }
 }

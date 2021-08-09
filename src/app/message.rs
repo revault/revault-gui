@@ -12,7 +12,7 @@ use crate::{
             RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
             VaultStatus, VaultTransactions,
         },
-        RevaultD, RevaultDError,
+        GetInfoResponse, RevaultD, RevaultDError,
     },
 };
 
@@ -20,8 +20,8 @@ use crate::{
 pub enum Message {
     Clipboard(String),
     ChangeRole(Role),
-    Syncing(Result<f64, RevaultDError>),
-    Synced(Arc<RevaultD>),
+    Syncing(Result<GetInfoResponse, RevaultDError>),
+    Synced(GetInfoResponse, Arc<RevaultD>),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
     SelectVault(String),
