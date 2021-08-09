@@ -29,6 +29,8 @@ use crate::{
 #[derive(Debug)]
 pub struct SpendTransactionState {
     pub psbt: Psbt,
+    cpfp_index: usize,
+    change_index: Option<usize>,
 
     revaultd: Arc<RevaultD>,
     deposit_outpoints: Vec<String>,
@@ -43,6 +45,8 @@ pub struct SpendTransactionState {
 impl SpendTransactionState {
     pub fn new(revaultd: Arc<RevaultD>, psbt: Psbt) -> Self {
         Self {
+            cpfp_index: 0,
+            change_index: None,
             revaultd,
             psbt,
             deposit_outpoints: Vec::new(),
@@ -73,6 +77,8 @@ impl State for SpendTransactionState {
                         {
                             self.deposit_outpoints = tx.deposit_outpoints;
                             self.psbt = tx.psbt;
+                            self.cpfp_index = tx.cpfp_index;
+                            self.change_index = tx.change_index;
                             return Command::perform(
                                 list_vaults(
                                     self.revaultd.clone(),
@@ -98,12 +104,16 @@ impl State for SpendTransactionState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
+        let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
         self.view.view(
             ctx,
             &self.psbt,
+            self.cpfp_index,
+            self.change_index,
             &self.deposits,
             self.action.view(ctx, &self.psbt),
             self.warning.as_ref(),
+            show_delete_button,
         )
     }
 
@@ -377,21 +387,45 @@ impl SpendTransactionAction {
 #[derive(Debug)]
 pub struct SpendTransactionListItem {
     pub tx: model::SpendTx,
-    // Sum of the amounts of the vaults this tx is spending
-    pub vaults_amount: u64,
+
+    spend_amount: u64,
+    fees: u64,
+
     view: SpendTransactionListItemView,
 }
 
 impl SpendTransactionListItem {
     pub fn new(tx: model::SpendTx, vaults_amount: u64) -> Self {
+        let spend_amount = tx
+            .psbt
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
+            .fold(0, |acc, (_, output)| acc + output.value);
+        let change_amount = if let Some(i) = tx.change_index {
+            tx.psbt.global.unsigned_tx.output[i].value
+        } else {
+            0
+        };
+
+        let fees = if vaults_amount == 0 {
+            // Vaults are still loading
+            0
+        } else {
+            vaults_amount - spend_amount - change_amount
+        };
         Self {
             tx,
+            spend_amount,
+            fees,
             view: SpendTransactionListItemView::new(),
-            vaults_amount,
         }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
-        self.view.view(ctx, &self.tx, self.vaults_amount)
+        self.view.view(ctx, &self.tx, self.spend_amount, self.fees)
     }
 }
