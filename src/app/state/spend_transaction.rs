@@ -62,10 +62,15 @@ impl State for SpendTransactionState {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
-                    self.deposits = vaults
-                        .into_iter()
-                        .filter(|vault| self.deposit_outpoints.contains(&vault.outpoint()))
-                        .collect();
+                    self.deposits = Vec::new();
+                    // we keep the order of the deposit_outpoints.
+                    for deposit in vaults.into_iter() {
+                        for outpoint in &self.deposit_outpoints {
+                            if deposit.outpoint() == *outpoint {
+                                self.deposits.push(deposit.clone());
+                            }
+                        }
+                    }
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },
