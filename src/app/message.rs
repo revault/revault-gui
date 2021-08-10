@@ -1,14 +1,19 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
+use tokio::sync::Mutex;
 
-use super::{error::Error, menu::Menu};
-use crate::revault::Role;
-use crate::revaultd::{
-    model::{
-        RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault, VaultStatus,
-        VaultTransactions,
+use crate::{
+    app::error::Error,
+    app::menu::Menu,
+    hw,
+    revault::Role,
+    revaultd::{
+        model::{
+            RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
+            VaultStatus, VaultTransactions,
+        },
+        RevaultD, RevaultDError,
     },
-    RevaultD, RevaultDError,
 };
 
 #[derive(Debug, Clone)]
@@ -19,7 +24,9 @@ pub enum Message {
     Synced(Arc<RevaultD>),
     DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    Vault(String, VaultMessage),
+    SelectVault(String),
+    DelegateVault(String),
+    Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
@@ -63,18 +70,17 @@ pub enum SpendTxMessage {
 
 #[derive(Debug, Clone)]
 pub enum VaultMessage {
+    Tick(Instant),
     ListOnchainTransaction,
     RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
-    Select,
     SelectDelegate,
     Delegate(SignMessage),
     Delegated(Result<(), RevaultDError>),
     SelectSecure,
     Secure(SignMessage),
     Secured(Result<(), RevaultDError>),
-    Retry,
     SelectRevault,
     Revault,
     Revaulted(Result<(), RevaultDError>),
@@ -87,19 +93,11 @@ pub enum VaultFilterMessage {
 
 #[derive(Debug, Clone)]
 pub enum SignMessage {
-    ChangeMethod,
-    Sign,
-    Success,
-    SharingStatus(SignatureSharingStatus),
-    Clipboard(String),
-    PsbtEdited(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum SignatureSharingStatus {
-    Unshared,
-    Processing,
-    Success,
+    CheckConnection,
+    Ping(Result<(), hw::Error>),
+    SelectSign,
+    Connected(Result<Arc<Mutex<hw::Channel>>, hw::Error>),
+    Signed(Result<Box<Vec<Psbt>>, hw::Error>),
 }
 
 #[derive(Debug, Clone)]

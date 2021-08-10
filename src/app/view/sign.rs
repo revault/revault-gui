@@ -1,25 +1,21 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use iced::{Align, Column, Container, Element, Length, Row, TextInput};
+use iced::{Column, Container, Element, Length};
 
 use crate::{
-    app::{
-        message::{SignMessage, SignatureSharingStatus},
-        view::Context,
+    app::{message::SignMessage, view::Context},
+    ui::{
+        component::{button, card, text},
+        icon,
     },
-    revault::TransactionKind,
-    ui::component::{button, card, separation, text},
 };
 
 #[derive(Debug)]
-pub struct DirectSignatureView {
-    indirect_button: iced::button::State,
+pub struct SignerView {
     sign_button: iced::button::State,
 }
 
-impl DirectSignatureView {
+impl SignerView {
     pub fn new() -> Self {
-        DirectSignatureView {
-            indirect_button: iced::button::State::default(),
+        SignerView {
             sign_button: iced::button::State::default(),
         }
     }
@@ -27,176 +23,54 @@ impl DirectSignatureView {
     pub fn view(
         &mut self,
         _ctx: &Context,
-        transaction_kind: &TransactionKind,
+        connected: bool,
+        processing: bool,
+        signed: bool,
     ) -> Element<SignMessage> {
-        let title = match transaction_kind {
-            TransactionKind::Emergency => text::bold(text::simple("Sign emergency transaction")),
-            TransactionKind::EmergencyUnvault => {
-                text::bold(text::simple("Sign emergency unvault transaction"))
-            }
-            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction")),
-            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction")),
-            TransactionKind::Unvault => text::bold(text::simple("Sign unvault transaction")),
-        };
-
-        let col = Column::new()
-            .push(
-                Row::new()
-                    .push(Container::new(title).width(Length::Fill))
-                    .push(
-                        button::transparent(
-                            &mut self.indirect_button,
-                            button::button_content(None, "Use PSBT"),
-                        )
-                        .on_press(SignMessage::ChangeMethod)
-                        .width(Length::Shrink),
-                    )
-                    .align_items(Align::Center),
-            )
-            .push(separation().width(Length::Fill))
-            .push(
-                Container::new(text::simple("Connect device"))
-                    .padding(20)
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .push(
-                Container::new(
-                    button::primary(
-                        &mut self.sign_button,
-                        button::button_content(None, " Sign transaction "),
-                    )
-                    .on_press(SignMessage::ChangeMethod),
-                )
-                .width(Length::Fill)
-                .align_x(Align::Center),
-            )
-            .spacing(10);
-        Container::new(col).into()
-    }
-}
-
-#[derive(Debug)]
-pub struct IndirectSignatureView {
-    direct_button: iced::button::State,
-    sign_button: iced::button::State,
-    copy_button: iced::button::State,
-    psbt_input: iced::text_input::State,
-}
-
-impl IndirectSignatureView {
-    pub fn new() -> Self {
-        IndirectSignatureView {
-            direct_button: iced::button::State::default(),
-            sign_button: iced::button::State::default(),
-            copy_button: iced::button::State::default(),
-            psbt_input: iced::text_input::State::new(),
+        if signed {
+            return card::success(Container::new(
+                Column::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(text::success(icon::done_icon().size(20)))
+                    .push(text::success(text::simple("Signed"))),
+            ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
+            .into();
         }
-    }
-
-    pub fn view(
-        &mut self,
-        _ctx: &Context,
-        sharing_status: &SignatureSharingStatus,
-        transaction_kind: &TransactionKind,
-        psbt: &Psbt,
-        psbt_input: &str,
-        warning: Option<&String>,
-    ) -> Element<SignMessage> {
-        let title = match transaction_kind {
-            TransactionKind::Emergency => text::bold(text::simple("Sign emergency transaction")),
-            TransactionKind::EmergencyUnvault => {
-                text::bold(text::simple("Sign emergency unvault transaction"))
-            }
-            TransactionKind::Cancel => text::bold(text::simple("Sign cancel transaction")),
-            TransactionKind::Spend => text::bold(text::simple("Sign spend transaction")),
-            TransactionKind::Unvault => text::bold(text::simple("Sign unvault transaction")),
-        };
-
-        let psbt_str = bitcoin::base64::encode(&bitcoin::consensus::serialize(psbt));
-
-        let mut col = Column::new()
-            .push(
-                Row::new()
-                    .push(Container::new(title).width(Length::Fill))
-                    .push(
-                        button::transparent(
-                            &mut self.direct_button,
-                            button::button_content(None, "Use hardware module"),
-                        )
-                        .on_press(SignMessage::ChangeMethod)
-                        .width(Length::Shrink),
-                    )
-                    .align_items(Align::Center),
-            )
-            .push(separation().width(Length::Fill))
-            .push(
-                Container::new(
-                    Row::new()
-                        .push(Container::new(text::small(&psbt_str)).width(Length::Fill))
-                        .push(
-                            button::clipboard(
-                                &mut self.copy_button,
-                                SignMessage::Clipboard(psbt_str),
-                            )
-                            .width(Length::Shrink),
-                        )
-                        .align_items(Align::Center),
-                )
-                .width(Length::Fill),
+        if connected {
+            let mut sign_button = button::primary(
+                &mut self.sign_button,
+                button::button_content(None, " Sign ").width(Length::Units(200)),
             );
-        if let Some(message) = warning {
-            col = col.push(card::alert_warning(Container::new(text::simple(message))));
+            if !processing {
+                sign_button = sign_button.on_press(SignMessage::SelectSign);
+            }
+            card::white(Container::new(
+                Column::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(icon::connected_device_icon().size(20))
+                    .push(sign_button),
+            ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
+            .into()
+        } else {
+            card::white(Container::new(
+                Column::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(icon::connect_device_icon().size(20))
+                    .push(text::simple("Connect hardware wallet")),
+            ))
+            .padding(50)
+            .width(Length::Fill)
+            .align_x(iced::Align::Center)
+            .into()
         }
-
-        match sharing_status {
-            SignatureSharingStatus::Success => {
-                col = col
-                    .push(Container::new(text::small(&psbt_input.to_string())))
-                    .push(
-                        Container::new(card::success(Container::new(text::simple("success"))))
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
-                    );
-            }
-            SignatureSharingStatus::Processing => {
-                col = col
-                    .push(Container::new(text::small(&psbt_input.to_string())))
-                    .push(Container::new(
-                        button::primary_disable(
-                            &mut self.sign_button,
-                            button::button_content(None, " Processing "),
-                        )
-                        .on_press(SignMessage::Sign),
-                    ));
-            }
-            SignatureSharingStatus::Unshared => {
-                col = col
-                    .push(
-                        TextInput::new(
-                            &mut self.psbt_input,
-                            "Signed PSBT",
-                            &psbt_input,
-                            SignMessage::PsbtEdited,
-                        )
-                        .size(15)
-                        .width(Length::Fill)
-                        .padding(10),
-                    )
-                    .push(
-                        Container::new(
-                            button::primary(
-                                &mut self.sign_button,
-                                button::button_content(None, " Sign transaction "),
-                            )
-                            .on_press(SignMessage::Sign),
-                        )
-                        .width(Length::Fill)
-                        .align_x(Align::Center),
-                    );
-            }
-        };
-
-        Container::new(col.spacing(10)).into()
     }
 }

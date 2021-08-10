@@ -13,7 +13,6 @@ pub use config::Config;
 pub use message::Message;
 
 use menu::Menu;
-use message::{SignMessage, SpendTxMessage, VaultMessage};
 use state::{
     ChargingState, DepositState, EmergencyState, ManagerHomeState, ManagerSendState, SettingsState,
     StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState, State,
@@ -111,10 +110,7 @@ impl App {
             Message::Synced(revaultd) => self.on_synced(revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
-            Message::Clipboard(text)
-            | Message::SpendTx(SpendTxMessage::Sign(SignMessage::Clipboard(text)))
-            | Message::Vault(_, VaultMessage::Delegate(SignMessage::Clipboard(text)))
-            | Message::Vault(_, VaultMessage::Secure(SignMessage::Clipboard(text))) => {
+            Message::Clipboard(text) => {
                 clipboard.write(text);
                 Command::none()
             }

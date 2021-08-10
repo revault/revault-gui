@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use crate::revaultd::{
     model::{self, VaultStatus},
@@ -81,7 +81,7 @@ impl StakeholderHomeState {
             let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
+            return cmd.map(Message::Vault);
         };
         Command::none()
     }
@@ -113,16 +113,12 @@ impl State for StakeholderHomeState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::Vault(outpoint, VaultMessage::Select) => {
-                return self.on_vault_select(outpoint)
-            }
-            Message::Vault(outpoint, msg) => {
+            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    if selected.vault.outpoint() == outpoint {
-                        return selected
-                            .update(self.revaultd.clone(), msg)
-                            .map(move |msg| Message::Vault(outpoint.clone(), msg));
-                    }
+                    return selected
+                        .update(self.revaultd.clone(), msg)
+                        .map(Message::Vault);
                 }
             }
             _ => {}
@@ -141,6 +137,13 @@ impl State for StakeholderHomeState {
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             &self.balance,
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn load(&self) -> Command<Message> {
@@ -206,9 +209,7 @@ impl StakeholderCreateVaultsState {
             self.selected_vault = Some(Vault::new(selected.vault.clone()));
             return Command::perform(
                 get_revocation_txs(self.revaultd.clone(), selected.vault.outpoint()),
-                move |res| {
-                    Message::Vault(outpoint.clone(), VaultMessage::RevocationTransactions(res))
-                },
+                move |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
             );
         };
         Command::none()
@@ -246,14 +247,12 @@ impl State for StakeholderCreateVaultsState {
                     Command::none()
                 }
             },
-            Message::Vault(outpoint, VaultMessage::Select) => self.on_vault_select(outpoint),
-            Message::Vault(outpoint, msg) => {
+            Message::SelectVault(outpoint) => self.on_vault_select(outpoint),
+            Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    if selected.vault.outpoint() == outpoint {
-                        return selected
-                            .update(self.revaultd.clone(), msg)
-                            .map(move |msg| Message::Vault(outpoint.clone(), msg));
-                    }
+                    return selected
+                        .update(self.revaultd.clone(), msg)
+                        .map(Message::Vault);
                 }
                 Command::none()
             }
@@ -269,6 +268,13 @@ impl State for StakeholderCreateVaultsState {
             },
             _ => Command::none(),
         }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
@@ -349,7 +355,7 @@ impl StakeholderDelegateFundsState {
             let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
+            return cmd.map(Message::Vault);
         };
         Command::none()
     }
@@ -359,7 +365,7 @@ impl StakeholderDelegateFundsState {
             if selected.vault.outpoint() == outpoint {
                 return selected
                     .update(self.revaultd.clone(), VaultMessage::SelectDelegate)
-                    .map(move |msg| Message::Vault(outpoint.clone(), msg));
+                    .map(Message::Vault);
             }
         }
 
@@ -371,7 +377,7 @@ impl StakeholderDelegateFundsState {
             let mut selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.update(self.revaultd.clone(), VaultMessage::SelectDelegate);
             self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
+            return cmd.map(Message::Vault);
         };
         Command::none()
     }
@@ -399,16 +405,14 @@ impl State for StakeholderDelegateFundsState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::Vault(outpoint, msg) => match msg {
-                VaultMessage::Select => return self.on_vault_select(outpoint),
-                VaultMessage::SelectDelegate => return self.on_vault_delegate(outpoint),
+            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::DelegateVault(outpoint) => return self.on_vault_delegate(outpoint),
+            Message::Vault(msg) => match msg {
                 _ => {
                     if let Some(selected) = &mut self.selected_vault {
-                        if selected.vault.outpoint() == outpoint {
-                            return selected
-                                .update(self.revaultd.clone(), msg)
-                                .map(move |msg| Message::Vault(outpoint.clone(), msg));
-                        }
+                        return selected
+                            .update(self.revaultd.clone(), msg)
+                            .map(Message::Vault);
                     }
                     return Command::none();
                 }
@@ -433,6 +437,13 @@ impl State for StakeholderDelegateFundsState {
                 .collect(),
             self.warning.as_ref(),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        Subscription::none()
     }
 
     fn load(&self) -> Command<Message> {

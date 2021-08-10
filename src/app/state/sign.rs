@@ -1,131 +1,293 @@
-use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
+use bitcoin::util::{
+    bip32::{ChildNumber, DerivationPath},
+    psbt::PartiallySignedTransaction as Psbt,
+};
+use std::{sync::Arc, time::Duration};
+use tokio::sync::Mutex;
 
-use iced::{Command, Element};
+use iced::{time, Command, Element, Subscription};
 
 use crate::{
     app::{
-        message::{SignMessage, SignatureSharingStatus},
-        view::{
-            sign::{DirectSignatureView, IndirectSignatureView},
-            Context,
-        },
+        message::SignMessage,
+        view::{sign::SignerView, Context},
     },
-    revault::TransactionKind,
+    hw,
 };
 
-/// SignState is a general widget to handle the signature of a Psbt.
 #[derive(Debug)]
-pub struct SignState {
-    pub original_psbt: Psbt,
-    pub signed_psbt: Option<Psbt>,
-    pub transaction_kind: TransactionKind,
-    sharing_status: SignatureSharingStatus,
-    method: SignMethod,
+pub struct RevocationTransactionsTarget {
+    pub derivation_index: u32,
+    pub cancel_tx: Psbt,
+    pub emergency_tx: Psbt,
+    pub emergency_unvault_tx: Psbt,
 }
 
-/// SignMethod is the way the user will sign the PSBT.
 #[derive(Debug)]
-pub enum SignMethod {
-    /// DirectSignature means that a hard module directly
-    /// connect to the GUI and signs the given PSBT.
-    DirectSignature { view: DirectSignatureView },
-    /// IndirectSignature means that the PSBT is exported and
-    /// then imported once signed on a air gapped device for example.
-    IndirectSignature {
-        warning: Option<String>,
-        psbt_input: String,
-        view: IndirectSignatureView,
-    },
+pub struct UnvaultTransactionTarget {
+    pub derivation_index: u32,
+    pub unvault_tx: Psbt,
 }
 
-impl SignState {
-    pub fn new(original_psbt: Psbt, transaction_kind: TransactionKind) -> Self {
-        SignState {
-            original_psbt,
-            transaction_kind,
-            signed_psbt: None,
-            sharing_status: SignatureSharingStatus::Unshared,
-            method: SignMethod::DirectSignature {
-                view: DirectSignatureView::new(),
-            },
+#[derive(Debug)]
+pub struct SpendTransactionTarget {
+    pub derivation_indexes: Vec<u32>,
+    pub spend_tx: Psbt,
+}
+
+#[derive(Debug)]
+pub struct Signer<T> {
+    channel: Option<Arc<Mutex<hw::Channel>>>,
+    processing: bool,
+    signed: bool,
+    error: Option<hw::Error>,
+
+    pub target: T,
+
+    view: SignerView,
+}
+
+impl<T> Signer<T> {
+    pub fn new(target: T) -> Self {
+        Signer {
+            channel: None,
+            processing: false,
+            signed: false,
+            error: None,
+            target,
+            view: SignerView::new(),
         }
     }
 
-    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+    pub fn signed(&self) -> bool {
+        self.signed
+    }
+
+    pub fn check_channel(&mut self) -> Command<SignMessage> {
+        if let Some(channel) = &self.channel {
+            Command::perform(ping(channel.clone()), SignMessage::Ping)
+        } else {
+            Command::perform(hw::Channel::try_connect(), |res| {
+                SignMessage::Connected(res.map(|channel| Arc::new(Mutex::new(channel))))
+            })
+        }
+    }
+
+    pub fn update_channel(&mut self, message: SignMessage) -> Command<SignMessage> {
         match message {
-            SignMessage::Success => {
-                self.sharing_status = SignatureSharingStatus::Success;
-            }
-            SignMessage::PsbtEdited(psbt) => {
-                if let SignMethod::IndirectSignature {
-                    psbt_input,
-                    warning,
-                    ..
-                } = &mut self.method
-                {
-                    *warning = None;
-                    *psbt_input = psbt;
+            SignMessage::Ping(res) => {
+                if res.is_err() {
+                    self.channel = None;
                 }
             }
-            SignMessage::Sign => {
-                if let SignMethod::IndirectSignature {
-                    psbt_input,
-                    warning,
-                    ..
-                } = &mut self.method
-                {
-                    if !psbt_input.is_empty() {
-                        self.signed_psbt = base64::decode(&psbt_input)
-                            .ok()
-                            .and_then(|bytes| encode::deserialize(&bytes).ok());
-                        if let Some(signed) = &self.signed_psbt {
-                            if signed.global.unsigned_tx.txid()
-                                != self.original_psbt.global.unsigned_tx.txid()
-                            {
-                                self.signed_psbt = None;
-                                *warning = Some(
-                                    "PSBT is not the targeted transaction to sign".to_string(),
-                                );
-                            }
-                        } else {
-                            *warning = Some("Please enter valid PSBT".to_string());
-                        }
-                    }
-                }
-            }
-            SignMessage::ChangeMethod => {
-                if let SignMethod::DirectSignature { .. } = self.method {
-                    self.method = SignMethod::IndirectSignature {
-                        warning: None,
-                        psbt_input: "".to_string(),
-                        view: IndirectSignatureView::new(),
-                    }
-                } else {
-                    self.method = SignMethod::DirectSignature {
-                        view: DirectSignatureView::new(),
-                    }
-                }
-            }
+            SignMessage::CheckConnection => return self.check_channel(),
+            SignMessage::Connected(Ok(channel)) => self.channel = Some(channel),
             _ => {}
         };
         Command::none()
     }
 
-    pub fn view(&mut self, ctx: &Context) -> Element<SignMessage> {
-        match &mut self.method {
-            SignMethod::DirectSignature { view } => view.view(ctx, &self.transaction_kind),
-            SignMethod::IndirectSignature {
-                psbt_input,
-                view,
-                warning,
-            } => view.view(
-                ctx,
-                &self.sharing_status,
-                &self.transaction_kind,
-                &self.original_psbt,
-                &psbt_input,
-                warning.as_ref(),
-            ),
+    pub fn subscription(&self) -> Subscription<SignMessage> {
+        if !self.signed {
+            time::every(Duration::from_secs(1)).map(|_| SignMessage::CheckConnection)
+        } else {
+            Subscription::none()
         }
     }
+
+    pub fn view(&mut self, ctx: &Context) -> Element<SignMessage> {
+        self.view
+            .view(ctx, self.channel.is_some(), self.processing, self.signed)
+    }
+}
+
+pub async fn ping(channel: Arc<Mutex<hw::Channel>>) -> Result<(), hw::Error> {
+    channel.clone().lock().await.ping().await
+}
+
+impl Signer<SpendTransactionTarget> {
+    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+        match message {
+            SignMessage::SelectSign => {
+                if let Some(channel) = &self.channel {
+                    self.processing = true;
+                    return Command::perform(
+                        sign_spend_tx(
+                            channel.clone(),
+                            self.target
+                                .derivation_indexes
+                                .iter()
+                                .map(|index| {
+                                    DerivationPath::master().child(
+                                        ChildNumber::from_normal_idx(index.clone())
+                                            .expect("index will be not too high"),
+                                    )
+                                })
+                                .collect(),
+                            self.target.spend_tx.clone(),
+                        ),
+                        SignMessage::Signed,
+                    );
+                }
+            }
+            SignMessage::Signed(res) => {
+                self.processing = false;
+                match res {
+                    Ok(txs) => {
+                        self.signed = true;
+                        let txs = *txs;
+                        if let Some(tx) = txs.into_iter().find(|psbt| {
+                            psbt.global.unsigned_tx.txid()
+                                == self.target.spend_tx.global.unsigned_tx.txid()
+                        }) {
+                            self.target.spend_tx = tx;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::info!("{:?}", e);
+                        self.error = Some(e);
+                    }
+                }
+            }
+            _ => return self.update_channel(message),
+        };
+        Command::none()
+    }
+}
+
+pub async fn sign_spend_tx(
+    channel: Arc<Mutex<hw::Channel>>,
+    paths: Vec<DerivationPath>,
+    spend_tx: Psbt,
+) -> Result<Box<Vec<Psbt>>, hw::Error> {
+    channel
+        .clone()
+        .lock()
+        .await
+        .sign_spend_tx(paths, spend_tx)
+        .await
+}
+
+impl Signer<UnvaultTransactionTarget> {
+    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+        match message {
+            SignMessage::SelectSign => {
+                if let Some(channel) = &self.channel {
+                    self.processing = true;
+                    return Command::perform(
+                        sign_unvault_tx(
+                            channel.clone(),
+                            DerivationPath::master().child(
+                                ChildNumber::from_normal_idx(self.target.derivation_index.clone())
+                                    .expect("index will be not too high"),
+                            ),
+                            self.target.unvault_tx.clone(),
+                        ),
+                        SignMessage::Signed,
+                    );
+                }
+            }
+            SignMessage::Signed(res) => {
+                self.processing = false;
+                match res {
+                    Ok(txs) => {
+                        self.signed = true;
+                        let txs = *txs;
+                        if let Some(tx) = txs.into_iter().find(|psbt| {
+                            psbt.global.unsigned_tx.txid()
+                                == self.target.unvault_tx.global.unsigned_tx.txid()
+                        }) {
+                            self.target.unvault_tx = tx;
+                        }
+                    }
+                    Err(e) => self.error = Some(e),
+                }
+            }
+            _ => return self.update_channel(message),
+        };
+        Command::none()
+    }
+}
+
+pub async fn sign_unvault_tx(
+    channel: Arc<Mutex<hw::Channel>>,
+    path: DerivationPath,
+    unvault_tx: Psbt,
+) -> Result<Box<Vec<Psbt>>, hw::Error> {
+    channel
+        .clone()
+        .lock()
+        .await
+        .sign_unvault_tx(path, unvault_tx)
+        .await
+}
+
+impl Signer<RevocationTransactionsTarget> {
+    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+        match message {
+            SignMessage::SelectSign => {
+                if let Some(channel) = &self.channel {
+                    self.processing = true;
+                    return Command::perform(
+                        sign_revocation_txs(
+                            channel.clone(),
+                            DerivationPath::master().child(
+                                ChildNumber::from_normal_idx(self.target.derivation_index.clone())
+                                    .expect("index will be not too high"),
+                            ),
+                            self.target.emergency_tx.clone(),
+                            self.target.emergency_unvault_tx.clone(),
+                            self.target.cancel_tx.clone(),
+                        ),
+                        SignMessage::Signed,
+                    );
+                }
+            }
+            SignMessage::Signed(res) => {
+                self.processing = false;
+                match res {
+                    Ok(txs) => {
+                        self.signed = true;
+                        let txs = *txs;
+                        if let Some(tx) = txs.iter().find(|psbt| {
+                            psbt.global.unsigned_tx.txid()
+                                == self.target.cancel_tx.global.unsigned_tx.txid()
+                        }) {
+                            self.target.cancel_tx = tx.clone();
+                        }
+                        if let Some(tx) = txs.iter().find(|psbt| {
+                            psbt.global.unsigned_tx.txid()
+                                == self.target.emergency_tx.global.unsigned_tx.txid()
+                        }) {
+                            self.target.emergency_tx = tx.clone();
+                        }
+                        if let Some(tx) = txs.into_iter().find(|psbt| {
+                            psbt.global.unsigned_tx.txid()
+                                == self.target.emergency_unvault_tx.global.unsigned_tx.txid()
+                        }) {
+                            self.target.emergency_unvault_tx = tx;
+                        }
+                    }
+                    Err(e) => self.error = Some(e),
+                }
+            }
+            _ => return self.update_channel(message),
+        };
+        Command::none()
+    }
+}
+
+pub async fn sign_revocation_txs(
+    channel: Arc<Mutex<hw::Channel>>,
+    path: DerivationPath,
+    emergency_tx: Psbt,
+    emergency_unvault_tx: Psbt,
+    cancel_tx: Psbt,
+) -> Result<Box<Vec<Psbt>>, hw::Error> {
+    channel
+        .clone()
+        .lock()
+        .await
+        .sign_revocation_txs(path, emergency_tx, emergency_unvault_tx, cancel_tx)
+        .await
 }

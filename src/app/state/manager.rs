@@ -4,7 +4,7 @@ use std::convert::From;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Command, Element, Subscription};
 
 use super::{
     cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
@@ -17,13 +17,15 @@ use crate::revaultd::{
     RevaultD,
 };
 
-use crate::revault::TransactionKind;
 use crate::ui::component::form;
 
 use crate::app::{
     error::Error,
-    message::{InputMessage, Message, RecipientMessage, SignMessage, SpendTxMessage, VaultMessage},
-    state::{sign::SignState, SpendTransactionListItem, SpendTransactionState},
+    message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
+    state::{
+        sign::{Signer, SpendTransactionTarget},
+        SpendTransactionListItem, SpendTransactionState,
+    },
     view::manager::{
         manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
         ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
@@ -197,7 +199,7 @@ impl ManagerHomeState {
             let selected_vault = Vault::new(selected.vault.clone());
             let cmd = selected_vault.load(self.revaultd.clone());
             self.selected_vault = Some(selected_vault);
-            return cmd.map(move |msg| Message::Vault(outpoint.clone(), msg));
+            return cmd.map(Message::Vault);
         };
         Command::none()
     }
@@ -222,16 +224,12 @@ impl State for ManagerHomeState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::Vault(outpoint, VaultMessage::Select) => {
-                return self.on_vault_select(outpoint)
-            }
-            Message::Vault(outpoint, msg) => {
+            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    if selected.vault.outpoint() == outpoint {
-                        return selected
-                            .update(self.revaultd.clone(), msg)
-                            .map(move |msg| Message::Vault(outpoint.clone(), msg));
-                    }
+                    return selected
+                        .update(self.revaultd.clone(), msg)
+                        .map(Message::Vault);
                 }
             }
             Message::BlockHeight(b) => match b {
@@ -245,6 +243,16 @@ impl State for ManagerHomeState {
             _ => {}
         };
         Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Some(v) = &self.selected_vault {
+            return v.subscription().map(Message::Vault);
+        }
+        if let Some(v) = &self.selected_spend_tx {
+            return v.subscription();
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
@@ -335,6 +343,14 @@ impl State for ManagerSendState {
                 _ => state.update(message),
             },
             Self::SendTransactionDetail(state) => state.update(message),
+        }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        match self {
+            ManagerSendState::SendTransactionDetail(s) => s.subscription(),
+            ManagerSendState::CreateSendTransaction(s) => s.subscription(),
+            _ => Subscription::none(),
         }
     }
 
@@ -433,7 +449,7 @@ enum ManagerSendStep {
     SelectFee(ManagerSelectFeeView),
     SelectInputs(ManagerSelectInputsView),
     Sign {
-        signer: SignState,
+        signer: Signer<SpendTransactionTarget>,
         view: ManagerSignView,
     },
     Success(ManagerSpendTransactionCreatedView),
@@ -572,10 +588,9 @@ impl State for ManagerCreateSendTransactionState {
                         // During this step state has a generated psbt
                         // and signer has a signed psbt.
                         self.psbt = Some((
-                            signer.signed_psbt.clone().expect("As the received message is a sign success, the psbt should not be None"),
+                            signer.target.spend_tx.clone(),
                             self.psbt.clone().expect("As the received message is a sign success, the psbt should not be None").1,
                         ));
-                        signer.update(SignMessage::Success);
                         self.step =
                             ManagerSendStep::Success(ManagerSpendTransactionCreatedView::new());
                     };
@@ -584,15 +599,16 @@ impl State for ManagerCreateSendTransactionState {
             },
             Message::SpendTx(SpendTxMessage::Sign(msg)) => {
                 if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
-                    signer
+                    let cmd = signer
                         .update(msg)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
-                    if let Some(psbt) = &signer.signed_psbt {
+                    if signer.signed() {
                         return Command::perform(
-                            update_spend_tx(self.revaultd.clone(), psbt.clone()),
+                            update_spend_tx(self.revaultd.clone(), signer.target.spend_tx.clone()),
                             |res| Message::SpendTx(SpendTxMessage::Signed(res)),
                         );
                     }
+                    return cmd;
                 }
             }
             Message::Next => match self.step {
@@ -605,7 +621,20 @@ impl State for ManagerCreateSendTransactionState {
                 ManagerSendStep::SelectInputs(_) => {
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
-                            signer: SignState::new(psbt.clone(), TransactionKind::Spend),
+                            signer: Signer::new(SpendTransactionTarget {
+                                derivation_indexes: self
+                                    .vaults
+                                    .iter()
+                                    .filter_map(|v| {
+                                        if v.selected {
+                                            Some(v.vault.derivation_index)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .collect(),
+                                spend_tx: psbt.clone(),
+                            }),
                             view: ManagerSignView::new(),
                         };
                     }
@@ -648,6 +677,15 @@ impl State for ManagerCreateSendTransactionState {
             _ => {}
         };
         Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let ManagerSendStep::Sign { signer, .. } = &self.step {
+            return signer
+                .subscription()
+                .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg)));
+        }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {

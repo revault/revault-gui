@@ -12,6 +12,7 @@ impl Converter {
             Network::Testnet => Unit::TestnetBitcoin,
             Network::Bitcoin => Unit::Bitcoin,
             Network::Regtest => Unit::RegtestBitcoin,
+            Network::Signet => Unit::SignetBitcoin,
         };
         Self { unit }
     }
@@ -26,6 +27,7 @@ impl Converter {
 pub enum Unit {
     TestnetBitcoin,
     RegtestBitcoin,
+    SignetBitcoin,
     Bitcoin,
 }
 
@@ -34,6 +36,7 @@ impl std::fmt::Display for Unit {
         match self {
             Self::TestnetBitcoin => write!(f, "tBTC"),
             Self::RegtestBitcoin => write!(f, "rBTC"),
+            Self::SignetBitcoin => write!(f, "sBTC"),
             Self::Bitcoin => write!(f, "BTC"),
         }
     }

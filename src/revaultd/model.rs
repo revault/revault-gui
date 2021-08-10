@@ -1,4 +1,4 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
+use bitcoin::{util::psbt::PartiallySignedTransaction, OutPoint, Transaction, Txid};
 use serde::{Deserialize, Serialize};
 
 /// getdepositaddress response
@@ -20,7 +20,7 @@ pub struct Vault {
     /// Status of the vault
     pub status: VaultStatus,
     /// Deposit txid of the vault deposit transaction
-    pub txid: String,
+    pub txid: Txid,
     /// Timestamp of the last vault update.
     pub updated_at: i64,
     /// Deposit vout of the vault deposit transaction
@@ -28,8 +28,9 @@ pub struct Vault {
 }
 
 impl Vault {
+    // Todo: return OutPoint
     pub fn outpoint(&self) -> String {
-        format!("{}:{}", self.txid, self.vout)
+        OutPoint::new(self.txid, self.vout).to_string()
     }
 }
 

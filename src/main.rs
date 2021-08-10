@@ -8,6 +8,7 @@ extern crate serde_json;
 
 mod app;
 mod conversion;
+mod hw;
 mod installer;
 mod revault;
 mod revaultd;
