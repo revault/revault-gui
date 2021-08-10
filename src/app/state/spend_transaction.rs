@@ -144,6 +144,7 @@ pub enum SpendTransactionAction {
     },
     Sign {
         warning: Option<Error>,
+        processing: bool,
         signer: Signer<SpendTransactionTarget>,
         view: SpendTransactionSignView,
     },
@@ -216,28 +217,27 @@ impl SpendTransactionAction {
             }
             SpendTxMessage::SelectSign => {
                 *self = Self::Sign {
+                    processing: false,
                     warning: None,
                     signer: Signer::new(SpendTransactionTarget {
-                        derivation_indexes: {
-                            let mut indexes = Vec::new();
-                            for input in &psbt.global.unsigned_tx.input {
-                                for deposit in deposits {
-                                    if input.previous_output.to_string() == deposit.outpoint() {
-                                        indexes.push(deposit.derivation_index);
-                                    }
-                                }
-                            }
-                            indexes
-                        },
+                        derivation_indexes: deposits
+                            .iter()
+                            .map(|deposit| deposit.derivation_index)
+                            .collect(),
                         spend_tx: psbt.clone(),
                     }),
                     view: SpendTransactionSignView::new(),
                 };
             }
             SpendTxMessage::Sign(msg) => {
-                if let Self::Sign { signer, .. } = self {
+                if let Self::Sign {
+                    signer, processing, ..
+                } = self
+                {
                     let cmd = signer.update(msg);
-                    if signer.signed() {
+                    if signer.signed() && !*processing {
+                        *psbt = signer.target.spend_tx.clone();
+                        *processing = true;
                         return Command::perform(
                             update_spend_tx(revaultd, signer.target.spend_tx.clone()),
                             SpendTxMessage::Signed,
@@ -248,9 +248,13 @@ impl SpendTransactionAction {
             }
             SpendTxMessage::Signed(res) => {
                 if let Self::Sign {
-                    warning, signer, ..
+                    warning,
+                    signer,
+                    processing,
+                    ..
                 } = self
                 {
+                    *processing = false;
                     match res {
                         Ok(_) => {
                             // During this step state has a generated psbt
@@ -374,6 +378,7 @@ impl SpendTransactionAction {
                 signer,
                 warning,
                 view,
+                ..
             } => view.view(
                 signer
                     .view(ctx)
