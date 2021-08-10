@@ -12,7 +12,7 @@ use crate::app::{
 };
 use crate::revaultd::{
     config::{Config, ConfigError},
-    start_daemon, RevaultD, RevaultDError,
+    start_daemon, GetInfoResponse, RevaultD, RevaultDError,
 };
 
 #[derive(Debug, Clone)]
@@ -90,19 +90,19 @@ impl ChargingState {
     }
 
     #[allow(unused_variables, unused_assignments)]
-    fn on_sync(&mut self, res: Result<f64, RevaultDError>) -> Command<Message> {
+    fn on_sync(&mut self, res: Result<GetInfoResponse, RevaultDError>) -> Command<Message> {
         match self.step {
             ChargingStep::Syncing { mut progress } => {
                 match res {
                     Err(e) => return self.on_error(&e),
-                    Ok(p) => {
-                        if (p - 1.0_f64).abs() < f64::EPSILON {
+                    Ok(info) => {
+                        if (info.sync - 1.0_f64).abs() < f64::EPSILON {
                             return Command::perform(
-                                synced(self.revaultd.as_ref().unwrap().clone()),
-                                Message::Synced,
+                                synced(info, self.revaultd.as_ref().unwrap().clone()),
+                                |res| Message::Synced(res.0, res.1),
                             );
                         } else {
-                            progress = p
+                            progress = info.sync
                         }
                     }
                 };
@@ -149,8 +149,11 @@ impl From<ChargingState> for Box<dyn State> {
     }
 }
 
-async fn synced(revaultd: Arc<RevaultD>) -> Arc<RevaultD> {
-    revaultd
+async fn synced(
+    info: GetInfoResponse,
+    revaultd: Arc<RevaultD>,
+) -> (GetInfoResponse, Arc<RevaultD>) {
+    (info, revaultd)
 }
 
 async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
@@ -160,12 +163,11 @@ async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> 
     Ok(Arc::new(revaultd))
 }
 
-async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<f64, RevaultDError> {
+async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, RevaultDError> {
     if sleep {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
-    let resp = revaultd.get_info()?;
-    Ok(resp.sync)
+    revaultd.get_info()
 }
 
 async fn start_daemon_and_connect(

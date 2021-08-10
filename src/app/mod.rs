@@ -19,7 +19,12 @@ use state::{
     VaultsState,
 };
 
-use crate::{app::view::Context, conversion::Converter, revault::Role, revaultd::RevaultD};
+use crate::{
+    app::view::Context,
+    conversion::Converter,
+    revault::Role,
+    revaultd::{GetInfoResponse, RevaultD},
+};
 
 pub struct App {
     config: Config,
@@ -61,7 +66,11 @@ impl App {
 
     /// After the synchronisation process, the UI displays the home panel to the user
     /// according to the role specified in the revaultd configuration.
-    fn on_synced(&mut self, revaultd: Arc<RevaultD>) -> Command<Message> {
+    fn on_synced(
+        &mut self,
+        information: GetInfoResponse,
+        revaultd: Arc<RevaultD>,
+    ) -> Command<Message> {
         let role = if revaultd.config.stakeholder_config.is_some() {
             Role::Stakeholder
         } else {
@@ -78,6 +87,7 @@ impl App {
             edit_role,
             role,
             Menu::Home,
+            information.managers_threshold,
         );
         self.context.network_up = true;
         self.revaultd = Some(revaultd);
@@ -107,7 +117,7 @@ impl App {
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
-            Message::Synced(revaultd) => self.on_synced(revaultd),
+            Message::Synced(info, revaultd) => self.on_synced(info, revaultd),
             Message::ChangeRole(role) => self.load_state(role, self.context.menu.to_owned()),
             Message::Menu(menu) => self.load_state(self.context.role, menu),
             Message::Clipboard(text) => {

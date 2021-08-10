@@ -111,8 +111,9 @@ impl SpendTransactionView {
             col_header = col_header.push(
                 Row::new()
                     .push(text::simple(&format!(
-                        "Total number of signatures: {}",
-                        psbt.inputs[0].partial_sigs.len()
+                        "Total number of signatures: {} / {}",
+                        psbt.inputs[0].partial_sigs.len(),
+                        ctx.managers_threshold,
                     )))
                     .push(icon::key_icon())
                     .align_items(Align::Center)
@@ -576,8 +577,9 @@ impl SpendTransactionListItemView {
             col = col.push(
                 Row::new()
                     .push(text::simple(&format!(
-                        "{}",
-                        tx.psbt.inputs[0].partial_sigs.len()
+                        "{} / {}",
+                        tx.psbt.inputs[0].partial_sigs.len(),
+                        ctx.managers_threshold
                     )))
                     .push(icon::key_icon())
                     .spacing(5)

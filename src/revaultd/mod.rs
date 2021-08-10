@@ -231,6 +231,7 @@ pub struct GetInfoResponse {
     pub network: String,
     pub sync: f64,
     pub version: String,
+    pub managers_threshold: usize,
 }
 
 /// list_vaults
