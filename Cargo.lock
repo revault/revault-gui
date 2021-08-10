@@ -111,12 +111,6 @@ dependencies = [
 
 [[package]]
 name = "bech32"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdcf67bb7ba7797a081cd19009948ab533af7c355d5caf1d08c777582d351e9c"
-
-[[package]]
-name = "bech32"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf9ff0bbfd639f15c74af777d81383cf53efb7c93613f6cab67c6c11e05bbf8b"
@@ -138,33 +132,16 @@ checksum = "5f0dc55f2d8a1a85650ac47858bb001b4c0dd73d79e3c455a842925e68d29cd3"
 
 [[package]]
 name = "bitcoin"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ec5f88a446d66e7474a3b8fa2e348320b574463fb78d799d90ba68f79f48e0e"
-dependencies = [
- "bech32 0.7.2",
- "bitcoin_hashes 0.9.4",
- "secp256k1",
-]
-
-[[package]]
-name = "bitcoin"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a427b27dae305157520d86673f2393b3eb08d880609abfcffc6e3c3c820e764"
 dependencies = [
  "base64-compat",
- "bech32 0.8.1",
- "bitcoin_hashes 0.10.0",
+ "bech32",
+ "bitcoin_hashes",
  "secp256k1",
  "serde",
 ]
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.9.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aaf87b776808e26ae93289bc7d025092b6d909c193f0cdee0b3a86e7bd3c776"
 
 [[package]]
 name = "bitcoin_hashes"
@@ -1792,11 +1769,11 @@ dependencies = [
 
 [[package]]
 name = "miniscript"
-version = "5.1.0"
+version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71f455be59a359d50370c4f587afbc5739c862e684c5afecae80ab93e7474b4e"
+checksum = "d69450033bf162edf854d4aacaff82ca5ef34fa81f6cf69e1c81a103f0834997"
 dependencies = [
- "bitcoin 0.26.0",
+ "bitcoin",
 ]
 
 [[package]]
@@ -2451,11 +2428,10 @@ dependencies = [
 name = "revault-gui"
 version = "0.0.1"
 dependencies = [
- "bitcoin 0.27.0",
+ "bitcoin",
  "chrono",
  "dirs 3.0.1",
  "iced",
- "miniscript",
  "revault_tx",
  "serde",
  "serde_json",
@@ -2470,9 +2446,9 @@ dependencies = [
 
 [[package]]
 name = "revault_tx"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d05cb1531ea70874181c5cc8af3b3a4c1493e53f495fc479306bd2834fa7a027"
+checksum = "c5342b21d7e70d39b01ab4fd9aa207849fca9d438f1930c67f5d9de27b21dfa4"
 dependencies = [
  "base64",
  "bitcoinconsensus",

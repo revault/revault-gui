@@ -10,8 +10,7 @@ edition = "2018"
 
 [dependencies]
 bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
-revault_tx = "0.2.1"
-miniscript = "5.1.0"
+revault_tx = "0.3.0"
 
 iced = { version = "0.3", features = ["tokio", "wgpu", "svg", "debug", "qr_code"] }
 

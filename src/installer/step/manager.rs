@@ -5,8 +5,10 @@ use std::str::FromStr;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
-use miniscript::DescriptorPublicKey;
-use revault_tx::scripts::{DepositDescriptor, UnvaultDescriptor};
+use revault_tx::{
+    miniscript::DescriptorPublicKey,
+    scripts::{DepositDescriptor, UnvaultDescriptor},
+};
 
 use crate::{
     installer::{
