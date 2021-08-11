@@ -211,6 +211,7 @@ impl ManagerSelectOutputsView {
         &'a mut self,
         selected_outputs: Vec<Element<'a, Message>>,
         valid: bool,
+        no_duplicate: bool,
     ) -> Element<'a, Message> {
         let header = Row::new()
             .push(Column::new().width(Length::Fill))
@@ -305,7 +306,22 @@ impl ManagerSelectOutputsView {
                     )
                     .height(Length::FillPortion(4)),
                 )
-                .push(footer)
+                .push(if no_duplicate {
+                    Container::new(footer)
+                } else {
+                    Container::new(
+                        Column::new()
+                            .push(
+                                Container::new(card::alert_warning(Container::new(text::simple(
+                                    "Please merge recipients with the same address",
+                                ))))
+                                .width(Length::Fill)
+                                .align_x(Align::Center),
+                            )
+                            .spacing(20)
+                            .push(footer),
+                    )
+                })
                 .spacing(20),
         )
         .style(ContainerBackgroundStyle)
