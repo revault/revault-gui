@@ -156,11 +156,13 @@ pub enum VaultSection {
     },
     Delegate {
         signer: Signer<UnvaultTransactionTarget>,
+        processing: bool,
         view: DelegateVaultView,
         warning: Option<Error>,
     },
     Secure {
         signer: Signer<RevocationTransactionsTarget>,
+        processing: bool,
         view: SecureVaultView,
         warning: Option<Error>,
     },
@@ -202,6 +204,7 @@ impl VaultSection {
                 derivation_index,
                 unvault_tx,
             }),
+            processing: false,
             view: DelegateVaultView::new(),
             warning: None,
         }
@@ -224,6 +227,7 @@ impl VaultSection {
                 emergency_unvault_tx: txs.emergency_unvault_tx,
                 cancel_tx: txs.cancel_tx,
             }),
+            processing: false,
             view: SecureVaultView::new(),
             warning: None,
         }
@@ -272,12 +276,16 @@ impl VaultSection {
             }
             VaultMessage::Delegate(msg) => {
                 if let VaultSection::Delegate {
-                    signer, warning, ..
+                    signer,
+                    warning,
+                    processing,
+                    ..
                 } = self
                 {
                     *warning = None;
                     let cmd = signer.update(msg);
-                    if signer.signed() {
+                    if signer.signed() && !*processing {
+                        *processing = true;
                         return Command::perform(
                             set_unvault_tx(
                                 revaultd,
@@ -291,7 +299,13 @@ impl VaultSection {
                 }
             }
             VaultMessage::Delegated(res) => {
-                if let Self::Delegate { warning, .. } = self {
+                if let Self::Delegate {
+                    warning,
+                    processing,
+                    ..
+                } = self
+                {
+                    *processing = false;
                     match res {
                         Ok(()) => {
                             *warning = None;
@@ -303,7 +317,13 @@ impl VaultSection {
                 }
             }
             VaultMessage::Secured(res) => {
-                if let VaultSection::Secure { warning, .. } = self {
+                if let VaultSection::Secure {
+                    warning,
+                    processing,
+                    ..
+                } = self
+                {
+                    *processing = false;
                     match res {
                         Ok(()) => {
                             *warning = None;
@@ -316,12 +336,16 @@ impl VaultSection {
             }
             VaultMessage::Secure(msg) => {
                 if let VaultSection::Secure {
-                    signer, warning, ..
+                    signer,
+                    warning,
+                    processing,
+                    ..
                 } = self
                 {
                     *warning = None;
                     let cmd = signer.update(msg);
-                    if signer.signed() {
+                    if signer.signed() && !*processing {
+                        *processing = true;
                         return Command::perform(
                             set_revocation_txs(
                                 revaultd,
@@ -355,6 +379,7 @@ impl VaultSection {
                 warning,
                 view,
                 signer,
+                ..
             } => view
                 .view(
                     ctx,
