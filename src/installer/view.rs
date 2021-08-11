@@ -183,7 +183,7 @@ impl DefinePrivateNoiseKey {
                 .push(
                     Column::new().spacing(10).push(
                         form::Form::new(&mut self.key_input, "", key, Message::PrivateNoiseKey)
-                            .warning("Noise key must be 32 bytes long")
+                            .warning("Key must be a 64 characters hex encoded string")
                             .size(15)
                             .padding(10)
                             .render(),
@@ -830,7 +830,7 @@ impl DefineCoordinator {
                                     )
                                 },
                             )
-                            .warning("key must be hex encoded and 32 bytes long")
+                            .warning("Key must be a 64 characters hex encoded string")
                             .size(15)
                             .padding(10)
                             .render(),
@@ -1082,7 +1082,7 @@ impl Cosigner {
                         noise_key,
                         message::DefineCosigner::NoiseKeyEdited,
                     )
-                    .warning("key must be hex encoded and 32 bytes long")
+                    .warning("Key must be a 64 characters hex encoded string")
                     .size(15)
                     .padding(10)
                     .render(),
