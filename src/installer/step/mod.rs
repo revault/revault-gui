@@ -147,11 +147,11 @@ impl Step for DefinePrivateNoiseKey {
     fn update(&mut self, message: Message) {
         if let Message::PrivateNoiseKey(msg) = message {
             self.key.value = msg;
-            self.key.valid = self.key.value.as_bytes().len() == 32;
+            self.key.valid = self.key.value.as_bytes().len() == 64;
         }
     }
     fn apply(&mut self, ctx: &mut Context, _config: &mut config::Config) -> bool {
-        self.key.valid = self.key.value.as_bytes().len() == 32;
+        self.key.valid = self.key.value.as_bytes().len() == 64;
         ctx.private_noise_key = self.key.value.clone();
         self.key.valid
     }
