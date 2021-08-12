@@ -4,6 +4,7 @@ mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};
 
+use bitcoin::hashes::hex::FromHex;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -198,8 +199,10 @@ pub async fn install(ctx: Context, cfg: revaultd_config::Config) -> Result<PathB
     let mut noise_secret_file = std::fs::File::create(&noise_secret_path)
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
+    let private_noise_key: Vec<u8> = FromHex::from_hex(&ctx.private_noise_key)
+        .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
     noise_secret_file
-        .write_all(ctx.private_noise_key.as_bytes())
+        .write_all(&private_noise_key)
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 
     // create revault GUI configuration file
