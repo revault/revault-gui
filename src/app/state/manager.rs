@@ -695,7 +695,18 @@ impl State for ManagerCreateSendTransactionState {
         match &mut self.step {
             ManagerSendStep::WelcomeUser(v) => v.view(),
             ManagerSendStep::SelectOutputs(v) => {
-                let valid = !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());
+                let mut valid =
+                    !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());
+                let mut no_duplicate = true;
+                for (i, output) in self.outputs.iter().enumerate() {
+                    if self.outputs[i + 1..]
+                        .iter()
+                        .any(|o| o.address.value == output.address.value)
+                    {
+                        valid = false;
+                        no_duplicate = false;
+                    }
+                }
                 v.view(
                     self.outputs
                         .iter_mut()
@@ -703,6 +714,7 @@ impl State for ManagerCreateSendTransactionState {
                         .map(|(i, v)| v.view().map(move |msg| Message::Recipient(i, msg)))
                         .collect(),
                     valid,
+                    no_duplicate,
                 )
             }
             ManagerSendStep::SelectInputs(v) => v.view(
