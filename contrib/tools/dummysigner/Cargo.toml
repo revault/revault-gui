@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 revault_tx = { version = "0.3.0", features = ["use-serde"] }
 base64 = "0.13.0"
-iced = {version = "0.3", features = ["tokio"]}
+iced = {version = "0.3", default-features = false, features = ["wgpu", "tokio"]}
 iced_futures = "0.3.0"
 iced_native = "0.4.0"
 tokio = {version = "1.9.0", features = ["net", "io-util"]}
