@@ -233,7 +233,7 @@ impl Step for DefineManagerXpubs {
                         self.spending_delay.valid = true;
                     }
                     message::Action::Decrement => {
-                        self.spending_delay.valid = false;
+                        self.spending_delay.valid = true;
                         if self.spending_delay.value > 0 {
                             self.spending_delay.value -= 1;
                         }
