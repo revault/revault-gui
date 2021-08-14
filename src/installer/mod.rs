@@ -17,6 +17,8 @@ use step::{
 };
 
 pub struct Installer {
+    /// Path to the revaultd binary.
+    revaultd_path: Option<PathBuf>,
     current: usize,
     steps: Vec<Box<dyn Step>>,
 
@@ -88,12 +90,16 @@ impl Installer {
             .expect("There is always a step")
     }
 
-    pub fn new(destination_path: PathBuf) -> (Installer, Command<Message>) {
+    pub fn new(
+        destination_path: PathBuf,
+        revaultd_path: Option<PathBuf>,
+    ) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
         config.data_dir = Some(destination_path);
         config.daemon = Some(true);
         (
             Installer {
+                revaultd_path,
                 config,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
@@ -140,7 +146,11 @@ impl Installer {
             Message::Install => {
                 self.current_step().update(message);
                 return Command::perform(
-                    install(self.context.clone(), self.config.clone()),
+                    install(
+                        self.context.clone(),
+                        self.config.clone(),
+                        self.revaultd_path.clone(),
+                    ),
                     Message::Installed,
                 );
             }
@@ -164,7 +174,11 @@ fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
     }
 }
 
-pub async fn install(ctx: Context, cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
+pub async fn install(
+    ctx: Context,
+    cfg: revaultd_config::Config,
+    revaultd_path: Option<PathBuf>,
+) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
@@ -216,9 +230,12 @@ pub async fn install(ctx: Context, cfg: revaultd_config::Config) -> Result<PathB
 
     gui_config_file
         .write_all(
-            toml::to_string(&gui_config::Config::new(revaultd_config_path))
-                .unwrap()
-                .as_bytes(),
+            toml::to_string(&gui_config::Config::new(
+                revaultd_config_path,
+                revaultd_path,
+            ))
+            .unwrap()
+            .as_bytes(),
         )
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 

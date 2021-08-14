@@ -72,7 +72,7 @@ pub enum Message {
 
 pub enum Config {
     Run(app::Config),
-    Install(PathBuf),
+    Install(PathBuf, Option<PathBuf>),
 }
 
 impl Application for GUI {
@@ -89,8 +89,8 @@ impl Application for GUI {
 
     fn new(config: Config) -> (GUI, Command<Self::Message>) {
         match config {
-            Config::Install(path) => {
-                let (install, command) = Installer::new(path);
+            Config::Install(config_path, revaultd_path) => {
+                let (install, command) = Installer::new(config_path, revaultd_path);
                 (GUI::Installer(install), command.map(Message::Install))
             }
             Config::Run(cfg) => {
@@ -136,6 +136,19 @@ impl Application for GUI {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let revaultd_path = match std::env::var("REVAULTD_PATH") {
+        Ok(p) => Some(
+            PathBuf::from(p)
+                .canonicalize()
+                .map_err(|e| ConfigError::Unexpected(format!("REVAULTD_PATH: {}", e)))?,
+        ),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(std::env::VarError::NotUnicode(_)) => {
+            println!("Error: REVAULTD_CONF path has a wrong unicode format");
+            std::process::exit(1);
+        }
+    };
+
     let args = std::env::args().collect();
 
     let config = match parse_args(args)? {
@@ -149,7 +162,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(ConfigError::NotFound) => {
                     let default_datadir_path =
                         default_datadir().expect("Unexpected filesystem error");
-                    Config::Install(default_datadir_path)
+                    Config::Install(default_datadir_path, revaultd_path)
                 }
                 Err(e) => {
                     return Err(format!("Failed to read configuration file: {}", e).into());
@@ -161,7 +174,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             path.push(DEFAULT_FILE_NAME);
             match app::Config::from_file(&path) {
                 Ok(cfg) => Config::Run(cfg),
-                Err(ConfigError::NotFound) => Config::Install(datadir_path),
+                Err(ConfigError::NotFound) => Config::Install(datadir_path, revaultd_path),
                 Err(e) => {
                     return Err(format!("Failed to read configuration file: {}", e).into());
                 }
