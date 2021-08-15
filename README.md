@@ -19,4 +19,11 @@ A command starting revaultd is launched if no connection is made.
 
 ## Get started
 
-See [doc/DEMO.md](doc/DEMO.md) for instructions on how to start the GUI
+See [aquarium](https://github.com/revault/aquarium) for trying out a
+Revault deployment in no time. 
+
+See [doc/DEMO_TESTNET.md](doc/DEMO_TESTNET.md) for instructions on how
+to setup Revault on testnet (more involved and likely needs more
+participants).
+
+
