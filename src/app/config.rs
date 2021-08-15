@@ -18,10 +18,10 @@ pub struct Config {
 pub const DEFAULT_FILE_NAME: &str = "revault_gui.toml";
 
 impl Config {
-    pub fn new(revaultd_config_path: PathBuf) -> Self {
+    pub fn new(revaultd_config_path: PathBuf, revaultd_path: Option<PathBuf>) -> Self {
         Self {
             revaultd_config_path,
-            revaultd_path: None,
+            revaultd_path,
             log_level: None,
             debug: None,
         }
