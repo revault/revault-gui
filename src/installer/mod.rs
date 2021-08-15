@@ -176,12 +176,17 @@ fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
 
 pub async fn install(
     ctx: Context,
-    cfg: revaultd_config::Config,
+    mut cfg: revaultd_config::Config,
     revaultd_path: Option<PathBuf>,
 ) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
+
+    cfg.data_dir =
+        Some(datadir_path.canonicalize().map_err(|e| {
+            Error::Unexpected(format!("Failed to canonicalize datadir path: {}", e))
+        })?);
 
     // create revaultd configuration file
     let mut revaultd_config_path = datadir_path.clone();
@@ -193,11 +198,11 @@ pub async fn install(
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
     // Step needed because of ValueAfterTable error in the toml serialize implementation.
-    let value = toml::Value::try_from(&cfg)
+    let revaultd_config = toml::Value::try_from(&cfg)
         .expect("revaultd::Config has a proper Serialize implementation");
 
     revaultd_config_file
-        .write_all(value.to_string().as_bytes())
+        .write_all(revaultd_config.to_string().as_bytes())
         .map_err(|e| Error::CannotWriteToFile(e.to_string()))?;
 
     // create network datadir
@@ -231,7 +236,12 @@ pub async fn install(
     gui_config_file
         .write_all(
             toml::to_string(&gui_config::Config::new(
-                revaultd_config_path,
+                revaultd_config_path.canonicalize().map_err(|e| {
+                    Error::Unexpected(format!(
+                        "Failed to canonicalize revaultd config path: {}",
+                        e
+                    ))
+                })?,
                 revaultd_path,
             ))
             .unwrap()
@@ -247,6 +257,7 @@ pub enum Error {
     CannotCreateDatadir(String),
     CannotCreateFile(String),
     CannotWriteToFile(String),
+    Unexpected(String),
 }
 
 impl std::fmt::Display for Error {
@@ -255,6 +266,7 @@ impl std::fmt::Display for Error {
             Self::CannotCreateDatadir(e) => write!(f, "Failed to create datadir: {}", e),
             Self::CannotWriteToFile(e) => write!(f, "Failed to write to file: {}", e),
             Self::CannotCreateFile(e) => write!(f, "Failed to create file: {}", e),
+            Self::Unexpected(e) => write!(f, "Unexpected: {}", e),
         }
     }
 }
