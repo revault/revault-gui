@@ -1,7 +1,7 @@
 # revault-gui
 
 Revault GUI is an user graphical interface written in rust for the 
-[Revault daemon](https:://github.com/revault/revaultd).
+[Revault daemon](https://github.com/revault/revaultd).
 
 ## Usage
 
@@ -25,5 +25,3 @@ Revault deployment in no time.
 See [doc/DEMO_TESTNET.md](doc/DEMO_TESTNET.md) for instructions on how
 to setup Revault on testnet (more involved and likely needs more
 participants).
-
-

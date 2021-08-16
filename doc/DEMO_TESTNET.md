@@ -1,7 +1,10 @@
 # Tutorial: using Revault on testnet
 
 This tutorial is going to outline how to deploy a **demo** of Revault.
-We'll do everything on one computer, and we'll use testnet. 
+
+It's going to be deployed on testnet, using various computers.
+You can follow up using a single computer, but it's funnier with friends :)
+
 Please note that this tutorial is **not** suitable for mainnet, 
 as further security precautions would be needed for real-world deployment.
 
@@ -15,6 +18,7 @@ This tutorial has been tested on Linux, it *might* work on Unix and it won't wor
 - [Starting the coordinator](#starting-the-coordinator)
 - [Getting started as a stakeholder](#getting-started-as-a-stakeholder)
 - [Getting started as a manager](#getting-started-as-a-manager)
+- [Updating the configurations](#updating-the-configurations)
 - [Playing with Revault](#playing-with-revault)
 
 ## Prerequisites
@@ -30,7 +34,7 @@ Every stakeholder will need:
 
 Every manager will need:
 - `revaultd`
-- `revault-gui` (optional)
+- `revault-gui`
 
 Also, there must be **one** `coordinatord`
 
@@ -47,9 +51,6 @@ you'll need to have the Rust toolchain installed to be able to compile the proje
 
 Please refer to https://www.rust-lang.org/tools/install for instructions on how to install Rust.
 
-Add `export PATH="$PATH:$HOME/.cargo/bin"` to your `.bashrc` or
-`.zshrc`.
-
 Double check that your rust toolchain is **at least** 1.53.0:
 
 ```
@@ -62,38 +63,55 @@ There are various keys that you'll need to keep during the whole configuration.
 Obviously a text editor is not a good choice for storing real keys, but
 hey, we're in testnet. Open your favorite note-taking app.
 
+### Define your setup
+
+Gather all your friends (and their laptops!) - you should be at least 2 people for a Revault deployment.
+
+Then, define who's going to be a stakeholder and who's going to be a manager -
+you can also have stakeholder-managers, which act as both!
+
+You must have at least 2 stakeholders and 1 manager - since stakeholder-managers
+exist, the minimum number of people needed is 2: one stakeholder-manager
+and one stakeholder.
+
 ### The Revault ceremony
 
-The Revault setup requires to generate secrets for each participants in a safely way.
-For this testnet setup, the security is not the primary goal, so the
-process of generating and sharing keys is left as an exercise to the readers.
+The Revault setup requires to generate secrets for each participant in a safe way.
+For this testnet setup the security is not the primary goal, so we'll throw away
+all our best practices and use bip32.org.
 
-The required secrets are
+The required secrets are:
 
-**if you are a stakeholder**:
+**If you are a stakeholder**:
 
-- one bip32 xpriv and its xpub.
-- one noise private key and its public key
-- one cosigner bitcoin private key with its public key
-- one cosigner noise private key and its public key
+- One bip32 xpriv and its xpub.
+- One noise private key
+- One Bitcoin private key for the cosigner
 
-**if you are a manager**:
+**If you are a manager**:
 
-- one bip32 xpriv and its xpub.
-- one noise private key and its public key
+- One bip32 xpriv and its xpub.
+- One noise private key
 
-**if you are a stakeholder and a manager**
+**If you are a stakeholder-manager**
 
-- two bip32 xpriv and their xpubs (one key pair called the stakeholder
+- Two bip32 xpriv and their xpubs (one key pair called the stakeholder
   keys and the other one the manager keys)
-- one noise private key and its public key
-- one cosigner bitcoin private key with its public key
-- one cosigner noise private key and its public key
+- One noise private key
+- One Bitcoin private key for the cosigner
 
-You can generate bip32 key pair on bip32.org
-For a noise key pair and a cosigner bitcoin key pair you can do:
+You can generate bip32 keypairs on bip32.org.
 
-`python3 -c 'import os;print(os.urandom(32).hex())'`
+For a noise secret key you can do:
+```
+python3 -c 'import os;print(os.urandom(32).hex())'
+```
+
+Don't worry about the cosigner private key yet, we'll explain how to
+generate it when needed.
+
+Also, you need to generate an emergency address, where all your funds will be sent in
+case of an emergency. Since it's just a tutorial you can put any P2WSH.
 
 ### Docker (kinda optional)
 
@@ -119,13 +137,16 @@ git clone -b 0.2 https://github.com/revault/revaultd
 git clone -b 0.2 https://github.com/revault/revault-gui
 ```
 
-Then in each of the repositories:
-
+and build them:
 ```
+cd cosignerd
 cargo build
+cd ../revaultd
+cargo build
+cd ../revault-gui
+cargo build
+cd ..
 ```
-
-Binaries will be installed in `~/.cargo/bin`.
 
 ### If you are a manager:
 
@@ -136,15 +157,18 @@ git clone -b 0.2 https://github.com/revault/revaultd
 git clone -b 0.2 https://github.com/revault/revault-gui
 ```
 
-Then in each of the repositories:
-
+and build them:
 ```
+cd revaultd
 cargo build
+cd ../revault-gui
+cargo build
+cd ..
 ```
 
 ## Spinning up Bitcoin Core
 
-Start a Bitcoin Core node using
+Every participant should start a Bitcoin Core node using
 
 ```
 bitcoind -testnet -daemon
@@ -153,11 +177,18 @@ bitcoind -testnet -daemon
 ## Starting the coordinator
 
 As we said, we need just one coordinator running, no matter how many stakeholders/managers there are.
-We'll properly update the coordinator configuration later. For now, let's just retrieve the coordinator's noise key.
-Cd into the coordinator:
+
+Clone the `coordinatord`:
+```
+git clone -b 0.2 https://github.com/revault/coordinatord
+```
+
+Cd into the coordinatord, create a directory for all the data and build the project:
 
 ```
 cd coordinatord
+mkdir coordinatord_data
+cargo build
 ```
 
 Coordinatord needs a Postgre database running, we'll spin it up using docker:
@@ -173,84 +204,125 @@ cp contrib/config.toml coordinatord_config.toml
 ```
 
 Make sure that the `postgres_uri` is `postgresql://revault:revault@localhost:5432/coordinator_db`.
-change the noise keys with the public noise keys of the participants.
 
-Your config file now should look like this (with your keys in it instead of those dummy keys, obviously):
+Also, update the `data_dir` to `./coordinatord_data`.
+
+Your config file now should look like this:
 ```
 daemon=true
-data_dir = "./revault_coordinatord"
+data_dir = "./coordinatord_data"
 log_level = "debug"
 
 postgres_uri = "postgresql://revault:revault@localhost:5432/coordinator_db"
 
-managers = [
-    "d2deeb8398f47789e1f5118c42834031e3722817a432192b74c363fdb36cc634",
-]
+managers = []
 
-stakeholders = [
-    "eecd2a93f5b09b88519f38d620aa127333d1934987d18001132f07ffa3596c65",
-    "614ad96890c309b8da6915ddb9eb1135caf228120178833e70798f20e0783b16",
-]
+stakeholders = []
 
 watchtowers = []
 ```
+We'll update the coordinator configuration later, when we'll have the
+noise public keys of the participants.
 
-start the `coordinatord`:
+For now, let's just retrieve the coordinator's noise public key - start the `coordinatord`:
 
 ```
-~/revault_tutorial/coordinatord$
 cargo run -- --config coordinatord_config.toml
 ```
 
-Then please keep note of the noise key printed at startup, it will ask
-by the install screen of each participants as the coordinator public
-noise key.
+Then keep note of the noise key printed at startup - the revault installer
+will ask for it soon.
 
-In order to permit other user to send request to the coordinator you can
-give them a [ngrok](https://ngrok.com/) endpoint `ngrok tcp 8383`.
+Make sure that users not in your network can reach the coordinator.
+[ngrok](https://ngrok.com/) may be of help :)
 
-## Getting started as a stakeholder.
+Now kill the cosigner, we don't need it for now.
 
-### Setting up the cosigner.
+## Getting started as a stakeholder
+
+### Setting up the cosigner
 
 We'll need one cosigner for each stakeholder.
-First of all, create a directory to store all the cosignerd data:
+First of all, under the `cosigner` directory create a
+directory to store all the cosignerd data, and generate the
+bitcoin private key:
 
 ```
-mkdir cosigner 
+cd cosignerd
+mkdir cosigner_data
+cd cosigner_data
+python3 -c 'import os;open("bitcoin_secret", "wb").write(bytes(1) + os.urandom(31))'
+cd ..
 ```
 
 You can find an [example
 config](https://github.com/revault/cosignerd/tree/master/contrib/config.toml)
-to begin with. Copy it to `./cosigner/config.toml`
+to begin with. Copy it to `./cosignerd/cosigner_data/config.toml`
 
 ```
-cp cosignerd/contrib/config.toml cosigner/config.toml
+cp contrib/config.toml config.toml
 ```
 
 We'll need to modify it a bit:
-- Update the data dir: we'll use `./cosigner`
-- Make sure the `listen` field is `127.0.0.1:20001`
+- Update the data dir: we'll use `./cosigner_data`
+- Make sure the `listen` field is `0.0.0.0:20001`
 
-Write the bitcoin key of the cosigner into a file `bitcoin_secret`
-(change key in the example):
-
-```
-cd cosigner
-python3 -c 'open("bitcoin_secret", "wb").write(bytes.fromhex("bb87c5d1ea53030843217d42d4dc7f7229c922864af99e7d4180b4e01bd81bbf"))'
-cd ..
-```
+The cosigner also needs a noise key, but the daemon
+will generate it once you start it.
+Also, the cosigner needs the public noise keys of all the managers. We
+still don't have them at the moment, so we're going to modify them later.
 
 Now start the project:
 ```
-./cosignerd/target/debug --conf cosigner/config.toml
+./target/debug/cosignerd --conf ./config.toml
 ```
 
-In order to permit other user to send request to your cosigner you can
-give them a [ngrok](https://ngrok.com/) endpoint `ngrok tcp 20001`.
+This will print the Bitcoin public key and the Noise public key. Put them
+in your notes, you'll need them later.
+
+Make sure that users not in your network can reach the cosigner.
+[ngrok](https://ngrok.com/) may be of help :)
 
 
-### Setting up Revault.
+### Setting up Revault
+
+Go back to the `revault_tutorial` directory.
+
+We need to instruct the GUI where revaultd is:
+
+```
+export REVAULTD_PATH=./revaultd/target/debug/revaultd
+```
+
+Start the installation of the gui with:
+
+```
+./revault-gui/target/debug/revault-gui --datadir .
+```
+
+And follow the instructions. The installer should guide you into
+successfully installing `revaultd` and `revault_gui` :)
+New files will be created to store the configuration (`revault_gui_testnet.toml`
+and `revaultd_testnet.toml`), and a directory to store all the data (`testnet`).
+
+Once you start the GUI, the public noise key will be printed. Save it for later,
+as we'll need to give it to the coordinator.
+
+To start again the revault setup, do:
+
+```
+./revault-gui/target/debug/revault-gui --conf revault_gui_testnet.toml
+```
+
+## Getting started as a manager
+### Setting up Revault
+Go back to the `revault_tutorial` directory.
+
+First of all, we need to instruct the GUI where revaultd is:
+
+```
+export REVAULTD_PATH = ./revaultd/target/debug/revaultd
+```
 
 Start the install of the gui with:
 
@@ -258,34 +330,40 @@ Start the install of the gui with:
 ./revault-gui/target/debug/revault-gui --datadir .
 ```
 
-And follow the instructions.
+And follow the instructions. The installer should guide you into
+successfully installing `revaultd` and `revault_gui` :)
+New files will be created to store the configuration (`revault_gui_testnet.toml`
+and `revaultd_testnet.toml`), and a directory to store all the data (`testnet`).
 
-Once the installation is done, you should have `revaultd` and
-`revault-gui` running, two new files: `revault_gui_testnet.toml` and
-`revaultd_testnet.toml` and a directory `tesnet`.
+Once you start the GUI, the public noise key will be printed. Save it for later,
+as we'll need to give it to the coordinator and to the cosigners.
+
 To start again the revault setup, do:
 
 ```
 ./revault-gui/target/debug/revault-gui --conf revault_gui_testnet.toml
 ```
 
-## Getting started as a manager.
+## Updating the configurations
 
-Start the install of the gui with:
+Now that you collected all the public noise keys, we need to fix the coordinatord
+and cosignerd configurations.
 
+### Fixing the coordinatord configuration
+
+Go back to the coordinatord config file and update the participants
+noise keys (you just obtained them when starting `revault-gui`).
+Then start the coordinatord again:
 ```
-./revault-gui/target/debug/revault-gui --datadir .
+./coordinatord/target/debug -- --config coordinatord_config.toml
 ```
 
-And follow the instructions.
-
-Once the installation is done, you should have `revaultd` and
-`revault-gui` running, two new files: `revault_gui_testnet.toml` and
-`revaultd_testnet.toml` and a directory `tesnet`.
-To start again the revault setup, do:
-
+### Fixing the cosignerd configuration
+Go back to the cosignerd config file and update the managers
+noise keys (you just obtained them when starting `revault-gui`).
+Then start the cosignerd again:
 ```
-./revault-gui/target/debug/revault-gui --conf revault_gui_testnet.toml
+./cosignerd/target/debug --conf ./cosignerd/cosigner_data/config.toml
 ```
 
 ## Playing with Revault
@@ -293,7 +371,7 @@ To start again the revault setup, do:
 We do not have a user manual yet at this stage of development. 
 We tried to have a self explanatory interface for the user and we hope to
 have feedback from you about it. Here is a simple todo list 
-you can follow in order to understand Revault usage according to your
+you can follow in order to understand the Revault usage according to your
 role.
 
 **If you are a stakeholder:**
@@ -309,7 +387,7 @@ role.
 
 - Wait for funds being delegated to you by stakeholders.
 - Spend some funds: create spend transactions and
-  Share them to other managers so they sign them.
+  share them to other managers so they sign them.
 - Pray that the stakeholders do not cancel your spend attempt.
 
 
@@ -322,6 +400,6 @@ simulates the expected signing process of a connected hardware wallet in
 communication with the `revault-gui`.
 
 ```
-~/revault_tutorial/revault-gui/contrib/tools/dummysigner$
+cd ./revault-gui/contrib/tools/dummysigner
 cargo run -- <xpriv>
 ```
