@@ -1,9 +1,11 @@
 use bitcoin::Network;
 
 use super::menu::Menu;
-use crate::{conversion::Converter, revault::Role};
+use crate::{conversion::Converter, revault::Role, revaultd::RevaultD};
+use std::sync::Arc;
 
 pub struct Context {
+    pub revaultd: Arc<RevaultD>,
     pub converter: Converter,
     pub network: Network,
     pub network_up: bool,
@@ -15,6 +17,7 @@ pub struct Context {
 
 impl Context {
     pub fn new(
+        revaultd: Arc<RevaultD>,
         converter: Converter,
         network: Network,
         role_edit: bool,
@@ -23,27 +26,14 @@ impl Context {
         managers_threshold: usize,
     ) -> Self {
         Self {
+            revaultd,
             converter,
             role,
             role_edit,
             menu,
             network,
-            network_up: false,
+            network_up: true,
             managers_threshold,
-        }
-    }
-}
-
-impl std::default::Default for Context {
-    fn default() -> Self {
-        Context {
-            converter: Converter::new(Network::Bitcoin),
-            network: Network::Bitcoin,
-            network_up: false,
-            role: Role::Manager,
-            menu: Menu::Home,
-            role_edit: false,
-            managers_threshold: 1,
         }
     }
 }
