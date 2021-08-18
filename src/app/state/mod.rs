@@ -23,7 +23,7 @@ pub use stakeholder::{
 };
 pub use vaults::VaultsState;
 
-use super::{message::Message, view::Context};
+use super::{context::Context, message::Message};
 
 pub trait State {
     fn view(&mut self, ctx: &Context) -> Element<Message>;

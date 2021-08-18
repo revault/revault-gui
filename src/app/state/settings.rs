@@ -9,10 +9,8 @@ use crate::app::config::Config;
 use crate::revaultd::RevaultD;
 
 use crate::app::{
-    error::Error,
-    message::Message,
-    state::cmd::get_blockheight,
-    view::{Context, SettingsView},
+    context::Context, error::Error, message::Message, state::cmd::get_blockheight,
+    view::SettingsView,
 };
 
 #[derive(Debug)]

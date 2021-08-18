@@ -1,4 +1,5 @@
 pub mod config;
+mod context;
 mod error;
 mod menu;
 mod message;
@@ -20,7 +21,7 @@ use state::{
 };
 
 use crate::{
-    app::view::Context,
+    app::context::Context,
     conversion::Converter,
     revault::Role,
     revaultd::{GetInfoResponse, RevaultD},

@@ -2,9 +2,10 @@ use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row};
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::Message,
-        view::{layout, sidebar::Sidebar, Context},
+        view::{layout, sidebar::Sidebar},
     },
     ui::component::{button, card, navbar, scroll, text},
 };

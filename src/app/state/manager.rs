@@ -20,18 +20,22 @@ use crate::revaultd::{
 use crate::ui::component::form;
 
 use crate::app::{
+    context::Context,
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
     },
-    view::manager::{
-        manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
-        ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
-        ManagerSendWelcomeView, ManagerSignView, ManagerSpendTransactionCreatedView,
+    view::{
+        manager::{
+            manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
+            ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
+            ManagerSendWelcomeView, ManagerSignView, ManagerSpendTransactionCreatedView,
+        },
+        vault::VaultListItemView,
+        ManagerHomeView,
     },
-    view::{vault::VaultListItemView, Context, ManagerHomeView},
 };
 
 #[derive(Debug)]

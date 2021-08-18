@@ -8,10 +8,7 @@ use super::{cmd::list_vaults, State};
 use crate::revaultd::{model::VaultStatus, RevaultD};
 
 use crate::app::{
-    error::Error,
-    message::Message,
-    state::cmd,
-    view::{Context, EmergencyView},
+    context::Context, error::Error, message::Message, state::cmd, view::EmergencyView,
 };
 
 #[derive(Debug)]

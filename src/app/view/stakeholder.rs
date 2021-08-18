@@ -5,7 +5,7 @@ use iced::{
 };
 
 use crate::{
-    app::{error::Error, menu::Menu, message::Message, view::Context},
+    app::{context::Context, error::Error, menu::Menu, message::Message},
     ui::{
         component::{
             button, card, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,

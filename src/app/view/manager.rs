@@ -9,10 +9,10 @@ use crate::revaultd::model;
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         menu::Menu,
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
-        view::Context,
     },
     ui::{
         component::{button, card, form, scroll, separation, text, ContainerBackgroundStyle},

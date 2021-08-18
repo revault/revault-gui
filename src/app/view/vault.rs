@@ -3,9 +3,9 @@ use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::{Message, SignMessage, VaultMessage},
-        view::Context,
     },
     ui::component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
 };

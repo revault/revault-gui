@@ -12,9 +12,10 @@ use super::{
 use crate::revaultd::{model, model::VaultStatus, RevaultD};
 
 use crate::app::{
+    context::Context,
     error::Error,
     message::{Message, VaultFilterMessage},
-    view::{vault::VaultListItemView, Context, VaultsView},
+    view::{vault::VaultListItemView, VaultsView},
 };
 
 #[derive(Debug)]

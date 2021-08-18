@@ -3,9 +3,10 @@ use iced::{scrollable, Column, Container, Element, Length, Row};
 use crate::revault::Role;
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::Message,
-        view::{layout, sidebar::Sidebar, Context},
+        view::{layout, sidebar::Sidebar},
     },
     ui::{
         color,

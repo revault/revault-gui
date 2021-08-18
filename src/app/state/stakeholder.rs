@@ -9,6 +9,7 @@ use crate::revaultd::{
 };
 
 use crate::app::{
+    context::Context,
     error::Error,
     message::{Message, VaultMessage},
     state::{
@@ -18,7 +19,7 @@ use crate::app::{
     },
     view::{
         vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
-        Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
     },
 };
 

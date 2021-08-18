@@ -6,6 +6,7 @@ use iced::{Command, Element, Subscription};
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::{Message, SpendTxMessage},
         state::{
@@ -20,7 +21,6 @@ use crate::{
             SpendTransactionListItemView, SpendTransactionSharePsbtView, SpendTransactionSignView,
             SpendTransactionView,
         },
-        view::Context,
     },
     revaultd::{model, RevaultD},
 };

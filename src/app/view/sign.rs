@@ -1,7 +1,7 @@
 use iced::{Column, Container, Element, Length};
 
 use crate::{
-    app::{message::SignMessage, view::Context},
+    app::{context::Context, message::SignMessage},
     ui::{
         component::{button, card, text},
         icon,

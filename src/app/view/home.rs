@@ -8,10 +8,11 @@ use iced::{
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         menu::Menu,
         message::Message,
-        view::{layout, sidebar::Sidebar, Context},
+        view::{layout, sidebar::Sidebar},
     },
     revaultd::model::VaultStatus,
     ui::{

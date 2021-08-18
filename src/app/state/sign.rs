@@ -8,10 +8,7 @@ use tokio::sync::Mutex;
 use iced::{time, Command, Element, Subscription};
 
 use crate::{
-    app::{
-        message::SignMessage,
-        view::{sign::SignerView, Context},
-    },
+    app::{context::Context, message::SignMessage, view::sign::SignerView},
     hw,
 };
 

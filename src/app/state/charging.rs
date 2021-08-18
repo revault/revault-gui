@@ -5,11 +5,7 @@ use std::sync::Arc;
 use iced::{Command, Element};
 
 use super::State;
-use crate::app::{
-    error::Error,
-    message::Message,
-    view::{charging::*, Context},
-};
+use crate::app::{context::Context, error::Error, message::Message, view::charging::*};
 use crate::revaultd::{
     config::{Config, ConfigError},
     start_daemon, GetInfoResponse, RevaultD, RevaultDError,

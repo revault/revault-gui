@@ -7,11 +7,7 @@ use super::{cmd::get_deposit_address, State};
 
 use crate::revaultd::RevaultD;
 
-use crate::app::{
-    error::Error,
-    message::Message,
-    view::{Context, DepositView},
-};
+use crate::app::{context::Context, error::Error, message::Message, view::DepositView};
 
 /// DepositState handles the deposit process.
 /// It gets a deposit address from the revault daemon and

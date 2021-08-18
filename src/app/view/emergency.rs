@@ -1,7 +1,7 @@
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::{
-    app::{error::Error, menu::Menu, message::Message, view::Context},
+    app::{context::Context, error::Error, menu::Menu, message::Message},
     ui::{
         color,
         component::{button, card, scroll, text, ContainerBackgroundStyle},
