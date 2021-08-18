@@ -42,7 +42,6 @@ pub trait SettingsBox {
 #[derive(Debug, Clone, Default)]
 pub struct SettingsBoxes {
     pub general: GeneralBox,
-    pub scripts: ScriptsBox,
     pub manager: ManagerBox,
     pub stakeholder: StakeholderBox,
 }
@@ -105,42 +104,6 @@ impl SettingsBox for GeneralBox {
             );
         }
         column
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ScriptsBox {}
-
-impl SettingsBox for ScriptsBox {
-    fn title(&self) -> &'static str {
-        "Bitcoin scripts"
-    }
-
-    fn description(&self) -> &'static str {
-        ""
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        Column::new()
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("Deposit descriptor")))
-                    .push(text::small(&config.scripts_config.deposit_descriptor)),
-            )
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("Unvault descriptor")))
-                    .push(text::small(&config.scripts_config.unvault_descriptor)),
-            )
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("CPFP descriptor")))
-                    .push(text::small(&config.scripts_config.cpfp_descriptor)),
-            )
-            .spacing(10)
     }
 }
 

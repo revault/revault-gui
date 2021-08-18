@@ -74,7 +74,7 @@ impl SettingsView {
             }
         };
 
-        column.push(boxes.scripts.display(config)).spacing(20)
+        column.spacing(20)
     }
 }
 
