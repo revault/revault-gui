@@ -2,7 +2,6 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::collections::HashMap;
 use std::convert::From;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use iced::{Command, Element, Subscription};
 
@@ -12,10 +11,7 @@ use super::{
     State,
 };
 
-use crate::revaultd::{
-    model::{self, VaultStatus},
-    RevaultD,
-};
+use crate::revaultd::model::{self, VaultStatus};
 
 use crate::ui::component::form;
 
@@ -40,7 +36,6 @@ use crate::app::{
 
 #[derive(Debug)]
 pub struct ManagerHomeState {
-    revaultd: Arc<RevaultD>,
     view: ManagerHomeView,
 
     active_funds: u64,
@@ -60,9 +55,8 @@ pub struct ManagerHomeState {
 }
 
 impl ManagerHomeState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         ManagerHomeState {
-            revaultd,
             active_funds: 0,
             inactive_funds: 0,
             view: ManagerHomeView::new(),
@@ -122,7 +116,7 @@ impl ManagerHomeState {
         };
     }
 
-    pub fn on_spend_tx_select(&mut self, psbt: Psbt) -> Command<Message> {
+    pub fn on_spend_tx_select(&mut self, ctx: &Context, psbt: Psbt) -> Command<Message> {
         if let Some(selected) = &self.selected_spend_tx {
             if selected.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid() {
                 self.selected_spend_tx = None;
@@ -135,8 +129,8 @@ impl ManagerHomeState {
             .iter()
             .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
         {
-            let selected_spend_tx = SpendTransactionState::new(self.revaultd.clone(), psbt);
-            let cmd = selected_spend_tx.load();
+            let selected_spend_tx = SpendTransactionState::new(psbt);
+            let cmd = selected_spend_tx.load(ctx);
             self.selected_spend_tx = Some(selected_spend_tx);
             return cmd;
         };
@@ -187,11 +181,11 @@ impl ManagerHomeState {
         self.update_spend_txs(self.spend_txs.clone());
     }
 
-    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return self.load();
+                return self.load(ctx);
             }
         }
 
@@ -201,7 +195,7 @@ impl ManagerHomeState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(self.revaultd.clone());
+            let cmd = selected_vault.load(ctx.revaultd.clone());
             self.selected_vault = Some(selected_vault);
             return cmd.map(Message::Vault);
         };
@@ -210,14 +204,14 @@ impl ManagerHomeState {
 }
 
 impl State for ManagerHomeState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                return self.on_spend_tx_select(psbt);
+                return self.on_spend_tx_select(ctx, psbt);
             }
             Message::SpendTx(msg) => {
                 if let Some(tx) = &mut self.selected_spend_tx {
-                    return tx.update(Message::SpendTx(msg));
+                    return tx.update(ctx, Message::SpendTx(msg));
                 }
             }
             Message::SpendTransactions(res) => match res {
@@ -228,11 +222,11 @@ impl State for ManagerHomeState {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
                     return selected
-                        .update(self.revaultd.clone(), msg)
+                        .update(ctx.revaultd.clone(), msg)
                         .map(Message::Vault);
                 }
             }
@@ -281,16 +275,16 @@ impl State for ManagerHomeState {
         )
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![
-            Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
+            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+                list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
                 Message::Vaults,
             ),
             Command::perform(
                 list_spend_txs(
-                    self.revaultd.clone(),
+                    ctx.revaultd.clone(),
                     Some(&[model::SpendTxStatus::NonFinal]),
                 ),
                 Message::SpendTransactions,
@@ -312,41 +306,37 @@ pub enum ManagerSendState {
 }
 
 impl ManagerSendState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
-        Self::CreateSendTransaction(ManagerCreateSendTransactionState::new(revaultd))
+    pub fn new() -> Self {
+        Self::CreateSendTransaction(ManagerCreateSendTransactionState::new())
     }
 }
 
 impl State for ManagerSendState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::CreateSendTransaction(state) => match message {
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
-                        state.revaultd.clone(),
-                        psbt,
-                    ));
-                    self.load()
+                    *self =
+                        ManagerSendState::SendTransactionDetail(SpendTransactionState::new(psbt));
+                    self.load(ctx)
                 }
                 Message::SpendTx(SpendTxMessage::Import) => {
                     *self = ManagerSendState::ImportSendTransaction(
-                        ManagerImportSendTransactionState::new(state.revaultd.clone()),
+                        ManagerImportSendTransactionState::new(),
                     );
-                    self.load()
+                    self.load(ctx)
                 }
-                _ => state.update(message),
+                _ => state.update(ctx, message),
             },
             Self::ImportSendTransaction(state) => match message {
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
-                        state.revaultd.clone(),
-                        psbt,
-                    ));
-                    self.load()
+                    *self =
+                        ManagerSendState::SendTransactionDetail(SpendTransactionState::new(psbt));
+                    self.load(ctx)
                 }
-                _ => state.update(message),
+                _ => state.update(ctx, message),
             },
-            Self::SendTransactionDetail(state) => state.update(message),
+            Self::SendTransactionDetail(state) => state.update(ctx, message),
         }
     }
 
@@ -366,18 +356,17 @@ impl State for ManagerSendState {
         }
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
-            Self::CreateSendTransaction(state) => state.load(),
-            Self::ImportSendTransaction(state) => state.load(),
-            Self::SendTransactionDetail(state) => state.load(),
+            Self::CreateSendTransaction(state) => state.load(ctx),
+            Self::ImportSendTransaction(state) => state.load(ctx),
+            Self::SendTransactionDetail(state) => state.load(ctx),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct ManagerImportSendTransactionState {
-    revaultd: Arc<RevaultD>,
     psbt_imported: Option<Psbt>,
     psbt_input: String,
     warning: Option<String>,
@@ -386,9 +375,8 @@ pub struct ManagerImportSendTransactionState {
 }
 
 impl ManagerImportSendTransactionState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         Self {
-            revaultd,
             psbt_imported: None,
             psbt_input: "".to_string(),
             warning: None,
@@ -404,7 +392,7 @@ impl ManagerImportSendTransactionState {
 }
 
 impl State for ManagerImportSendTransactionState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Updated(res)) => match res {
                 Ok(()) => self.psbt_imported = self.parse_pbst(),
@@ -418,7 +406,7 @@ impl State for ManagerImportSendTransactionState {
                 if !self.psbt_input.is_empty() {
                     if let Some(psbt) = self.parse_pbst() {
                         return Command::perform(
-                            update_spend_tx(self.revaultd.clone(), psbt),
+                            update_spend_tx(ctx.revaultd.clone(), psbt),
                             |res| Message::SpendTx(SpendTxMessage::Updated(res)),
                         );
                     } else {
@@ -441,7 +429,7 @@ impl State for ManagerImportSendTransactionState {
         )
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, _ctx: &Context) -> Command<Message> {
         Command::none()
     }
 }
@@ -461,8 +449,6 @@ enum ManagerSendStep {
 
 #[derive(Debug)]
 pub struct ManagerCreateSendTransactionState {
-    revaultd: Arc<RevaultD>,
-
     warning: Option<Error>,
 
     vaults: Vec<ManagerSendInput>,
@@ -478,9 +464,8 @@ pub struct ManagerCreateSendTransactionState {
 }
 
 impl ManagerCreateSendTransactionState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         Self {
-            revaultd,
             step: ManagerSendStep::WelcomeUser(ManagerSendWelcomeView::new()),
             warning: None,
             vaults: Vec::new(),
@@ -536,7 +521,7 @@ impl ManagerCreateSendTransactionState {
 }
 
 impl State for ManagerCreateSendTransactionState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTransaction(res) => {
                 self.processing = false;
@@ -546,7 +531,7 @@ impl State for ManagerCreateSendTransactionState {
                     }
                     Err(e) => self.warning = Some(Error::RevaultDError(e)),
                 }
-                return self.update(Message::Next);
+                return self.update(ctx, Message::Next);
             }
             Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
@@ -564,12 +549,7 @@ impl State for ManagerCreateSendTransactionState {
                     .collect();
 
                 return Command::perform(
-                    get_spend_tx(
-                        self.revaultd.clone(),
-                        inputs,
-                        outputs,
-                        self.feerate.unwrap(),
-                    ),
+                    get_spend_tx(ctx.revaultd.clone(), inputs, outputs, self.feerate.unwrap()),
                     Message::SpendTransaction,
                 );
             }
@@ -608,7 +588,7 @@ impl State for ManagerCreateSendTransactionState {
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
                     if signer.signed() {
                         return Command::perform(
-                            update_spend_tx(self.revaultd.clone(), signer.target.spend_tx.clone()),
+                            update_spend_tx(ctx.revaultd.clone(), signer.target.spend_tx.clone()),
                             |res| Message::SpendTx(SpendTxMessage::Signed(res)),
                         );
                     }
@@ -764,9 +744,9 @@ impl State for ManagerCreateSendTransactionState {
         }
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
-            list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Active]), None),
+            list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Active]), None),
             Message::Vaults,
         )])
     }

@@ -31,7 +31,6 @@ pub struct SpendTransactionState {
     cpfp_index: usize,
     change_index: Option<usize>,
 
-    revaultd: Arc<RevaultD>,
     deposit_outpoints: Vec<String>,
     deposits: Vec<model::Vault>,
     warning: Option<Error>,
@@ -42,11 +41,10 @@ pub struct SpendTransactionState {
 }
 
 impl SpendTransactionState {
-    pub fn new(revaultd: Arc<RevaultD>, psbt: Psbt) -> Self {
+    pub fn new(psbt: Psbt) -> Self {
         Self {
             cpfp_index: 0,
             change_index: None,
-            revaultd,
             psbt,
             deposit_outpoints: Vec::new(),
             deposits: Vec::new(),
@@ -58,7 +56,7 @@ impl SpendTransactionState {
 }
 
 impl State for SpendTransactionState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
@@ -85,7 +83,7 @@ impl State for SpendTransactionState {
                             self.change_index = tx.change_index;
                             return Command::perform(
                                 list_vaults(
-                                    self.revaultd.clone(),
+                                    ctx.revaultd.clone(),
                                     None,
                                     Some(self.deposit_outpoints.clone()),
                                 ),
@@ -99,7 +97,7 @@ impl State for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(self.revaultd.clone(), &self.deposits, &mut self.psbt, msg)
+                    .update(ctx.revaultd.clone(), &self.deposits, &mut self.psbt, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
@@ -131,8 +129,8 @@ impl State for SpendTransactionState {
         )
     }
 
-    fn load(&self) -> Command<Message> {
-        Command::perform(list_spend_txs(self.revaultd.clone(), None), |res| {
+    fn load(&self, ctx: &Context) -> Command<Message> {
+        Command::perform(list_spend_txs(ctx.revaultd.clone(), None), |res| {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res))
         })
     }

@@ -31,26 +31,25 @@ pub enum App {
 
 #[allow(unreachable_patterns)]
 pub fn new_state(context: &Context, config: &Config) -> Box<dyn State> {
-    let revaultd = context.revaultd.clone();
     match context.role {
         Role::Manager => match context.menu {
-            Menu::Deposit => DepositState::new(revaultd).into(),
-            Menu::Home => ManagerHomeState::new(revaultd).into(),
-            Menu::Vaults => VaultsState::new(revaultd).into(),
-            Menu::Send => ManagerSendState::new(revaultd).into(),
+            Menu::Deposit => DepositState::new().into(),
+            Menu::Home => ManagerHomeState::new().into(),
+            Menu::Vaults => VaultsState::new().into(),
+            Menu::Send => ManagerSendState::new().into(),
             // Manager cannot delegate funds, the user is redirected to the home.
-            Menu::DelegateFunds => ManagerHomeState::new(revaultd).into(),
-            Menu::Settings => SettingsState::new(revaultd, config.clone()).into(),
+            Menu::DelegateFunds => ManagerHomeState::new().into(),
+            Menu::Settings => SettingsState::new(config.clone()).into(),
             _ => unreachable!(),
         },
         Role::Stakeholder => match context.menu {
-            Menu::Deposit => StakeholderHomeState::new(revaultd).into(),
-            Menu::Home => StakeholderHomeState::new(revaultd).into(),
-            Menu::Vaults => VaultsState::new(revaultd).into(),
-            Menu::CreateVaults => StakeholderCreateVaultsState::new(revaultd).into(),
-            Menu::DelegateFunds => StakeholderDelegateFundsState::new(revaultd).into(),
-            Menu::Settings => SettingsState::new(revaultd, config.clone()).into(),
-            Menu::Emergency => EmergencyState::new(revaultd).into(),
+            Menu::Deposit => StakeholderHomeState::new().into(),
+            Menu::Home => StakeholderHomeState::new().into(),
+            Menu::Vaults => VaultsState::new().into(),
+            Menu::CreateVaults => StakeholderCreateVaultsState::new().into(),
+            Menu::DelegateFunds => StakeholderDelegateFundsState::new().into(),
+            Menu::Settings => SettingsState::new(config.clone()).into(),
+            Menu::Emergency => EmergencyState::new().into(),
             _ => unreachable!(),
         },
     }
@@ -80,18 +79,18 @@ impl App {
                 Message::ChangeRole(role) => {
                     context.role = role;
                     *state = new_state(context, config);
-                    state.load()
+                    state.load(context)
                 }
                 Message::Menu(menu) => {
                     context.menu = menu;
                     *state = new_state(context, config);
-                    state.load()
+                    state.load(context)
                 }
                 Message::Clipboard(text) => {
                     clipboard.write(text);
                     Command::none()
                 }
-                _ => state.update(message),
+                _ => state.update(context, message),
             },
             Self::Charging(state) => match message {
                 // After the synchronisation process, the UI displays the home panel to the user
@@ -119,7 +118,7 @@ impl App {
                     );
 
                     let state = new_state(&context, &config);
-                    let cmd = state.load();
+                    let cmd = state.load(&context);
                     *self = Self::Running {
                         context,
                         state,

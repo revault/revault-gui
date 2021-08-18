@@ -1,11 +1,8 @@
 use std::convert::From;
-use std::sync::Arc;
 
 use iced::{Command, Element};
 
 use super::{cmd::get_deposit_address, State};
-
-use crate::revaultd::RevaultD;
 
 use crate::app::{context::Context, error::Error, message::Message, view::DepositView};
 
@@ -14,7 +11,6 @@ use crate::app::{context::Context, error::Error, message::Message, view::Deposit
 /// give it to its view in order to be rendered.
 #[derive(Debug)]
 pub struct DepositState {
-    revaultd: Arc<RevaultD>,
     address: Option<bitcoin::Address>,
     warning: Option<Error>,
 
@@ -23,9 +19,8 @@ pub struct DepositState {
 }
 
 impl DepositState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         DepositState {
-            revaultd,
             view: DepositView::new(),
             warning: None,
             address: None,
@@ -34,7 +29,7 @@ impl DepositState {
 }
 
 impl State for DepositState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, _ctx: &Context, message: Message) -> Command<Message> {
         if let Message::DepositAddress(res) = message {
             match res {
                 Ok(address) => {
@@ -53,9 +48,9 @@ impl State for DepositState {
             .view(ctx, self.warning.as_ref(), self.address.as_ref())
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::perform(
-            get_deposit_address(self.revaultd.clone()),
+            get_deposit_address(ctx.revaultd.clone()),
             Message::DepositAddress,
         )
     }
