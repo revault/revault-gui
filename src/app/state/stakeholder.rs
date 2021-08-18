@@ -1,14 +1,11 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use iced::{Command, Element, Subscription};
 
-use crate::revaultd::{
-    model::{self, VaultStatus},
-    RevaultD,
-};
+use crate::revaultd::model::{self, VaultStatus};
 
 use crate::app::{
+    context::Context,
     error::Error,
     message::{Message, VaultMessage},
     state::{
@@ -18,13 +15,12 @@ use crate::app::{
     },
     view::{
         vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
-        Context, StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
     },
 };
 
 #[derive(Debug)]
 pub struct StakeholderHomeState {
-    revaultd: Arc<RevaultD>,
     warning: Option<Error>,
 
     balance: HashMap<VaultStatus, (u64, u64)>,
@@ -36,9 +32,8 @@ pub struct StakeholderHomeState {
 }
 
 impl StakeholderHomeState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         StakeholderHomeState {
-            revaultd,
             warning: None,
             view: StakeholderHomeView::new(),
             balance: HashMap::new(),
@@ -65,11 +60,11 @@ impl StakeholderHomeState {
             .collect();
     }
 
-    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return self.load();
+                return self.load(ctx);
             }
         }
 
@@ -79,7 +74,7 @@ impl StakeholderHomeState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(self.revaultd.clone());
+            let cmd = selected_vault.load(ctx.revaultd.clone());
             self.selected_vault = Some(selected_vault);
             return cmd.map(Message::Vault);
         };
@@ -107,17 +102,17 @@ impl StakeholderHomeState {
 }
 
 impl State for StakeholderHomeState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
+            Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
                     return selected
-                        .update(self.revaultd.clone(), msg)
+                        .update(ctx.revaultd.clone(), msg)
                         .map(Message::Vault);
                 }
             }
@@ -146,12 +141,12 @@ impl State for StakeholderHomeState {
         Subscription::none()
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![
-            Command::perform(get_blockheight(self.revaultd.clone()), Message::BlockHeight),
+            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
                 list_vaults(
-                    self.revaultd.clone(),
+                    ctx.revaultd.clone(),
                     Some(&VaultStatus::DEPOSIT_AND_CURRENT),
                     None,
                 ),
@@ -169,8 +164,6 @@ impl From<StakeholderHomeState> for Box<dyn State> {
 
 #[derive(Debug)]
 pub struct StakeholderCreateVaultsState {
-    revaultd: Arc<RevaultD>,
-
     warning: Option<Error>,
     balance: u64,
     address: Option<bitcoin::Address>,
@@ -181,9 +174,8 @@ pub struct StakeholderCreateVaultsState {
 }
 
 impl StakeholderCreateVaultsState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         StakeholderCreateVaultsState {
-            revaultd,
             address: None,
             warning: None,
             deposits: Vec::new(),
@@ -193,11 +185,11 @@ impl StakeholderCreateVaultsState {
         }
     }
 
-    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return self.load();
+                return self.load(ctx);
             }
         }
 
@@ -208,7 +200,7 @@ impl StakeholderCreateVaultsState {
         {
             self.selected_vault = Some(Vault::new(selected.vault.clone()));
             return Command::perform(
-                get_revocation_txs(self.revaultd.clone(), selected.vault.outpoint()),
+                get_revocation_txs(ctx.revaultd.clone(), selected.vault.outpoint()),
                 move |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
             );
         };
@@ -233,7 +225,7 @@ impl StakeholderCreateVaultsState {
 }
 
 impl State for StakeholderCreateVaultsState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::DepositAddress(res) => match res {
                 Ok(address) => {
@@ -247,11 +239,11 @@ impl State for StakeholderCreateVaultsState {
                     Command::none()
                 }
             },
-            Message::SelectVault(outpoint) => self.on_vault_select(outpoint),
+            Message::SelectVault(outpoint) => self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
                     return selected
-                        .update(self.revaultd.clone(), msg)
+                        .update(ctx.revaultd.clone(), msg)
                         .map(Message::Vault);
                 }
                 Command::none()
@@ -288,14 +280,14 @@ impl State for StakeholderCreateVaultsState {
         )
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![
             Command::perform(
-                get_deposit_address(self.revaultd.clone()),
+                get_deposit_address(ctx.revaultd.clone()),
                 Message::DepositAddress,
             ),
             Command::perform(
-                list_vaults(self.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
+                list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
                 Message::Vaults,
             ),
         ])
@@ -310,8 +302,6 @@ impl From<StakeholderCreateVaultsState> for Box<dyn State> {
 
 #[derive(Debug)]
 pub struct StakeholderDelegateFundsState {
-    revaultd: Arc<RevaultD>,
-
     active_balance: u64,
     activating_balance: u64,
     vaults: Vec<VaultListItem<DelegateVaultListItemView>>,
@@ -322,9 +312,8 @@ pub struct StakeholderDelegateFundsState {
 }
 
 impl StakeholderDelegateFundsState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         StakeholderDelegateFundsState {
-            revaultd,
             active_balance: 0,
             activating_balance: 0,
             vaults: Vec::new(),
@@ -339,11 +328,11 @@ impl StakeholderDelegateFundsState {
         self.vaults = vaults.into_iter().map(VaultListItem::new).collect();
     }
 
-    pub fn on_vault_select(&mut self, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
-                return self.load();
+                return self.load(ctx);
             }
         }
 
@@ -353,18 +342,18 @@ impl StakeholderDelegateFundsState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(self.revaultd.clone());
+            let cmd = selected_vault.load(ctx.revaultd.clone());
             self.selected_vault = Some(selected_vault);
             return cmd.map(Message::Vault);
         };
         Command::none()
     }
 
-    pub fn on_vault_delegate(&mut self, outpoint: String) -> Command<Message> {
+    pub fn on_vault_delegate(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &mut self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 return selected
-                    .update(self.revaultd.clone(), VaultMessage::SelectDelegate)
+                    .update(ctx.revaultd.clone(), VaultMessage::SelectDelegate)
                     .map(Message::Vault);
             }
         }
@@ -375,7 +364,7 @@ impl StakeholderDelegateFundsState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let mut selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.update(self.revaultd.clone(), VaultMessage::SelectDelegate);
+            let cmd = selected_vault.update(ctx.revaultd.clone(), VaultMessage::SelectDelegate);
             self.selected_vault = Some(selected_vault);
             return cmd.map(Message::Vault);
         };
@@ -399,19 +388,19 @@ impl StakeholderDelegateFundsState {
 }
 
 impl State for StakeholderDelegateFundsState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            Message::SelectVault(outpoint) => return self.on_vault_select(outpoint),
-            Message::DelegateVault(outpoint) => return self.on_vault_delegate(outpoint),
+            Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
+            Message::DelegateVault(outpoint) => return self.on_vault_delegate(ctx, outpoint),
             Message::Vault(msg) => match msg {
                 _ => {
                     if let Some(selected) = &mut self.selected_vault {
                         return selected
-                            .update(self.revaultd.clone(), msg)
+                            .update(ctx.revaultd.clone(), msg)
                             .map(Message::Vault);
                     }
                     return Command::none();
@@ -446,10 +435,10 @@ impl State for StakeholderDelegateFundsState {
         Subscription::none()
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::perform(
             list_vaults(
-                self.revaultd.clone(),
+                ctx.revaultd.clone(),
                 Some(&[
                     VaultStatus::Secured,
                     VaultStatus::Activating,

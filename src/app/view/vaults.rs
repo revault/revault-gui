@@ -2,9 +2,10 @@ use iced::{pick_list, scrollable, Align, Column, Container, Element, Length, Row
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::{Message, VaultFilterMessage},
-        view::{layout, sidebar::Sidebar, Context},
+        view::{layout, sidebar::Sidebar},
     },
     revaultd::model::VaultStatus,
     ui::component::{navbar, scroll, text, TransparentPickListStyle},

@@ -4,10 +4,11 @@ use iced::{scrollable, Align, Column, Container, Element, Length, Row, TextInput
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         menu::Menu,
         message::{Message, SpendTxMessage},
-        view::{manager::spend_tx_with_feerate_view, Context},
+        view::manager::spend_tx_with_feerate_view,
     },
     revaultd::model,
     ui::{

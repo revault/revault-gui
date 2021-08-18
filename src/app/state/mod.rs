@@ -23,15 +23,15 @@ pub use stakeholder::{
 };
 pub use vaults::VaultsState;
 
-use super::{message::Message, view::Context};
+use super::{context::Context, message::Message};
 
 pub trait State {
     fn view(&mut self, ctx: &Context) -> Element<Message>;
-    fn update(&mut self, message: Message) -> Command<Message>;
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message>;
     fn subscription(&self) -> Subscription<Message> {
         Subscription::none()
     }
-    fn load(&self) -> Command<Message> {
+    fn load(&self, _ctx: &Context) -> Command<Message> {
         Command::none()
     }
 }

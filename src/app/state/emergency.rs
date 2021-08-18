@@ -1,22 +1,17 @@
 use std::convert::From;
-use std::sync::Arc;
 
 use iced::{Command, Element};
 
 use super::{cmd::list_vaults, State};
 
-use crate::revaultd::{model::VaultStatus, RevaultD};
+use crate::revaultd::model::VaultStatus;
 
 use crate::app::{
-    error::Error,
-    message::Message,
-    state::cmd,
-    view::{Context, EmergencyView},
+    context::Context, error::Error, message::Message, state::cmd, view::EmergencyView,
 };
 
 #[derive(Debug)]
 pub struct EmergencyState {
-    revaultd: Arc<RevaultD>,
     view: EmergencyView,
 
     vaults_number: usize,
@@ -31,9 +26,8 @@ pub struct EmergencyState {
 }
 
 impl EmergencyState {
-    pub fn new(revaultd: Arc<RevaultD>) -> Self {
+    pub fn new() -> Self {
         EmergencyState {
-            revaultd,
             view: EmergencyView::new(),
             vaults_number: 0,
             funds_amount: 0,
@@ -46,7 +40,7 @@ impl EmergencyState {
 }
 
 impl State for EmergencyState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => {
@@ -60,7 +54,7 @@ impl State for EmergencyState {
                 self.processing = true;
                 self.warning = None;
                 return Command::perform(
-                    cmd::emergency(self.revaultd.clone()),
+                    cmd::emergency(ctx.revaultd.clone()),
                     Message::EmergencyBroadcasted,
                 );
             }
@@ -89,10 +83,10 @@ impl State for EmergencyState {
         )
     }
 
-    fn load(&self) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(
-                self.revaultd.clone(),
+                ctx.revaultd.clone(),
                 Some(&[
                     VaultStatus::Secured,
                     VaultStatus::Active,

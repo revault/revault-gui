@@ -4,12 +4,7 @@ use std::sync::Arc;
 
 use iced::{Command, Element};
 
-use super::State;
-use crate::app::{
-    error::Error,
-    message::Message,
-    view::{charging::*, Context},
-};
+use crate::app::{config::Config as GUIConfig, error::Error, message::Message, view::charging::*};
 use crate::revaultd::{
     config::{Config, ConfigError},
     start_daemon, GetInfoResponse, RevaultD, RevaultDError,
@@ -17,8 +12,7 @@ use crate::revaultd::{
 
 #[derive(Debug, Clone)]
 pub struct ChargingState {
-    revaultd_config_path: PathBuf,
-    revaultd_path: Option<PathBuf>,
+    pub gui_config: GUIConfig,
     revaultd: Option<Arc<RevaultD>>,
     step: ChargingStep,
 }
@@ -32,10 +26,9 @@ enum ChargingStep {
 }
 
 impl ChargingState {
-    pub fn new(revaultd_config_path: PathBuf, revaultd_path: Option<PathBuf>) -> Self {
+    pub fn new(gui_config: GUIConfig) -> Self {
         ChargingState {
-            revaultd_config_path,
-            revaultd_path,
+            gui_config,
             revaultd: None,
             step: ChargingStep::Connecting,
         }
@@ -51,7 +44,10 @@ impl ChargingState {
             Err(e) => match e {
                 Error::ConfigError(ConfigError::NotFound) => {
                     self.step = ChargingStep::Error {
-                        error: format!("config not found at path: {:?}", self.revaultd_config_path),
+                        error: format!(
+                            "config not found at path: {:?}",
+                            self.gui_config.revaultd_config_path
+                        ),
                     };
                 }
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
@@ -59,8 +55,8 @@ impl ChargingState {
                     self.step = ChargingStep::StartingDaemon;
                     return Command::perform(
                         start_daemon_and_connect(
-                            self.revaultd_config_path.to_owned(),
-                            self.revaultd_path.to_owned(),
+                            self.gui_config.revaultd_config_path.to_owned(),
+                            self.gui_config.revaultd_path.to_owned(),
                         ),
                         Message::DaemonStarted,
                     );
@@ -116,8 +112,8 @@ impl ChargingState {
     }
 }
 
-impl State for ChargingState {
-    fn update(&mut self, message: Message) -> Command<Message> {
+impl ChargingState {
+    pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Connected(res) => self.on_connect(res),
             Message::Syncing(res) => self.on_sync(res),
@@ -126,7 +122,7 @@ impl State for ChargingState {
         }
     }
 
-    fn view(&mut self, _ctx: &Context) -> Element<Message> {
+    pub fn view(&mut self) -> Element<Message> {
         match &mut self.step {
             ChargingStep::StartingDaemon => charging_starting_daemon_view(),
             ChargingStep::Connecting => charging_connect_view(),
@@ -135,17 +131,11 @@ impl State for ChargingState {
         }
     }
 
-    fn load(&self) -> Command<Message> {
+    pub fn load(&self) -> Command<Message> {
         Command::perform(
-            connect(self.revaultd_config_path.clone()),
+            connect(self.gui_config.revaultd_config_path.clone()),
             Message::Connected,
         )
-    }
-}
-
-impl From<ChargingState> for Box<dyn State> {
-    fn from(s: ChargingState) -> Box<dyn State> {
-        Box::new(s)
     }
 }
 

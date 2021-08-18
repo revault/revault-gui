@@ -2,11 +2,7 @@ use iced::{pick_list, Column, Container, Length, Row};
 
 use crate::revault::Role;
 use crate::{
-    app::{
-        menu::Menu,
-        message::Message,
-        view::{layout, Context},
-    },
+    app::{context::Context, menu::Menu, message::Message, view::layout},
     ui::{
         color,
         component::{button, separation, text, TransparentPickListStyle},

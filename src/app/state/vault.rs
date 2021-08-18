@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     app::{
+        context::Context,
         error::Error,
         message::{Message, VaultMessage},
         state::{
@@ -13,12 +14,9 @@ use crate::{
             },
             sign::{RevocationTransactionsTarget, Signer, UnvaultTransactionTarget},
         },
-        view::{
-            vault::{
-                DelegateVaultView, RevaultVaultView, SecureVaultView, VaultModal,
-                VaultOnChainTransactionsPanel, VaultView,
-            },
-            Context,
+        view::vault::{
+            DelegateVaultView, RevaultVaultView, SecureVaultView, VaultModal,
+            VaultOnChainTransactionsPanel, VaultView,
         },
     },
     revaultd::{
