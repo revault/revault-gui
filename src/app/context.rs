@@ -4,6 +4,8 @@ use super::menu::Menu;
 use crate::{conversion::Converter, revault::Role, revaultd::RevaultD};
 use std::sync::Arc;
 
+/// Context is an object passing general information
+/// and service clients through the application components.
 pub struct Context {
     pub revaultd: Arc<RevaultD>,
     pub converter: Converter,
