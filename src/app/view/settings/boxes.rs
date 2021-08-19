@@ -9,13 +9,13 @@ use crate::{
     },
 };
 
-use crate::revaultd::config::Config;
+use crate::revaultd::{config::Config, ServerStatusResponse};
 
 pub trait SettingsBox {
     fn title(&self) -> &'static str;
     fn description(&self) -> &'static str;
     fn badge<'a>(&self) -> Option<Container<'a, Message>>;
-    /// True means it's running, False means it's not, None means
+    /// Some(true) means it's running, Some(false) means it's not, None means
     /// it's not supposed to show the "Running" badge
     fn running(&self) -> Option<bool>;
     fn body<'a>(&self, config: &Config) -> Column<'a, Message>;
@@ -74,29 +74,55 @@ pub trait SettingsBox {
 
 #[derive(Debug, Clone, Default)]
 pub struct SettingsBoxes {
-    pub general: GeneralBox,
-    pub manager: ManagerBox,
-    pub stakeholder: StakeholderBox,
     pub bitcoin: BitcoinCoreBox,
+    pub coordinator: CoordinatorBox,
+    pub cosigners: Vec<CosignerBox>,
+    pub watchtowers: Vec<WatchtowerBox>,
+    pub advanced: AdvancedBox,
 }
 
 impl SettingsBoxes {
-    pub fn new(bitcoin_blockheight: u64) -> Self {
+    pub fn new(bitcoin_blockheight: u64, server_status: ServerStatusResponse) -> Self {
+        let mut cosigners: Vec<_> = server_status
+            .cosigners
+            .iter()
+            .map(|c| CosignerBox {
+                running: c.reachable,
+                host: c.host.clone(),
+            })
+            .collect();
+        cosigners.sort_by(|a, b| a.host.partial_cmp(&b.host).unwrap());
+
+        let mut watchtowers: Vec<_> = server_status
+            .watchtowers
+            .iter()
+            .map(|w| WatchtowerBox {
+                running: w.reachable,
+                host: w.host.clone(),
+            })
+            .collect();
+        watchtowers.sort_by(|a, b| a.host.partial_cmp(&b.host).unwrap());
+
         SettingsBoxes {
             bitcoin: BitcoinCoreBox {
                 blockheight: bitcoin_blockheight,
             },
+            coordinator: CoordinatorBox {
+                running: server_status.coordinator.reachable,
+            },
+            cosigners,
+            watchtowers,
             ..Default::default()
         }
     }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GeneralBox {}
+pub struct AdvancedBox {}
 
-impl SettingsBox for GeneralBox {
+impl SettingsBox for AdvancedBox {
     fn title(&self) -> &'static str {
-        "General"
+        "Advanced"
     }
 
     fn description(&self) -> &'static str {
@@ -113,18 +139,6 @@ impl SettingsBox for GeneralBox {
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
-            ("Coordinator host", config.coordinator_host.clone()),
-            (
-                "Coordinator noise key",
-                config.coordinator_noise_key.clone(),
-            ),
-            (
-                "Coordinator poll",
-                config
-                    .coordinator_poll_seconds
-                    .map(|p| format!("{} seconds", p))
-                    .unwrap_or_else(|| "Not set".to_string()),
-            ),
             (
                 "Data dir",
                 config
@@ -157,111 +171,6 @@ impl SettingsBox for GeneralBox {
             );
         }
         column
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct StakeholderBox {}
-
-impl SettingsBox for StakeholderBox {
-    fn title(&self) -> &'static str {
-        "My stakeholder info"
-    }
-
-    fn description(&self) -> &'static str {
-        "Stakeholder-specific parameters, such as the xpub, the emergency_address, the watchtowers"
-    }
-
-    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
-        None
-    }
-
-    fn running(&self) -> Option<bool> {
-        None
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let config = config.stakeholder_config.as_ref().unwrap();
-        let rows = vec![
-            ("xpub", config.xpub.to_string()),
-            ("Emergency address", config.emergency_address.clone()),
-        ];
-        let mut general_column = Column::new();
-        for (k, v) in rows {
-            general_column = general_column.push(
-                Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
-            );
-        }
-
-        let mut watchtowers_column = Column::new();
-        for w in &config.watchtowers {
-            watchtowers_column = watchtowers_column.push(
-                Row::new()
-                    .push(Container::new(text::small(&w.host)).width(Length::Fill))
-                    .push(text::small(&w.noise_key)),
-            );
-        }
-
-        Column::new()
-            .push(general_column)
-            .push(separation().width(Length::Fill))
-            .push(
-                Column::new()
-                    .push(Container::new(text::bold(text::small("Watchtowers"))))
-                    .push(watchtowers_column)
-                    .spacing(8),
-            )
-            .spacing(20)
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ManagerBox {}
-
-impl SettingsBox for ManagerBox {
-    fn title(&self) -> &'static str {
-        "My manager info"
-    }
-
-    fn description(&self) -> &'static str {
-        "Manager-specific parameters, such as the xpub and the cosigners"
-    }
-
-    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
-        None
-    }
-
-    fn running(&self) -> Option<bool> {
-        None
-    }
-
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let config = config.manager_config.as_ref().unwrap();
-        let mut cosigners_column = Column::new();
-        for c in &config.cosigners {
-            cosigners_column = cosigners_column.push(
-                Row::new()
-                    .push(Container::new(text::small(&c.host)).width(Length::Fill))
-                    .push(text::small(&c.noise_key)),
-            );
-        }
-
-        Column::new()
-            .push(
-                Row::new()
-                    .push(Container::new(text::small("xpub")).width(Length::Fill))
-                    .push(text::small(&config.xpub.to_string())),
-            )
-            .push(separation().width(Length::Fill))
-            .push(
-                Column::new()
-                    .push(Container::new(text::bold(text::small("Cosigners"))))
-                    .push(cosigners_column)
-                    .spacing(8),
-            )
-            .spacing(20)
     }
 }
 
@@ -344,5 +253,148 @@ impl SettingsBox for BitcoinCoreBox {
         }
 
         col.push(column)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CoordinatorBox {
+    running: bool,
+}
+
+impl SettingsBox for CoordinatorBox {
+    fn title(&self) -> &'static str {
+        "Coordinator"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let rows = vec![
+            ("Host", config.coordinator_host.clone()),
+            ("Noise key", config.coordinator_noise_key.clone()),
+            (
+                "Poll interval",
+                config
+                    .coordinator_poll_seconds
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or_else(|| "Not set".to_string()),
+            ),
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
+                Row::new()
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+        column
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CosignerBox {
+    running: bool,
+    host: String,
+}
+
+impl SettingsBox for CosignerBox {
+    fn title(&self) -> &'static str {
+        "Cosigner"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let cosigner_config = config
+            .manager_config
+            .as_ref()
+            .unwrap()
+            .cosigners
+            .iter()
+            .find(|c| c.host == self.host)
+            .unwrap();
+        let rows = vec![
+            ("Host", cosigner_config.host.clone()),
+            ("Noise key", cosigner_config.noise_key.clone()),
+            // TODO maybe having the bitcoin public key here?
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
+                Row::new()
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+        column
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WatchtowerBox {
+    running: bool,
+    host: String,
+}
+
+impl SettingsBox for WatchtowerBox {
+    fn title(&self) -> &'static str {
+        "Watchtower"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let watchtower_config = config
+            .stakeholder_config
+            .as_ref()
+            .unwrap()
+            .watchtowers
+            .iter()
+            .find(|c| c.host == self.host)
+            .unwrap();
+        let rows = vec![
+            ("Host", watchtower_config.host.clone()),
+            ("Noise key", watchtower_config.noise_key.clone()),
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
+                Row::new()
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+        column
     }
 }

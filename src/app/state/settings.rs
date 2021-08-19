@@ -7,9 +7,14 @@ use super::State;
 use crate::app::config::Config;
 
 use crate::app::{
-    context::Context, error::Error, message::Message, state::cmd::get_blockheight,
+    context::Context,
+    error::Error,
+    message::Message,
+    state::cmd::{get_blockheight, get_server_status},
     view::SettingsView,
 };
+
+use crate::revaultd::ServerStatusResponse;
 
 #[derive(Debug)]
 pub struct SettingsState {
@@ -17,6 +22,7 @@ pub struct SettingsState {
     config: Config,
     warning: Option<Error>,
     view: SettingsView,
+    server_status: Option<ServerStatusResponse>,
 }
 
 impl SettingsState {
@@ -26,6 +32,7 @@ impl SettingsState {
             config,
             view: SettingsView::new(),
             warning: None,
+            server_status: None,
         }
     }
 }
@@ -44,6 +51,13 @@ impl State for SettingsState {
                 };
                 Command::none()
             }
+            Message::ServerStatus(s) => {
+                match s {
+                    Ok(server_status) => self.server_status = Some(server_status),
+                    Err(e) => self.warning = Error::from(e).into(),
+                };
+                Command::none()
+            }
             _ => Command::none(),
         }
     }
@@ -54,11 +68,18 @@ impl State for SettingsState {
             self.warning.as_ref(),
             self.blockheight,
             &ctx.revaultd.config,
+            self.server_status.clone(),
         )
     }
 
     fn load(&self, ctx: &Context) -> Command<Message> {
-        Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight)
+        Command::batch(vec![
+            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
+            Command::perform(
+                get_server_status(ctx.revaultd.clone()),
+                Message::ServerStatus,
+            ),
+        ])
     }
 }
 

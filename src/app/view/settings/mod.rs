@@ -11,7 +11,7 @@ use crate::{
     ui::component::{navbar, scroll},
 };
 
-use crate::revaultd::config::Config;
+use crate::revaultd::{config::Config, ServerStatusResponse};
 
 mod boxes;
 use boxes::*;
@@ -36,6 +36,7 @@ impl SettingsView {
         warning: Option<&Error>,
         blockheight: u64,
         config: &Config,
+        server_status: Option<ServerStatusResponse>,
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
@@ -43,7 +44,12 @@ impl SettingsView {
             layout::main_section(Container::new(
                 scroll(
                     &mut self.scroll,
-                    Container::new(SettingsView::display_boxes(&ctx, blockheight, &config)),
+                    Container::new(SettingsView::display_boxes(
+                        &ctx,
+                        blockheight,
+                        server_status,
+                        &config,
+                    )),
                 )
                 .spacing(8),
             )),
@@ -54,22 +60,31 @@ impl SettingsView {
     pub fn display_boxes<'a>(
         ctx: &Context,
         blockheight: u64,
+        server_status: Option<ServerStatusResponse>,
         config: &Config,
     ) -> Column<'a, Message> {
-        let boxes = SettingsBoxes::new(blockheight);
-        let mut column = Column::new()
-            .push(boxes.general.display(config))
-            .push(boxes.bitcoin.display(config));
+        if let Some(server_status) = server_status {
+            let boxes = SettingsBoxes::new(blockheight, server_status);
+            let mut column = Column::new()
+                .push(boxes.bitcoin.display(config))
+                .push(boxes.coordinator.display(config));
 
-        match ctx.role {
-            Role::Manager => {
-                column = column.push(boxes.manager.display(config));
-            }
-            Role::Stakeholder => {
-                column = column.push(boxes.stakeholder.display(config));
-            }
-        };
+            match ctx.role {
+                Role::Manager => {
+                    for c in boxes.cosigners {
+                        column = column.push(c.display(config));
+                    }
+                }
+                Role::Stakeholder => {
+                    for w in boxes.watchtowers {
+                        column = column.push(w.display(config));
+                    }
+                }
+            };
 
-        column.spacing(20)
+            column.push(boxes.advanced.display(config)).spacing(20)
+        } else {
+            Column::new()
+        }
     }
 }
