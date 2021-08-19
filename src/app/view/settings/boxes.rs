@@ -2,7 +2,11 @@ use iced::{Align, Column, Container, Length, Row};
 
 use crate::{
     app::message::Message,
-    ui::component::{card, separation, text},
+    ui::{
+        color,
+        component::{badge, card, separation, text},
+        icon::dot_icon,
+    },
 };
 
 use crate::revaultd::config::Config;
@@ -10,23 +14,52 @@ use crate::revaultd::config::Config;
 pub trait SettingsBox {
     fn title(&self) -> &'static str;
     fn description(&self) -> &'static str;
+    fn badge<'a>(&self) -> Option<Container<'a, Message>>;
+    /// True means it's running, False means it's not, None means
+    /// it's not supposed to show the "Running" badge
+    fn running(&self) -> Option<bool>;
     fn body<'a>(&self, config: &Config) -> Column<'a, Message>;
     fn display<'a>(&self, config: &Config) -> Container<'a, Message> {
+        let mut title_row = Row::new();
+        if let Some(badge) = self.badge() {
+            title_row = title_row.push(badge);
+        }
+        title_row = title_row
+            .push(
+                Row::new()
+                    .push(text::bold(text::simple(self.title())))
+                    .width(Length::Fill),
+            )
+            .spacing(10)
+            .align_items(iced::Align::Center);
+
+        if let Some(running) = self.running() {
+            let running_container = if running {
+                Container::new(
+                    Row::new()
+                        .push(dot_icon().size(5).color(color::SUCCESS))
+                        .push(text::small("Running").color(color::SUCCESS))
+                        .align_items(iced::Align::Center),
+                )
+            } else {
+                Container::new(
+                    Row::new()
+                        .push(dot_icon().size(5).color(color::WARNING))
+                        .push(text::small("Not running").color(color::WARNING))
+                        .align_items(iced::Align::Center),
+                )
+            };
+
+            title_row = title_row.push(running_container).width(Length::Shrink);
+        }
+
         card::simple(Container::new(
             Column::new()
                 .push(
                     Row::new()
                         .push(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        Column::new()
-                                            .push(text::bold(text::simple(self.title())))
-                                            .push(text::small(self.description())),
-                                    )
-                                    .spacing(20),
-                            )
-                            .width(Length::Fill),
+                            Container::new(Row::new().push(title_row).spacing(20))
+                                .width(Length::Fill),
                         )
                         .spacing(20)
                         .align_items(Align::Center),
@@ -44,6 +77,18 @@ pub struct SettingsBoxes {
     pub general: GeneralBox,
     pub manager: ManagerBox,
     pub stakeholder: StakeholderBox,
+    pub bitcoin: BitcoinCoreBox,
+}
+
+impl SettingsBoxes {
+    pub fn new(bitcoin_blockheight: u64) -> Self {
+        SettingsBoxes {
+            bitcoin: BitcoinCoreBox {
+                blockheight: bitcoin_blockheight,
+            },
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -56,6 +101,14 @@ impl SettingsBox for GeneralBox {
 
     fn description(&self) -> &'static str {
         ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        None
     }
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
@@ -119,6 +172,14 @@ impl SettingsBox for StakeholderBox {
         "Stakeholder-specific parameters, such as the xpub, the emergency_address, the watchtowers"
     }
 
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        None
+    }
+
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let config = config.stakeholder_config.as_ref().unwrap();
         let rows = vec![
@@ -168,6 +229,14 @@ impl SettingsBox for ManagerBox {
         "Manager-specific parameters, such as the xpub and the cosigners"
     }
 
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        None
+    }
+
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let config = config.manager_config.as_ref().unwrap();
         let mut cosigners_column = Column::new();
@@ -193,5 +262,87 @@ impl SettingsBox for ManagerBox {
                     .spacing(8),
             )
             .spacing(20)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BitcoinCoreBox {
+    blockheight: u64,
+}
+
+impl SettingsBox for BitcoinCoreBox {
+    fn title(&self) -> &'static str {
+        "Bitcoin Core"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        Some(badge::bitcoin_core())
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(true)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let mut col = Column::new().spacing(20);
+        if self.blockheight != 0 {
+            col =
+                col.push(
+                    Row::new()
+                        .push(
+                            Row::new()
+                                .push(badge::network())
+                                .push(Column::new().push(text::simple("Network:")).push(
+                                    text::bold(text::simple(
+                                        &config.bitcoind_config.network.to_string(),
+                                    )),
+                                ))
+                                .spacing(10)
+                                .width(Length::FillPortion(1)),
+                        )
+                        .push(
+                            Row::new()
+                                .push(badge::block())
+                                .push(
+                                    Column::new().push(text::simple("Block Height:")).push(
+                                        text::bold(text::simple(&self.blockheight.to_string())),
+                                    ),
+                                )
+                                .spacing(10)
+                                .width(Length::FillPortion(1)),
+                        ),
+                );
+        }
+
+        let config = &config.bitcoind_config;
+        let rows = vec![
+            (
+                "Cookie file path",
+                config.cookie_path.to_str().unwrap().to_string(),
+            ),
+            ("Socket address", config.addr.to_string()),
+            (
+                "Poll interval",
+                config
+                    .poll_interval_secs
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or_else(|| "Not set".to_string()),
+            ),
+        ];
+
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
+                Row::new()
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+
+        col.push(column)
     }
 }
