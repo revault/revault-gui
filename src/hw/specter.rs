@@ -1,8 +1,4 @@
-use bitcoin::{
-    base64,
-    consensus::encode,
-    util::{bip32::DerivationPath, psbt::PartiallySignedTransaction as Psbt},
-};
+use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
 
 use tokio::io::AsyncBufReadExt;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
@@ -19,13 +15,29 @@ impl<T: Unpin + AsyncWrite + AsyncRead> Specter<T> {
     }
 
     pub async fn sign_psbt(&mut self, psbt: &Psbt) -> Result<Psbt, SpecterError> {
-        self.request(&format!(
-            "\r\n\r\nsign {}\r\n",
-            base64::encode(&encode::serialize(&psbt))
-        ))
-        .await
-        .and_then(|resp| base64::decode(&resp).map_err(|e| SpecterError(e.to_string())))
-        .and_then(|bytes| encode::deserialize(&bytes).map_err(|e| SpecterError(e.to_string())))
+        let mut new_psbt: Psbt = self
+            .request(&format!(
+                "\r\n\r\nsign {}\r\n",
+                base64::encode(&encode::serialize(&psbt))
+            ))
+            .await
+            .and_then(|resp| base64::decode(&resp).map_err(|e| SpecterError(e.to_string())))
+            .and_then(|bytes| {
+                encode::deserialize(&bytes).map_err(|e| SpecterError(e.to_string()))
+            })?;
+
+        // Psbt returned by specter wallet has all unnecessary fields removed,
+        // only global transaction and partial signatures for all inputs remain in it.
+        // In order to have the full Psbt, the partial_sigs are extracted and appended
+        // to the original psbt.
+        let mut psbt = psbt.clone();
+        for i in 0..new_psbt.inputs.len() {
+            psbt.inputs[i]
+                .partial_sigs
+                .append(&mut new_psbt.inputs[i].partial_sigs)
+        }
+
+        Ok(psbt)
     }
 
     async fn request(&mut self, req: &str) -> Result<String, SpecterError> {
