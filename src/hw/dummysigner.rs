@@ -1,8 +1,4 @@
-use bitcoin::{
-    base64,
-    consensus::encode,
-    util::{bip32::DerivationPath, psbt::PartiallySignedTransaction as Psbt},
-};
+use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
 use iced::futures::{SinkExt, TryStreamExt};
 use serde_json::{json, Value};
 use tokio::net::{
@@ -74,19 +70,15 @@ impl DummySigner {
 
     pub async fn sign_revocation_txs(
         &mut self,
-        path: DerivationPath,
         emergency_tx: Psbt,
         emergency_unvault_tx: Psbt,
         cancel_tx: Psbt,
     ) -> Result<Box<Vec<Psbt>>, Error> {
         let res = self
             .send(json!({
-                "derivation_path": path.to_string(),
-                "target": {
-                    "emergency_tx": base64::encode(&encode::serialize(&emergency_tx)),
-                    "emergency_unvault_tx": base64::encode(&encode::serialize(&emergency_unvault_tx)),
-                    "cancel_tx": base64::encode(&encode::serialize(&cancel_tx))
-                }
+                "emergency_tx": base64::encode(&encode::serialize(&emergency_tx)),
+                "emergency_unvault_tx": base64::encode(&encode::serialize(&emergency_unvault_tx)),
+                "cancel_tx": base64::encode(&encode::serialize(&cancel_tx))
             }))
             .await?;
 
@@ -99,17 +91,10 @@ impl DummySigner {
         ]))
     }
 
-    pub async fn sign_unvault_tx(
-        &mut self,
-        path: DerivationPath,
-        unvault_tx: Psbt,
-    ) -> Result<Box<Vec<Psbt>>, Error> {
+    pub async fn sign_unvault_tx(&mut self, unvault_tx: Psbt) -> Result<Box<Vec<Psbt>>, Error> {
         let res = self
             .send(json!({
-                "derivation_path": path.to_string(),
-                "target": {
-                    "unvault_tx": base64::encode(&encode::serialize(&unvault_tx)),
-                }
+                "unvault_tx": base64::encode(&encode::serialize(&unvault_tx)),
             }))
             .await?;
 
@@ -118,18 +103,10 @@ impl DummySigner {
         Ok(Box::new(vec![tx.unvault_tx]))
     }
 
-    pub async fn sign_spend_tx(
-        &mut self,
-        paths: Vec<DerivationPath>,
-        spend_tx: Psbt,
-    ) -> Result<Box<Vec<Psbt>>, Error> {
-        let paths: Vec<String> = paths.into_iter().map(|p| p.to_string()).collect();
+    pub async fn sign_spend_tx(&mut self, spend_tx: Psbt) -> Result<Box<Vec<Psbt>>, Error> {
         let res = self
             .send(json!({
-                "derivation_paths": paths,
-                "target": {
-                    "spend_tx": base64::encode(&encode::serialize(&spend_tx)),
-                }
+                "spend_tx": base64::encode(&encode::serialize(&spend_tx)),
             }))
             .await?;
 

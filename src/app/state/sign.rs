@@ -1,9 +1,6 @@
 use bitcoin::{
     secp256k1,
-    util::{
-        bip32::{DerivationPath, ExtendedPubKey},
-        psbt::PartiallySignedTransaction as Psbt,
-    },
+    util::{bip32::ExtendedPubKey, psbt::PartiallySignedTransaction as Psbt},
 };
 use revault_tx::miniscript::DescriptorPublicKey;
 use std::{str::FromStr, sync::Arc, time::Duration};
@@ -18,8 +15,6 @@ use crate::{
 
 #[derive(Debug)]
 pub struct RevocationTransactionsTarget {
-    derivation_path: DerivationPath,
-
     pub cancel_tx: Psbt,
     pub emergency_tx: Psbt,
     pub emergency_unvault_tx: Psbt,
@@ -58,7 +53,6 @@ impl RevocationTransactionsTarget {
         });
 
         Self {
-            derivation_path,
             cancel_tx,
             emergency_tx,
             emergency_unvault_tx,
@@ -68,8 +62,6 @@ impl RevocationTransactionsTarget {
 
 #[derive(Debug)]
 pub struct UnvaultTransactionTarget {
-    derivation_path: DerivationPath,
-
     pub unvault_tx: Psbt,
 }
 
@@ -89,16 +81,12 @@ impl UnvaultTransactionTarget {
                 .insert(pubkey, (fingerprint, derivation_path.clone()));
         });
 
-        Self {
-            derivation_path,
-            unvault_tx,
-        }
+        Self { unvault_tx }
     }
 }
 
 #[derive(Debug)]
 pub struct SpendTransactionTarget {
-    derivation_paths: Vec<DerivationPath>,
     pub spend_tx: Psbt,
 }
 
@@ -124,13 +112,7 @@ impl SpendTransactionTarget {
                 );
             });
 
-        Self {
-            derivation_paths: derived_keys
-                .into_iter()
-                .map(|key| key.full_derivation_path())
-                .collect(),
-            spend_tx,
-        }
+        Self { spend_tx }
     }
 }
 
@@ -211,11 +193,7 @@ impl Signer<SpendTransactionTarget> {
                 if let Some(channel) = &self.channel {
                     self.processing = true;
                     return Command::perform(
-                        sign_spend_tx(
-                            channel.clone(),
-                            self.target.derivation_paths.clone(),
-                            self.target.spend_tx.clone(),
-                        ),
+                        sign_spend_tx(channel.clone(), self.target.spend_tx.clone()),
                         SignMessage::Signed,
                     );
                 }
@@ -247,15 +225,9 @@ impl Signer<SpendTransactionTarget> {
 
 pub async fn sign_spend_tx(
     channel: Arc<Mutex<hw::Channel>>,
-    paths: Vec<DerivationPath>,
     spend_tx: Psbt,
 ) -> Result<Box<Vec<Psbt>>, hw::Error> {
-    channel
-        .clone()
-        .lock()
-        .await
-        .sign_spend_tx(paths, spend_tx)
-        .await
+    channel.clone().lock().await.sign_spend_tx(spend_tx).await
 }
 
 impl Signer<UnvaultTransactionTarget> {
@@ -265,11 +237,7 @@ impl Signer<UnvaultTransactionTarget> {
                 if let Some(channel) = &self.channel {
                     self.processing = true;
                     return Command::perform(
-                        sign_unvault_tx(
-                            channel.clone(),
-                            self.target.derivation_path.clone(),
-                            self.target.unvault_tx.clone(),
-                        ),
+                        sign_unvault_tx(channel.clone(), self.target.unvault_tx.clone()),
                         SignMessage::Signed,
                     );
                 }
@@ -298,14 +266,13 @@ impl Signer<UnvaultTransactionTarget> {
 
 pub async fn sign_unvault_tx(
     channel: Arc<Mutex<hw::Channel>>,
-    path: DerivationPath,
     unvault_tx: Psbt,
 ) -> Result<Box<Vec<Psbt>>, hw::Error> {
     channel
         .clone()
         .lock()
         .await
-        .sign_unvault_tx(path, unvault_tx)
+        .sign_unvault_tx(unvault_tx)
         .await
 }
 
@@ -318,7 +285,6 @@ impl Signer<RevocationTransactionsTarget> {
                     return Command::perform(
                         sign_revocation_txs(
                             channel.clone(),
-                            self.target.derivation_path.clone(),
                             self.target.emergency_tx.clone(),
                             self.target.emergency_unvault_tx.clone(),
                             self.target.cancel_tx.clone(),
@@ -363,7 +329,6 @@ impl Signer<RevocationTransactionsTarget> {
 
 pub async fn sign_revocation_txs(
     channel: Arc<Mutex<hw::Channel>>,
-    path: DerivationPath,
     emergency_tx: Psbt,
     emergency_unvault_tx: Psbt,
     cancel_tx: Psbt,
@@ -372,6 +337,6 @@ pub async fn sign_revocation_txs(
         .clone()
         .lock()
         .await
-        .sign_revocation_txs(path, emergency_tx, emergency_unvault_tx, cancel_tx)
+        .sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_tx)
         .await
 }
