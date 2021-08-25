@@ -83,9 +83,7 @@ impl State for VaultsState {
             Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    return selected
-                        .update(ctx.revaultd.clone(), msg)
-                        .map(Message::Vault);
+                    return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
             Message::FilterVaults(VaultFilterMessage::Status(statuses)) => {

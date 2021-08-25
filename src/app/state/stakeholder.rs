@@ -111,9 +111,7 @@ impl State for StakeholderHomeState {
             Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    return selected
-                        .update(ctx.revaultd.clone(), msg)
-                        .map(Message::Vault);
+                    return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
             _ => {}
@@ -242,9 +240,7 @@ impl State for StakeholderCreateVaultsState {
             Message::SelectVault(outpoint) => self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    return selected
-                        .update(ctx.revaultd.clone(), msg)
-                        .map(Message::Vault);
+                    return selected.update(ctx, msg).map(Message::Vault);
                 }
                 Command::none()
             }
@@ -353,7 +349,7 @@ impl StakeholderDelegateFundsState {
         if let Some(selected) = &mut self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 return selected
-                    .update(ctx.revaultd.clone(), VaultMessage::SelectDelegate)
+                    .update(ctx, VaultMessage::SelectDelegate)
                     .map(Message::Vault);
             }
         }
@@ -364,7 +360,7 @@ impl StakeholderDelegateFundsState {
             .find(|vlt| vlt.vault.outpoint() == outpoint)
         {
             let mut selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.update(ctx.revaultd.clone(), VaultMessage::SelectDelegate);
+            let cmd = selected_vault.update(ctx, VaultMessage::SelectDelegate);
             self.selected_vault = Some(selected_vault);
             return cmd.map(Message::Vault);
         };
@@ -399,9 +395,7 @@ impl State for StakeholderDelegateFundsState {
             Message::Vault(msg) => match msg {
                 _ => {
                     if let Some(selected) = &mut self.selected_vault {
-                        return selected
-                            .update(ctx.revaultd.clone(), msg)
-                            .map(Message::Vault);
+                        return selected.update(ctx, msg).map(Message::Vault);
                     }
                     return Command::none();
                 }

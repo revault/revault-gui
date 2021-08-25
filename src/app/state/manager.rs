@@ -225,9 +225,7 @@ impl State for ManagerHomeState {
             Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
                 if let Some(selected) = &mut self.selected_vault {
-                    return selected
-                        .update(ctx.revaultd.clone(), msg)
-                        .map(Message::Vault);
+                    return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
             Message::BlockHeight(b) => match b {
@@ -605,8 +603,9 @@ impl State for ManagerCreateSendTransactionState {
                 ManagerSendStep::SelectInputs(_) => {
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
-                            signer: Signer::new(SpendTransactionTarget {
-                                derivation_indexes: self
+                            signer: Signer::new(SpendTransactionTarget::new(
+                                ctx.revaultd.config.manager_config.as_ref().unwrap().xpub,
+                                &self
                                     .vaults
                                     .iter()
                                     .filter_map(|v| {
@@ -617,8 +616,8 @@ impl State for ManagerCreateSendTransactionState {
                                         }
                                     })
                                     .collect(),
-                                spend_tx: psbt.clone(),
-                            }),
+                                psbt.clone(),
+                            )),
                             view: ManagerSignView::new(),
                         };
                     }
