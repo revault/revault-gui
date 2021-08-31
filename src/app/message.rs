@@ -12,7 +12,7 @@ use crate::{
             RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
             VaultStatus, VaultTransactions,
         },
-        GetInfoResponse, RevaultD, RevaultDError,
+        GetInfoResponse, RevaultD, RevaultDError, ServerStatusResponse,
     },
 };
 
@@ -29,6 +29,7 @@ pub enum Message {
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
+    ServerStatus(Result<ServerStatusResponse, RevaultDError>),
     Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
     Next,

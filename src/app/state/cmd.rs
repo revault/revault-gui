@@ -7,7 +7,7 @@ use crate::revaultd::{
         RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus, UnvaultTransaction,
         Vault, VaultStatus, VaultTransactions,
     },
-    RevaultD, RevaultDError,
+    RevaultD, RevaultDError, ServerStatusResponse,
 };
 
 /// retrieves a bitcoin address for deposit.
@@ -114,4 +114,10 @@ pub async fn revault(revaultd: Arc<RevaultD>, outpoint: String) -> Result<(), Re
 
 pub async fn emergency(revaultd: Arc<RevaultD>) -> Result<(), RevaultDError> {
     revaultd.emergency()
+}
+
+pub async fn get_server_status(
+    revaultd: Arc<RevaultD>,
+) -> Result<ServerStatusResponse, RevaultDError> {
+    revaultd.get_server_status()
 }

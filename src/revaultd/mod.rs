@@ -217,6 +217,10 @@ impl RevaultD {
         let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
         Ok(())
     }
+
+    pub fn get_server_status(&self) -> Result<ServerStatusResponse, RevaultDError> {
+        self.call("getserverstatus", Option::<Request>::None)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -258,6 +262,19 @@ pub struct ListOnchainTransactionsResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListSpendTransactionsResponse {
     pub spend_txs: Vec<SpendTx>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServerStatusResponse {
+    pub coordinator: ServerStatus,
+    pub cosigners: Vec<ServerStatus>,
+    pub watchtowers: Vec<ServerStatus>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServerStatus {
+    pub host: String,
+    pub reachable: bool,
 }
 
 // RevaultD can start only if a config path is given.

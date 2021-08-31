@@ -11,8 +11,8 @@ use iced::{container, Container, Length};
 pub fn bitcoin_core<'a, T: 'a>() -> Container<'a, T> {
     let icon = bitcoin_icon().width(Length::Units(20));
     Container::new(icon)
-        .width(Length::Units(40))
-        .height(Length::Units(40))
+        .width(Length::Units(30))
+        .height(Length::Units(30))
         .style(BitcoinCoreBadgeStyle)
         .align_x(iced::Align::Center)
         .align_y(iced::Align::Center)
@@ -22,7 +22,7 @@ struct BitcoinCoreBadgeStyle;
 impl container::StyleSheet for BitcoinCoreBadgeStyle {
     fn style(&self) -> container::Style {
         container::Style {
-            border_radius: 40.0,
+            border_radius: 30.0,
             background: iced::Color::BLACK.into(),
             text_color: iced::Color::WHITE.into(),
             ..container::Style::default()

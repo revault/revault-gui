@@ -1,4 +1,4 @@
-use iced::{scrollable, Column, Container, Element, Length, Row};
+use iced::{scrollable, Column, Container, Element};
 
 use crate::revault::Role;
 use crate::{
@@ -8,14 +8,10 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
-    ui::{
-        color,
-        component::{badge, card, navbar, scroll, separation, text},
-        icon::dot_icon,
-    },
+    ui::component::{navbar, scroll},
 };
 
-use crate::revaultd::config::Config;
+use crate::revaultd::{config::Config, ServerStatusResponse};
 
 mod boxes;
 use boxes::*;
@@ -40,6 +36,7 @@ impl SettingsView {
         warning: Option<&Error>,
         blockheight: u64,
         config: &Config,
+        server_status: Option<ServerStatusResponse>,
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
@@ -47,7 +44,12 @@ impl SettingsView {
             layout::main_section(Container::new(
                 scroll(
                     &mut self.scroll,
-                    Container::new(SettingsView::display_boxes(&ctx, blockheight, &config)),
+                    Container::new(SettingsView::display_boxes(
+                        &ctx,
+                        blockheight,
+                        server_status,
+                        &config,
+                    )),
                 )
                 .spacing(8),
             )),
@@ -58,106 +60,31 @@ impl SettingsView {
     pub fn display_boxes<'a>(
         ctx: &Context,
         blockheight: u64,
+        server_status: Option<ServerStatusResponse>,
         config: &Config,
     ) -> Column<'a, Message> {
-        let boxes = SettingsBoxes::default();
-        let mut column = Column::new()
-            .push(boxes.general.display(config))
-            .push(bitcoind(blockheight, config));
+        if let Some(server_status) = server_status {
+            let boxes = SettingsBoxes::new(blockheight, server_status);
+            let mut column = Column::new()
+                .push(boxes.bitcoin.display(config))
+                .push(boxes.coordinator.display(config));
 
-        match ctx.role {
-            Role::Manager => {
-                column = column.push(boxes.manager.display(config));
-            }
-            Role::Stakeholder => {
-                column = column.push(boxes.stakeholder.display(config));
-            }
-        };
+            match ctx.role {
+                Role::Manager => {
+                    for c in boxes.cosigners {
+                        column = column.push(c.display(config));
+                    }
+                }
+                Role::Stakeholder => {
+                    for w in boxes.watchtowers {
+                        column = column.push(w.display(config));
+                    }
+                }
+            };
 
-        column.push(boxes.scripts.display(config)).spacing(20)
+            column.push(boxes.advanced.display(config)).spacing(20)
+        } else {
+            Column::new()
+        }
     }
-}
-
-pub fn bitcoind<'a, T: 'a>(blockheight: u64, config: &Config) -> Container<'a, T> {
-    let mut col = Column::new()
-        .push(
-            Row::new()
-                .push(
-                    Row::new()
-                        .push(badge::bitcoin_core())
-                        .push(text::bold(text::simple("Bitcoin Core")))
-                        .spacing(10)
-                        .align_items(iced::Align::Center)
-                        .width(Length::Fill),
-                )
-                .push(
-                    Container::new(
-                        Row::new()
-                            .push(dot_icon().size(5).color(color::SUCCESS))
-                            .push(text::small("Running").color(color::SUCCESS))
-                            .align_items(iced::Align::Center),
-                    )
-                    .width(Length::Shrink),
-                ),
-        )
-        .spacing(20);
-
-    col = col.push(separation().width(Length::Fill));
-
-    if blockheight != 0 {
-        col = col.push(
-            Row::new()
-                .push(
-                    Row::new()
-                        .push(badge::network())
-                        .push(
-                            Column::new()
-                                .push(text::simple("Network:"))
-                                .push(text::bold(text::simple(
-                                    &config.bitcoind_config.network.to_string(),
-                                ))),
-                        )
-                        .spacing(10)
-                        .width(Length::FillPortion(1)),
-                )
-                .push(
-                    Row::new()
-                        .push(badge::block())
-                        .push(
-                            Column::new()
-                                .push(text::simple("Block Height:"))
-                                .push(text::bold(text::simple(&blockheight.to_string()))),
-                        )
-                        .spacing(10)
-                        .width(Length::FillPortion(1)),
-                ),
-        );
-    }
-
-    let config = &config.bitcoind_config;
-    let rows = vec![
-        (
-            "Cookie file path",
-            config.cookie_path.to_str().unwrap().to_string(),
-        ),
-        ("Socket address", config.addr.to_string()),
-        (
-            "Poll interval",
-            config
-                .poll_interval_secs
-                .map(|p| format!("{} seconds", p))
-                .unwrap_or_else(|| "Not set".to_string()),
-        ),
-    ];
-
-    let mut column = Column::new();
-    for (k, v) in rows {
-        column = column.push(
-            Row::new()
-                .push(Container::new(text::small(k)).width(Length::Fill))
-                .push(text::small(&v)),
-        );
-    }
-
-    card::simple(Container::new(col.push(column)))
 }

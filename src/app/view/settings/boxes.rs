@@ -2,31 +2,64 @@ use iced::{Align, Column, Container, Length, Row};
 
 use crate::{
     app::message::Message,
-    ui::component::{card, separation, text},
+    ui::{
+        color,
+        component::{badge, card, separation, text},
+        icon::dot_icon,
+    },
 };
 
-use crate::revaultd::config::Config;
+use crate::revaultd::{config::Config, ServerStatusResponse};
 
 pub trait SettingsBox {
     fn title(&self) -> &'static str;
     fn description(&self) -> &'static str;
+    fn badge<'a>(&self) -> Option<Container<'a, Message>>;
+    /// Some(true) means it's running, Some(false) means it's not, None means
+    /// it's not supposed to show the "Running" badge
+    fn running(&self) -> Option<bool>;
     fn body<'a>(&self, config: &Config) -> Column<'a, Message>;
     fn display<'a>(&self, config: &Config) -> Container<'a, Message> {
+        let mut title_row = Row::new();
+        if let Some(badge) = self.badge() {
+            title_row = title_row.push(badge);
+        }
+        title_row = title_row
+            .push(
+                Row::new()
+                    .push(text::bold(text::simple(self.title())))
+                    .width(Length::Fill),
+            )
+            .spacing(10)
+            .align_items(iced::Align::Center);
+
+        if let Some(running) = self.running() {
+            let running_container = if running {
+                Container::new(
+                    Row::new()
+                        .push(dot_icon().size(5).color(color::SUCCESS))
+                        .push(text::small("Running").color(color::SUCCESS))
+                        .align_items(iced::Align::Center),
+                )
+            } else {
+                Container::new(
+                    Row::new()
+                        .push(dot_icon().size(5).color(color::WARNING))
+                        .push(text::small("Not running").color(color::WARNING))
+                        .align_items(iced::Align::Center),
+                )
+            };
+
+            title_row = title_row.push(running_container).width(Length::Shrink);
+        }
+
         card::simple(Container::new(
             Column::new()
                 .push(
                     Row::new()
                         .push(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        Column::new()
-                                            .push(text::bold(text::simple(self.title())))
-                                            .push(text::small(self.description())),
-                                    )
-                                    .spacing(20),
-                            )
-                            .width(Length::Fill),
+                            Container::new(Row::new().push(title_row).spacing(20))
+                                .width(Length::Fill),
                         )
                         .spacing(20)
                         .align_items(Align::Center),
@@ -41,38 +74,71 @@ pub trait SettingsBox {
 
 #[derive(Debug, Clone, Default)]
 pub struct SettingsBoxes {
-    pub general: GeneralBox,
-    pub scripts: ScriptsBox,
-    pub manager: ManagerBox,
-    pub stakeholder: StakeholderBox,
+    pub bitcoin: BitcoinCoreBox,
+    pub coordinator: CoordinatorBox,
+    pub cosigners: Vec<CosignerBox>,
+    pub watchtowers: Vec<WatchtowerBox>,
+    pub advanced: AdvancedBox,
+}
+
+impl SettingsBoxes {
+    pub fn new(bitcoin_blockheight: u64, server_status: ServerStatusResponse) -> Self {
+        let mut cosigners: Vec<_> = server_status
+            .cosigners
+            .iter()
+            .map(|c| CosignerBox {
+                running: c.reachable,
+                host: c.host.clone(),
+            })
+            .collect();
+        cosigners.sort_by(|a, b| a.host.partial_cmp(&b.host).unwrap());
+
+        let mut watchtowers: Vec<_> = server_status
+            .watchtowers
+            .iter()
+            .map(|w| WatchtowerBox {
+                running: w.reachable,
+                host: w.host.clone(),
+            })
+            .collect();
+        watchtowers.sort_by(|a, b| a.host.partial_cmp(&b.host).unwrap());
+
+        SettingsBoxes {
+            bitcoin: BitcoinCoreBox {
+                blockheight: bitcoin_blockheight,
+            },
+            coordinator: CoordinatorBox {
+                running: server_status.coordinator.reachable,
+            },
+            cosigners,
+            watchtowers,
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GeneralBox {}
+pub struct AdvancedBox {}
 
-impl SettingsBox for GeneralBox {
+impl SettingsBox for AdvancedBox {
     fn title(&self) -> &'static str {
-        "General"
+        "Advanced"
     }
 
     fn description(&self) -> &'static str {
         ""
     }
 
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        None
+    }
+
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
-            ("Coordinator host", config.coordinator_host.clone()),
-            (
-                "Coordinator noise key",
-                config.coordinator_noise_key.clone(),
-            ),
-            (
-                "Coordinator poll",
-                config
-                    .coordinator_poll_seconds
-                    .map(|p| format!("{} seconds", p))
-                    .unwrap_or_else(|| "Not set".to_string()),
-            ),
             (
                 "Data dir",
                 config
@@ -109,126 +175,226 @@ impl SettingsBox for GeneralBox {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ScriptsBox {}
+pub struct BitcoinCoreBox {
+    blockheight: u64,
+}
 
-impl SettingsBox for ScriptsBox {
+impl SettingsBox for BitcoinCoreBox {
     fn title(&self) -> &'static str {
-        "Bitcoin scripts"
+        "Bitcoin Core"
     }
 
     fn description(&self) -> &'static str {
         ""
     }
 
-    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        Column::new()
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("Deposit descriptor")))
-                    .push(text::small(&config.scripts_config.deposit_descriptor)),
-            )
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("Unvault descriptor")))
-                    .push(text::small(&config.scripts_config.unvault_descriptor)),
-            )
-            .push(
-                Column::new()
-                    .spacing(5)
-                    .push(text::bold(text::small("CPFP descriptor")))
-                    .push(text::small(&config.scripts_config.cpfp_descriptor)),
-            )
-            .spacing(10)
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct StakeholderBox {}
-
-impl SettingsBox for StakeholderBox {
-    fn title(&self) -> &'static str {
-        "My stakeholder info"
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        Some(badge::bitcoin_core())
     }
 
-    fn description(&self) -> &'static str {
-        "Stakeholder-specific parameters, such as the xpub, the emergency_address, the watchtowers"
+    fn running(&self) -> Option<bool> {
+        Some(true)
     }
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let config = config.stakeholder_config.as_ref().unwrap();
+        let mut col = Column::new().spacing(20);
+        if self.blockheight != 0 {
+            col =
+                col.push(
+                    Row::new()
+                        .push(
+                            Row::new()
+                                .push(badge::network())
+                                .push(Column::new().push(text::simple("Network:")).push(
+                                    text::bold(text::simple(
+                                        &config.bitcoind_config.network.to_string(),
+                                    )),
+                                ))
+                                .spacing(10)
+                                .width(Length::FillPortion(1)),
+                        )
+                        .push(
+                            Row::new()
+                                .push(badge::block())
+                                .push(
+                                    Column::new().push(text::simple("Block Height:")).push(
+                                        text::bold(text::simple(&self.blockheight.to_string())),
+                                    ),
+                                )
+                                .spacing(10)
+                                .width(Length::FillPortion(1)),
+                        ),
+                );
+        }
+
+        let config = &config.bitcoind_config;
         let rows = vec![
-            ("xpub", config.xpub.to_string()),
-            ("Emergency address", config.emergency_address.clone()),
+            (
+                "Cookie file path",
+                config.cookie_path.to_str().unwrap().to_string(),
+            ),
+            ("Socket address", config.addr.to_string()),
+            (
+                "Poll interval",
+                config
+                    .poll_interval_secs
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or_else(|| "Not set".to_string()),
+            ),
         ];
-        let mut general_column = Column::new();
+
+        let mut column = Column::new();
         for (k, v) in rows {
-            general_column = general_column.push(
+            column = column.push(
                 Row::new()
                     .push(Container::new(text::small(k)).width(Length::Fill))
                     .push(text::small(&v)),
             );
         }
 
-        let mut watchtowers_column = Column::new();
-        for w in &config.watchtowers {
-            watchtowers_column = watchtowers_column.push(
-                Row::new()
-                    .push(Container::new(text::small(&w.host)).width(Length::Fill))
-                    .push(text::small(&w.noise_key)),
-            );
-        }
-
-        Column::new()
-            .push(general_column)
-            .push(separation().width(Length::Fill))
-            .push(
-                Column::new()
-                    .push(Container::new(text::bold(text::small("Watchtowers"))))
-                    .push(watchtowers_column)
-                    .spacing(8),
-            )
-            .spacing(20)
+        col.push(column)
     }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ManagerBox {}
+pub struct CoordinatorBox {
+    running: bool,
+}
 
-impl SettingsBox for ManagerBox {
+impl SettingsBox for CoordinatorBox {
     fn title(&self) -> &'static str {
-        "My manager info"
+        "Coordinator"
     }
 
     fn description(&self) -> &'static str {
-        "Manager-specific parameters, such as the xpub and the cosigners"
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
     }
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
-        let config = config.manager_config.as_ref().unwrap();
-        let mut cosigners_column = Column::new();
-        for c in &config.cosigners {
-            cosigners_column = cosigners_column.push(
+        let rows = vec![
+            ("Host", config.coordinator_host.clone()),
+            ("Noise key", config.coordinator_noise_key.clone()),
+            (
+                "Poll interval",
+                config
+                    .coordinator_poll_seconds
+                    .map(|p| format!("{} seconds", p))
+                    .unwrap_or_else(|| "Not set".to_string()),
+            ),
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(&c.host)).width(Length::Fill))
-                    .push(text::small(&c.noise_key)),
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
             );
         }
+        column
+    }
+}
 
-        Column::new()
-            .push(
+#[derive(Debug, Clone, Default)]
+pub struct CosignerBox {
+    running: bool,
+    host: String,
+}
+
+impl SettingsBox for CosignerBox {
+    fn title(&self) -> &'static str {
+        "Cosigner"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let cosigner_config = config
+            .manager_config
+            .as_ref()
+            .unwrap()
+            .cosigners
+            .iter()
+            .find(|c| c.host == self.host)
+            .unwrap();
+        let rows = vec![
+            ("Host", cosigner_config.host.clone()),
+            ("Noise key", cosigner_config.noise_key.clone()),
+            // TODO maybe having the bitcoin public key here?
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
                 Row::new()
-                    .push(Container::new(text::small("xpub")).width(Length::Fill))
-                    .push(text::small(&config.xpub.to_string())),
-            )
-            .push(separation().width(Length::Fill))
-            .push(
-                Column::new()
-                    .push(Container::new(text::bold(text::small("Cosigners"))))
-                    .push(cosigners_column)
-                    .spacing(8),
-            )
-            .spacing(20)
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+        column
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WatchtowerBox {
+    running: bool,
+    host: String,
+}
+
+impl SettingsBox for WatchtowerBox {
+    fn title(&self) -> &'static str {
+        "Watchtower"
+    }
+
+    fn description(&self) -> &'static str {
+        ""
+    }
+
+    fn badge<'a>(&self) -> Option<Container<'a, Message>> {
+        None
+    }
+
+    fn running(&self) -> Option<bool> {
+        Some(self.running)
+    }
+
+    fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
+        let watchtower_config = config
+            .stakeholder_config
+            .as_ref()
+            .unwrap()
+            .watchtowers
+            .iter()
+            .find(|c| c.host == self.host)
+            .unwrap();
+        let rows = vec![
+            ("Host", watchtower_config.host.clone()),
+            ("Noise key", watchtower_config.noise_key.clone()),
+        ];
+        let mut column = Column::new();
+        for (k, v) in rows {
+            column = column.push(
+                Row::new()
+                    .push(Container::new(text::small(k)).width(Length::Fill))
+                    .push(text::small(&v)),
+            );
+        }
+        column
     }
 }
