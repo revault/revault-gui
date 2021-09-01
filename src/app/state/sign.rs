@@ -187,7 +187,7 @@ impl<T> Signer<T> {
     }
 
     pub fn subscription(&self) -> Subscription<SignMessage> {
-        if !self.signed {
+        if !self.signed && !self.processing {
             time::every(Duration::from_secs(1)).map(|_| SignMessage::CheckConnection)
         } else {
             Subscription::none()

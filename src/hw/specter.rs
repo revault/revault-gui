@@ -1,8 +1,11 @@
 use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
 
+use serialport::{available_ports, SerialPortType};
 use tokio::io::AsyncBufReadExt;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpStream, ToSocketAddrs};
+use tokio_serial::SerialPortBuilderExt;
+use tokio_serial::SerialStream;
 
 #[derive(Debug)]
 pub struct Specter<T> {
@@ -70,11 +73,40 @@ impl<T: Unpin + AsyncWrite + AsyncRead> Specter<T> {
 }
 
 impl Specter<TcpStream> {
-    pub async fn try_connect<T: ToSocketAddrs + std::marker::Sized>(
+    pub async fn try_connect_simulator<T: ToSocketAddrs + std::marker::Sized>(
         address: T,
     ) -> Result<Self, SpecterError> {
         let transport = TcpStream::connect(address)
             .await
+            .map_err(|e| SpecterError(e.to_string()))?;
+        Ok(Specter { transport })
+    }
+}
+
+const SPECTER_VID: u16 = 61525;
+const SPECTER_PID: u16 = 38914;
+
+impl Specter<SerialStream> {
+    pub async fn try_connect_serial() -> Result<Self, SpecterError> {
+        let tty = match available_ports() {
+            Ok(ports) => ports
+                .iter()
+                .find_map(|p| {
+                    if let SerialPortType::UsbPort(info) = &p.port_type {
+                        if info.vid == SPECTER_VID && info.pid == SPECTER_PID {
+                            Some(p.port_name.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| SpecterError("".into())),
+            Err(e) => Err(SpecterError(format!("Error listing serial ports: {}", e))),
+        }?;
+        let transport = tokio_serial::new(tty, 9600)
+            .open_native_async()
             .map_err(|e| SpecterError(e.to_string()))?;
         Ok(Specter { transport })
     }
