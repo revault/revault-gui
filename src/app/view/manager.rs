@@ -89,11 +89,8 @@ impl ManagerImportTransactionView {
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
                             Container::new(
-                                button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                )
-                                .on_press(Message::Menu(Menu::Home)),
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
                             )
                             .width(Length::Shrink),
                         ),
@@ -144,14 +141,8 @@ impl ManagerSendWelcomeView {
                     .push(
                         Row::new().push(Column::new().width(Length::Fill)).push(
                             Container::new(
-                                button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close"))
-                                        .padding(10)
-                                        .width(Length::Units(100))
-                                        .align_x(Align::Center),
-                                )
-                                .on_press(Message::Menu(Menu::Home)),
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
                             )
                             .width(Length::Shrink),
                         ),
@@ -219,14 +210,8 @@ impl ManagerSelectOutputsView {
             .push(
                 Column::new()
                     .push(
-                        button::cancel(
-                            &mut self.cancel_button,
-                            Container::new(text::simple("X Close"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
+                        button::close_button(&mut self.cancel_button)
+                            .on_press(Message::Menu(Menu::Home)),
                     )
                     .align_items(Align::End)
                     .width(Length::Fill),
@@ -437,14 +422,8 @@ impl ManagerSelectInputsView {
             .push(
                 Column::new()
                     .push(
-                        button::cancel(
-                            &mut self.cancel_button,
-                            Container::new(text::simple("X Close"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
+                        button::close_button(&mut self.cancel_button)
+                            .on_press(Message::Menu(Menu::Home)),
                     )
                     .align_items(Align::End)
                     .width(Length::Fill),
@@ -616,14 +595,8 @@ impl ManagerSelectFeeView {
             .push(
                 Column::new()
                     .push(Container::new(
-                        button::cancel(
-                            &mut self.cancel_button,
-                            Container::new(text::simple("X Close"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
+                        button::close_button(&mut self.cancel_button)
+                            .on_press(Message::Menu(Menu::Home)),
                     ))
                     .width(Length::Fill)
                     .align_items(Align::End),
@@ -905,14 +878,8 @@ impl ManagerSignView {
             .push(
                 Column::new()
                     .push(
-                        button::cancel(
-                            &mut self.cancel_button,
-                            Container::new(text::simple("X Close"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
+                        button::close_button(&mut self.cancel_button)
+                            .on_press(Message::Menu(Menu::Home)),
                     )
                     .width(Length::Fill)
                     .align_items(Align::End),
@@ -1003,14 +970,8 @@ impl ManagerSpendTransactionCreatedView {
                         .push(
                             Column::new()
                                 .push(
-                                    button::cancel(
-                                        &mut self.cancel_button,
-                                        Container::new(text::simple("X Close"))
-                                            .padding(10)
-                                            .width(Length::Units(100))
-                                            .align_x(Align::Center),
-                                    )
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    button::close_button(&mut self.cancel_button)
+                                        .on_press(Message::Menu(Menu::Home)),
                                 )
                                 .width(Length::Fill)
                                 .align_items(Align::End),

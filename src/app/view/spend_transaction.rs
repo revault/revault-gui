@@ -129,11 +129,8 @@ impl SpendTransactionView {
                     .push(
                         row.push(
                             Container::new(
-                                button::cancel(
-                                    &mut self.cancel_button,
-                                    Container::new(text::simple("X Close")).padding(10),
-                                )
-                                .on_press(Message::Menu(Menu::Home)),
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
                             )
                             .width(Length::Shrink),
                         )

@@ -120,9 +120,8 @@ impl StakeholderCreateVaultsView {
                         )
                         .width(Length::Fill)).push(
                     Container::new(
-                        button::cancel(
+                        button::close_button(
                             &mut self.close_button,
-                            Container::new(text::simple("X Close")).padding(10),
                         )
                         .on_press(Message::Menu(Menu::Home)),
                     )
@@ -242,9 +241,8 @@ impl StakeholderDelegateFundsView {
                     )
                     .push(
                         Container::new(
-                            button::cancel(
+                            button::close_button(
                                 &mut self.close_button,
-                                Container::new(text::simple("X Close")).padding(10),
                             )
                             .on_press(Message::Menu(Menu::Home)),
                         )

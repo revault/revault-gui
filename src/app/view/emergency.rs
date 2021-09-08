@@ -39,11 +39,8 @@ impl EmergencyView {
             .push(
                 Row::new().push(Column::new().width(Length::Fill)).push(
                     Container::new(
-                        button::cancel(
-                            &mut self.close_button,
-                            Container::new(text::simple("X Close")).padding(10),
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
+                        button::close_button(&mut self.close_button)
+                            .on_press(Message::Menu(Menu::Home)),
                     )
                     .width(Length::Shrink),
                 ),

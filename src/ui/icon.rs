@@ -105,6 +105,10 @@ pub fn key_icon() -> Text {
     icon('\u{F44F}')
 }
 
+pub fn cross_icon() -> Text {
+    icon('\u{F62A}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')
