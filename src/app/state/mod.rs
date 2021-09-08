@@ -1,4 +1,3 @@
-pub mod charging;
 mod cmd;
 mod deposit;
 mod emergency;
@@ -12,7 +11,6 @@ mod vaults;
 
 use iced::{Command, Element, Subscription};
 
-pub use charging::ChargingState;
 pub use deposit::DepositState;
 pub use emergency::EmergencyState;
 pub use manager::{ManagerHomeState, ManagerSendState};

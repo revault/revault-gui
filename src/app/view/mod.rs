@@ -1,4 +1,3 @@
-pub mod charging;
 mod deposit;
 mod emergency;
 mod home;

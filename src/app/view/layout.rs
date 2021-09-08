@@ -2,11 +2,11 @@ use crate::{
     app::error::Error,
     ui::{
         color,
-        component::{card, image::revault_colored_logo, text},
+        component::{card, text},
     },
 };
 
-use iced::{container, Column, Container, Element, Length, Row};
+use iced::{container, Column, Container, Length, Row};
 
 pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
     if let Some(e) = warning {
@@ -16,26 +16,6 @@ pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a
         )))));
     }
     None
-}
-
-pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
-    Column::new()
-        .push(large_logo())
-        .push(content)
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .padding(50)
-        .spacing(50)
-        .align_items(iced::Align::Center)
-        .into()
-}
-
-pub fn large_logo<T>() -> Container<'static, T> {
-    Container::new(
-        revault_colored_logo()
-            .width(Length::Units(300))
-            .height(Length::Fill),
-    )
 }
 
 pub fn dashboard<'a, T: 'a>(
