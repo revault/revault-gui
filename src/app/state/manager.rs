@@ -796,7 +796,10 @@ impl ManagerSendOutput {
     }
 
     fn valid(&self) -> bool {
-        !self.address.value.is_empty() && self.address.valid && self.amount.valid
+        !self.address.value.is_empty()
+            && self.address.valid
+            && !self.amount.value.is_empty()
+            && self.amount.valid
     }
 
     fn update(&mut self, message: RecipientMessage) {
