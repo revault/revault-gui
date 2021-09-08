@@ -50,11 +50,8 @@ impl VaultModal {
         }
         let header = Row::new().push(col.width(Length::Fill)).push(
             Container::new(
-                button::cancel(
-                    &mut self.cancel_button,
-                    Container::new(text::simple("X Close")).padding(10),
-                )
-                .on_press(Message::SelectVault(vlt.outpoint())),
+                button::close_button(&mut self.cancel_button)
+                    .on_press(Message::SelectVault(vlt.outpoint())),
             )
             .width(Length::Shrink),
         );

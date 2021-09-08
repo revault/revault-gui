@@ -1,4 +1,4 @@
-use crate::ui::{color, component::text, icon::clipboard_icon};
+use crate::ui::{color, component::text, icon::clipboard_icon, icon::cross_icon};
 use iced::{button, Color, Container, Row, Vector};
 
 macro_rules! button {
@@ -113,6 +113,37 @@ impl button::StyleSheet for WhiteCardButtonStyle {
             border_color: color::SECONDARY,
             border_width: 1.0,
             ..button::Style::default()
+        }
+    }
+}
+
+pub fn close_button<'a, T: 'a + Clone>(state: &'a mut button::State) -> button::Button<'a, T> {
+    button::Button::new(
+        state,
+        Container::new(
+            Row::new()
+                .push(cross_icon())
+                .push(text::simple("Close"))
+                .spacing(5)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .align_items(iced::Align::Center),
+        )
+        .padding(10),
+    )
+    .style(CloseButtonStyle {})
+}
+
+struct CloseButtonStyle {}
+impl button::StyleSheet for CloseButtonStyle {
+    fn active(&self) -> button::Style {
+        button::Style {
+            shadow_offset: Vector::default(),
+            background: color::CANCEL.into(),
+            border_radius: 10.0,
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+            text_color: Color::WHITE,
         }
     }
 }
