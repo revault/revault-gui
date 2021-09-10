@@ -356,7 +356,7 @@ pub struct DefineBitcoind {
     view: view::DefineBitcoind,
 }
 
-fn bitcoin_cookie_path() -> Option<String> {
+fn bitcoind_default_cookie_path(network: bitcoin::Network) -> Option<String> {
     #[cfg(target_os = "linux")]
     let configs_dir = dirs::home_dir();
 
@@ -365,26 +365,50 @@ fn bitcoin_cookie_path() -> Option<String> {
 
     if let Some(mut path) = configs_dir {
         #[cfg(target_os = "linux")]
-        path.push(".bitcoin/.cookie");
+        path.push(".bitcoin");
 
         #[cfg(not(target_os = "linux"))]
-        path.push("Bitcoin/.cookie");
+        path.push("Bitcoin");
+
+        match network {
+            bitcoin::Network::Bitcoin => {
+                path.push(".cookie");
+            }
+            bitcoin::Network::Testnet => {
+                path.push("testnet3/.cookie");
+            }
+            bitcoin::Network::Regtest => {
+                path.push("regtest/.cookie");
+            }
+            bitcoin::Network::Signet => {
+                path.push("signet/.cookie");
+            }
+        }
 
         return path.to_str().map(|s| s.to_string());
     }
     None
 }
 
+fn bitcoind_default_address(network: bitcoin::Network) -> String {
+    match network {
+        bitcoin::Network::Bitcoin => "127.0.0.8332".to_string(),
+        bitcoin::Network::Testnet => "127.0.0.18332".to_string(),
+        bitcoin::Network::Regtest => "127.0.0.18443".to_string(),
+        bitcoin::Network::Signet => "127.0.0.38332".to_string(),
+    }
+}
+
 impl DefineBitcoind {
-    pub fn new() -> Self {
+    pub fn new(network: bitcoin::Network) -> Self {
         Self {
-            network: bitcoin::Network::Bitcoin,
+            network,
             cookie_path: form::Value {
-                value: bitcoin_cookie_path().unwrap_or_else(String::new),
+                value: bitcoind_default_cookie_path(network).unwrap_or_else(String::new),
                 valid: true,
             },
             address: form::Value {
-                value: "127.0.0.1:8332".to_string(),
+                value: bitcoind_default_address(network),
                 valid: true,
             },
             view: view::DefineBitcoind::new(),
@@ -406,6 +430,11 @@ impl Step for DefineBitcoind {
                 }
                 message::DefineBitcoind::NetworkEdited(network) => {
                     self.network = network;
+                    self.cookie_path.value =
+                        bitcoind_default_cookie_path(network).unwrap_or_else(String::new);
+                    self.cookie_path.valid = true;
+                    self.address.value = bitcoind_default_address(network);
+                    self.address.valid = true;
                 }
             };
         };
@@ -449,7 +478,7 @@ impl Step for DefineBitcoind {
 
 impl Default for DefineBitcoind {
     fn default() -> Self {
-        Self::new()
+        Self::new(bitcoin::Network::Bitcoin)
     }
 }
 

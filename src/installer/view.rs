@@ -1016,9 +1016,10 @@ impl DefineCosigners {
         )
     }
 }
-const NETWORKS: [bitcoin::Network; 3] = [
+const NETWORKS: [bitcoin::Network; 4] = [
     bitcoin::Network::Bitcoin,
     bitcoin::Network::Testnet,
+    bitcoin::Network::Signet,
     bitcoin::Network::Regtest,
 ];
 

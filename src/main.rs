@@ -97,8 +97,8 @@ impl Application for GUI {
 
     fn new(config: Config) -> (GUI, Command<Self::Message>) {
         match config {
-            Config::Install(config_path, revaultd_path) => {
-                let (install, command) = Installer::new(config_path, revaultd_path);
+            Config::Install(config_path, revaultd_path, network) => {
+                let (install, command) = Installer::new(config_path, revaultd_path, network);
                 (GUI::Installer(install), command.map(Message::Install))
             }
             Config::Run(cfg) => {
@@ -182,7 +182,7 @@ impl Application for GUI {
 
 pub enum Config {
     Run(app::Config),
-    Install(PathBuf, Option<PathBuf>),
+    Install(PathBuf, Option<PathBuf>, bitcoin::Network),
 }
 
 impl Config {
@@ -195,7 +195,7 @@ impl Config {
         path.push(app::Config::file_name(&network));
         match app::Config::from_file(&path) {
             Ok(cfg) => Ok(Config::Run(cfg)),
-            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, revaultd_path)),
+            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, revaultd_path, network)),
             Err(e) => Err(format!("Failed to read configuration file: {}", e).into()),
         }
     }

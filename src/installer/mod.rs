@@ -51,7 +51,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
-                DefineBitcoind::new().into(),
+                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
                 Final::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
@@ -63,7 +63,7 @@ impl Installer {
                 stakeholder::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
-                DefineBitcoind::new().into(),
+                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
@@ -77,7 +77,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
-                DefineBitcoind::new().into(),
+                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
@@ -93,8 +93,10 @@ impl Installer {
     pub fn new(
         destination_path: PathBuf,
         revaultd_path: Option<PathBuf>,
+        network: bitcoin::Network,
     ) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
+        config.bitcoind_config.network = network;
         config.data_dir = Some(destination_path);
         config.daemon = Some(true);
         (
