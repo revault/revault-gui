@@ -307,6 +307,7 @@ impl VaultSection {
                     match res {
                         Ok(()) => {
                             *warning = None;
+                            vault.status = VaultStatus::Activating;
                         }
                         Err(e) => {
                             *warning = Some(Error::RevaultDError(e));
@@ -325,6 +326,7 @@ impl VaultSection {
                     match res {
                         Ok(()) => {
                             *warning = None;
+                            vault.status = VaultStatus::Securing;
                         }
                         Err(e) => {
                             *warning = Some(Error::RevaultDError(e));
