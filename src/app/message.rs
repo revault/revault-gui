@@ -3,7 +3,6 @@ use std::{sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 
 use crate::{
-    app::error::Error,
     app::menu::Menu,
     hw,
     revault::Role,
@@ -12,7 +11,7 @@ use crate::{
             RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
             VaultStatus, VaultTransactions,
         },
-        GetInfoResponse, RevaultD, RevaultDError, ServerStatusResponse,
+        RevaultDError, ServerStatusResponse,
     },
 };
 
@@ -20,9 +19,6 @@ use crate::{
 pub enum Message {
     Clipboard(String),
     ChangeRole(Role),
-    Syncing(Result<GetInfoResponse, RevaultDError>),
-    Synced(GetInfoResponse, Arc<RevaultD>),
-    DaemonStarted(Result<Arc<RevaultD>, Error>),
     Vaults(Result<Vec<Vault>, RevaultDError>),
     SelectVault(String),
     DelegateVault(String),
@@ -30,7 +26,6 @@ pub enum Message {
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
     ServerStatus(Result<ServerStatusResponse, RevaultDError>),
-    Connected(Result<Arc<RevaultD>, Error>),
     Menu(Menu),
     Next,
     Previous,

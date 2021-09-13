@@ -10,15 +10,21 @@ mod app;
 mod conversion;
 mod hw;
 mod installer;
+mod loader;
 mod revault;
 mod revaultd;
 mod ui;
 
 use app::{
     config::{ConfigError, DEFAULT_FILE_NAME},
+    context::Context,
+    menu::Menu,
     App,
 };
+use conversion::Converter;
 use installer::Installer;
+use loader::Loader;
+use revault::Role;
 use revaultd::config::default_datadir;
 
 enum Args {
@@ -61,12 +67,14 @@ fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Erro
 
 pub enum GUI {
     Installer(Installer),
+    Loader(Loader),
     App(App),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Message {
     Install(installer::Message),
+    Load(loader::Message),
     Run(app::Message),
 }
 
@@ -84,6 +92,7 @@ impl Application for GUI {
         match self {
             Self::Installer(_) => String::from("Revault Installer"),
             Self::App(_) => String::from("Revault GUI"),
+            Self::Loader(_) => String::from("Revault"),
         }
     }
 
@@ -94,8 +103,8 @@ impl Application for GUI {
                 (GUI::Installer(install), command.map(Message::Install))
             }
             Config::Run(cfg) => {
-                let (application, command) = App::new(cfg);
-                (GUI::App(application), command.map(Message::Run))
+                let (loader, command) = Loader::new(cfg);
+                (GUI::Loader(loader), command.map(Message::Load))
             }
         }
     }
@@ -107,14 +116,49 @@ impl Application for GUI {
     ) -> Command<Self::Message> {
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
-            let (application, command) = App::new(cfg);
-            *self = GUI::App(application);
-            return command.map(Message::Run);
+            let (loader, command) = Loader::new(cfg);
+            *self = GUI::Loader(loader);
+            return command.map(Message::Load);
         }
+
+        if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
+            if let GUI::Loader(loader) = self {
+                let config = loader.gui_config.clone();
+                let role = if revaultd.config.stakeholder_config.is_some() {
+                    Role::Stakeholder
+                } else {
+                    Role::Manager
+                };
+
+                // The user is both a manager and a stakholder, then role can be modified.
+                let edit_role = revaultd.config.stakeholder_config.is_some()
+                    && revaultd.config.manager_config.is_some();
+
+                let converter = Converter::new(revaultd.network());
+                let network = revaultd.network();
+
+                let context = Context::new(
+                    revaultd,
+                    converter,
+                    network,
+                    edit_role,
+                    role,
+                    Menu::Home,
+                    info.managers_threshold,
+                );
+
+                let (app, command) = App::new(context, config);
+                *self = GUI::App(app);
+                return command.map(Message::Run);
+            }
+            return Command::none();
+        }
+
         match (self, message) {
             (Self::Installer(i), Message::Install(msg)) => {
                 i.update(msg, clipboard).map(Message::Install)
             }
+            (Self::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
             (Self::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
             _ => Command::none(),
         }
@@ -124,6 +168,7 @@ impl Application for GUI {
         match self {
             Self::Installer(v) => v.subscription().map(Message::Install),
             Self::App(v) => v.subscription().map(Message::Run),
+            _ => Subscription::none(),
         }
     }
 
@@ -131,6 +176,7 @@ impl Application for GUI {
         match self {
             Self::Installer(v) => v.view().map(Message::Install),
             Self::App(v) => v.view().map(Message::Run),
+            Self::Loader(v) => v.view().map(Message::Load),
         }
     }
 }

@@ -1,49 +1,63 @@
+use std::convert::From;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use iced::{Command, Element};
+use iced::{Column, Command, Container, Element, Length};
 
-use crate::app::{config::Config as GUIConfig, error::Error, message::Message, view::charging::*};
-use crate::revaultd::{
-    config::{Config, ConfigError},
-    start_daemon, GetInfoResponse, RevaultD, RevaultDError,
+use crate::{
+    app::config::Config as GUIConfig,
+    revaultd::{
+        config::{Config, ConfigError},
+        start_daemon, GetInfoResponse, RevaultD, RevaultDError,
+    },
+    ui::component::{image::revault_colored_logo, text},
 };
 
-#[derive(Debug, Clone)]
-pub struct ChargingState {
+pub struct Loader {
     pub gui_config: GUIConfig,
     revaultd: Option<Arc<RevaultD>>,
-    step: ChargingStep,
+    step: Step,
 }
 
-#[derive(Debug, Clone)]
-enum ChargingStep {
+enum Step {
     Connecting,
     StartingDaemon,
     Syncing { progress: f64 },
     Error { error: String },
 }
 
-impl ChargingState {
-    pub fn new(gui_config: GUIConfig) -> Self {
-        ChargingState {
-            gui_config,
-            revaultd: None,
-            step: ChargingStep::Connecting,
-        }
+#[derive(Debug)]
+pub enum Message {
+    DaemonStarted(Result<Arc<RevaultD>, Error>),
+    Syncing(Result<GetInfoResponse, RevaultDError>),
+    Synced(GetInfoResponse, Arc<RevaultD>),
+    Connected(Result<Arc<RevaultD>, Error>),
+}
+
+impl Loader {
+    pub fn new(gui_config: GUIConfig) -> (Self, Command<Message>) {
+        let revaultd_config_path = gui_config.revaultd_config_path.clone();
+        (
+            Loader {
+                gui_config,
+                revaultd: None,
+                step: Step::Connecting,
+            },
+            Command::perform(connect(revaultd_config_path), Message::Connected),
+        )
     }
 
     fn on_connect(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                self.step = ChargingStep::Syncing { progress: 0.0 };
+                self.step = Step::Syncing { progress: 0.0 };
                 self.revaultd = Some(revaultd.clone());
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
                 Error::ConfigError(ConfigError::NotFound) => {
-                    self.step = ChargingStep::Error {
+                    self.step = Step::Error {
                         error: format!(
                             "config not found at path: {:?}",
                             self.gui_config.revaultd_config_path
@@ -52,7 +66,7 @@ impl ChargingState {
                 }
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
-                    self.step = ChargingStep::StartingDaemon;
+                    self.step = Step::StartingDaemon;
                     return Command::perform(
                         start_daemon_and_connect(
                             self.gui_config.revaultd_config_path.to_owned(),
@@ -70,7 +84,7 @@ impl ChargingState {
     fn on_daemon_started(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                self.step = ChargingStep::Syncing { progress: 0.0 };
+                self.step = Step::Syncing { progress: 0.0 };
                 self.revaultd = Some(revaultd.clone());
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
@@ -79,7 +93,7 @@ impl ChargingState {
     }
 
     fn on_error(&mut self, e: &dyn std::fmt::Display) -> Command<Message> {
-        self.step = ChargingStep::Error {
+        self.step = Step::Error {
             error: format!("error: {}", e),
         };
         Command::none()
@@ -88,7 +102,7 @@ impl ChargingState {
     #[allow(unused_variables, unused_assignments)]
     fn on_sync(&mut self, res: Result<GetInfoResponse, RevaultDError>) -> Command<Message> {
         match self.step {
-            ChargingStep::Syncing { mut progress } => {
+            Step::Syncing { mut progress } => {
                 match res {
                     Err(e) => return self.on_error(&e),
                     Ok(info) => {
@@ -112,7 +126,7 @@ impl ChargingState {
     }
 }
 
-impl ChargingState {
+impl Loader {
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Connected(res) => self.on_connect(res),
@@ -124,10 +138,12 @@ impl ChargingState {
 
     pub fn view(&mut self) -> Element<Message> {
         match &mut self.step {
-            ChargingStep::StartingDaemon => charging_starting_daemon_view(),
-            ChargingStep::Connecting => charging_connect_view(),
-            ChargingStep::Syncing { progress, .. } => charging_syncing_view(&progress),
-            ChargingStep::Error { error } => charging_error_view(&error),
+            Step::StartingDaemon => cover(text::paragraph("Starting daemon...")),
+            Step::Connecting => cover(text::paragraph("Connecting to daemon...")),
+            Step::Syncing { progress, .. } => {
+                cover(text::paragraph(&format!("Syncing... {}%", progress)))
+            }
+            Step::Error { error } => cover(text::paragraph(&format!("Error: {}", error))),
         }
     }
 
@@ -137,6 +153,22 @@ impl ChargingState {
             Message::Connected,
         )
     }
+}
+
+pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
+    Column::new()
+        .push(Container::new(
+            revault_colored_logo()
+                .width(Length::Units(300))
+                .height(Length::Fill),
+        ))
+        .push(content)
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .padding(50)
+        .spacing(50)
+        .align_items(iced::Align::Center)
+        .into()
 }
 
 async fn synced(
@@ -184,4 +216,31 @@ async fn start_daemon_and_connect(
         .or_else(|_| try_connect_to_revault(&cfg, 2))
         .or_else(|_| try_connect_to_revault(&cfg, 1))
         .or_else(|_| try_connect_to_revault(&cfg, 0))
+}
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    ConfigError(ConfigError),
+    RevaultDError(RevaultDError),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ConfigError(e) => write!(f, "Config error: {}", e),
+            Self::RevaultDError(e) => write!(f, "RevaultD error: {}", e),
+        }
+    }
+}
+
+impl From<ConfigError> for Error {
+    fn from(error: ConfigError) -> Self {
+        Error::ConfigError(error)
+    }
+}
+
+impl From<RevaultDError> for Error {
+    fn from(error: RevaultDError) -> Self {
+        Error::RevaultDError(error)
+    }
 }
