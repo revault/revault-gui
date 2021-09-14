@@ -1,6 +1,5 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::convert::From;
-use std::sync::Arc;
 
 use iced::{Command, Element, Subscription};
 
@@ -22,7 +21,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    revaultd::{model, RevaultD},
+    revaultd::model,
 };
 
 #[derive(Debug)]
@@ -97,7 +96,7 @@ impl State for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(ctx.revaultd.clone(), &self.deposits, &mut self.psbt, msg)
+                    .update(ctx, &self.deposits, &mut self.psbt, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
@@ -177,7 +176,7 @@ impl SpendTransactionAction {
     }
     fn update(
         &mut self,
-        revaultd: Arc<RevaultD>,
+        ctx: &Context,
         deposits: &Vec<model::Vault>,
         psbt: &mut Psbt,
         message: SpendTxMessage,
@@ -187,7 +186,10 @@ impl SpendTransactionAction {
                 if let Self::Delete { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        delete_spend_tx(revaultd, psbt.global.unsigned_tx.txid().to_string()),
+                        delete_spend_tx(
+                            ctx.revaultd.clone(),
+                            psbt.global.unsigned_tx.txid().to_string(),
+                        ),
                         SpendTxMessage::Deleted,
                     );
                 }
@@ -222,13 +224,14 @@ impl SpendTransactionAction {
                 *self = Self::Sign {
                     processing: false,
                     warning: None,
-                    signer: Signer::new(SpendTransactionTarget {
-                        derivation_indexes: deposits
+                    signer: Signer::new(SpendTransactionTarget::new(
+                        ctx.revaultd.config.manager_config.as_ref().unwrap().xpub,
+                        &deposits
                             .iter()
                             .map(|deposit| deposit.derivation_index)
                             .collect(),
-                        spend_tx: psbt.clone(),
-                    }),
+                        psbt.clone(),
+                    )),
                     view: SpendTransactionSignView::new(),
                 };
             }
@@ -242,7 +245,7 @@ impl SpendTransactionAction {
                         *psbt = signer.target.spend_tx.clone();
                         *processing = true;
                         return Command::perform(
-                            update_spend_tx(revaultd, signer.target.spend_tx.clone()),
+                            update_spend_tx(ctx.revaultd.clone(), signer.target.spend_tx.clone()),
                             SpendTxMessage::Signed,
                         );
                     }
@@ -282,7 +285,10 @@ impl SpendTransactionAction {
                 if let Self::Broadcast { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        broadcast_spend_tx(revaultd, psbt.global.unsigned_tx.txid().to_string()),
+                        broadcast_spend_tx(
+                            ctx.revaultd.clone(),
+                            psbt.global.unsigned_tx.txid().to_string(),
+                        ),
                         SpendTxMessage::Broadcasted,
                     );
                 }
@@ -336,7 +342,7 @@ impl SpendTransactionAction {
                         } else {
                             *processing = true;
                             return Command::perform(
-                                update_spend_tx(revaultd, p),
+                                update_spend_tx(ctx.revaultd.clone(), p),
                                 SpendTxMessage::Updated,
                             );
                         }

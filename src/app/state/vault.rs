@@ -64,15 +64,11 @@ impl Vault {
         }
     }
 
-    pub fn update(
-        &mut self,
-        revaultd: Arc<RevaultD>,
-        message: VaultMessage,
-    ) -> Command<VaultMessage> {
+    pub fn update(&mut self, ctx: &Context, message: VaultMessage) -> Command<VaultMessage> {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
-                    get_onchain_txs(revaultd, self.vault.outpoint()),
+                    get_onchain_txs(ctx.revaultd.clone(), self.vault.outpoint()),
                     VaultMessage::OnChainTransactions,
                 );
             }
@@ -83,6 +79,7 @@ impl Vault {
             VaultMessage::UnvaultTransaction(res) => match res {
                 Ok(tx) => {
                     self.section = VaultSection::new_delegate_section(
+                        ctx,
                         self.vault.derivation_index,
                         tx.unvault_tx,
                     )
@@ -91,7 +88,8 @@ impl Vault {
             },
             VaultMessage::RevocationTransactions(res) => match res {
                 Ok(tx) => {
-                    self.section = VaultSection::new_ack_section(self.vault.derivation_index, tx)
+                    self.section =
+                        VaultSection::new_ack_section(ctx, self.vault.derivation_index, tx)
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },
@@ -100,18 +98,20 @@ impl Vault {
             }
             VaultMessage::SelectDelegate => {
                 return Command::perform(
-                    get_unvault_tx(revaultd, self.vault.outpoint()),
+                    get_unvault_tx(ctx.revaultd.clone(), self.vault.outpoint()),
                     VaultMessage::UnvaultTransaction,
                 );
             }
             VaultMessage::SelectSecure => {
                 return Command::perform(
-                    get_revocation_txs(revaultd, self.vault.outpoint()),
+                    get_revocation_txs(ctx.revaultd.clone(), self.vault.outpoint()),
                     VaultMessage::RevocationTransactions,
                 );
             }
             _ => {
-                return self.section.update(revaultd, &mut self.vault, message);
+                return self
+                    .section
+                    .update(ctx.revaultd.clone(), &mut self.vault, message);
             }
         };
         Command::none()
@@ -196,12 +196,18 @@ impl VaultSection {
         }
     }
 
-    pub fn new_delegate_section(derivation_index: u32, unvault_tx: Psbt) -> Self {
+    pub fn new_delegate_section(ctx: &Context, derivation_index: u32, unvault_tx: Psbt) -> Self {
         Self::Delegate {
-            signer: Signer::new(UnvaultTransactionTarget {
+            signer: Signer::new(UnvaultTransactionTarget::new(
+                ctx.revaultd
+                    .config
+                    .stakeholder_config
+                    .as_ref()
+                    .unwrap()
+                    .xpub,
                 derivation_index,
                 unvault_tx,
-            }),
+            )),
             processing: false,
             view: DelegateVaultView::new(),
             warning: None,
@@ -217,14 +223,24 @@ impl VaultSection {
         }
     }
 
-    pub fn new_ack_section(derivation_index: u32, txs: RevocationTransactions) -> Self {
+    pub fn new_ack_section(
+        ctx: &Context,
+        derivation_index: u32,
+        txs: RevocationTransactions,
+    ) -> Self {
         Self::Secure {
-            signer: Signer::new(RevocationTransactionsTarget {
+            signer: Signer::new(RevocationTransactionsTarget::new(
+                ctx.revaultd
+                    .config
+                    .stakeholder_config
+                    .as_ref()
+                    .unwrap()
+                    .xpub,
                 derivation_index,
-                emergency_tx: txs.emergency_tx,
-                emergency_unvault_tx: txs.emergency_unvault_tx,
-                cancel_tx: txs.cancel_tx,
-            }),
+                txs.cancel_tx,
+                txs.emergency_tx,
+                txs.emergency_unvault_tx,
+            )),
             processing: false,
             view: SecureVaultView::new(),
             warning: None,

@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Install needed libraries
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install libexpat1-dev libxcb-composite0-dev
+        run: sudo apt install libudev-dev libexpat1-dev libxcb-composite0-dev
       - name: Checkout source code
         uses: actions/checkout@v2
       - name: Install Rust ${{ matrix.toolchain }} toolchain
@@ -47,6 +47,8 @@ jobs:
   clippy_check:
     runs-on: ubuntu-latest
     steps:
+      - name: Install needed libraries
+        run: sudo apt install libudev-dev
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:

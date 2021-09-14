@@ -1,8 +1,12 @@
-use bitcoin::util::{
-    bip32::{ChildNumber, DerivationPath},
-    psbt::PartiallySignedTransaction as Psbt,
+use bitcoin::{
+    secp256k1,
+    util::{
+        bip32::{DerivationPath, ExtendedPubKey},
+        psbt::PartiallySignedTransaction as Psbt,
+    },
 };
-use std::{sync::Arc, time::Duration};
+use revault_tx::miniscript::DescriptorPublicKey;
+use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
 use iced::{time, Command, Element, Subscription};
@@ -14,22 +18,120 @@ use crate::{
 
 #[derive(Debug)]
 pub struct RevocationTransactionsTarget {
-    pub derivation_index: u32,
+    derivation_path: DerivationPath,
+
     pub cancel_tx: Psbt,
     pub emergency_tx: Psbt,
     pub emergency_unvault_tx: Psbt,
 }
 
+impl RevocationTransactionsTarget {
+    pub fn new(
+        xpub: ExtendedPubKey,
+        derivation_index: u32,
+        mut cancel_tx: Psbt,
+        mut emergency_tx: Psbt,
+        mut emergency_unvault_tx: Psbt,
+    ) -> Self {
+        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
+        let xpub = xpub.derive(derivation_index);
+        let curve = secp256k1::Secp256k1::verification_only();
+
+        let pubkey = xpub.derive_public_key(&curve).unwrap();
+        let fingerprint = xpub.master_fingerprint();
+        let derivation_path = xpub.full_derivation_path();
+
+        cancel_tx.inputs.iter_mut().for_each(|input| {
+            input
+                .bip32_derivation
+                .insert(pubkey, (fingerprint, derivation_path.clone()));
+        });
+        emergency_tx.inputs.iter_mut().for_each(|input| {
+            input
+                .bip32_derivation
+                .insert(pubkey, (fingerprint, derivation_path.clone()));
+        });
+        emergency_unvault_tx.inputs.iter_mut().for_each(|input| {
+            input
+                .bip32_derivation
+                .insert(pubkey, (fingerprint, derivation_path.clone()));
+        });
+
+        Self {
+            derivation_path,
+            cancel_tx,
+            emergency_tx,
+            emergency_unvault_tx,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct UnvaultTransactionTarget {
-    pub derivation_index: u32,
+    derivation_path: DerivationPath,
+
     pub unvault_tx: Psbt,
+}
+
+impl UnvaultTransactionTarget {
+    pub fn new(xpub: ExtendedPubKey, derivation_index: u32, mut unvault_tx: Psbt) -> Self {
+        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
+        let xpub = xpub.derive(derivation_index);
+        let curve = secp256k1::Secp256k1::verification_only();
+
+        let pubkey = xpub.derive_public_key(&curve).unwrap();
+        let fingerprint = xpub.master_fingerprint();
+        let derivation_path = xpub.full_derivation_path();
+
+        unvault_tx.inputs.iter_mut().for_each(|input| {
+            input
+                .bip32_derivation
+                .insert(pubkey, (fingerprint, derivation_path.clone()));
+        });
+
+        Self {
+            derivation_path,
+            unvault_tx,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct SpendTransactionTarget {
-    pub derivation_indexes: Vec<u32>,
+    derivation_paths: Vec<DerivationPath>,
     pub spend_tx: Psbt,
+}
+
+impl SpendTransactionTarget {
+    pub fn new(xpub: ExtendedPubKey, derivation_indexes: &Vec<u32>, mut spend_tx: Psbt) -> Self {
+        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
+        let curve = secp256k1::Secp256k1::verification_only();
+
+        let derived_keys: Vec<DescriptorPublicKey> = derivation_indexes
+            .iter()
+            .map(|index| xpub.clone().derive(*index))
+            .collect();
+
+        spend_tx
+            .inputs
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, input)| {
+                let key = &derived_keys[i];
+                input.bip32_derivation.insert(
+                    key.derive_public_key(&curve).unwrap(),
+                    (key.master_fingerprint(), key.full_derivation_path()),
+                );
+            });
+
+        Self {
+            derivation_paths: derived_keys
+                .into_iter()
+                .map(|key| key.full_derivation_path())
+                .collect(),
+            spend_tx,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -85,7 +187,7 @@ impl<T> Signer<T> {
     }
 
     pub fn subscription(&self) -> Subscription<SignMessage> {
-        if !self.signed {
+        if !self.signed && !self.processing {
             time::every(Duration::from_secs(1)).map(|_| SignMessage::CheckConnection)
         } else {
             Subscription::none()
@@ -111,16 +213,7 @@ impl Signer<SpendTransactionTarget> {
                     return Command::perform(
                         sign_spend_tx(
                             channel.clone(),
-                            self.target
-                                .derivation_indexes
-                                .iter()
-                                .map(|index| {
-                                    DerivationPath::master().child(
-                                        ChildNumber::from_normal_idx(index.clone())
-                                            .expect("index will be not too high"),
-                                    )
-                                })
-                                .collect(),
+                            self.target.derivation_paths.clone(),
                             self.target.spend_tx.clone(),
                         ),
                         SignMessage::Signed,
@@ -174,10 +267,7 @@ impl Signer<UnvaultTransactionTarget> {
                     return Command::perform(
                         sign_unvault_tx(
                             channel.clone(),
-                            DerivationPath::master().child(
-                                ChildNumber::from_normal_idx(self.target.derivation_index.clone())
-                                    .expect("index will be not too high"),
-                            ),
+                            self.target.derivation_path.clone(),
                             self.target.unvault_tx.clone(),
                         ),
                         SignMessage::Signed,
@@ -228,10 +318,7 @@ impl Signer<RevocationTransactionsTarget> {
                     return Command::perform(
                         sign_revocation_txs(
                             channel.clone(),
-                            DerivationPath::master().child(
-                                ChildNumber::from_normal_idx(self.target.derivation_index.clone())
-                                    .expect("index will be not too high"),
-                            ),
+                            self.target.derivation_path.clone(),
                             self.target.emergency_tx.clone(),
                             self.target.emergency_unvault_tx.clone(),
                             self.target.cancel_tx.clone(),
