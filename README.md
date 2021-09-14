@@ -5,14 +5,19 @@ Revault GUI is an user graphical interface written in rust for the
 
 ## Usage
 
-`cargo run --release -- --conf revault_gui.toml` or
-`cargo run --release -- --datadir revault`
+`revault-gui --datadir <datadir> --<network>`
 
-If no argument is provided, the GUI checks for the configuration file
-in the default revaultd `datadir` (`~/.revault` for linux).
+The default `datadir` is the default `revaultd` `datadir` (`~/.revault`
+for linux) and the default `network` is the bitcoin mainnet.
 
-If the provided `datadir` is empty or does not exist, the GUI starts with
-the installer mode.
+If no argument is provided, the GUI checks in the default `datadir` 
+the configuration file for the bitcoin mainnet.
+
+If the provided `datadir` is empty or does not have the configuration
+file for the targeted `network`, the GUI starts with the installer mode.
+
+Instead of using `--datadir` and `--<network>`, a direct path to
+the GUI configuration file can be provided with `--conf`.
 
 After start up, The GUI will connect to the running revaultd.
 A command starting revaultd is launched if no connection is made.
