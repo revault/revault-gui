@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Install needed libraries
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install libudev-dev libexpat1-dev libxcb-composite0-dev
+        run: sudo apt install libudev-dev pkg-config libxkbcommon-dev libvulkan-dev 
       - name: Checkout source code
         uses: actions/checkout@v2
       - name: Install Rust ${{ matrix.toolchain }} toolchain
