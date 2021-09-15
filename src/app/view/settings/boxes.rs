@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use crate::revaultd::{config::Config, ServerStatusResponse};
+use crate::daemon::{config::Config, ServerStatusResponse};
 
 pub trait SettingsBox {
     fn title(&self) -> &'static str;

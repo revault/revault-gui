@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use iced::{Command, Element, Subscription};
 
-use crate::revaultd::model::{self, VaultStatus};
+use crate::daemon::model::{self, VaultStatus};
 
 use crate::app::{
     context::Context,

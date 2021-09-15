@@ -5,8 +5,6 @@ use iced::{
     TextInput,
 };
 
-use crate::revaultd::model;
-
 use crate::{
     app::{
         context::Context,
@@ -14,6 +12,7 @@ use crate::{
         menu::Menu,
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     },
+    daemon::model,
     ui::{
         component::{button, card, form, scroll, separation, text, ContainerBackgroundStyle},
         icon::trash_icon,

@@ -11,8 +11,8 @@ use crate::{
 };
 
 use crate::{
+    daemon::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
     revault::Role,
-    revaultd::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
 };
 
 #[derive(Debug)]

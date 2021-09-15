@@ -11,7 +11,7 @@ use super::{
     State,
 };
 
-use crate::revaultd::model::{self, VaultStatus};
+use crate::daemon::model::{self, VaultStatus};
 
 use crate::ui::component::form;
 

@@ -2,7 +2,7 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::revaultd::{
+use crate::daemon::{
     model::{
         RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus, UnvaultTransaction,
         Vault, VaultStatus, VaultTransactions,

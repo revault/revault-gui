@@ -4,15 +4,15 @@ use tokio::sync::Mutex;
 
 use crate::{
     app::menu::Menu,
-    hw,
-    revault::Role,
-    revaultd::{
+    daemon::{
         model::{
             RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
             VaultStatus, VaultTransactions,
         },
         RevaultDError, ServerStatusResponse,
     },
+    hw,
+    revault::Role,
 };
 
 #[derive(Debug, Clone)]

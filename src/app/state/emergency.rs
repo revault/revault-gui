@@ -4,7 +4,7 @@ use iced::{Command, Element};
 
 use super::{cmd::list_vaults, State};
 
-use crate::revaultd::model::VaultStatus;
+use crate::daemon::model::VaultStatus;
 
 use crate::app::{
     context::Context, error::Error, message::Message, state::cmd, view::EmergencyView,

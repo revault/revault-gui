@@ -19,7 +19,7 @@ use crate::{
             VaultOnChainTransactionsPanel, VaultView,
         },
     },
-    revaultd::{
+    daemon::{
         model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
         RevaultD,
     },

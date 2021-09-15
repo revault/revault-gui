@@ -11,7 +11,7 @@ use crate::{
     ui::component::{navbar, scroll},
 };
 
-use crate::revaultd::{config::Config, ServerStatusResponse};
+use crate::daemon::{config::Config, ServerStatusResponse};
 
 mod boxes;
 use boxes::*;

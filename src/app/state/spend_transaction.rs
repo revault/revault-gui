@@ -21,7 +21,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    revaultd::model,
+    daemon::model,
 };
 
 #[derive(Debug)]

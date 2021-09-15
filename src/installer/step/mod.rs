@@ -13,12 +13,12 @@ use iced::{button::State as Button, scrollable, Element};
 use revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
 
 use crate::{
+    daemon::config,
     installer::{
         message::{self, Message},
         step::common::RequiredXpub,
         view,
     },
-    revaultd::config,
     ui::component::form,
 };
 
@@ -523,8 +523,8 @@ impl From<Final> for Box<dyn Step> {
 #[cfg(test)]
 mod tests {
     use super::{DefineCpfpDescriptor as DefineCpfpDescriptorStep, *};
+    use crate::daemon::config::Config;
     use crate::installer::message::{DefineCpfpDescriptor, ParticipantXpub, *};
-    use crate::revaultd::config::Config;
 
     const STAKEHOLDERS_XPUBS: [&str; 4] = [
         "xpub6DEzq5DNPx2rPiZJ7wvFhxRKUKDoV1GwjFmFdaxFfbsw9HsHyxc9usoRUMxqJaMrwoXh4apahsGEnjAS4cVCBDgqsx5Groww22AdHbgxVDg", 

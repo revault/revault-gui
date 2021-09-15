@@ -14,7 +14,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
-    revaultd::model::VaultStatus,
+    daemon::model::VaultStatus,
     ui::{
         component::{button, card, navbar, scroll, text, TooltipStyle},
         icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},

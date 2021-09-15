@@ -14,7 +14,7 @@ use crate::app::{
     view::SettingsView,
 };
 
-use crate::revaultd::ServerStatusResponse;
+use crate::daemon::ServerStatusResponse;
 
 #[derive(Debug)]
 pub struct SettingsState {

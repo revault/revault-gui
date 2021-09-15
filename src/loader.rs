@@ -7,7 +7,7 @@ use iced::{Column, Command, Container, Element, Length};
 
 use crate::{
     app::config::Config as GUIConfig,
-    revaultd::{
+    daemon::{
         config::{Config, ConfigError},
         start_daemon, GetInfoResponse, RevaultD, RevaultDError,
     },

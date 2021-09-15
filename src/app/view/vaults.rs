@@ -7,7 +7,7 @@ use crate::{
         message::{Message, VaultFilterMessage},
         view::{layout, sidebar::Sidebar},
     },
-    revaultd::model::VaultStatus,
+    daemon::model::VaultStatus,
     ui::component::{navbar, scroll, text, TransparentPickListStyle},
 };
 

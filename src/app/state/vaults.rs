@@ -8,7 +8,7 @@ use super::{
     State,
 };
 
-use crate::revaultd::{model, model::VaultStatus};
+use crate::daemon::{model, model::VaultStatus};
 
 use crate::app::{
     context::Context,
