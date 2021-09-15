@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::daemon::{
+    client::{RevaultD, RevaultDError},
     model::{
-        RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus, UnvaultTransaction,
-        Vault, VaultStatus, VaultTransactions,
+        RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, SpendTxStatus,
+        UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
     },
-    RevaultD, RevaultDError, ServerStatusResponse,
 };
 
 /// retrieves a bitcoin address for deposit.
@@ -116,8 +116,6 @@ pub async fn emergency(revaultd: Arc<RevaultD>) -> Result<(), RevaultDError> {
     revaultd.emergency()
 }
 
-pub async fn get_server_status(
-    revaultd: Arc<RevaultD>,
-) -> Result<ServerStatusResponse, RevaultDError> {
+pub async fn get_server_status(revaultd: Arc<RevaultD>) -> Result<ServersStatuses, RevaultDError> {
     revaultd.get_server_status()
 }

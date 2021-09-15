@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use crate::daemon::{config::Config, ServerStatusResponse};
+use crate::daemon::{config::Config, model::ServersStatuses};
 
 pub trait SettingsBox {
     fn title(&self) -> &'static str;
@@ -82,7 +82,7 @@ pub struct SettingsBoxes {
 }
 
 impl SettingsBoxes {
-    pub fn new(bitcoin_blockheight: u64, server_status: ServerStatusResponse) -> Self {
+    pub fn new(bitcoin_blockheight: u64, server_status: ServersStatuses) -> Self {
         let mut cosigners: Vec<_> = server_status
             .cosigners
             .iter()

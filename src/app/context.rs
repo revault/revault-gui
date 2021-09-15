@@ -1,7 +1,7 @@
 use bitcoin::Network;
 
 use super::menu::Menu;
-use crate::{conversion::Converter, daemon::RevaultD, revault::Role};
+use crate::{conversion::Converter, daemon::client::RevaultD, revault::Role};
 use std::sync::Arc;
 
 /// Context is an object passing general information

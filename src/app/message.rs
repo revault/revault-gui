@@ -5,11 +5,11 @@ use tokio::sync::Mutex;
 use crate::{
     app::menu::Menu,
     daemon::{
+        client::RevaultDError,
         model::{
-            RevocationTransactions, SpendTransaction, SpendTx, UnvaultTransaction, Vault,
-            VaultStatus, VaultTransactions,
+            RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, UnvaultTransaction,
+            Vault, VaultStatus, VaultTransactions,
         },
-        RevaultDError, ServerStatusResponse,
     },
     hw,
     revault::Role,
@@ -25,7 +25,7 @@ pub enum Message {
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
-    ServerStatus(Result<ServerStatusResponse, RevaultDError>),
+    ServerStatus(Result<ServersStatuses, RevaultDError>),
     Menu(Menu),
     Next,
     Previous,

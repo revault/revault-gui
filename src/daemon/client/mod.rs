@@ -1,147 +1,257 @@
-// Rust JSON-RPC Library
-// Written by
-//     Andrew Poelstra <apoelstra@wpsoftware.net>
-//     Wladimir J. van der Laan <laanwj@gmail.com>
-//
-// To the extent possible under law, the author(s) have dedicated all
-// copyright and related and neighboring rights to this software to
-// the public domain worldwide. This software is distributed without
-// any warranty.
-//
-// You should have received a copy of the CC0 Public Domain Dedication
-// along with this software.
-// If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-//
-//! Client support
-//!
-//! Support for connecting to JSONRPC servers over UNIX socets, sending requests,
-//! and parsing responses
-//!
-
-pub mod error;
-use error::Error;
-
-#[cfg(windows)]
-use uds_windows::UnixStream;
-
-#[cfg(not(windows))]
-use std::os::unix::net::UnixStream;
-
+use serde_json::json;
+use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
 
+use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::{to_writer, Deserializer};
+use tracing::{debug, error, info, span, Level};
 
-use tracing::debug;
+mod jsonrpc;
 
-/// A handle to a remote JSONRPC server
+use super::config::Config;
+use super::model::*;
+
+use jsonrpc::JsonRPCClient;
+
 #[derive(Debug, Clone)]
-pub struct Client {
-    sockpath: PathBuf,
-    timeout: Option<Duration>,
+pub enum RevaultDError {
+    UnexpectedError(String),
+    RPCError(String),
+    IOError(std::io::ErrorKind),
+    NoAnswerError,
 }
 
-impl Client {
-    /// Creates a new client
-    pub fn new<P: AsRef<Path>>(sockpath: P) -> Client {
-        Client {
-            sockpath: sockpath.as_ref().to_path_buf(),
-            timeout: None,
+impl std::fmt::Display for RevaultDError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::RPCError(e) => write!(f, "Revaultd error rpc call: {}", e),
+            Self::UnexpectedError(e) => write!(f, "Revaultd unexpected error: {}", e),
+            Self::NoAnswerError => write!(f, "Revaultd returned no answer"),
+            Self::IOError(kind) => write!(f, "Revaultd io error: {:?}", kind),
         }
     }
+}
 
-    /// Set an optional timeout for requests
-    #[allow(dead_code)]
-    pub fn set_timeout(&mut self, timeout: Option<Duration>) {
-        self.timeout = timeout;
-    }
+#[derive(Debug, Clone)]
+pub struct RevaultD {
+    client: JsonRPCClient,
+    pub config: Config,
+}
 
-    /// Sends a request to a client
-    pub fn send_request<S: Serialize + Debug, D: DeserializeOwned + Debug>(
-        &self,
-        method: &str,
-        params: Option<S>,
-    ) -> Result<Response<D>, Error> {
-        // Setup connection
-        let mut stream = UnixStream::connect(&self.sockpath)?;
-        stream.set_read_timeout(self.timeout)?;
-        stream.set_write_timeout(self.timeout)?;
+impl RevaultD {
+    pub fn new(config: &Config) -> Result<RevaultD, RevaultDError> {
+        let span = span!(Level::INFO, "revaultd");
+        let _enter = span.enter();
 
-        let request = Request {
-            method,
-            params,
-            id: std::process::id(),
-            jsonrpc: "2.0",
+        let socket_path = config.socket_path().map_err(|e| {
+            RevaultDError::UnexpectedError(format!(
+                "Failed to find revaultd socket path: {}",
+                e.to_string()
+            ))
+        })?;
+
+        let client = JsonRPCClient::new(socket_path);
+        let revaultd = RevaultD {
+            client,
+            config: config.to_owned(),
         };
 
-        debug!("Sending to revaultd: {:#?}", request);
+        debug!("Connecting to revaultd");
 
-        to_writer(&mut stream, &request)?;
+        revaultd.get_info()?;
 
-        let response: Response<D> = Deserializer::from_reader(&mut stream)
-            .into_iter()
-            .next()
-            .map_or(Err(Error::NoErrorOrResult), |res| Ok(res?))?;
-        if response
-            .jsonrpc
-            .as_ref()
-            .map_or(false, |version| version != "2.0")
-        {
-            return Err(Error::VersionMismatch);
+        info!("Connected to revaultd");
+
+        Ok(revaultd)
+    }
+
+    pub fn network(&self) -> bitcoin::Network {
+        self.config.bitcoind_config.network
+    }
+
+    /// Generic call function for RPC calls.
+    fn call<T: Serialize + Debug, U: DeserializeOwned + Debug>(
+        &self,
+        method: &str,
+        input: Option<T>,
+    ) -> Result<U, RevaultDError> {
+        let span = span!(Level::INFO, "request");
+        let _guard = span.enter();
+        info!(method);
+        self.client
+            .send_request(method, input)
+            .and_then(|res| res.into_result())
+            .map_err(|e| {
+                error!("method {} failed: {}", method, e);
+                match e {
+                    jsonrpc::Error::Io(e) => RevaultDError::IOError(e.kind()),
+                    jsonrpc::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
+                    _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
+                }
+            })
+    }
+
+    /// get a new deposit address.
+    pub fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
+        self.call("getdepositaddress", Option::<Request>::None)
+    }
+
+    pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
+        self.call("getinfo", Option::<Request>::None)
+    }
+
+    pub fn list_vaults(
+        &self,
+        statuses: Option<&[VaultStatus]>,
+        outpoints: Option<&Vec<String>>,
+    ) -> Result<ListVaultsResponse, RevaultDError> {
+        let mut args = vec![json!(statuses.unwrap_or(&[]))];
+        if let Some(outpoints) = outpoints {
+            args.push(json!(outpoints));
         }
+        self.call("listvaults", Some(args))
+    }
 
-        if response.id != request.id {
-            return Err(Error::NonceMismatch);
+    pub fn list_onchain_transactions(
+        &self,
+        outpoints: Option<Vec<String>>,
+    ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
+        match outpoints {
+            Some(list) => self.call(
+                "listonchaintransactions",
+                Some(vec![ListTransactionsRequest(list)]),
+            ),
+            None => self.call("listonchaintransactions", Option::<Request>::None),
         }
+    }
 
-        debug!("Received from revaultd: {:#?}", response);
+    pub fn get_revocation_txs(
+        &self,
+        outpoint: &str,
+    ) -> Result<RevocationTransactions, RevaultDError> {
+        self.call("getrevocationtxs", Some(vec![outpoint]))
+    }
 
-        Ok(response)
+    pub fn set_revocation_txs(
+        &self,
+        outpoint: &str,
+        emergency_tx: &Psbt,
+        emergency_unvault_tx: &Psbt,
+        cancel_tx: &Psbt,
+    ) -> Result<(), RevaultDError> {
+        let emergency = base64::encode(&consensus::serialize(emergency_tx));
+        let emergency_unvault = base64::encode(&consensus::serialize(emergency_unvault_tx));
+        let cancel = base64::encode(&consensus::serialize(cancel_tx));
+        let _res: serde_json::value::Value = self.call(
+            "revocationtxs",
+            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+        )?;
+        Ok(())
+    }
+
+    pub fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
+        self.call("getunvaulttx", Some(vec![outpoint]))
+    }
+
+    pub fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+        let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
+        let _res: serde_json::value::Value =
+            self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
+        Ok(())
+    }
+
+    pub fn get_spend_tx(
+        &self,
+        inputs: &[String],
+        outputs: &HashMap<String, u64>,
+        feerate: &u32,
+    ) -> Result<SpendTransaction, RevaultDError> {
+        self.call(
+            "getspendtx",
+            Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
+        )
+        .map(|mut res: SpendTransaction| {
+            res.feerate = *feerate;
+            res
+        })
+    }
+
+    pub fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
+        let spend_tx = base64::encode(&consensus::serialize(psbt));
+        let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
+        Ok(())
+    }
+
+    pub fn list_spend_txs(
+        &self,
+        statuses: Option<&[SpendTxStatus]>,
+    ) -> Result<ListSpendTransactionsResponse, RevaultDError> {
+        self.call("listspendtxs", Some(vec![statuses]))
+    }
+
+    pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
+
+    pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
+        Ok(())
+    }
+
+    pub fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
+        Ok(())
+    }
+
+    pub fn emergency(&self) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
+        Ok(())
+    }
+
+    pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
+        self.call("getserverstatus", Option::<Request>::None)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-/// A JSONRPC request object
-pub struct Request<'f, T: Serialize> {
-    /// The name of the RPC call
-    pub method: &'f str,
-    /// Parameters to the RPC call
-    pub params: Option<T>,
-    /// Identifier for this Request, which should appear in the response
-    pub id: u32,
-    /// jsonrpc field, MUST be "2.0"
-    pub jsonrpc: &'f str,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Request {}
+
+/// getinfo
+
+/// getinfo response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetInfoResponse {
+    pub blockheight: u64,
+    pub network: String,
+    pub sync: f64,
+    pub version: String,
+    pub managers_threshold: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-/// A JSONRPC response object
-pub struct Response<T> {
-    /// A result if there is one, or null
-    pub result: Option<T>,
-    /// An error if there is one, or null
-    pub error: Option<error::RpcError>,
-    /// Identifier for this Request, which should match that of the request
-    pub id: u32,
-    /// jsonrpc field, MUST be "2.0"
-    pub jsonrpc: Option<String>,
+/// list_vaults
+
+/// listvaults response
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListVaultsResponse {
+    pub vaults: Vec<Vault>,
 }
 
-impl<T> Response<T> {
-    /// Extract the result from a response, consuming the response
-    pub fn into_result(self) -> Result<T, Error> {
-        if let Some(e) = self.error {
-            return Err(Error::Rpc(e));
-        }
+/// list_transactions
 
-        self.result.ok_or(Error::NoErrorOrResult)
-    }
+/// listtransactions request
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListTransactionsRequest(Vec<String>);
 
-    /// Returns whether or not the `result` field is empty
-    #[allow(dead_code)]
-    pub fn is_none(&self) -> bool {
-        self.result.is_none()
-    }
+/// listtransactions response
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListOnchainTransactionsResponse {
+    pub onchain_transactions: Vec<VaultTransactions>,
+}
+
+/// list_spend_txs
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListSpendTransactionsResponse {
+    pub spend_txs: Vec<SpendTx>,
 }

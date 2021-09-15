@@ -14,7 +14,7 @@ use crate::app::{
     view::SettingsView,
 };
 
-use crate::daemon::ServerStatusResponse;
+use crate::daemon::model::ServersStatuses;
 
 #[derive(Debug)]
 pub struct SettingsState {
@@ -22,7 +22,7 @@ pub struct SettingsState {
     config: Config,
     warning: Option<Error>,
     view: SettingsView,
-    server_status: Option<ServerStatusResponse>,
+    server_status: Option<ServersStatuses>,
 }
 
 impl SettingsState {

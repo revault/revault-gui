@@ -293,3 +293,16 @@ mod bitcoin_psbt {
         encode::deserialize(&bytes).map_err(serde::de::Error::custom)
     }
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServersStatuses {
+    pub coordinator: ServerStatus,
+    pub cosigners: Vec<ServerStatus>,
+    pub watchtowers: Vec<ServerStatus>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServerStatus {
+    pub host: String,
+    pub reachable: bool,
+}

@@ -8,8 +8,9 @@ use iced::{Column, Command, Container, Element, Length};
 use crate::{
     app::config::Config as GUIConfig,
     daemon::{
+        client::{GetInfoResponse, RevaultD, RevaultDError},
         config::{Config, ConfigError},
-        start_daemon, GetInfoResponse, RevaultD, RevaultDError,
+        start_daemon, StartDaemonError,
     },
     ui::component::{image::revault_colored_logo, text},
 };
@@ -218,10 +219,11 @@ async fn start_daemon_and_connect(
         .or_else(|_| try_connect_to_revault(&cfg, 0))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Error {
     ConfigError(ConfigError),
     RevaultDError(RevaultDError),
+    StartingDaemonError(StartDaemonError),
 }
 
 impl std::fmt::Display for Error {
@@ -229,6 +231,7 @@ impl std::fmt::Display for Error {
         match self {
             Self::ConfigError(e) => write!(f, "Config error: {}", e),
             Self::RevaultDError(e) => write!(f, "RevaultD error: {}", e),
+            Self::StartingDaemonError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -242,5 +245,11 @@ impl From<ConfigError> for Error {
 impl From<RevaultDError> for Error {
     fn from(error: RevaultDError) -> Self {
         Error::RevaultDError(error)
+    }
+}
+
+impl From<StartDaemonError> for Error {
+    fn from(error: StartDaemonError) -> Self {
+        Error::StartingDaemonError(error)
     }
 }

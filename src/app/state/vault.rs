@@ -20,8 +20,8 @@ use crate::{
         },
     },
     daemon::{
+        client::RevaultD,
         model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
-        RevaultD,
     },
 };
 
