@@ -2,7 +2,7 @@ use bitcoin::{
     secp256k1,
     util::{bip32::ExtendedPubKey, psbt::PartiallySignedTransaction as Psbt},
 };
-use revault_tx::miniscript::DescriptorPublicKey;
+use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 

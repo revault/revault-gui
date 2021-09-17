@@ -18,9 +18,13 @@ members = [
 name = "revault-gui"
 path = "src/main.rs"
 
+[features]
+default = ["daemon"]
+daemon = ["revaultd"]
+
 [dependencies]
 bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
-revault_tx = "0.3.0"
+revaultd = { git = "https://github.com/edouardparis/revaultd", branch = "refac-revaultd-crate", optional = true}
 
 iced = { version = "0.3", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
 revault_ui = { path = "./ui" }
