@@ -48,6 +48,14 @@ impl Config {
         datadir.push(DEFAULT_FILE_NAME);
         Ok(datadir)
     }
+
+    pub fn file_name(network: &bitcoin::Network) -> String {
+        if *network == bitcoin::Network::Bitcoin {
+            return DEFAULT_FILE_NAME.to_string();
+        } else {
+            format!("revault_gui_{}.toml", network)
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

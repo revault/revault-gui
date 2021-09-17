@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
 use tracing_subscriber::filter::EnvFilter;
@@ -15,39 +16,42 @@ mod revault;
 mod revaultd;
 mod ui;
 
-use app::{
-    config::{ConfigError, DEFAULT_FILE_NAME},
-    context::Context,
-    menu::Menu,
-    App,
-};
+use app::{config::ConfigError, context::Context, menu::Menu, App};
 use conversion::Converter;
 use installer::Installer;
 use loader::Loader;
 use revault::Role;
 use revaultd::config::default_datadir;
 
-enum Args {
+#[derive(Debug, PartialEq)]
+enum Arg {
     ConfigPath(PathBuf),
     DatadirPath(PathBuf),
-    None,
+    Network(bitcoin::Network),
 }
 
-fn parse_args(args: Vec<String>) -> Result<Args, Box<dyn Error>> {
-    if args.len() == 1 {
-        return Ok(Args::None);
-    }
-
-    if args.len() == 3 {
-        if args[1] == "--conf" {
-            return Ok(Args::ConfigPath(PathBuf::from(args[2].to_owned())));
-        } else if args[1] == "--datadir" {
-            return Ok(Args::DatadirPath(PathBuf::from(args[2].to_owned())));
+fn parse_args(args: Vec<String>) -> Result<Vec<Arg>, Box<dyn Error>> {
+    let mut res = Vec::new();
+    for (i, arg) in args.iter().enumerate() {
+        if arg == "--conf" {
+            if let Some(a) = args.get(i + 1) {
+                res.push(Arg::ConfigPath(PathBuf::from(a)));
+            } else {
+                return Err("missing arg to --conf".into());
+            }
+        } else if arg == "--datadir" {
+            if let Some(a) = args.get(i + 1) {
+                res.push(Arg::DatadirPath(PathBuf::from(a)));
+            } else {
+                return Err("missing arg to --datadir".into());
+            }
+        } else if arg.contains("--") {
+            let network = bitcoin::Network::from_str(args[i].trim_start_matches("--"))?;
+            res.push(Arg::Network(network));
         }
     }
 
-    println!("Usage:\n'--conf <configuration file path>'\n'--datadir <datadir path>'");
-    Err(format!("Unknown arguments '{:?}'.", args).into())
+    Ok(res)
 }
 
 fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Error>> {
@@ -76,11 +80,6 @@ pub enum Message {
     Install(installer::Message),
     Load(loader::Message),
     Run(app::Message),
-}
-
-pub enum Config {
-    Run(app::Config),
-    Install(PathBuf, Option<PathBuf>),
 }
 
 impl Application for GUI {
@@ -181,6 +180,27 @@ impl Application for GUI {
     }
 }
 
+pub enum Config {
+    Run(app::Config),
+    Install(PathBuf, Option<PathBuf>),
+}
+
+impl Config {
+    pub fn new(
+        datadir_path: PathBuf,
+        network: bitcoin::Network,
+        revaultd_path: Option<PathBuf>,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut path = datadir_path.clone();
+        path.push(app::Config::file_name(&network));
+        match app::Config::from_file(&path) {
+            Ok(cfg) => Ok(Config::Run(cfg)),
+            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, revaultd_path)),
+            Err(e) => Err(format!("Failed to read configuration file: {}", e).into()),
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let revaultd_path = match std::env::var("REVAULTD_PATH") {
         Ok(p) => Some(
@@ -195,38 +215,30 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let args = std::env::args().collect();
-
-    let config = match parse_args(args)? {
-        Args::ConfigPath(path) => Config::Run(app::Config::from_file(&path)?),
-        Args::None => {
-            let path = app::Config::default_path()
-                .map_err(|e| format!("Failed to find revault GUI config: {}", e))?;
-
-            match app::Config::from_file(&path) {
-                Ok(cfg) => Config::Run(cfg),
-                Err(ConfigError::NotFound) => {
-                    let default_datadir_path =
-                        default_datadir().expect("Unexpected filesystem error");
-                    Config::Install(default_datadir_path, revaultd_path)
-                }
-                Err(e) => {
-                    return Err(format!("Failed to read configuration file: {}", e).into());
-                }
-            }
+    let args = parse_args(std::env::args().collect())?;
+    let config = match args.as_slice() {
+        [] => {
+            let datadir_path = default_datadir().unwrap();
+            Config::new(datadir_path, bitcoin::Network::Bitcoin, revaultd_path)
         }
-        Args::DatadirPath(datadir_path) => {
-            let mut path = datadir_path.clone();
-            path.push(DEFAULT_FILE_NAME);
-            match app::Config::from_file(&path) {
-                Ok(cfg) => Config::Run(cfg),
-                Err(ConfigError::NotFound) => Config::Install(datadir_path, revaultd_path),
-                Err(e) => {
-                    return Err(format!("Failed to read configuration file: {}", e).into());
-                }
-            }
+        [Arg::Network(network)] => {
+            let datadir_path = default_datadir().unwrap();
+            Config::new(datadir_path, network.clone(), revaultd_path)
         }
-    };
+        [Arg::ConfigPath(path)] => Ok(Config::Run(app::Config::from_file(&path)?)),
+        [Arg::DatadirPath(datadir_path)] => Config::new(
+            datadir_path.clone(),
+            bitcoin::Network::Bitcoin,
+            revaultd_path,
+        ),
+        [Arg::DatadirPath(datadir_path), Arg::Network(network)]
+        | [Arg::Network(network), Arg::DatadirPath(datadir_path)] => {
+            Config::new(datadir_path.clone(), network.clone(), revaultd_path)
+        }
+        _ => {
+            return Err("Unknown args combination".into());
+        }
+    }?;
 
     let level = if let Config::Run(cfg) = &config {
         log_level_from_config(&cfg)?
@@ -244,4 +256,59 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err(format!("Failed to launch UI: {}", e).into());
     };
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_args() {
+        assert_eq!(true, parse_args(vec!["--meth".into()]).is_err());
+        assert_eq!(true, parse_args(vec!["--datadir".into()]).is_err());
+        assert_eq!(true, parse_args(vec!["--conf".into()]).is_err());
+        assert_eq!(
+            Some(vec![
+                Arg::DatadirPath(PathBuf::from(".")),
+                Arg::ConfigPath(PathBuf::from("hello.toml")),
+            ]),
+            parse_args(
+                "--datadir . --conf hello.toml"
+                    .split(" ")
+                    .map(|a| a.to_string())
+                    .collect()
+            )
+            .ok()
+        );
+        assert_eq!(
+            Some(vec![Arg::Network(bitcoin::Network::Regtest)]),
+            parse_args(vec!["--regtest".into()]).ok()
+        );
+        assert_eq!(
+            Some(vec![
+                Arg::DatadirPath(PathBuf::from("hello")),
+                Arg::Network(bitcoin::Network::Testnet)
+            ]),
+            parse_args(
+                "--datadir hello --testnet"
+                    .split(" ")
+                    .map(|a| a.to_string())
+                    .collect()
+            )
+            .ok()
+        );
+        assert_eq!(
+            Some(vec![
+                Arg::Network(bitcoin::Network::Testnet),
+                Arg::DatadirPath(PathBuf::from("hello"))
+            ]),
+            parse_args(
+                "--testnet --datadir hello"
+                    .split(" ")
+                    .map(|a| a.to_string())
+                    .collect()
+            )
+            .ok()
+        );
+    }
 }
