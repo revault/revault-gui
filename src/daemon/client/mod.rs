@@ -1,29 +1,22 @@
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::Path;
-use std::process::Command;
 
 use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, span, Level};
 
-mod client;
-pub mod config;
-pub mod model;
+mod jsonrpc;
 
-use client::Client;
-use config::Config;
-use model::{
-    DepositAddress, RevocationTransactions, SpendTransaction, SpendTx, SpendTxStatus,
-    UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
-};
+use super::config::Config;
+use super::model::*;
+
+use jsonrpc::JsonRPCClient;
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
     UnexpectedError(String),
-    StartError(String),
     RPCError(String),
     IOError(std::io::ErrorKind),
     NoAnswerError,
@@ -32,7 +25,6 @@ pub enum RevaultDError {
 impl std::fmt::Display for RevaultDError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::StartError(e) => write!(f, "Revaultd error while starting: {}", e),
             Self::RPCError(e) => write!(f, "Revaultd error rpc call: {}", e),
             Self::UnexpectedError(e) => write!(f, "Revaultd unexpected error: {}", e),
             Self::NoAnswerError => write!(f, "Revaultd returned no answer"),
@@ -43,7 +35,7 @@ impl std::fmt::Display for RevaultDError {
 
 #[derive(Debug, Clone)]
 pub struct RevaultD {
-    client: Client,
+    client: JsonRPCClient,
     pub config: Config,
 }
 
@@ -59,7 +51,7 @@ impl RevaultD {
             ))
         })?;
 
-        let client = Client::new(socket_path);
+        let client = JsonRPCClient::new(socket_path);
         let revaultd = RevaultD {
             client,
             config: config.to_owned(),
@@ -93,8 +85,8 @@ impl RevaultD {
             .map_err(|e| {
                 error!("method {} failed: {}", method, e);
                 match e {
-                    client::error::Error::Io(e) => RevaultDError::IOError(e.kind()),
-                    client::error::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
+                    jsonrpc::Error::Io(e) => RevaultDError::IOError(e.kind()),
+                    jsonrpc::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
                     _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
                 }
             })
@@ -218,7 +210,7 @@ impl RevaultD {
         Ok(())
     }
 
-    pub fn get_server_status(&self) -> Result<ServerStatusResponse, RevaultDError> {
+    pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
         self.call("getserverstatus", Option::<Request>::None)
     }
 }
@@ -262,65 +254,4 @@ pub struct ListOnchainTransactionsResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListSpendTransactionsResponse {
     pub spend_txs: Vec<SpendTx>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ServerStatusResponse {
-    pub coordinator: ServerStatus,
-    pub cosigners: Vec<ServerStatus>,
-    pub watchtowers: Vec<ServerStatus>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ServerStatus {
-    pub host: String,
-    pub reachable: bool,
-}
-
-// RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: &Path, revaultd_path: &Path) -> Result<(), RevaultDError> {
-    debug!("starting revaultd daemon");
-    let mut child = Command::new(revaultd_path)
-        .arg("--conf")
-        .arg(config_path.to_path_buf().into_os_string().as_os_str())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| {
-            RevaultDError::StartError(format!("Failed to launched revaultd: {}", e.to_string()))
-        })?;
-
-    debug!("waiting for revaultd daemon status");
-
-    let tries_timeout = std::time::Duration::from_secs(1);
-    let start = std::time::Instant::now();
-
-    while start.elapsed() < tries_timeout {
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                if !status.success() {
-                    // FIXME: there should be a better way to collect the output...
-                    let output = child.wait_with_output().unwrap();
-                    return Err(RevaultDError::StartError(format!(
-                        "Error revaultd terminated with status: {} and stderr:\n{:?}",
-                        status.to_string(),
-                        String::from_utf8_lossy(&output.stderr),
-                    )));
-                } else {
-                    info!("revaultd daemon started");
-                    return Ok(());
-                }
-            }
-            Ok(None) => continue,
-            Err(e) => {
-                return Err(RevaultDError::StartError(format!(
-                    "Child did not terminate: {}",
-                    e.to_string()
-                )));
-            }
-        }
-    }
-
-    Err(RevaultDError::StartError(
-        "Child did not terminate, do you have `daemon=false` in Revault conf?".to_string(),
-    ))
 }

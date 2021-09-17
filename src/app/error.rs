@@ -1,4 +1,4 @@
-use crate::revaultd::{config::ConfigError, RevaultDError};
+use crate::daemon::{client::RevaultDError, config::ConfigError};
 use std::convert::From;
 
 #[derive(Debug, Clone)]

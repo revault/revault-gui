@@ -8,7 +8,7 @@ use bitcoin::hashes::hex::FromHex;
 use std::io::Write;
 use std::path::PathBuf;
 
-use crate::{app::config as gui_config, revault::Role, revaultd::config as revaultd_config};
+use crate::{app::config as gui_config, daemon::config as revaultd_config, revault::Role};
 
 pub use message::Message;
 use step::{
@@ -198,8 +198,8 @@ pub async fn install(
         .map_err(|e| Error::CannotCreateFile(e.to_string()))?;
 
     // Step needed because of ValueAfterTable error in the toml serialize implementation.
-    let revaultd_config = toml::Value::try_from(&cfg)
-        .expect("revaultd::Config has a proper Serialize implementation");
+    let revaultd_config =
+        toml::Value::try_from(&cfg).expect("daemon::Config has a proper Serialize implementation");
 
     revaultd_config_file
         .write_all(revaultd_config.to_string().as_bytes())

@@ -11,7 +11,7 @@ use crate::{
     ui::component::{navbar, scroll},
 };
 
-use crate::revaultd::{config::Config, ServerStatusResponse};
+use crate::daemon::{config::Config, model::ServersStatuses};
 
 mod boxes;
 use boxes::*;
@@ -36,7 +36,7 @@ impl SettingsView {
         warning: Option<&Error>,
         blockheight: u64,
         config: &Config,
-        server_status: Option<ServerStatusResponse>,
+        server_status: Option<ServersStatuses>,
     ) -> Element<'a, Message> {
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
@@ -60,7 +60,7 @@ impl SettingsView {
     pub fn display_boxes<'a>(
         ctx: &Context,
         blockheight: u64,
-        server_status: Option<ServerStatusResponse>,
+        server_status: Option<ServersStatuses>,
         config: &Config,
     ) -> Column<'a, Message> {
         if let Some(server_status) = server_status {

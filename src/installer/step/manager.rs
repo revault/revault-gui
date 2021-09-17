@@ -11,6 +11,7 @@ use revault_tx::{
 };
 
 use crate::{
+    daemon::config,
     installer::{
         message::{self, Message},
         step::{
@@ -19,7 +20,6 @@ use crate::{
         },
         view,
     },
-    revaultd::config,
     ui::component::form,
 };
 

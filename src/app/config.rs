@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::revaultd::config::default_datadir;
+use crate::daemon::config::default_datadir;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {

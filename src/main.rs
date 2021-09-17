@@ -9,19 +9,19 @@ extern crate serde_json;
 
 mod app;
 mod conversion;
+mod daemon;
 mod hw;
 mod installer;
 mod loader;
 mod revault;
-mod revaultd;
 mod ui;
 
 use app::{config::ConfigError, context::Context, menu::Menu, App};
 use conversion::Converter;
+use daemon::config::default_datadir;
 use installer::Installer;
 use loader::Loader;
 use revault::Role;
-use revaultd::config::default_datadir;
 
 #[derive(Debug, PartialEq)]
 enum Arg {

@@ -19,9 +19,9 @@ use crate::{
             VaultOnChainTransactionsPanel, VaultView,
         },
     },
-    revaultd::{
+    daemon::{
+        client::RevaultD,
         model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
-        RevaultD,
     },
 };
 

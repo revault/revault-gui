@@ -10,7 +10,7 @@ use crate::{
         message::{Message, SpendTxMessage},
         view::manager::spend_tx_with_feerate_view,
     },
-    revaultd::model,
+    daemon::model,
     ui::{
         color,
         component::{badge, button, card, scroll, text, ContainerBackgroundStyle},
