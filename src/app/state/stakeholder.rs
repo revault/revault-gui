@@ -7,6 +7,7 @@ use crate::revaultd::model::{self, VaultStatus};
 use crate::app::{
     context::Context,
     error::Error,
+    menu::Menu,
     message::{Message, VaultMessage},
     state::{
         cmd::{get_blockheight, get_deposit_address, get_revocation_txs, list_vaults},
@@ -186,6 +187,14 @@ impl StakeholderCreateVaultsState {
     pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
+                if self.deposits.len() == 1
+                    && self.deposits[0].vault.outpoint() == outpoint
+                    && (selected.vault.status == VaultStatus::Secured
+                        || selected.vault.status == VaultStatus::Securing)
+                {
+                    self.selected_vault = None;
+                    return Command::perform(async { Menu::Home }, Message::Menu);
+                }
                 self.selected_vault = None;
                 return self.load(ctx);
             }
