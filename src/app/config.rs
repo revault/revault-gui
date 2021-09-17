@@ -7,8 +7,6 @@ use crate::daemon::config::default_datadir;
 pub struct Config {
     /// Path to revaultd configuration file.
     pub revaultd_config_path: PathBuf,
-    /// Path to revaultd binary.
-    pub revaultd_path: Option<PathBuf>,
     /// log level, can be "info", "debug", "trace".
     pub log_level: Option<String>,
     /// Use iced debug feature if true.
@@ -18,10 +16,9 @@ pub struct Config {
 pub const DEFAULT_FILE_NAME: &str = "revault_gui.toml";
 
 impl Config {
-    pub fn new(revaultd_config_path: PathBuf, revaultd_path: Option<PathBuf>) -> Self {
+    pub fn new(revaultd_config_path: PathBuf) -> Self {
         Self {
             revaultd_config_path,
-            revaultd_path,
             log_level: None,
             debug: None,
         }

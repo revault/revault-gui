@@ -90,8 +90,8 @@ impl Application for GUI {
 
     fn new(config: Config) -> (GUI, Command<Self::Message>) {
         match config {
-            Config::Install(config_path, revaultd_path, network) => {
-                let (install, command) = Installer::new(config_path, revaultd_path, network);
+            Config::Install(config_path, network) => {
+                let (install, command) = Installer::new(config_path, network);
                 (GUI::Installer(install), command.map(Message::Install))
             }
             Config::Run(cfg) => {
@@ -175,58 +175,39 @@ impl Application for GUI {
 
 pub enum Config {
     Run(app::Config),
-    Install(PathBuf, Option<PathBuf>, bitcoin::Network),
+    Install(PathBuf, bitcoin::Network),
 }
 
 impl Config {
-    pub fn new(
-        datadir_path: PathBuf,
-        network: bitcoin::Network,
-        revaultd_path: Option<PathBuf>,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(datadir_path: PathBuf, network: bitcoin::Network) -> Result<Self, Box<dyn Error>> {
         let mut path = datadir_path.clone();
         path.push(app::Config::file_name(&network));
         match app::Config::from_file(&path) {
             Ok(cfg) => Ok(Config::Run(cfg)),
-            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, revaultd_path, network)),
+            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, network)),
             Err(e) => Err(format!("Failed to read configuration file: {}", e).into()),
         }
     }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let revaultd_path = match std::env::var("REVAULTD_PATH") {
-        Ok(p) => Some(
-            PathBuf::from(p)
-                .canonicalize()
-                .map_err(|e| ConfigError::Unexpected(format!("REVAULTD_PATH: {}", e)))?,
-        ),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(std::env::VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTD_CONF path has a wrong unicode format");
-            std::process::exit(1);
-        }
-    };
-
     let args = parse_args(std::env::args().collect())?;
     let config = match args.as_slice() {
         [] => {
             let datadir_path = default_datadir().unwrap();
-            Config::new(datadir_path, bitcoin::Network::Bitcoin, revaultd_path)
+            Config::new(datadir_path, bitcoin::Network::Bitcoin)
         }
         [Arg::Network(network)] => {
             let datadir_path = default_datadir().unwrap();
-            Config::new(datadir_path, network.clone(), revaultd_path)
+            Config::new(datadir_path, network.clone())
         }
         [Arg::ConfigPath(path)] => Ok(Config::Run(app::Config::from_file(&path)?)),
-        [Arg::DatadirPath(datadir_path)] => Config::new(
-            datadir_path.clone(),
-            bitcoin::Network::Bitcoin,
-            revaultd_path,
-        ),
+        [Arg::DatadirPath(datadir_path)] => {
+            Config::new(datadir_path.clone(), bitcoin::Network::Bitcoin)
+        }
         [Arg::DatadirPath(datadir_path), Arg::Network(network)]
         | [Arg::Network(network), Arg::DatadirPath(datadir_path)] => {
-            Config::new(datadir_path.clone(), network.clone(), revaultd_path)
+            Config::new(datadir_path.clone(), network.clone())
         }
         _ => {
             return Err("Unknown args combination".into());

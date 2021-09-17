@@ -17,8 +17,6 @@ use step::{
 };
 
 pub struct Installer {
-    /// Path to the revaultd binary.
-    revaultd_path: Option<PathBuf>,
     current: usize,
     steps: Vec<Box<dyn Step>>,
 
@@ -92,7 +90,6 @@ impl Installer {
 
     pub fn new(
         destination_path: PathBuf,
-        revaultd_path: Option<PathBuf>,
         network: bitcoin::Network,
     ) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
@@ -101,7 +98,6 @@ impl Installer {
         config.daemon = Some(true);
         (
             Installer {
-                revaultd_path,
                 config,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
@@ -148,11 +144,7 @@ impl Installer {
             Message::Install => {
                 self.current_step().update(message);
                 return Command::perform(
-                    install(
-                        self.context.clone(),
-                        self.config.clone(),
-                        self.revaultd_path.clone(),
-                    ),
+                    install(self.context.clone(), self.config.clone()),
                     Message::Installed,
                 );
             }
@@ -176,11 +168,7 @@ fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
     }
 }
 
-pub async fn install(
-    ctx: Context,
-    mut cfg: revaultd_config::Config,
-    revaultd_path: Option<PathBuf>,
-) -> Result<PathBuf, Error> {
+pub async fn install(ctx: Context, mut cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
@@ -244,7 +232,6 @@ pub async fn install(
                         e
                     ))
                 })?,
-                revaultd_path,
             ))
             .unwrap()
             .as_bytes(),

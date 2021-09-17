@@ -72,10 +72,7 @@ impl Loader {
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
                     self.step = Step::StartingDaemon;
                     return Command::perform(
-                        start_daemon_and_connect(
-                            self.gui_config.revaultd_config_path.to_owned(),
-                            self.gui_config.revaultd_path.to_owned(),
-                        ),
+                        start_daemon_and_connect(self.gui_config.revaultd_config_path.to_owned()),
                         Message::DaemonStarted,
                     );
                 }
@@ -204,11 +201,8 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, R
     revaultd.get_info()
 }
 
-async fn start_daemon_and_connect(
-    revaultd_config_path: PathBuf,
-    revaultd_path: Option<PathBuf>,
-) -> Result<Arc<RevaultD>, Error> {
-    let revaultd_path = revaultd_path.unwrap_or_else(|| PathBuf::from("revaultd"));
+async fn start_daemon_and_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
+    let revaultd_path = PathBuf::from("revaultd");
 
     start_daemon(&revaultd_config_path, &revaultd_path).await?;
 
