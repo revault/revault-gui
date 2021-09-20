@@ -2,6 +2,7 @@ use std::convert::From;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 use iced::{Column, Command, Container, Element, Length};
 
@@ -20,23 +21,28 @@ type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
 
 pub struct Loader {
     pub gui_config: GUIConfig,
-    revaultd: Option<Arc<RevaultD>>,
     step: Step,
 }
 
 enum Step {
     Connecting,
     StartingDaemon,
-    Syncing { progress: f64 },
-    Error { error: String },
+    Syncing {
+        revaultd_client: Arc<RevaultD>,
+        progress: f64,
+    },
+    Error {
+        error: String,
+    },
 }
 
 #[derive(Debug)]
 pub enum Message {
-    DaemonStarted(Result<Arc<RevaultD>, Error>),
+    DaemonStarted(Result<JoinHandle<()>, StartDaemonError>),
     Syncing(Result<GetInfoResponse, RevaultDError>),
     Synced(GetInfoResponse, Arc<RevaultD>),
     Connected(Result<Arc<RevaultD>, Error>),
+    Loaded(Result<Arc<RevaultD>, Error>),
 }
 
 impl Loader {
@@ -45,18 +51,19 @@ impl Loader {
         (
             Loader {
                 gui_config,
-                revaultd: None,
                 step: Step::Connecting,
             },
-            Command::perform(connect(revaultd_config_path), Message::Connected),
+            Command::perform(connect(revaultd_config_path), Message::Loaded),
         )
     }
 
-    fn on_connect(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
+    fn on_load(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                self.step = Step::Syncing { progress: 0.0 };
-                self.revaultd = Some(revaultd.clone());
+                self.step = Step::Syncing {
+                    revaultd_client: revaultd.clone(),
+                    progress: 0.0,
+                };
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
@@ -71,10 +78,16 @@ impl Loader {
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
                     self.step = Step::StartingDaemon;
-                    return Command::perform(
-                        start_daemon_and_connect(self.gui_config.revaultd_config_path.to_owned()),
-                        Message::DaemonStarted,
-                    );
+                    return Command::batch(vec![
+                        Command::perform(
+                            start_daemon(self.gui_config.revaultd_config_path.clone()),
+                            Message::DaemonStarted,
+                        ),
+                        Command::perform(
+                            try_connect(self.gui_config.revaultd_config_path.clone()),
+                            Message::Connected,
+                        ),
+                    ]);
                 }
                 _ => return self.on_error(&e),
             },
@@ -82,14 +95,27 @@ impl Loader {
         Command::none()
     }
 
-    fn on_daemon_started(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
+    fn on_connect(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
-                self.step = Step::Syncing { progress: 0.0 };
-                self.revaultd = Some(revaultd.clone());
+                self.step = Step::Syncing {
+                    revaultd_client: revaultd.clone(),
+                    progress: 0.0,
+                };
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
             Err(e) => self.on_error(&e),
+        }
+    }
+
+    fn on_daemon_started(
+        &mut self,
+        res: Result<JoinHandle<()>, StartDaemonError>,
+    ) -> Command<Message> {
+        if let Err(e) = res {
+            self.on_error(&e)
+        } else {
+            Command::none()
         }
     }
 
@@ -102,14 +128,17 @@ impl Loader {
 
     #[allow(unused_variables, unused_assignments)]
     fn on_sync(&mut self, res: Result<GetInfoResponse, RevaultDError>) -> Command<Message> {
-        match self.step {
-            Step::Syncing { mut progress } => {
+        match &mut self.step {
+            Step::Syncing {
+                revaultd_client,
+                mut progress,
+            } => {
                 match res {
                     Err(e) => return self.on_error(&e),
                     Ok(info) => {
                         if (info.sync - 1.0_f64).abs() < f64::EPSILON {
                             return Command::perform(
-                                synced(info, self.revaultd.as_ref().unwrap().clone()),
+                                synced(info, revaultd_client.clone()),
                                 |res| Message::Synced(res.0, res.1),
                             );
                         } else {
@@ -117,10 +146,7 @@ impl Loader {
                         }
                     }
                 };
-                Command::perform(
-                    sync(self.revaultd.as_ref().unwrap().clone(), true),
-                    Message::Syncing,
-                )
+                Command::perform(sync(revaultd_client.clone(), true), Message::Syncing)
             }
             _ => Command::none(),
         }
@@ -131,6 +157,7 @@ impl Loader {
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Connected(res) => self.on_connect(res),
+            Message::Loaded(res) => self.on_load(res),
             Message::Syncing(res) => self.on_sync(res),
             Message::DaemonStarted(res) => self.on_daemon_started(res),
             _ => Command::none(),
@@ -146,13 +173,6 @@ impl Loader {
             }
             Step::Error { error } => cover(Text::new(&format!("Error: {}", error))),
         }
-    }
-
-    pub fn load(&self) -> Command<Message> {
-        Command::perform(
-            connect(self.gui_config.revaultd_config_path.clone()),
-            Message::Connected,
-        )
     }
 }
 
@@ -201,11 +221,7 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, R
     revaultd.get_info()
 }
 
-async fn start_daemon_and_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
-    let revaultd_path = PathBuf::from("revaultd");
-
-    start_daemon(&revaultd_config_path, &revaultd_path).await?;
-
+async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     let cfg = Config::from_file(&revaultd_config_path)?;
 
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
@@ -224,12 +240,14 @@ async fn start_daemon_and_connect(revaultd_config_path: PathBuf) -> Result<Arc<R
         })
     }
 
-    try_connect_to_revault(&cfg, 5)
+    let client = try_connect_to_revault(&cfg, 5)
         .or_else(|_| try_connect_to_revault(&cfg, 4))
         .or_else(|_| try_connect_to_revault(&cfg, 3))
         .or_else(|_| try_connect_to_revault(&cfg, 2))
         .or_else(|_| try_connect_to_revault(&cfg, 1))
-        .or_else(|_| try_connect_to_revault(&cfg, 0))
+        .or_else(|_| try_connect_to_revault(&cfg, 0))?;
+
+    Ok(client)
 }
 
 #[derive(Debug)]
