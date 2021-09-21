@@ -2,9 +2,9 @@ use std::convert::From;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::thread::JoinHandle;
 
-use iced::{Column, Command, Container, Element, Length};
+use iced::{Column, Command, Container, Element, Length, Subscription};
+use iced_native::{window, Event};
 
 use revault_ui::component::{image::revault_colored_logo, text::Text};
 
@@ -13,7 +13,7 @@ use crate::{
     daemon::{
         client::{self, GetInfoResponse, RevaultDError},
         config::{Config, ConfigError},
-        start_daemon, StartDaemonError,
+        start_daemon, DaemonError,
     },
 };
 
@@ -21,6 +21,9 @@ type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
 
 pub struct Loader {
     pub gui_config: GUIConfig,
+    pub daemon_started: bool,
+
+    should_exit: bool,
     step: Step,
 }
 
@@ -31,18 +34,19 @@ enum Step {
         revaultd_client: Arc<RevaultD>,
         progress: f64,
     },
-    Error {
-        error: String,
-    },
+    Error(Error),
 }
 
 #[derive(Debug)]
 pub enum Message {
-    DaemonStarted(Result<JoinHandle<()>, StartDaemonError>),
+    Event(iced_native::Event),
     Syncing(Result<GetInfoResponse, RevaultDError>),
     Synced(GetInfoResponse, Arc<RevaultD>),
     Connected(Result<Arc<RevaultD>, Error>),
     Loaded(Result<Arc<RevaultD>, Error>),
+    StoppingDaemon(Result<(), RevaultDError>),
+    DaemonStopped,
+    Failure(DaemonError),
 }
 
 impl Loader {
@@ -52,6 +56,8 @@ impl Loader {
             Loader {
                 gui_config,
                 step: Step::Connecting,
+                should_exit: false,
+                daemon_started: false,
             },
             Command::perform(connect(revaultd_config_path), Message::Loaded),
         )
@@ -67,21 +73,17 @@ impl Loader {
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
-                Error::ConfigError(ConfigError::NotFound) => {
-                    self.step = Step::Error {
-                        error: format!(
-                            "config not found at path: {:?}",
-                            self.gui_config.revaultd_config_path
-                        ),
-                    };
-                }
                 Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
                 | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
                     self.step = Step::StartingDaemon;
+                    self.daemon_started = true;
                     return Command::batch(vec![
                         Command::perform(
                             start_daemon(self.gui_config.revaultd_config_path.clone()),
-                            Message::DaemonStarted,
+                            |res| match res {
+                                Ok(()) => Message::DaemonStopped,
+                                Err(e) => Message::Failure(e),
+                            },
                         ),
                         Command::perform(
                             try_connect(self.gui_config.revaultd_config_path.clone()),
@@ -89,7 +91,9 @@ impl Loader {
                         ),
                     ]);
                 }
-                _ => return self.on_error(&e),
+                _ => {
+                    self.step = Step::Error(e.into());
+                }
             },
         }
         Command::none()
@@ -104,26 +108,11 @@ impl Loader {
                 };
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
-            Err(e) => self.on_error(&e),
+            Err(e) => {
+                self.step = Step::Error(e.into());
+                Command::none()
+            }
         }
-    }
-
-    fn on_daemon_started(
-        &mut self,
-        res: Result<JoinHandle<()>, StartDaemonError>,
-    ) -> Command<Message> {
-        if let Err(e) = res {
-            self.on_error(&e)
-        } else {
-            Command::none()
-        }
-    }
-
-    fn on_error(&mut self, e: &dyn std::fmt::Display) -> Command<Message> {
-        self.step = Step::Error {
-            error: format!("error: {}", e),
-        };
-        Command::none()
     }
 
     #[allow(unused_variables, unused_assignments)]
@@ -134,7 +123,6 @@ impl Loader {
                 mut progress,
             } => {
                 match res {
-                    Err(e) => return self.on_error(&e),
                     Ok(info) => {
                         if (info.sync - 1.0_f64).abs() < f64::EPSILON {
                             return Command::perform(
@@ -145,23 +133,49 @@ impl Loader {
                             progress = info.sync
                         }
                     }
+                    Err(e) => {
+                        self.step = Step::Error(e.into());
+                        return Command::none();
+                    }
                 };
                 Command::perform(sync(revaultd_client.clone(), true), Message::Syncing)
             }
             _ => Command::none(),
         }
     }
-}
 
-impl Loader {
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Connected(res) => self.on_connect(res),
             Message::Loaded(res) => self.on_load(res),
             Message::Syncing(res) => self.on_sync(res),
-            Message::DaemonStarted(res) => self.on_daemon_started(res),
+            Message::Event(event) => {
+                if let Event::Window(window::Event::CloseRequested) = event {
+                    self.should_exit = true;
+                    if self.daemon_started {
+                        if let Step::Syncing {
+                            revaultd_client, ..
+                        } = &self.step
+                        {
+                            return Command::perform(
+                                stop_daemon(revaultd_client.clone()),
+                                Message::StoppingDaemon,
+                            );
+                        }
+                    }
+                }
+                Command::none()
+            }
             _ => Command::none(),
         }
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        iced_native::subscription::events().map(Message::Event)
+    }
+
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
     }
 
     pub fn view(&mut self) -> Element<Message> {
@@ -171,7 +185,7 @@ impl Loader {
             Step::Syncing { progress, .. } => {
                 cover(Text::new(&format!("Syncing... {}%", progress)))
             }
-            Step::Error { error } => cover(Text::new(&format!("Error: {}", error))),
+            Step::Error(error) => cover(Text::new(&format!("Error: {}", error))),
         }
     }
 }
@@ -250,11 +264,15 @@ async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Err
     Ok(client)
 }
 
+async fn stop_daemon(client: Arc<RevaultD>) -> Result<(), RevaultDError> {
+    client.stop()
+}
+
 #[derive(Debug)]
 pub enum Error {
     ConfigError(ConfigError),
     RevaultDError(RevaultDError),
-    StartingDaemonError(StartDaemonError),
+    DaemonError(DaemonError),
 }
 
 impl std::fmt::Display for Error {
@@ -262,7 +280,7 @@ impl std::fmt::Display for Error {
         match self {
             Self::ConfigError(e) => write!(f, "Config error: {}", e),
             Self::RevaultDError(e) => write!(f, "RevaultD error: {}", e),
-            Self::StartingDaemonError(e) => write!(f, "{}", e),
+            Self::DaemonError(e) => write!(f, "daemon error: {}", e),
         }
     }
 }
@@ -279,8 +297,8 @@ impl From<RevaultDError> for Error {
     }
 }
 
-impl From<StartDaemonError> for Error {
-    fn from(error: StartDaemonError) -> Self {
-        Error::StartingDaemonError(error)
+impl From<DaemonError> for Error {
+    fn from(error: DaemonError) -> Self {
+        Error::DaemonError(error)
     }
 }

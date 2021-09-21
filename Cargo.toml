@@ -29,6 +29,7 @@ revaultd = { git = "https://github.com/edouardparis/revaultd", branch = "refac-r
 iced = { version = "0.3", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
 revault_ui = { path = "./ui" }
 revault_hwi = { path = "./hwi" }
+iced_native = "0.4"
 
 tokio = "1.9.0"
 serde = { version = "1.0", features = ["derive"] }

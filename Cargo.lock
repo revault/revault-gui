@@ -2550,6 +2550,7 @@ dependencies = [
  "dirs",
  "iced",
  "revault_hwi",
+ "iced_native",
  "revault_ui",
  "revaultd",
  "serde",

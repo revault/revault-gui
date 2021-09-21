@@ -15,27 +15,34 @@ use revaultd::{
 };
 
 #[derive(Debug)]
-pub struct StartDaemonError(String);
-impl std::fmt::Display for StartDaemonError {
+pub enum DaemonError {
+    StartError(String),
+    PanicError(String),
+}
+
+impl std::fmt::Display for DaemonError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Revaultd error while starting: {}", self.0)
+        match self {
+            Self::StartError(e) => write!(f, "daemon error while starting: {}", e),
+            Self::PanicError(e) => write!(f, "daemon had a panic: {}", e),
+        }
     }
 }
 
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: PathBuf) -> Result<JoinHandle<()>, StartDaemonError> {
+pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
     debug!("starting revaultd daemon");
 
-    sodiumoxide::init().map_err(|_| StartDaemonError("sodiumoxide::init".to_string()))?;
+    sodiumoxide::init().map_err(|_| DaemonError::StartError("sodiumoxide::init".to_string()))?;
 
     let config = Config::from_file(Some(config_path))
-        .map_err(|e| StartDaemonError(format!("Error parsing config: {}", e)))?;
+        .map_err(|e| DaemonError::StartError(format!("Error parsing config: {}", e)))?;
 
     setup_logger(config.log_level)
-        .map_err(|e| StartDaemonError(format!("Error setting up logger: {}", e)))?;
+        .map_err(|e| DaemonError::StartError(format!("Error setting up logger: {}", e)))?;
 
     let revaultd = RevaultD::from_config(config)
-        .map_err(|e| StartDaemonError(format!("Error creating global state: {}", e)))?;
+        .map_err(|e| DaemonError::StartError(format!("Error creating global state: {}", e)))?;
 
     info!(
         "Using Noise static public key: '{}'",
@@ -52,6 +59,10 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<JoinHandle<()>, StartD
         .spawn(|| {
             daemon_main(revaultd);
         })
-        .map_err(|e| StartDaemonError(format!("{}", e)))?;
-    Ok(handle)
+        .map_err(|e| DaemonError::StartError(format!("{}", e)))?;
+
+    handle
+        .join()
+        .map_err(|e| DaemonError::PanicError(format!("{:?}", e)))?;
+    Ok(())
 }

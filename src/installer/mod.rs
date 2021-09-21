@@ -3,6 +3,7 @@ mod step;
 mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};
+use iced_native::{window, Event};
 
 use bitcoin::hashes::hex::FromHex;
 use std::io::Write;
@@ -17,6 +18,7 @@ use step::{
 };
 
 pub struct Installer {
+    should_exit: bool,
     current: usize,
     steps: Vec<Box<dyn Step>>,
 
@@ -98,6 +100,7 @@ impl Installer {
         config.daemon = Some(true);
         (
             Installer {
+                should_exit: false,
                 config,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
@@ -108,7 +111,11 @@ impl Installer {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        iced_native::subscription::events().map(Message::Event)
+    }
+
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
     }
 
     pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
@@ -147,6 +154,11 @@ impl Installer {
                     install(self.context.clone(), self.config.clone()),
                     Message::Installed,
                 );
+            }
+            Message::Event(event) => {
+                if let Event::Window(window::Event::CloseRequested) = event {
+                    self.should_exit = true;
+                }
             }
             _ => {
                 self.current_step().update(message);

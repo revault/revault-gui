@@ -202,6 +202,11 @@ impl<C: Client> RevaultD<C> {
         Ok(())
     }
 
+    pub fn stop(&self) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value = self.call("stop", Option::<Request>::None)?;
+        Ok(())
+    }
+
     pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
         self.call("getserverstatus", Option::<Request>::None)
     }

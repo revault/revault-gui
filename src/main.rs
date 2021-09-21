@@ -1,6 +1,4 @@
-use std::error::Error;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{error::Error, path::PathBuf, str::FromStr};
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
 use tracing_subscriber::filter::EnvFilter;
@@ -62,7 +60,12 @@ fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Erro
     }
 }
 
-pub enum GUI {
+pub struct GUI {
+    daemon_running: bool,
+    state: State,
+}
+
+enum State {
     Installer(Installer),
     Loader(Loader),
     App(App<daemon::client::jsonrpc::JsonRPCClient>),
@@ -75,16 +78,26 @@ pub enum Message {
     Run(app::Message),
 }
 
+impl GUI {
+    fn exit_requested(&self) -> bool {
+        match &self.state {
+            State::Installer(v) => v.should_exit(),
+            State::Loader(v) => v.should_exit(),
+            State::App(v) => v.should_exit(),
+        }
+    }
+}
+
 impl Application for GUI {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = Config;
 
     fn title(&self) -> String {
-        match self {
-            Self::Installer(_) => String::from("Revault Installer"),
-            Self::App(_) => String::from("Revault GUI"),
-            Self::Loader(_) => String::from("Revault"),
+        match self.state {
+            State::Installer(_) => String::from("Revault Installer"),
+            State::App(_) => String::from("Revault GUI"),
+            State::Loader(..) => String::from("Revault"),
         }
     }
 
@@ -92,11 +105,23 @@ impl Application for GUI {
         match config {
             Config::Install(config_path, network) => {
                 let (install, command) = Installer::new(config_path, network);
-                (GUI::Installer(install), command.map(Message::Install))
+                (
+                    Self {
+                        state: State::Installer(install),
+                        daemon_running: false,
+                    },
+                    command.map(Message::Install),
+                )
             }
             Config::Run(cfg) => {
                 let (loader, command) = Loader::new(cfg);
-                (GUI::Loader(loader), command.map(Message::Load))
+                (
+                    Self {
+                        state: State::Loader(loader),
+                        daemon_running: false,
+                    },
+                    command.map(Message::Load),
+                )
             }
         }
     }
@@ -109,12 +134,34 @@ impl Application for GUI {
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
             let (loader, command) = Loader::new(cfg);
-            *self = GUI::Loader(loader);
+            self.state = State::Loader(loader);
             return command.map(Message::Load);
         }
 
+        if let Message::Load(loader::Message::DaemonStopped) = message {
+            tracing::info!("daemon stopped");
+            self.daemon_running = false;
+            return Command::none();
+        }
+
+        if let Message::Load(loader::Message::Failure(e)) = message {
+            tracing::info!("daemon panic {}", e);
+            self.daemon_running = false;
+            return Command::none();
+        }
+
+        if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
+            tracing::info!("stopping daemon {:?}", res);
+            return Command::none();
+        }
+
+        if let Message::Run(app::Message::StoppingDaemon(res)) = message {
+            tracing::info!("stopping daemon {:?}", res);
+            return Command::none();
+        }
+
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
-            if let GUI::Loader(loader) = self {
+            if let State::Loader(loader) = &mut self.state {
                 let config = loader.gui_config.clone();
                 let role = if revaultd.config.stakeholder_config.is_some() {
                     Role::Stakeholder
@@ -137,38 +184,49 @@ impl Application for GUI {
                     role,
                     Menu::Home,
                     info.managers_threshold,
+                    self.daemon_running,
                 );
 
                 let (app, command) = App::new(context, config);
-                *self = GUI::App(app);
+                self.state = State::App(app);
                 return command.map(Message::Run);
             }
             return Command::none();
         }
 
-        match (self, message) {
-            (Self::Installer(i), Message::Install(msg)) => {
+        match (&mut self.state, message) {
+            (State::Installer(i), Message::Install(msg)) => {
                 i.update(msg, clipboard).map(Message::Install)
             }
-            (Self::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
-            (Self::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
+            (State::Loader(loader), Message::Load(msg)) => {
+                let cmd = loader.update(msg).map(Message::Load);
+                if loader.daemon_started {
+                    self.daemon_running = true;
+                }
+                cmd
+            }
+            (State::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
             _ => Command::none(),
         }
     }
 
+    fn should_exit(&self) -> bool {
+        self.exit_requested() && !self.daemon_running
+    }
+
     fn subscription(&self) -> Subscription<Self::Message> {
-        match self {
-            Self::Installer(v) => v.subscription().map(Message::Install),
-            Self::App(v) => v.subscription().map(Message::Run),
-            _ => Subscription::none(),
+        match &self.state {
+            State::Installer(v) => v.subscription().map(Message::Install),
+            State::Loader(v) => v.subscription().map(Message::Load),
+            State::App(v) => v.subscription().map(Message::Run),
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        match self {
-            Self::Installer(v) => v.view().map(Message::Install),
-            Self::App(v) => v.view().map(Message::Run),
-            Self::Loader(v) => v.view().map(Message::Load),
+        match &mut self.state {
+            State::Installer(v) => v.view().map(Message::Install),
+            State::App(v) => v.view().map(Message::Run),
+            State::Loader(v) => v.view().map(Message::Load),
         }
     }
 }
@@ -226,7 +284,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .finish(),
     )?;
 
-    if let Err(e) = GUI::run(Settings::with_flags(config)) {
+    let mut settings = Settings::with_flags(config);
+    settings.exit_on_close_request = false;
+
+    if let Err(e) = GUI::run(settings) {
         return Err(format!("Failed to launch UI: {}", e).into());
     };
     Ok(())

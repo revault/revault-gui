@@ -65,6 +65,7 @@ async fn test_deposit_state() {
         Role::Stakeholder,
         Menu::Vaults,
         3,
+        false,
     );
 
     let sandbox = sandbox.load(&ctx).await;
@@ -151,6 +152,7 @@ async fn test_emergency_state() {
         Role::Stakeholder,
         Menu::Vaults,
         3,
+        false,
     );
 
     let sandbox = sandbox.load(&ctx).await;

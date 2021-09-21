@@ -130,3 +130,7 @@ pub async fn get_server_status<C: Client>(
 ) -> Result<ServersStatuses, RevaultDError> {
     revaultd.get_server_status()
 }
+
+pub async fn stop<C: Client>(revaultd: Arc<RevaultD<C>>) -> Result<(), RevaultDError> {
+    revaultd.stop()
+}
