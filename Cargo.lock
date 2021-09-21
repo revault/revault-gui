@@ -2562,6 +2562,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "revault_hwi"
+version = "0.1.0"
+dependencies = [
+ "bitcoin",
+ "futures 0.3.8",
+ "log",
+ "serde",
+ "serde_json",
+ "serialport",
+ "tokio",
+ "tokio-serde",
+ "tokio-serial",
+ "tokio-util",
+]
+
+[[package]]
 name = "revault_net"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2577,22 +2593,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "revault_hwi"
-version = "0.1.0"
-dependencies = [
- "bitcoin",
- "futures",
- "log",
- "serde",
- "serde_json",
- "serialport",
- "tokio",
- "tokio-serde",
- "tokio-serial",
- "tokio-util",
-]
-
-[[package]]
 name = "revault_tx"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2602,6 +2602,13 @@ dependencies = [
  "bitcoinconsensus",
  "miniscript",
  "serde",
+]
+
+[[package]]
+name = "revault_ui"
+version = "0.1.0"
+dependencies = [
+ "iced",
 ]
 
 [[package]]
@@ -2626,13 +2633,6 @@ dependencies = [
  "serde_json",
  "toml",
  "uds_windows 1.0.1",
-]
-
-[[package]]
-name = "revault_ui"
-version = "0.1.0"
-dependencies = [
- "iced",
 ]
 
 [[package]]
