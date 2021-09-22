@@ -3,6 +3,15 @@
 Revault GUI is an user graphical interface written in rust for the 
 [Revault daemon](https://github.com/revault/revaultd).
 
+## Dependencies
+
+- [`pkg-config`](https://www.freedesktop.org/wiki/Software/pkg-config/) (On Debian/Ubuntu `apt install pkg-config`)
+- [`libxkbcommon`](https://xkbcommon.org/) for the dummy signer (On Debian/Ubuntu `apt install libxkbcommon-dev`)
+- [Vulkan Loader](https://github.com/KhronosGroup/Vulkan-Loader) (On Debian/Ubuntu `apt install libvulkan-dev`)
+- `libudev-dev` (On Debian/Ubuntu `apt install libudev-dev`)
+
+We are striving to remove dependencies, especially the 3D ones.
+
 ## Usage
 
 `revault-gui --datadir <datadir> --<network>`
