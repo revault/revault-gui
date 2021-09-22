@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
+use log::{debug, error, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error, info, span, Level};
 
 pub mod jsonrpc;
 
@@ -48,9 +48,6 @@ pub struct RevaultD<C: Client> {
 
 impl<C: Client> RevaultD<C> {
     pub fn new(config: &Config, client: C) -> Result<RevaultD<C>, RevaultDError> {
-        let span = span!(Level::INFO, "revaultd");
-        let _enter = span.enter();
-
         let revaultd = RevaultD {
             client,
             config: config.to_owned(),
@@ -75,9 +72,7 @@ impl<C: Client> RevaultD<C> {
         method: &str,
         input: Option<T>,
     ) -> Result<U, RevaultDError> {
-        let span = span!(Level::INFO, "request");
-        let _guard = span.enter();
-        info!(method);
+        info!("{}", method);
         self.client.request(method, input).map_err(|e| {
             error!("method {} failed: {:?}", method, e);
             e.into()

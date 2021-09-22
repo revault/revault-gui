@@ -1,7 +1,6 @@
 use std::{error::Error, path::PathBuf, str::FromStr};
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
-use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
@@ -45,18 +44,18 @@ fn parse_args(args: Vec<String>) -> Result<Vec<Arg>, Box<dyn Error>> {
     Ok(res)
 }
 
-fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Error>> {
+fn log_level_from_config(config: &app::Config) -> Result<log::LevelFilter, Box<dyn Error>> {
     if let Some(level) = &config.log_level {
         match level.as_ref() {
-            "info" => EnvFilter::try_new("revault_gui=info").map_err(|e| e.into()),
-            "debug" => EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into()),
-            "trace" => EnvFilter::try_new("revault_gui=trace").map_err(|e| e.into()),
+            "info" => Ok(log::LevelFilter::Info),
+            "debug" => Ok(log::LevelFilter::Debug),
+            "trace" => Ok(log::LevelFilter::Trace),
             _ => Err(format!("Unknown loglevel '{:?}'.", level).into()),
         }
     } else if let Some(true) = config.debug {
-        EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into())
+        Ok(log::LevelFilter::Debug)
     } else {
-        EnvFilter::try_new("revault_gui=info").map_err(|e| e.into())
+        Ok(log::LevelFilter::Info)
     }
 }
 
@@ -139,24 +138,24 @@ impl Application for GUI {
         }
 
         if let Message::Load(loader::Message::DaemonStopped) = message {
-            tracing::info!("daemon stopped");
+            log::info!("daemon stopped");
             self.daemon_running = false;
             return Command::none();
         }
 
         if let Message::Load(loader::Message::Failure(e)) = message {
-            tracing::info!("daemon panic {}", e);
+            log::info!("daemon panic {}", e);
             self.daemon_running = false;
             return Command::none();
         }
 
         if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
-            tracing::info!("stopping daemon {:?}", res);
+            log::info!("stopping daemon {:?}", res);
             return Command::none();
         }
 
         if let Message::Run(app::Message::StoppingDaemon(res)) = message {
-            tracing::info!("stopping daemon {:?}", res);
+            log::info!("stopping daemon {:?}", res);
             return Command::none();
         }
 
@@ -275,14 +274,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let level = if let Config::Run(cfg) = &config {
         log_level_from_config(&cfg)?
     } else {
-        EnvFilter::try_new("revault_gui=info").unwrap()
+        log::LevelFilter::Info
     };
-
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(level)
-            .finish(),
-    )?;
+    setup_logger(level)?;
 
     let mut settings = Settings::with_flags(config);
     settings.exit_on_close_request = false;
@@ -290,6 +284,35 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = GUI::run(settings) {
         return Err(format!("Failed to launch UI: {}", e).into());
     };
+    Ok(())
+}
+
+// This creates the log file automagically if it doesn't exist, and logs on stdout
+// if None is given
+pub fn setup_logger(log_level: log::LevelFilter) -> Result<(), fern::InitError> {
+    let dispatcher = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}][{}] {}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_else(|e| {
+                        println!("Can't get time since epoch: '{}'. Using a dummy value.", e);
+                        std::time::Duration::from_secs(0)
+                    })
+                    .as_secs(),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log_level)
+        .level_for("iced_wgpu", log::LevelFilter::Off)
+        .level_for("gfx_backend_vulkan", log::LevelFilter::Off)
+        .level_for("naga", log::LevelFilter::Off);
+
+    dispatcher.chain(std::io::stdout()).apply()?;
+
     Ok(())
 }
 

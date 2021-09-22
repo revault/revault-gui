@@ -214,7 +214,7 @@ impl Signer<SpendTransactionTarget> {
                         }
                     }
                     Err(e) => {
-                        tracing::info!("{:?}", e);
+                        log::info!("{:?}", e);
                         self.error = Some(e);
                     }
                 }

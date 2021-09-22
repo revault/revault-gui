@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::thread::{Builder, JoinHandle};
 
-use tracing::{debug, info};
+use log::{debug, info};
 
 pub mod client;
 pub mod config;
@@ -9,7 +9,7 @@ pub mod model;
 
 use revaultd::{
     common::config::Config,
-    daemon::{daemon_main, setup_logger, setup_panic_hook, RevaultD},
+    daemon::{daemon_main, setup_panic_hook, RevaultD},
     revault_net::sodiumoxide,
     revault_tx::bitcoin::hashes::hex::ToHex,
 };
@@ -37,9 +37,6 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
 
     let config = Config::from_file(Some(config_path))
         .map_err(|e| DaemonError::StartError(format!("Error parsing config: {}", e)))?;
-
-    setup_logger(config.log_level)
-        .map_err(|e| DaemonError::StartError(format!("Error setting up logger: {}", e)))?;
 
     let revaultd = RevaultD::from_config(config)
         .map_err(|e| DaemonError::StartError(format!("Error creating global state: {}", e)))?;

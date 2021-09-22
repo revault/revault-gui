@@ -249,7 +249,7 @@ async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Err
 
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);
         RevaultD::new(cfg, client).map(Arc::new).map_err(|e| {
-            tracing::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
+            log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })
     }
