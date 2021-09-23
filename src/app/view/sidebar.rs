@@ -17,6 +17,7 @@ use crate::{
 pub struct Sidebar {
     pick_role: pick_list::State<Role>,
     deposit_menu_button: iced::button::State,
+    create_vault_button: iced::button::State,
     delegate_menu_button: iced::button::State,
     emergency_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
@@ -30,6 +31,7 @@ impl Sidebar {
     pub fn new() -> Self {
         Sidebar {
             deposit_menu_button: iced::button::State::new(),
+            create_vault_button: iced::button::State::new(),
             delegate_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
             emergency_menu_button: iced::button::State::new(),
@@ -101,23 +103,22 @@ impl Sidebar {
         };
 
         let mut actions = Column::new().spacing(15);
+        let deposit_button = if context.menu == Menu::Deposit {
+            button::primary(
+                &mut self.deposit_menu_button,
+                button::button_content(Some(deposit_icon()), "Deposit"),
+            )
+            .on_press(Message::Menu(Menu::Deposit))
+            .width(Length::Units(200))
+        } else {
+            button::transparent(
+                &mut self.deposit_menu_button,
+                button::button_content(Some(deposit_icon()), "Deposit"),
+            )
+            .on_press(Message::Menu(Menu::Deposit))
+            .width(Length::Units(200))
+        };
         if context.role == Role::Manager {
-            let deposit_button = if context.menu == Menu::Deposit {
-                button::primary(
-                    &mut self.deposit_menu_button,
-                    button::button_content(Some(deposit_icon()), "Deposit"),
-                )
-                .on_press(Message::Menu(Menu::Deposit))
-                .width(Length::Units(200))
-            } else {
-                button::transparent(
-                    &mut self.deposit_menu_button,
-                    button::button_content(Some(deposit_icon()), "Deposit"),
-                )
-                .on_press(Message::Menu(Menu::Deposit))
-                .width(Length::Units(200))
-            };
-
             actions = actions.push(deposit_button).push(Container::new(
                 button::transparent(
                     &mut self.spend_menu_button,
@@ -147,9 +148,10 @@ impl Sidebar {
                 )
             };
             actions = actions
+                .push(deposit_button)
                 .push(
                     button::transparent(
-                        &mut self.deposit_menu_button,
+                        &mut self.create_vault_button,
                         button::button_content(Some(plus_icon()), "Create vault"),
                     )
                     .on_press(Message::Menu(Menu::CreateVaults))

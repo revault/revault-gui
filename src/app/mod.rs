@@ -41,7 +41,7 @@ pub fn new_state(context: &Context, config: &Config) -> Box<dyn State> {
             _ => unreachable!(),
         },
         Role::Stakeholder => match context.menu {
-            Menu::Deposit => StakeholderHomeState::new().into(),
+            Menu::Deposit => DepositState::new().into(),
             Menu::Home => StakeholderHomeState::new().into(),
             Menu::Vaults => VaultsState::new().into(),
             Menu::CreateVaults => StakeholderCreateVaultsState::new().into(),
