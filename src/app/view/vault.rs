@@ -206,7 +206,7 @@ impl VaultOnChainTransactionsPanel {
                         Row::new()
                             .push(
                                 Container::new(text::simple(
-                                    "Do you want to delegate vault to manager ? ",
+                                    "Do you want to delegate the vault to the manager team? ",
                                 ))
                                 .width(Length::Fill),
                             )
