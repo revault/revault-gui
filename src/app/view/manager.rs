@@ -152,14 +152,14 @@ impl ManagerSendWelcomeView {
                                 .push(
                                     button::primary(
                                         &mut self.crate_transaction_button,
-                                        button::button_content(None, "Create spend transaction"),
+                                        button::button_content(None, "Initiate a spending"),
                                     )
                                     .on_press(Message::Next),
                                 )
                                 .push(
                                     button::primary(
                                         &mut self.import_transaction_button,
-                                        button::button_content(None, "Import spend transaction"),
+                                        button::button_content(None, "Participate in a spending"),
                                     )
                                     .on_press(Message::SpendTx(SpendTxMessage::Import)),
                                 )
