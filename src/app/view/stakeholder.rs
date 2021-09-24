@@ -8,7 +8,7 @@ use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
     ui::{
         component::{
-            button, card, scroll, separation, text, ContainerBackgroundStyle, TooltipStyle,
+            button, card, scroll, separation, text::Text, ContainerBackgroundStyle, TooltipStyle,
         },
         icon,
     },
@@ -45,18 +45,18 @@ impl StakeholderCreateVaultsView {
     ) -> Element<'a, Message> {
         let mut content = Column::new()
             .max_width(800)
-            .push(text::bold(text::simple("Create some vaults")).size(50))
+            .push(Text::new("Create some vaults").bold().size(50))
             .spacing(20);
 
         if !deposits.is_empty() {
             content = content.push(Container::new(
                 Column::new()
-                    .push(text::simple(" Click on a deposit to create a vault:"))
+                    .push(Text::new(" Click on a deposit to create a vault:"))
                     .push(Column::with_children(deposits).spacing(5))
                     .spacing(20),
             ))
         } else {
-            content = content.push(Container::new(text::simple("No deposits")).padding(5))
+            content = content.push(Container::new(Text::new("No deposits")).padding(5))
         }
 
         if let Some(qr_code) = self.qr_code.as_mut() {
@@ -66,19 +66,20 @@ impl StakeholderCreateVaultsView {
                         Row::new()
                             .push(
                                 Column::new()
-                                    .push(text::simple(
+                                    .push(Text::new(
                                         "Bitcoin deposits are needed in order to create a vault\n",
                                     ))
                                     .push(
                                         Column::new()
-                                            .push(text::bold(text::simple(
-                                                "Please, use this deposit address:",
-                                            )))
+                                            .push(
+                                                Text::new("Please, use this deposit address:")
+                                                    .bold(),
+                                            )
                                             .push(
                                                 Row::new()
-                                                    .push(Container::new(text::bold(text::small(
-                                                        &addr.to_string(),
-                                                    ))))
+                                                    .push(Container::new(
+                                                        Text::new(&addr.to_string()).bold().small(),
+                                                    ))
                                                     .push(
                                                         button::clipboard(
                                                             &mut self.copy_button,
@@ -109,7 +110,7 @@ impl StakeholderCreateVaultsView {
                             Tooltip::new(
                                 Row::new()
                                     .push(icon::tooltip_icon().size(15))
-                                    .push(text::small(" Help")),
+                                    .push(Text::new(" Help")),
                                 "A vault is a deposit with revocation transactions\nsigned and shared between stakeholders",
                                 tooltip::Position::Right,
                             )
@@ -162,7 +163,7 @@ impl StakeholderDelegateFundsView {
     ) -> Element<'a, Message> {
         let mut col = Column::new();
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::simple(&format!(
+            col = col.push(card::alert_warning(Container::new(Text::new(&format!(
                 "{}",
                 error
             )))))
@@ -171,7 +172,11 @@ impl StakeholderDelegateFundsView {
         col = col
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Delegate funds to your manager team")).size(50))
+                    .push(
+                        Text::new("Delegate funds to your manager team")
+                            .bold()
+                            .size(50),
+                    )
                     .spacing(5),
             )
             .push(
@@ -179,12 +184,11 @@ impl StakeholderDelegateFundsView {
                     .push(
                         Row::new()
                             .push(
-                                text::bold(text::simple(
-                                    &ctx.converter.converts(*active_balance).to_string(),
-                                ))
-                                .size(30),
+                                Text::new(&ctx.converter.converts(*active_balance).to_string())
+                                    .bold()
+                                    .size(30),
                             )
-                            .push(text::simple(&format!(
+                            .push(Text::new(&format!(
                                 " {} are allocated to managers",
                                 ctx.converter.unit
                             )))
@@ -193,13 +197,14 @@ impl StakeholderDelegateFundsView {
                     .push(
                         Row::new()
                             .push(
-                                text::bold(text::simple(&format!(
+                                Text::new(&format!(
                                     "+ {}",
                                     ctx.converter.converts(*activating_balance)
-                                )))
+                                ))
+                                .bold()
                                 .size(20),
                             )
-                            .push(text::simple(&format!(
+                            .push(Text::new(&format!(
                                 " {} are waiting for other stakeholders' approval",
                                 ctx.converter.unit
                             )))
@@ -209,14 +214,13 @@ impl StakeholderDelegateFundsView {
         if !vaults.is_empty() {
             col = col.push(Container::new(
                 Column::new()
-                    .push(text::simple(" Click on the vaults to delegate:"))
+                    .push(Text::new(" Click on the vaults to delegate:"))
                     .push(Column::with_children(vaults).spacing(5))
                     .spacing(20),
             ))
         } else {
             col = col.push(
-                Container::new(text::simple("No more funds can be delegated to managers"))
-                    .padding(5),
+                Container::new(Text::new("No more funds can be delegated to managers")).padding(5),
             )
         }
 
@@ -228,7 +232,7 @@ impl StakeholderDelegateFundsView {
                             Tooltip::new(
                                 Row::new()
                                     .push(icon::tooltip_icon().size(15))
-                                    .push(text::small(" Help")),
+                                    .push(Text::new(" Help").small()),
                                 "By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction.",
                                 tooltip::Position::Right,
                             )

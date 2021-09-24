@@ -7,7 +7,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
-    ui::component::{button, card, navbar, scroll, text},
+    ui::component::{button, card, navbar, scroll, text::Text},
 };
 
 /// DepositView is the view rendering the deposit panel.
@@ -43,9 +43,7 @@ impl DepositView {
     ) -> Element<'a, Message> {
         let mut col = Column::new().align_items(Align::Center).spacing(20);
         if address.is_some() {
-            col = col.push(text::bold(text::simple(
-                "Please, use this deposit address:",
-            )))
+            col = col.push(Text::new("Please, use this deposit address:").bold())
         }
         if let Some(qr_code) = self.qr_code.as_mut() {
             col = col.push(Container::new(QRCode::new(qr_code).cell_size(5)));
@@ -53,7 +51,7 @@ impl DepositView {
         if let Some(addr) = address {
             col = col.push(Container::new(
                 Row::new()
-                    .push(Container::new(text::bold(text::small(&addr.to_string()))))
+                    .push(Container::new(Text::new(&addr.to_string()).small()))
                     .push(
                         button::clipboard(
                             &mut self.copy_button,

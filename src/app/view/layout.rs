@@ -2,7 +2,7 @@ use crate::{
     app::error::Error,
     ui::{
         color,
-        component::{card, text},
+        component::{card, text::Text},
     },
 };
 
@@ -10,7 +10,7 @@ use iced::{container, Column, Container, Length, Row};
 
 pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
     if let Some(e) = warning {
-        return Some(card::alert_warning(Container::new(text::simple(&format!(
+        return Some(card::alert_warning(Container::new(Text::new(&format!(
             "{}",
             e
         )))));

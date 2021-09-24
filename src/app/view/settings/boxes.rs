@@ -4,7 +4,7 @@ use crate::{
     app::message::Message,
     ui::{
         color,
-        component::{badge, card, separation, text},
+        component::{badge, card, separation, text::Text},
         icon::dot_icon,
     },
 };
@@ -27,7 +27,7 @@ pub trait SettingsBox {
         title_row = title_row
             .push(
                 Row::new()
-                    .push(text::bold(text::simple(self.title())))
+                    .push(Text::new(self.title()).bold())
                     .width(Length::Fill),
             )
             .spacing(10)
@@ -38,14 +38,14 @@ pub trait SettingsBox {
                 Container::new(
                     Row::new()
                         .push(dot_icon().size(5).color(color::SUCCESS))
-                        .push(text::small("Running").color(color::SUCCESS))
+                        .push(Text::new("Running").small().color(color::SUCCESS))
                         .align_items(iced::Align::Center),
                 )
             } else {
                 Container::new(
                     Row::new()
                         .push(dot_icon().size(5).color(color::WARNING))
-                        .push(text::small("Not running").color(color::WARNING))
+                        .push(Text::new("Not running").small().color(color::WARNING))
                         .align_items(iced::Align::Center),
                 )
             };
@@ -166,8 +166,8 @@ impl SettingsBox for AdvancedBox {
         for (k, v) in rows {
             column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
+                    .push(Container::new(Text::new(k).small()).width(Length::Fill))
+                    .push(Text::new(&v)),
             );
         }
         column
@@ -199,32 +199,29 @@ impl SettingsBox for BitcoinCoreBox {
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let mut col = Column::new().spacing(20);
         if self.blockheight != 0 {
-            col =
-                col.push(
-                    Row::new()
-                        .push(
-                            Row::new()
-                                .push(badge::network())
-                                .push(Column::new().push(text::simple("Network:")).push(
-                                    text::bold(text::simple(
-                                        &config.bitcoind_config.network.to_string(),
-                                    )),
-                                ))
-                                .spacing(10)
-                                .width(Length::FillPortion(1)),
-                        )
-                        .push(
-                            Row::new()
-                                .push(badge::block())
-                                .push(
-                                    Column::new().push(text::simple("Block Height:")).push(
-                                        text::bold(text::simple(&self.blockheight.to_string())),
-                                    ),
-                                )
-                                .spacing(10)
-                                .width(Length::FillPortion(1)),
-                        ),
-                );
+            col = col.push(
+                Row::new()
+                    .push(
+                        Row::new()
+                            .push(badge::network())
+                            .push(Column::new().push(Text::new("Network:")).push(
+                                Text::new(&config.bitcoind_config.network.to_string()).bold(),
+                            ))
+                            .spacing(10)
+                            .width(Length::FillPortion(1)),
+                    )
+                    .push(
+                        Row::new()
+                            .push(badge::block())
+                            .push(
+                                Column::new()
+                                    .push(Text::new("Block Height:"))
+                                    .push(Text::new(&self.blockheight.to_string()).bold()),
+                            )
+                            .spacing(10)
+                            .width(Length::FillPortion(1)),
+                    ),
+            );
         }
 
         let config = &config.bitcoind_config;
@@ -247,8 +244,8 @@ impl SettingsBox for BitcoinCoreBox {
         for (k, v) in rows {
             column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
+                    .push(Container::new(Text::new(k).small()).width(Length::Fill))
+                    .push(Text::new(&v).small()),
             );
         }
 
@@ -294,8 +291,8 @@ impl SettingsBox for CoordinatorBox {
         for (k, v) in rows {
             column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
+                    .push(Container::new(Text::new(k).small()).width(Length::Fill))
+                    .push(Text::new(&v).small()),
             );
         }
         column
@@ -343,8 +340,8 @@ impl SettingsBox for CosignerBox {
         for (k, v) in rows {
             column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
+                    .push(Container::new(Text::new(k).small()).width(Length::Fill))
+                    .push(Text::new(&v).small()),
             );
         }
         column
@@ -391,8 +388,8 @@ impl SettingsBox for WatchtowerBox {
         for (k, v) in rows {
             column = column.push(
                 Row::new()
-                    .push(Container::new(text::small(k)).width(Length::Fill))
-                    .push(text::small(&v)),
+                    .push(Container::new(Text::new(k).small()).width(Length::Fill))
+                    .push(Text::new(&v).small()),
             );
         }
         column

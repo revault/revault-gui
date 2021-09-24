@@ -14,7 +14,7 @@ use crate::{
     },
     daemon::model,
     ui::{
-        component::{button, card, form, scroll, separation, text, ContainerBackgroundStyle},
+        component::{button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle},
         icon::trash_icon,
     },
 };
@@ -45,8 +45,8 @@ impl ManagerImportTransactionView {
     ) -> Element<'a, Message> {
         let mut col = Column::new()
             .spacing(20)
-            .push(text::bold(text::simple("Import spend transaction")))
-            .push(text::simple("Enter PSBT:"))
+            .push(Text::new("Import spend transaction").bold())
+            .push(Text::new("Enter PSBT:"))
             .push(
                 TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
                     Message::SpendTx(SpendTxMessage::PsbtEdited(p))
@@ -56,13 +56,15 @@ impl ManagerImportTransactionView {
                 .padding(10),
             );
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::small(error))))
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(error).small(),
+            )))
         }
 
         if let Some(psbt) = psbt_imported {
             col = col.push(card::success(Container::new(
                 Column::new()
-                    .push(text::simple("Transaction imported"))
+                    .push(Text::new("Transaction imported"))
                     .push(
                         button::success(
                             &mut self.import_button,
@@ -237,7 +239,7 @@ impl ManagerSelectOutputsView {
             .push(
                 button::cancel(
                     &mut self.new_output_button,
-                    Container::new(text::simple("Add recipient"))
+                    Container::new(Text::new("Add recipient"))
                         .width(Length::Units(200))
                         .align_x(Align::Center)
                         .padding(10),
@@ -249,7 +251,7 @@ impl ManagerSelectOutputsView {
             footer = footer.push(Container::new(
                 button::primary(
                     &mut self.next_button,
-                    Container::new(text::simple("Continue"))
+                    Container::new(Text::new("Continue"))
                         .width(Length::Units(200))
                         .align_x(Align::Center)
                         .padding(10),
@@ -259,7 +261,7 @@ impl ManagerSelectOutputsView {
         } else {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
-                Container::new(text::simple("Continue"))
+                Container::new(Text::new("Continue"))
                     .width(Length::Units(200))
                     .align_x(Align::Center)
                     .padding(10),
@@ -271,7 +273,7 @@ impl ManagerSelectOutputsView {
             Column::new()
                 .push(header)
                 .push(
-                    Container::new(text::bold(text::simple("Add recipients")))
+                    Container::new(Text::new("Add recipients").bold())
                         .width(Length::Fill)
                         .align_x(Align::Center),
                 )
@@ -296,7 +298,7 @@ impl ManagerSelectOutputsView {
                     Container::new(
                         Column::new()
                             .push(
-                                Container::new(card::alert_warning(Container::new(text::simple(
+                                Container::new(card::alert_warning(Container::new(Text::new(
                                     "Please merge recipients with the same address",
                                 ))))
                                 .width(Length::Fill)
@@ -408,7 +410,7 @@ impl ManagerSelectInputsView {
                     .push(
                         button::transparent(
                             &mut self.back_button,
-                            Container::new(text::simple("< Go back"))
+                            Container::new(Text::new("< Go back"))
                                 .padding(10)
                                 .width(Length::Units(100))
                                 .align_x(Align::Center),
@@ -445,14 +447,14 @@ impl ManagerSelectInputsView {
 
         let mut footer = Column::new().spacing(10).align_items(Align::Center);
         if let Some(error) = warning {
-            footer = footer.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            footer = footer.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
         if input_amount < output_amount {
             footer = footer.push(Container::new(button::primary_disable(
                 &mut self.next_button,
-                Container::new(text::simple(&format!(
+                Container::new(Text::new(&format!(
                     "Missing {} {}",
                     &ctx.converter.converts(output_amount - input_amount),
                     ctx.converter.unit
@@ -465,7 +467,7 @@ impl ManagerSelectInputsView {
             footer = footer.push(Container::new(
                 button::primary(
                     &mut self.next_button,
-                    Container::new(text::simple("Continue"))
+                    Container::new(Text::new("Continue"))
                         .padding(10)
                         .width(Length::Units(200))
                         .align_x(Align::Center),
@@ -478,11 +480,14 @@ impl ManagerSelectInputsView {
             Column::new()
                 .push(header)
                 .push(
-                    Container::new(text::bold(text::simple(&format!(
-                        "Select coins worth at least {} {}",
-                        &ctx.converter.converts(output_amount),
-                        ctx.converter.unit
-                    ))))
+                    Container::new(
+                        Text::new(&format!(
+                            "Select coins worth at least {} {}",
+                            &ctx.converter.converts(output_amount),
+                            ctx.converter.unit
+                        ))
+                        .bold(),
+                    )
                     .width(Length::Fill)
                     .align_x(Align::Center),
                 )
@@ -530,16 +535,17 @@ pub fn manager_send_input_view<'a>(
         .push(
             Container::new(
                 Row::new()
-                    .push(text::bold(text::simple(&format!(
-                        "{}",
-                        ctx.converter.converts(*amount)
-                    ))))
-                    .push(text::small(&ctx.converter.unit.to_string()))
+                    .push(Text::new(&format!("{}", ctx.converter.converts(*amount))).bold())
+                    .push(Text::new(&ctx.converter.unit.to_string()).small())
                     .align_items(Align::Center),
             )
             .width(Length::Fill),
         )
-        .push((Column::new().push(text::bold(text::small(outpoint)))).width(Length::Shrink))
+        .push(
+            Column::new()
+                .push(Text::new(outpoint).bold().small())
+                .width(Length::Shrink),
+        )
         .align_items(Align::Center)
         .spacing(20);
     card::white(Container::new(row)).width(Length::Fill).into()
@@ -581,7 +587,7 @@ impl ManagerSelectFeeView {
                     .push(
                         button::transparent(
                             &mut self.back_button,
-                            Container::new(text::simple("< Go back"))
+                            Container::new(Text::new("< Go back"))
                                 .padding(10)
                                 .width(Length::Units(100))
                                 .align_x(Align::Center),
@@ -607,7 +613,7 @@ impl ManagerSelectFeeView {
         let fee_button = if valid_feerate {
             button::primary(
                 &mut self.generate_button,
-                Container::new(text::simple("Continue"))
+                Container::new(Text::new("Continue"))
                     .padding(10)
                     .width(Length::Units(200))
                     .align_x(Align::Center),
@@ -616,7 +622,7 @@ impl ManagerSelectFeeView {
         } else {
             button::primary_disable(
                 &mut self.generate_button,
-                Container::new(text::simple("Continue"))
+                Container::new(Text::new("Continue"))
                     .padding(10)
                     .width(Length::Units(200))
                     .align_x(Align::Center),
@@ -625,7 +631,7 @@ impl ManagerSelectFeeView {
 
         let mut col_fee = Column::new()
             .push(
-                Container::new(text::bold(text::simple("Select fee")))
+                Container::new(Text::new("Select fee").bold())
                     .width(Length::Fill)
                     .align_x(Align::Center),
             )
@@ -644,7 +650,7 @@ impl ManagerSelectFeeView {
                             .width(Length::Units(70))
                             .padding(10),
                         )
-                        .push(text::simple("sats/vbyte"))
+                        .push(Text::new("sats/vbyte"))
                         .spacing(5)
                         .align_items(Align::Center),
                 )
@@ -654,9 +660,9 @@ impl ManagerSelectFeeView {
             .align_items(Align::Center);
 
         if let Some(error) = warning {
-            col_fee = col_fee.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col_fee = col_fee.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         col_fee = col_fee.push(fee_button);
@@ -694,23 +700,30 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
 ) -> Container<'a, T> {
     let mut total_fees = 0;
     let mut col_input = Column::new()
-        .push(text::bold(text::simple(&format!(
-            "{} {} consumed",
-            inputs.len(),
-            if inputs.len() == 1 { "Vault" } else { "Vaults" }
-        ))))
+        .push(
+            Text::new(&format!(
+                "{} {} consumed",
+                inputs.len(),
+                if inputs.len() == 1 { "Vault" } else { "Vaults" }
+            ))
+            .bold(),
+        )
         .spacing(10);
 
     for input in inputs {
         total_fees += input.amount;
         col_input = col_input.push(card::simple(Container::new(
             Row::new()
-                .push(Container::new(text::small(&input.address.to_string())).width(Length::Fill))
                 .push(
-                    Container::new(text::bold(text::small(&format!(
-                        "{}",
-                        ctx.converter.converts(input.amount),
-                    ))))
+                    Container::new(Text::new(&input.address.to_string()).small())
+                        .width(Length::Fill),
+                )
+                .push(
+                    Container::new(
+                        Text::new(&format!("{}", ctx.converter.converts(input.amount)))
+                            .bold()
+                            .small(),
+                    )
                     .width(Length::Shrink),
                 )
                 .spacing(5)
@@ -726,15 +739,18 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     };
 
     let mut col_output = Column::new()
-        .push(text::bold(text::simple(&format!(
-            "{} {}",
-            number_recipients,
-            if number_recipients == 1 {
-                "Recipient"
-            } else {
-                "Recipients"
-            }
-        ))))
+        .push(
+            Text::new(&format!(
+                "{} {}",
+                number_recipients,
+                if number_recipients == 1 {
+                    "Recipient"
+                } else {
+                    "Recipients"
+                }
+            ))
+            .bold(),
+        )
         .spacing(10);
     for (i, output) in psbt.global.unsigned_tx.output.iter().enumerate() {
         if i == cpfp_index {
@@ -754,14 +770,15 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network).unwrap();
         col_output = col_output.push(card::simple(Container::new(
             Row::new()
-                .push(Container::new(text::small(&addr.to_string())).width(Length::Fill))
-                .push(Container::new(
-                    text::bold(text::small(&format!(
-                        "{}",
-                        ctx.converter.converts(output.value)
-                    )))
+                .push(Container::new(Text::new(&addr.to_string()).small()).width(Length::Fill))
+                .push(
+                    Container::new(
+                        Text::new(&format!("{}", ctx.converter.converts(output.value)))
+                            .bold()
+                            .small(),
+                    )
                     .width(Length::Shrink),
-                ))
+                )
                 .spacing(5)
                 .align_items(Align::Center),
         )));
@@ -770,8 +787,8 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     if let Some(feerate) = feerate {
         column_fee = column_fee.push(
             Row::new()
-                .push(text::simple("Feerate: "))
-                .push(text::bold(text::simple(&format!("{} sats/vbyte", feerate)))),
+                .push(Text::new("Feerate: "))
+                .push(Text::new(&format!("{} sats/vbyte", feerate)).bold()),
         )
     }
 
@@ -782,19 +799,24 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
         Column::new()
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Change")))
+                    .push(Text::new("Change").bold())
                     .push(card::simple(Container::new(
                         Row::new()
                             .push(
-                                Container::new(text::small(&addr.to_string())).width(Length::Fill),
+                                Container::new(Text::new(&addr.to_string()).small())
+                                    .width(Length::Fill),
                             )
-                            .push(Container::new(
-                                text::bold(text::small(&format!(
-                                    "{}",
-                                    ctx.converter.converts(change_output.value)
-                                )))
+                            .push(
+                                Container::new(
+                                    Text::new(&format!(
+                                        "{}",
+                                        ctx.converter.converts(change_output.value)
+                                    ))
+                                    .bold()
+                                    .small(),
+                                )
                                 .width(Length::Shrink),
-                            ))
+                            )
                             .spacing(5)
                             .align_items(Align::Center),
                     )))
@@ -811,12 +833,9 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
             .push(
                 column_fee.push(
                     Row::new()
-                        .push(text::simple("Total fees: "))
-                        .push(text::bold(text::simple(&format!(
-                            "{}",
-                            ctx.converter.converts(total_fees)
-                        ))))
-                        .push(text::simple(&format!(" {}", ctx.converter.unit))),
+                        .push(Text::new("Total fees: "))
+                        .push(Text::new(&format!("{}", ctx.converter.converts(total_fees))).bold())
+                        .push(Text::new(&format!(" {}", ctx.converter.unit))),
                 ),
             )
             .push(
@@ -864,7 +883,7 @@ impl ManagerSignView {
                     .push(
                         button::transparent(
                             &mut self.back_button,
-                            Container::new(text::simple("< Go back"))
+                            Container::new(Text::new("< Go back"))
                                 .padding(10)
                                 .width(Length::Units(100))
                                 .align_x(Align::Center),
@@ -900,16 +919,16 @@ impl ManagerSignView {
             .spacing(20)
             .max_width(1000);
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
         col = col.push(card::white(Container::new(signer)));
         Container::new(
             Column::new()
                 .push(header)
                 .push(
-                    Container::new(text::bold(text::simple("Sign transaction")))
+                    Container::new(Text::new("Sign transaction").bold())
                         .width(Length::Fill)
                         .align_x(Align::Center),
                 )
@@ -1004,7 +1023,7 @@ impl ManagerSpendTransactionCreatedView {
                 .push(
                     card::success(Container::new(
                         Column::new()
-                            .push(text::simple("Your transaction has been saved"))
+                            .push(Text::new("Your transaction has been saved"))
                             .push(
                                 button::success(
                                     &mut self.next_button,

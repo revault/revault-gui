@@ -3,7 +3,7 @@ use iced::{
     Column, Container, Length,
 };
 
-use crate::ui::{color, component::text};
+use crate::ui::{color, component::text::Text};
 
 #[derive(Debug, Clone)]
 pub struct Value<T> {
@@ -77,7 +77,7 @@ where
                 return Container::new(
                     Column::with_children(vec![
                         self.input.style(InvalidFormStyle).into(),
-                        text::small(&message).color(color::WARNING).into(),
+                        Text::new(&message).small().color(color::WARNING).into(),
                     ])
                     .width(Length::Fill)
                     .spacing(5),

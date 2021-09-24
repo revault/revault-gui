@@ -7,7 +7,9 @@ use crate::{
         error::Error,
         message::{Message, SignMessage, VaultMessage},
     },
-    ui::component::{badge, button, card, scroll, separation, text, ContainerBackgroundStyle},
+    ui::component::{
+        badge, button, card, scroll, separation, text::Text, ContainerBackgroundStyle,
+    },
 };
 
 use crate::{
@@ -42,9 +44,9 @@ impl VaultModal {
         let mut col = Column::new();
         if let Some(error) = warning {
             col = col.push(
-                Container::new(card::alert_warning(Container::new(text::small(
-                    &error.to_string(),
-                ))))
+                Container::new(card::alert_warning(Container::new(
+                    Text::new(&error.to_string()).small(),
+                )))
                 .padding(20),
             )
         }
@@ -64,7 +66,7 @@ impl VaultModal {
                         Container::new(
                             Column::new()
                                 .push(
-                                    Container::new(text::simple(&panel_title))
+                                    Container::new(Text::new(&panel_title))
                                         .width(Length::Fill)
                                         .align_x(Align::Center),
                                 )
@@ -109,20 +111,18 @@ fn vault<'a>(
                                     Column::new()
                                         .push(
                                             Row::new()
-                                                .push(text::bold(text::simple(
-                                                    &vlt.txid.to_string(),
-                                                )))
+                                                .push(Text::new(&vlt.txid.to_string()).bold())
                                                 .push(button::clipboard(
                                                     copy_button,
                                                     Message::Clipboard(vlt.txid.to_string()),
                                                 ))
                                                 .align_items(Align::Center),
                                         )
-                                        .push(text::simple(&format!(
+                                        .push(Text::new(&format!(
                                             "received at {}",
                                             NaiveDateTime::from_timestamp(vlt.received_at, 0)
                                         )))
-                                        .push(text::simple(&format!(
+                                        .push(Text::new(&format!(
                                             "{} ( {} )",
                                             &vlt.status,
                                             NaiveDateTime::from_timestamp(vlt.updated_at, 0)
@@ -136,11 +136,11 @@ fn vault<'a>(
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(vlt.amount),
-                                ))))
-                                .push(text::simple(&ctx.converter.unit.to_string())),
+                                .push(
+                                    Text::new(&format!("{}", ctx.converter.converts(vlt.amount),))
+                                        .bold(),
+                                )
+                                .push(Text::new(&ctx.converter.unit.to_string())),
                         )
                         .width(Length::Shrink),
                     )
@@ -183,7 +183,7 @@ impl VaultOnChainTransactionsPanel {
                     col = col.push(card::white(Container::new(
                         Row::new()
                             .push(
-                                Container::new(text::simple(
+                                Container::new(Text::new(
                                     "Do you want to create a vault from this deposit?",
                                 ))
                                 .width(Length::Fill),
@@ -205,7 +205,7 @@ impl VaultOnChainTransactionsPanel {
                     col = col.push(card::white(Container::new(
                         Row::new()
                             .push(
-                                Container::new(text::simple(
+                                Container::new(Text::new(
                                     "Do you want to delegate the vault to the manager team? ",
                                 ))
                                 .width(Length::Fill),
@@ -227,7 +227,7 @@ impl VaultOnChainTransactionsPanel {
                     col = col.push(card::white(Container::new(
                         Row::new()
                             .push(
-                                Container::new(text::simple(
+                                Container::new(Text::new(
                                     "Funds are moving, do you want to revault them?",
                                 ))
                                 .width(Length::Fill),
@@ -252,10 +252,8 @@ impl VaultOnChainTransactionsPanel {
             col = col.push(card::white(Container::new(
                 Row::new()
                     .push(
-                        Container::new(text::simple(
-                            "Funds are moving, do you want to revault them?",
-                        ))
-                        .width(Length::Fill),
+                        Container::new(Text::new("Funds are moving, do you want to revault them?"))
+                            .width(Length::Fill),
                     )
                     .push(
                         Container::new(
@@ -271,9 +269,7 @@ impl VaultOnChainTransactionsPanel {
             )))
         }
 
-        col = col.push(Container::new(text::bold(text::simple(
-            "Onchain transactions:",
-        ))));
+        col = col.push(Container::new(Text::new("Onchain transactions:").bold()));
         if let Some(tx) = &txs.spend {
             col = col.push(transaction(ctx, "Spend transaction", &tx));
         }
@@ -306,27 +302,29 @@ fn transaction<'a, T: 'a>(
                 Column::new()
                     .push(
                         Row::new()
+                            .push(Container::new(Text::new(title).bold()).width(Length::Fill))
                             .push(
-                                Container::new(text::bold(text::simple(title))).width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(text::bold(text::small(
-                                    &transaction.tx.txid().to_string(),
-                                )))
+                                Container::new(
+                                    Text::new(&transaction.tx.txid().to_string()).bold().small(),
+                                )
                                 .width(Length::Shrink),
                             ),
                     )
-                    .push(text::small(&format!(
-                        "Received at {}",
-                        NaiveDateTime::from_timestamp(transaction.received_at, 0)
-                    )))
-                    .push(text::small(
-                        &if let Some(blockheight) = &transaction.blockheight {
+                    .push(
+                        Text::new(&format!(
+                            "Received at {}",
+                            NaiveDateTime::from_timestamp(transaction.received_at, 0)
+                        ))
+                        .small(),
+                    )
+                    .push(
+                        Text::new(&if let Some(blockheight) = &transaction.blockheight {
                             format!("Blockheight: {}", blockheight)
                         } else {
                             "Not in a block".to_string()
-                        },
-                    )),
+                        })
+                        .small(),
+                    ),
             )
             .push(
                 Container::new(input_and_outputs(ctx, &transaction))
@@ -341,36 +339,35 @@ fn input_and_outputs<'a, T: 'a>(
     ctx: &Context,
     broadcasted: &BroadcastedTransaction,
 ) -> Container<'a, T> {
-    let mut col_input = Column::new()
-        .push(text::bold(text::simple("Inputs")))
-        .spacing(10);
+    let mut col_input = Column::new().push(Text::new("Inputs").bold()).spacing(10);
     for input in &broadcasted.tx.input {
         col_input = col_input
             .push(
-                card::simple(Container::new(text::small(&format!(
-                    "{}",
-                    input.previous_output
-                ))))
+                card::simple(Container::new(
+                    Text::new(&format!("{}", input.previous_output)).small(),
+                ))
                 .width(Length::Fill),
             )
             .width(Length::FillPortion(1));
     }
-    let mut col_output = Column::new()
-        .push(text::bold(text::simple("Outputs")))
-        .spacing(10);
+    let mut col_output = Column::new().push(Text::new("Outputs").bold()).spacing(10);
     for output in &broadcasted.tx.output {
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
         let mut col = Column::new();
         if let Some(a) = addr {
-            col = col.push(text::small(&a.to_string()))
+            col = col.push(Text::new(&a.to_string()).small())
         } else {
-            col = col.push(text::small(&output.script_pubkey.to_string()))
+            col = col.push(Text::new(&output.script_pubkey.to_string()).small())
         }
         col_output = col_output
             .push(
-                card::simple(Container::new(col.push(text::bold(text::small(
-                    &ctx.converter.converts(output.value).to_string(),
-                )))))
+                card::simple(Container::new(
+                    col.push(
+                        Text::new(&ctx.converter.converts(output.value).to_string())
+                            .bold()
+                            .small(),
+                    ),
+                ))
                 .width(Length::Fill),
             )
             .width(Length::FillPortion(1));
@@ -428,11 +425,14 @@ impl VaultView for VaultListItemView {
                                 .push(vault_badge(&vault))
                                 .push(
                                     Column::new()
-                                        .push(text::bold(text::small(&vault.outpoint())))
-                                        .push(text::small(&format!(
-                                            "{} ( {} )",
-                                            &vault.status, updated_at
-                                        ))),
+                                        .push(Text::new(&vault.outpoint()).bold().small())
+                                        .push(
+                                            Text::new(&format!(
+                                                "{} ( {} )",
+                                                &vault.status, updated_at
+                                            ))
+                                            .small(),
+                                        ),
                                 )
                                 .spacing(20),
                         )
@@ -441,11 +441,13 @@ impl VaultView for VaultListItemView {
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(vault.amount),
-                                ))))
-                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .push(
+                                    Text::new(
+                                        &format!("{}", ctx.converter.converts(vault.amount),),
+                                    )
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
                         .width(Length::Shrink),
@@ -489,10 +491,8 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
                     Row::new()
                         .push(badge::shield_success())
                         .push(
-                            Container::new(text::success(text::bold(text::small(
-                                &deposit.address,
-                            ))))
-                            .align_y(Align::Center),
+                            Container::new(Text::new(&deposit.address).small().bold().success())
+                                .align_y(Align::Center),
                         )
                         .spacing(20)
                         .align_items(Align::Center),
@@ -502,11 +502,12 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
             .push(
                 Container::new(
                     Row::new()
-                        .push(text::success(text::bold(text::simple(&format!(
-                            "{}",
-                            ctx.converter.converts(deposit.amount),
-                        )))))
-                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                        .push(
+                            Text::new(&format!("{}", ctx.converter.converts(deposit.amount)))
+                                .success()
+                                .bold(),
+                        )
+                        .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                         .align_items(Align::Center),
                 )
                 .width(Length::Shrink),
@@ -532,7 +533,7 @@ fn vault_ack_pending<'a>(
                             Row::new()
                                 .push(badge::shield_notif())
                                 .push(
-                                    Container::new(text::bold(text::small(&deposit.address)))
+                                    Container::new(Text::new(&deposit.address).small().bold())
                                         .align_y(Align::Center),
                                 )
                                 .spacing(20)
@@ -543,11 +544,14 @@ fn vault_ack_pending<'a>(
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(deposit.amount),
-                                ))))
-                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .push(
+                                    Text::new(&format!(
+                                        "{}",
+                                        ctx.converter.converts(deposit.amount),
+                                    ))
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
                         .width(Length::Shrink),
@@ -595,7 +599,7 @@ fn vault_delegate<'a>(
                             Row::new()
                                 .push(badge::person_check())
                                 .push(
-                                    Container::new(text::bold(text::small(&deposit.address)))
+                                    Container::new(Text::new(&deposit.address).small().bold())
                                         .align_y(Align::Center),
                                 )
                                 .spacing(20)
@@ -606,11 +610,14 @@ fn vault_delegate<'a>(
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(deposit.amount),
-                                ))))
-                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .push(
+                                    Text::new(&format!(
+                                        "{}",
+                                        ctx.converter.converts(deposit.amount),
+                                    ))
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
                         .width(Length::Shrink),
@@ -647,7 +654,7 @@ impl SecureVaultView {
                             Row::new()
                                 .push(badge::shield())
                                 .push(
-                                    Container::new(text::bold(text::small(&deposit.address)))
+                                    Container::new(Text::new(&deposit.address).bold().small())
                                         .align_y(Align::Center),
                                 )
                                 .spacing(20)
@@ -658,11 +665,14 @@ impl SecureVaultView {
                     .push(
                         Container::new(
                             Row::new()
-                                .push(text::bold(text::simple(&format!(
-                                    "{}",
-                                    ctx.converter.converts(deposit.amount)
-                                ))))
-                                .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                .push(
+                                    Text::new(&format!(
+                                        "{}",
+                                        ctx.converter.converts(deposit.amount)
+                                    ))
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
                         .width(Length::Shrink),
@@ -678,7 +688,7 @@ impl SecureVaultView {
         if let Some(error) = warning {
             col = col.push(card::alert_warning(Container::new(
                 Column::new()
-                    .push(Container::new(text::simple(&format!(
+                    .push(Container::new(Text::new(&format!(
                         "Failed to connect to revaultd: {}",
                         error
                     ))))
@@ -711,20 +721,20 @@ impl DelegateVaultView {
     ) -> Element<'a, Message> {
         let mut col = Column::new();
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
         col.push(button::transparent(
                 &mut self.back_button,
-                Container::new(text::small("< vault transactions")),
+                Container::new(Text::new("< vault transactions").small()),
             ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
             .push(card::white(Container::new(
                 Column::new()
                     .push(
                         Column::new()
-                            .push(text::bold(text::simple("Delegate vault to manager")))
-                            .push(text::simple("the unvault transaction must be signed in order to delegate the fund to the managers.")),
+                            .push(Text::new("Delegate vault to manager").bold())
+                            .push(Text::new("the unvault transaction must be signed in order to delegate the fund to the managers.")),
                     )
                     .push(signer.map(move |msg| match msg {
                         _ => Message::Vault(VaultMessage::Delegate(msg)),
@@ -762,28 +772,28 @@ impl RevaultVaultView {
     ) -> Element<'a, Message> {
         let mut col = Column::new();
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         let button_broadcast_action = if *processing {
-            col = col.push(text::simple("waiting for revauld..."));
+            col = col.push(Text::new("waiting for revauld..."));
             button::primary(
                 &mut self.broadcast_button,
                 button::button_content(None, "Broadcasting"),
             )
         } else if *success {
-            col = col.push(text::simple("The cancel transaction is broadcasted"));
+            col = col.push(Text::new("The cancel transaction is broadcasted"));
             button::success(
                 &mut self.broadcast_button,
                 button::button_content(None, "Broadcasted"),
             )
         } else {
             col = col
-                .push(text::bold(text::simple("Revault vault")))
-                .push(text::simple("The cancel transaction will be broadcast"))
-                .push(text::simple("Are you sure to revault ?"));
+                .push(Text::new("Revault vault").bold())
+                .push(Text::new("The cancel transaction will be broadcast"))
+                .push(Text::new("Are you sure to revault ?"));
             button::primary(
                 &mut self.broadcast_button,
                 button::button_content(None, "Yes Revault"),
@@ -799,7 +809,7 @@ impl RevaultVaultView {
             .push(
                 button::transparent(
                     &mut self.back_button,
-                    Container::new(text::small("< vault transactions")),
+                    Container::new(Text::new("< vault transactions").small()),
                 )
                 .on_press(Message::Vault(VaultMessage::ListOnchainTransaction)),
             )

@@ -12,7 +12,7 @@ use crate::{
         config::{Config, ConfigError},
         start_daemon, StartDaemonError,
     },
-    ui::component::{image::revault_colored_logo, text},
+    ui::component::{image::revault_colored_logo, text::Text},
 };
 
 pub struct Loader {
@@ -139,12 +139,12 @@ impl Loader {
 
     pub fn view(&mut self) -> Element<Message> {
         match &mut self.step {
-            Step::StartingDaemon => cover(text::paragraph("Starting daemon...")),
-            Step::Connecting => cover(text::paragraph("Connecting to daemon...")),
+            Step::StartingDaemon => cover(Text::new("Starting daemon...")),
+            Step::Connecting => cover(Text::new("Connecting to daemon...")),
             Step::Syncing { progress, .. } => {
-                cover(text::paragraph(&format!("Syncing... {}%", progress)))
+                cover(Text::new(&format!("Syncing... {}%", progress)))
             }
-            Step::Error { error } => cover(text::paragraph(&format!("Error: {}", error))),
+            Step::Error { error } => cover(Text::new(&format!("Error: {}", error))),
         }
     }
 
@@ -156,7 +156,7 @@ impl Loader {
     }
 }
 
-pub fn cover<'a, T: 'a>(content: Container<'a, T>) -> Element<'a, T> {
+pub fn cover<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Element<'a, T> {
     Column::new()
         .push(Container::new(
             revault_colored_logo()

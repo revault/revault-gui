@@ -8,7 +8,8 @@ use crate::{
     revault::Role,
     ui::{
         component::{
-            button, card, form, image::revault_colored_logo, scroll, text, ContainerBackgroundStyle,
+            button, card, form, image::revault_colored_logo, scroll, text::Text,
+            ContainerBackgroundStyle,
         },
         icon,
     },
@@ -179,7 +180,7 @@ impl DefinePrivateNoiseKey {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill your private noise key:")).size(50))
+                .push(Text::new("Fill your private noise key:").bold().size(50))
                 .push(
                     Column::new().spacing(10).push(
                         form::Form::new(&mut self.key_input, "", key, Message::PrivateNoiseKey)
@@ -229,10 +230,10 @@ impl DefineStakeholderXpubsAsStakeholder {
         warning: Option<&String>,
     ) -> Element<'a, Message> {
         let mut content = Column::new()
-            .push(text::bold(text::simple("Stakeholders information")).size(50))
+            .push(Text::new("Stakeholders information").bold().size(50))
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Your stakeholder xpub:")))
+                    .push(Text::new("Your stakeholder xpub:").bold())
                     .push(
                         form::Form::new(
                             &mut self.our_xpub_input,
@@ -254,7 +255,7 @@ impl DefineStakeholderXpubsAsStakeholder {
             .push(
                 Column::new()
                     .spacing(10)
-                    .push(text::bold(text::simple("Other stakeholders xpubs:")))
+                    .push(Text::new("Other stakeholders xpubs:").bold())
                     .push(Column::with_children(other_xpubs).spacing(10))
                     .push(
                         Container::new(
@@ -284,7 +285,7 @@ impl DefineStakeholderXpubsAsStakeholder {
             );
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
         }
 
         layout(
@@ -324,7 +325,7 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
 
     let mut content = Column::new()
         .spacing(10)
-        .push(text::bold(text::simple("Stakeholders xpubs:")))
+        .push(Text::new("Stakeholders xpubs:").bold())
         .push(Column::with_children(stakeholder_xpubs).spacing(10))
         .push(
             Container::new(
@@ -340,14 +341,14 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
         );
 
     if let Some(error) = warning {
-        content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+        content = content.push(card::alert_warning(Container::new(Text::new(&error))));
     }
 
     layout(
         scroll,
         previous_button,
         Column::new()
-            .push(text::bold(text::simple("Stakeholders information")).size(50))
+            .push(Text::new("Stakeholders information").bold().size(50))
             .push(content)
             .push(row)
             .width(Length::Fill)
@@ -374,16 +375,16 @@ impl ManagersThreshold {
 
     pub fn render(&mut self, managers_threshold: &form::Value<usize>) -> Container<Message> {
         let mut col = Column::new()
-            .push(text::bold(text::simple("Managers threshold:")))
+            .push(Text::new("Managers threshold:").bold())
             .push(
                 Row::new()
-                    .push(text::simple(&format!("{}", managers_threshold.value)).size(50))
+                    .push(Text::new(&format!("{}", managers_threshold.value)).size(50))
                     .push(
                         Column::new()
                             .push(
                                 button::transparent(
                                     &mut self.increment_button,
-                                    Container::new(text::simple("+")),
+                                    Container::new(Text::new("+")),
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
@@ -396,7 +397,7 @@ impl ManagersThreshold {
                             .push(
                                 button::transparent(
                                     &mut self.decrement_button,
-                                    Container::new(text::simple("-")),
+                                    Container::new(Text::new("-")),
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
@@ -415,9 +416,9 @@ impl ManagersThreshold {
             .spacing(10);
 
         if !managers_threshold.valid {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                "Impossible threshold",
-            ))))
+            col = col.push(card::alert_warning(Container::new(
+                Text::new("Impossible threshold").small(),
+            )))
         }
         Container::new(col)
     }
@@ -438,16 +439,16 @@ impl SpendingDelay {
 
     pub fn render(&mut self, spending_delay: &form::Value<u32>) -> Container<Message> {
         let mut col = Column::new()
-            .push(text::bold(text::simple("Spending delay in blocks:")))
+            .push(Text::new("Spending delay in blocks:").bold())
             .push(
                 Row::new()
-                    .push(text::simple(&format!("{}", spending_delay.value)).size(50))
+                    .push(Text::new(&format!("{}", spending_delay.value)).size(50))
                     .push(
                         Column::new()
                             .push(
                                 button::transparent(
                                     &mut self.increment_button,
-                                    Container::new(text::simple("+")),
+                                    Container::new(Text::new("+")),
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
@@ -460,7 +461,7 @@ impl SpendingDelay {
                             .push(
                                 button::transparent(
                                     &mut self.decrement_button,
-                                    Container::new(text::simple("-")),
+                                    Container::new(Text::new("-")),
                                 )
                                 .on_press(
                                     Message::DefineManagerXpubs(
@@ -478,9 +479,9 @@ impl SpendingDelay {
             .align_items(Align::Center)
             .spacing(10);
         if !spending_delay.valid {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                "Spending delay cannot be equal to zero",
-            ))))
+            col = col.push(card::alert_warning(Container::new(
+                Text::new("Spending delay cannot be equal to zero").small(),
+            )))
         }
         Container::new(col)
     }
@@ -519,7 +520,7 @@ impl DefineManagerXpubsAsManager {
         warning: Option<&String>,
     ) -> Element<'a, Message> {
         let manager_xpub_col = Column::new()
-            .push(text::bold(text::simple("Your manager xpub:")))
+            .push(Text::new("Your manager xpub:").bold())
             .push(
                 form::Form::new(
                     &mut self.our_xpub_input,
@@ -537,7 +538,7 @@ impl DefineManagerXpubsAsManager {
             .spacing(10);
 
         let mut content = Column::new()
-            .push(text::bold(text::simple("Define managers")).size(50))
+            .push(Text::new("Define managers").bold().size(50))
             .push(
                 Row::new()
                     .push(
@@ -555,7 +556,7 @@ impl DefineManagerXpubsAsManager {
             .push(manager_xpub_col)
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Other Managers xpubs:")))
+                    .push(Text::new("Other Managers xpubs:").bold())
                     .push(Column::with_children(other_xpubs).spacing(10))
                     .push(
                         Container::new(
@@ -573,7 +574,7 @@ impl DefineManagerXpubsAsManager {
             )
             .push(
                 Column::new()
-                    .push(text::bold(text::simple("Cosigning servers keys:")))
+                    .push(Text::new("Cosigning servers keys:").bold())
                     .push(Column::with_children(cosigners).spacing(10))
                     .spacing(10),
             )
@@ -592,7 +593,7 @@ impl DefineManagerXpubsAsManager {
             );
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
         }
 
         layout(
@@ -655,7 +656,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         }
 
         let mut content = Column::new()
-            .push(text::bold(text::simple("Fund management configuration")).size(50))
+            .push(Text::new("Fund management configuration").bold().size(50))
             .push(
                 Row::new()
                     .push(
@@ -673,7 +674,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .push(
                 Column::new()
                     .spacing(10)
-                    .push(text::bold(text::simple("Managers xpubs:")))
+                    .push(Text::new("Managers xpubs:").bold())
                     .push(Column::with_children(manager_xpubs).spacing(10))
                     .push(
                         Container::new(
@@ -691,7 +692,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .push(
                 Column::new()
                     .spacing(10)
-                    .push(text::bold(text::simple("Cosigning servers keys:")))
+                    .push(Text::new("Cosigning servers keys:").bold())
                     .push(Column::with_children(cosigners).spacing(10)),
             )
             .width(Length::Fill)
@@ -701,7 +702,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .align_items(Align::Center);
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
         }
 
         layout(
@@ -748,18 +749,18 @@ impl DefineCpfpDescriptorView {
 
         let mut content = Column::new()
             .spacing(10)
-            .push(text::bold(text::simple("Managers CPFP xpubs:")))
+            .push(Text::new("Managers CPFP xpubs:").bold())
             .push(Column::with_children(manager_xpubs).spacing(10));
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(text::simple(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
         }
 
         layout(
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill in the managers CPFP xpubs")).size(50))
+                .push(Text::new("Fill in the managers CPFP xpubs").bold().size(50))
                 .push(content)
                 .push(row)
                 .width(Length::Fill)
@@ -799,10 +800,10 @@ impl DefineCoordinator {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill in coordinator information")).size(50))
+                .push(Text::new("Fill in coordinator information").bold().size(50))
                 .push(
                     Column::new()
-                        .push(text::bold(text::simple("Host:")))
+                        .push(Text::new("Host:").bold())
                         .push(
                             form::Form::new(&mut self.host_input, "Host", host, |msg| {
                                 Message::DefineCoordinator(message::DefineCoordinator::HostEdited(
@@ -818,7 +819,7 @@ impl DefineCoordinator {
                 )
                 .push(
                     Column::new()
-                        .push(text::bold(text::simple("Noise key:")))
+                        .push(Text::new("Noise key:").bold())
                         .push(
                             form::Form::new(
                                 &mut self.noise_key_input,
@@ -887,7 +888,7 @@ impl DefineEmergencyAddress {
             );
         }
         let mut col = Column::new()
-            .push(text::bold(text::simple("Address:")))
+            .push(Text::new("Address:").bold())
             .push(
                 form::Form::new(
                     &mut self.address_input,
@@ -903,14 +904,14 @@ impl DefineEmergencyAddress {
             .spacing(10);
 
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::simple(&error))));
+            col = col.push(card::alert_warning(Container::new(Text::new(&error))));
         }
 
         layout(
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill in emergency information")).size(50))
+                .push(Text::new("Fill in emergency information").bold().size(50))
                 .push(col)
                 .push(row)
                 .width(Length::Fill)
@@ -992,11 +993,15 @@ impl DefineCosigners {
             &mut self.scroll,
             &mut self.previous_button,
             Column::new()
-                .push(text::bold(text::simple("Fill in cosigning servers information")).size(50))
+                .push(
+                    Text::new("Fill in cosigning servers information")
+                        .bold()
+                        .size(50),
+                )
                 .push(
                     Column::new()
                         .push(
-                            Container::new(text::bold(text::simple("The cosigning servers:")))
+                            Container::new(Text::new("The cosigning servers:").bold())
                                 .width(Length::Fill),
                         )
                         .push(Column::with_children(cosigners).spacing(10))
@@ -1050,7 +1055,7 @@ impl DefineBitcoind {
         cookie_path: &form::Value<String>,
     ) -> Element<'a, Message> {
         let col_address = Column::new()
-            .push(text::bold(text::simple("Address:")))
+            .push(Text::new("Address:").bold())
             .push(
                 form::Form::new(&mut self.address_input, "Address", address, |msg| {
                     Message::DefineBitcoind(message::DefineBitcoind::AddressEdited(msg))
@@ -1063,7 +1068,7 @@ impl DefineBitcoind {
             .spacing(10);
 
         let col_cookie = Column::new()
-            .push(text::bold(text::simple("Cookie path:")))
+            .push(Text::new("Cookie path:").bold())
             .push(
                 form::Form::new(
                     &mut self.cookie_path_input,
@@ -1083,7 +1088,9 @@ impl DefineBitcoind {
             &mut self.previous_button,
             Column::new()
                 .push(
-                    text::bold(text::simple("Set up connection to the Bitcoin full node")).size(50),
+                    Text::new("Set up connection to the Bitcoin full node")
+                        .bold()
+                        .size(50),
                 )
                 .push(Container::new(
                     pick_list::PickList::new(
@@ -1140,7 +1147,7 @@ impl Final {
             .align_items(Align::Center);
 
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::simple(error))));
+            col = col.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         if generating {
@@ -1155,7 +1162,7 @@ impl Final {
             col = col.push(card::border_success(
                 Container::new(
                     Column::new()
-                        .push(Container::new(text::simple("Installed !")))
+                        .push(Container::new(Text::new("Installed !")))
                         .push(Container::new(
                             button::primary(
                                 &mut self.action_button,
