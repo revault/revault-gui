@@ -476,13 +476,13 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_securing_vaults.to_string()).small().bold())
                     .push(Text::new(" vaults ").small())
-                    .push(history_icon().size(10))
+                    .push(history_icon().size(20))
                     .align_items(Align::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,
             )
             .gap(5)
-            .size(15)
+            .size(20)
             .padding(10)
             .style(TooltipStyle),
         )

@@ -303,7 +303,7 @@ impl SpendTransactionSharePsbtView {
                         TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
                             Message::SpendTx(SpendTxMessage::PsbtEdited(p))
                         })
-                        .size(15)
+                        .size(20)
                         .width(Length::Fill)
                         .padding(10),
                     )

@@ -5,7 +5,7 @@ pub struct Text(iced::Text);
 
 impl Text {
     pub fn new(content: &str) -> Self {
-        Self(iced::Text::new(content).font(font::REGULAR).size(20))
+        Self(iced::Text::new(content).font(font::REGULAR).size(25))
     }
 
     pub fn bold(mut self) -> Self {
@@ -14,7 +14,7 @@ impl Text {
     }
 
     pub fn small(mut self) -> Self {
-        self.0 = self.0.size(15);
+        self.0 = self.0.size(20);
         self
     }
 

@@ -44,7 +44,7 @@ impl StakeholderCreateVaultsView {
         address: Option<&bitcoin::Address>,
     ) -> Element<'a, Message> {
         let mut content = Column::new()
-            .max_width(800)
+            .max_width(1000)
             .push(Text::new("Create some vaults").bold().size(50))
             .spacing(20);
 
@@ -109,13 +109,13 @@ impl StakeholderCreateVaultsView {
                 Row::new().push(Container::new(
                             Tooltip::new(
                                 Row::new()
-                                    .push(icon::tooltip_icon().size(15))
+                                    .push(icon::tooltip_icon().size(20))
                                     .push(Text::new(" Help")),
                                 "A vault is a deposit with revocation transactions\nsigned and shared between stakeholders",
                                 tooltip::Position::Right,
                             )
                             .gap(5)
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .style(TooltipStyle),
                         )
@@ -231,13 +231,13 @@ impl StakeholderDelegateFundsView {
                         Container::new(
                             Tooltip::new(
                                 Row::new()
-                                    .push(icon::tooltip_icon().size(15))
+                                    .push(icon::tooltip_icon().size(20))
                                     .push(Text::new(" Help").small()),
                                 "By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction.",
                                 tooltip::Position::Right,
                             )
                             .gap(5)
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .style(TooltipStyle),
                         )
@@ -255,7 +255,7 @@ impl StakeholderDelegateFundsView {
                     .align_items(Align::Center),
             )
             .push(
-                Container::new(col.spacing(30).max_width(800))
+                Container::new(col.spacing(30).max_width(1000))
                     .width(Length::Fill)
                     .align_x(Align::Center),
             )

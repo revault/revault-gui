@@ -101,7 +101,7 @@ pub fn participant_xpub<'a>(
                             message::ParticipantXpub::XpubEdited,
                         )
                         .warning("Please enter a valid xpub")
-                        .size(15)
+                        .size(20)
                         .padding(10)
                         .render(),
                     )
@@ -126,7 +126,7 @@ pub fn required_xpub<'a>(
             .push(
                 form::Form::new(xpub_input, "Xpub", xpub, |msg| msg)
                     .warning("Please enter a valid xpub")
-                    .size(15)
+                    .size(20)
                     .padding(10)
                     .render(),
             )
@@ -146,7 +146,7 @@ pub fn cosigner_key<'a>(
                     .push(
                         form::Form::new(key_input, "Key", key, |msg| msg)
                             .warning("Please enter a valid key")
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .render(),
                     )
@@ -185,7 +185,7 @@ impl DefinePrivateNoiseKey {
                     Column::new().spacing(10).push(
                         form::Form::new(&mut self.key_input, "", key, Message::PrivateNoiseKey)
                             .warning("Key must be a 64 characters hex encoded string")
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .render(),
                     ),
@@ -246,7 +246,7 @@ impl DefineStakeholderXpubsAsStakeholder {
                             },
                         )
                         .warning("Please enter a valid xpub")
-                        .size(15)
+                        .size(20)
                         .padding(10)
                         .render(),
                     )
@@ -531,7 +531,7 @@ impl DefineManagerXpubsAsManager {
                     },
                 )
                 .warning("Please enter a valid xpub")
-                .size(15)
+                .size(20)
                 .padding(10)
                 .render(),
             )
@@ -811,7 +811,7 @@ impl DefineCoordinator {
                                 ))
                             })
                             .warning("Incorrect format for a socket address")
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .render(),
                         )
@@ -832,7 +832,7 @@ impl DefineCoordinator {
                                 },
                             )
                             .warning("Key must be a 64 characters hex encoded string")
-                            .size(15)
+                            .size(20)
                             .padding(10)
                             .render(),
                         )
@@ -897,7 +897,7 @@ impl DefineEmergencyAddress {
                     Message::DefineEmergencyAddress,
                 )
                 .warning("Please enter a valid address")
-                .size(15)
+                .size(20)
                 .padding(10)
                 .render(),
             )
@@ -951,7 +951,7 @@ impl Cosigner {
                         message::DefineCosigner::HostEdited,
                     )
                     .warning("Please enter a valid host")
-                    .size(15)
+                    .size(20)
                     .padding(10)
                     .render(),
                 )
@@ -963,7 +963,7 @@ impl Cosigner {
                         message::DefineCosigner::NoiseKeyEdited,
                     )
                     .warning("Key must be a 64 characters hex encoded string")
-                    .size(15)
+                    .size(20)
                     .padding(10)
                     .render(),
                 )
@@ -1061,7 +1061,7 @@ impl DefineBitcoind {
                     Message::DefineBitcoind(message::DefineBitcoind::AddressEdited(msg))
                 })
                 .warning("Please enter correct address")
-                .size(15)
+                .size(20)
                 .padding(10)
                 .render(),
             )
@@ -1077,7 +1077,7 @@ impl DefineBitcoind {
                     |msg| Message::DefineBitcoind(message::DefineBitcoind::CookiePathEdited(msg)),
                 )
                 .warning("Please enter correct path")
-                .size(15)
+                .size(20)
                 .padding(10)
                 .render(),
             )
