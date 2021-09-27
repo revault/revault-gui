@@ -16,7 +16,7 @@ use crate::{
     },
     daemon::model::VaultStatus,
     ui::{
-        component::{button, card, navbar, scroll, text, TooltipStyle},
+        component::{button, card, navbar, scroll, text::Text, TooltipStyle},
         icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
     },
 };
@@ -53,10 +53,11 @@ impl ManagerHomeView {
                 Column::new()
                     .push(
                         Column::new()
-                            .push(text::bold(text::simple("Pending spend transactions")))
-                            .push(text::small(
-                                "These transactions are waiting for managers signatures",
-                            )),
+                            .push(Text::new("Pending spend transactions").bold())
+                            .push(
+                                Text::new("These transactions are waiting for managers signatures")
+                                    .small(),
+                            ),
                     )
                     .push(Column::with_children(spend_txs).spacing(10))
                     .spacing(20),
@@ -67,7 +68,7 @@ impl ManagerHomeView {
             content = content.push(card::simple(Container::new(
                 Row::new()
                     .push(
-                        Container::new(text::simple(
+                        Container::new(Text::new(
                             "No vaults yet, start using Revault by making a deposit",
                         ))
                         .width(Length::Fill),
@@ -85,7 +86,7 @@ impl ManagerHomeView {
 
         if !moving_vaults.is_empty() {
             content = content
-                .push(text::bold(text::simple("Funds are moving:")))
+                .push(Text::new("Funds are moving:"))
                 .push(Column::with_children(moving_vaults).spacing(10))
                 .spacing(20)
         };
@@ -114,27 +115,24 @@ fn manager_overview<'a, T: 'a>(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
                         .push(
-                            text::bold(text::simple(
-                                &ctx.converter.converts(active_funds).to_string(),
-                            ))
-                            .size(50),
+                            Text::new(&ctx.converter.converts(active_funds).to_string())
+                                .bold()
+                                .size(50),
                         )
-                        .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                        .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
                 )
                 .push(Column::new().padding(5))
                 .push(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
-                        .push(text::bold(text::simple(
-                            &ctx.converter.converts(inactive_funds).to_string(),
-                        )))
-                        .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                        .push(Text::new(&ctx.converter.converts(inactive_funds).to_string()).bold())
+                        .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
                 )
                 .push(
                     Container::new(
-                        text::simple("are held by stakeholders")
+                        Text::new("are held by stakeholders")
                             .horizontal_alignment(HorizontalAlignment::Right)
                             .width(Length::Fill),
                     )
@@ -176,7 +174,7 @@ impl StakeholderHomeView {
             col_body = col_body.push(card::simple(Container::new(
                 Row::new()
                     .push(
-                        Container::new(text::simple(
+                        Container::new(Text::new(
                             "No vaults yet, start using Revault by making a deposit",
                         ))
                         .width(Length::Fill),
@@ -194,7 +192,7 @@ impl StakeholderHomeView {
 
         if !moving_vaults.is_empty() {
             col_body = col_body
-                .push(text::bold(text::simple("Funds are moving:")))
+                .push(Text::new("Funds are moving:").bold())
                 .push(Column::with_children(moving_vaults).spacing(10))
                 .spacing(20)
         };
@@ -248,16 +246,19 @@ impl StakeholderOverview {
                         .push(
                             Container::new(
                                 Row::new()
-                                    .push(text::bold(text::simple(&format!(
-                                        "{}",
-                                        ctx.converter.converts(*funded_amount),
-                                    ))))
-                                    .push(text::simple(&format!(
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(*funded_amount),
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(Text::new(&format!(
                                         " {} received in ",
                                         ctx.converter.unit
                                     )))
-                                    .push(text::bold(text::simple(&nb_funded_vaults.to_string())))
-                                    .push(text::simple(" new deposits")),
+                                    .push(Text::new(&nb_funded_vaults.to_string()).bold())
+                                    .push(Text::new(" new deposits")),
                             )
                             .width(Length::Fill)
                             .align_x(iced::Align::Center),
@@ -294,19 +295,18 @@ impl StakeholderOverview {
                             Row::new()
                                 .push(Column::new().width(Length::Fill))
                                 .push(
-                                    text::bold(text::simple(
-                                        &ctx.converter.converts(total_amount).to_string(),
-                                    ))
-                                    .size(50),
+                                    Text::new(&ctx.converter.converts(total_amount).to_string())
+                                        .bold()
+                                        .size(50),
                                 )
-                                .push(text::simple(&format!(" {}", ctx.converter.unit)))
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)))
                                 .align_items(Align::Center),
                         )
                         .push(
                             Row::new()
                                 .push(Column::new().width(Length::Fill))
-                                .push(text::bold(text::simple(&format!("{}", nb_total_vaults))))
-                                .push(text::simple(" vaults")),
+                                .push(Text::new(&format!("{}", nb_total_vaults)).bold())
+                                .push(Text::new(" vaults")),
                         ),
                 )
                 .push(
@@ -345,19 +345,19 @@ fn active_funds_overview_card<'a, T: 'a>(
                     Container::new(
                         Row::new()
                             .push(person_check_icon())
-                            .push(text::bold(text::simple("  Delegated funds")))
+                            .push(Text::new("  Delegated funds").bold())
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
                 )
                 .push(
                     Tooltip::new(
-                        tooltip_icon().size(10),
+                        tooltip_icon().size(20),
                         "Delegated funds can be spent by managers,\n but you can still revert any undesired transaction.",
                         tooltip::Position::Left,
                     )
                     .gap(5)
-                    .size(15)
+                    .size(20)
                     .padding(10)
                     .style(TooltipStyle),
                 ),
@@ -368,12 +368,11 @@ fn active_funds_overview_card<'a, T: 'a>(
                     Container::new(
                         Row::new()
                             .push(
-                                text::bold(text::simple(
+                                Text::new(
                                     &ctx.converter.converts(*active_amount).to_string(),
-                                ))
-                                .size(20),
+                                ).bold()
                             )
-                            .push(text::simple(&format!(
+                            .push(Text::new(&format!(
                                 " {:<6}",
                                 // to_string is needed to use format alignment feature
                                 ctx.converter.unit.to_string()
@@ -385,13 +384,13 @@ fn active_funds_overview_card<'a, T: 'a>(
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::bold(text::simple(&nb_active_vaults.to_string())))
-                            .push(text::simple(" vaults")),
+                            .push(Text::new(&nb_active_vaults.to_string()).bold())
+                            .push(Text::new(" vaults")),
                     )
                     .width(Length::Fill)
                     .align_x(Align::End),
                 ),
-        ).push(Container::new(Row::new().push(text::small(" "))));
+        ).push(Container::new(Row::new().push(Text::new(" ").bold())));
     card::white(Container::new(col.spacing(20)))
 }
 
@@ -410,19 +409,19 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     Container::new(
                         Row::new()
                             .push(shield_check_icon())
-                            .push(text::bold(text::simple("  Secured funds")))
+                            .push(Text::new("  Secured funds").bold())
                             .align_items(Align::Center),
                     )
                     .width(Length::Fill),
                 )
                 .push(
                     Tooltip::new(
-                        tooltip_icon().size(10),
+                        tooltip_icon().size(20),
                         "Secured funds are controlled by stakeholders only",
                         tooltip::Position::Left,
                     )
                     .gap(5)
-                    .size(15)
+                    .size(20)
                     .padding(10)
                     .style(TooltipStyle),
                 ),
@@ -433,14 +432,14 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     Container::new(
                         Row::new()
                             .push(
-                                text::bold(text::simple(
+                                Text::new(
                                     &ctx.converter
                                         .converts(*secured_amount + *activating_amount)
                                         .to_string(),
-                                ))
-                                .size(20),
+                                )
+                                .bold(),
                             )
-                            .push(text::simple(&format!(
+                            .push(Text::new(&format!(
                                 " {:<6}",
                                 // to_string is needed to use format alignment feature
                                 ctx.converter.unit.to_string()
@@ -452,10 +451,11 @@ fn secured_funds_overview_card<'a, T: 'a>(
                 .push(
                     Container::new(
                         Row::new()
-                            .push(text::bold(text::simple(
-                                &(nb_secured_vaults + nb_activating_vaults).to_string(),
-                            )))
-                            .push(text::simple(" vaults")),
+                            .push(
+                                Text::new(&(nb_secured_vaults + nb_activating_vaults).to_string())
+                                    .bold(),
+                            )
+                            .push(Text::new(" vaults")),
                     )
                     .width(Length::Fill)
                     .align_x(Align::End),
@@ -467,26 +467,28 @@ fn secured_funds_overview_card<'a, T: 'a>(
             Tooltip::new(
                 Row::new()
                     .push(Column::new().width(Length::Fill))
-                    .push(text::bold(text::small("+ ")))
-                    .push(text::bold(text::small(
-                        &ctx.converter.converts(*securing_amount).to_string(),
-                    )))
-                    .push(text::small(&format!(" {}, ", ctx.converter.unit)))
-                    .push(text::bold(text::small(&nb_securing_vaults.to_string())))
-                    .push(text::small(" vaults "))
-                    .push(history_icon().size(10))
+                    .push(Text::new("+ ").small().bold())
+                    .push(
+                        Text::new(&ctx.converter.converts(*securing_amount).to_string())
+                            .bold()
+                            .small(),
+                    )
+                    .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
+                    .push(Text::new(&nb_securing_vaults.to_string()).small().bold())
+                    .push(Text::new(" vaults ").small())
+                    .push(history_icon().size(20))
                     .align_items(Align::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,
             )
             .gap(5)
-            .size(15)
+            .size(20)
             .padding(10)
             .style(TooltipStyle),
         )
     } else {
         // An empty column is created in order to ensure the same card height.
-        col = col.push(Container::new(Row::new().push(text::small(" "))));
+        col = col.push(Container::new(Row::new().push(Text::new(" ").small())));
     }
     card::white(Container::new(col.spacing(20)))
 }

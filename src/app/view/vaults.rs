@@ -8,7 +8,7 @@ use crate::{
         view::{layout, sidebar::Sidebar},
     },
     daemon::model::VaultStatus,
-    ui::component::{navbar, scroll, text, TransparentPickListStyle},
+    ui::component::{navbar, scroll, text::Text, TransparentPickListStyle},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,8 +89,8 @@ impl VaultsView {
                         .push(
                             Container::new(
                                 Row::new()
-                                    .push(text::bold(text::simple(&format!(" {}", vaults.len()))))
-                                    .push(text::simple(" vaults")),
+                                    .push(Text::new(&format!(" {}", vaults.len())).bold())
+                                    .push(Text::new(" vaults")),
                             )
                             .width(Length::Fill),
                         )

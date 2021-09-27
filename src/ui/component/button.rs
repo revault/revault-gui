@@ -1,4 +1,4 @@
-use crate::ui::{color, component::text, icon::clipboard_icon, icon::cross_icon};
+use crate::ui::{color, component::text::Text, icon::clipboard_icon, icon::cross_icon};
 use iced::{button, Color, Container, Row, Vector};
 
 macro_rules! button {
@@ -49,14 +49,14 @@ button!(
 
 pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Container<'a, T> {
     match icon {
-        None => Container::new(text::simple(text))
+        None => Container::new(Text::new(text))
             .width(iced::Length::Fill)
             .align_x(iced::Align::Center)
             .padding(5),
         Some(i) => Container::new(
             Row::new()
                 .push(i)
-                .push(text::simple(text))
+                .push(Text::new(text))
                 .spacing(10)
                 .width(iced::Length::Fill)
                 .align_items(iced::Align::Center),
@@ -123,7 +123,7 @@ pub fn close_button<'a, T: 'a + Clone>(state: &'a mut button::State) -> button::
         Container::new(
             Row::new()
                 .push(cross_icon())
-                .push(text::simple("Close"))
+                .push(Text::new("Close"))
                 .spacing(5)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)

@@ -4,7 +4,7 @@ use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
     ui::{
         color,
-        component::{button, card, scroll, text, ContainerBackgroundStyle},
+        component::{button, card, scroll, text::Text, ContainerBackgroundStyle},
         icon::warning_icon,
     },
 };
@@ -48,7 +48,7 @@ impl EmergencyView {
             .spacing(50);
 
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::simple(&format!(
+            col = col.push(card::alert_warning(Container::new(Text::new(&format!(
                 "{}",
                 error
             )))))
@@ -73,20 +73,20 @@ impl EmergencyView {
                                 Column::new()
                                     .push(
                                         Row::new()
-                                            .push(text::simple("This action will send"))
-                                            .push(text::bold(text::simple(&format!(
-                                                " {} ",
-                                                ctx.converter.converts(funds_amount)
-                                            ))))
-                                            .push(text::simple(&ctx.converter.unit.to_string()))
-                                            .push(text::simple(" from"))
-                                            .push(text::bold(text::simple(&format!(
-                                                " {} ",
-                                                vaults_number
-                                            ))))
-                                            .push(text::simple("vaults")),
+                                            .push(Text::new("This action will send"))
+                                            .push(
+                                                Text::new(&format!(
+                                                    " {} ",
+                                                    ctx.converter.converts(funds_amount)
+                                                ))
+                                                .bold(),
+                                            )
+                                            .push(Text::new(&ctx.converter.unit.to_string()))
+                                            .push(Text::new(" from"))
+                                            .push(Text::new(&format!(" {} ", vaults_number)).bold())
+                                            .push(Text::new("vaults")),
                                     )
-                                    .push(text::simple("to the Emergency Deep Vault"))
+                                    .push(Text::new("to the Emergency Deep Vault"))
                                     .align_items(Align::Center),
                             )
                             .push(emergency_button)
@@ -106,20 +106,20 @@ impl EmergencyView {
                                 Column::new()
                                     .push(
                                         Row::new()
-                                            .push(text::simple("Sending"))
-                                            .push(text::bold(text::simple(&format!(
-                                                " {} ",
-                                                ctx.converter.converts(funds_amount)
-                                            ))))
-                                            .push(text::simple(&ctx.converter.unit.to_string()))
-                                            .push(text::simple(" from"))
-                                            .push(text::bold(text::simple(&format!(
-                                                " {} ",
-                                                vaults_number
-                                            ))))
-                                            .push(text::simple("vaults")),
+                                            .push(Text::new("Sending"))
+                                            .push(
+                                                Text::new(&format!(
+                                                    " {} ",
+                                                    ctx.converter.converts(funds_amount)
+                                                ))
+                                                .bold(),
+                                            )
+                                            .push(Text::new(&ctx.converter.unit.to_string()))
+                                            .push(Text::new(" from"))
+                                            .push(Text::new(&format!(" {} ", vaults_number)).bold())
+                                            .push(Text::new("vaults")),
                                     )
-                                    .push(text::simple("to the Emergency Deep Vault"))
+                                    .push(Text::new("to the Emergency Deep Vault"))
                                     .align_items(Align::Center),
                             )
                             .spacing(30)

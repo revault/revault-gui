@@ -3,7 +3,7 @@ use iced::{Column, Container, Element, Length};
 use crate::{
     app::{context::Context, message::SignMessage},
     ui::{
-        component::{button, card, text},
+        component::{button, card, text::Text},
         icon,
     },
 };
@@ -32,8 +32,8 @@ impl SignerView {
                 Column::new()
                     .align_items(iced::Align::Center)
                     .spacing(20)
-                    .push(text::success(icon::done_icon().size(20)))
-                    .push(text::success(text::simple("Signed"))),
+                    .push(Text::from(icon::done_icon()).size(20).success())
+                    .push(Text::new("Signed").success()),
             ))
             .padding(50)
             .width(Length::Fill)
@@ -65,7 +65,7 @@ impl SignerView {
                     .align_items(iced::Align::Center)
                     .spacing(20)
                     .push(icon::connect_device_icon().size(20))
-                    .push(text::simple("Connect hardware wallet")),
+                    .push(Text::new("Connect hardware wallet")),
             ))
             .padding(50)
             .width(Length::Fill)

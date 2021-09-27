@@ -9,6 +9,7 @@ use super::{color, font, icon};
 use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
 
 use image::revault_colored_logo;
+use text::Text;
 
 use std::cmp::Ordering;
 
@@ -305,7 +306,7 @@ impl ProgressBar {
                 .push(
                     Row::new()
                         .push(icon::todo_icon().color(color::DARK_GREY))
-                        .push(text::small(step).color(color::DARK_GREY))
+                        .push(Text::new(step).small().color(color::DARK_GREY))
                         .spacing(10)
                         .align_items(iced::Align::Center),
                 )
@@ -326,7 +327,7 @@ impl ProgressBar {
                 .push(
                     Row::new()
                         .push(icon::todo_icon().color(color::DARK_GREY))
-                        .push(text::small(step).color(color::DARK_GREY))
+                        .push(Text::new(step).small().color(color::DARK_GREY))
                         .spacing(10)
                         .align_items(iced::Align::Center),
                 )
@@ -347,7 +348,7 @@ impl ProgressBar {
                 .push(
                     Row::new()
                         .push(icon::done_icon())
-                        .push(text::small(step))
+                        .push(Text::new(step).small())
                         .spacing(10)
                         .align_items(iced::Align::Center),
                 )

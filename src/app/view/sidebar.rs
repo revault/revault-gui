@@ -5,7 +5,7 @@ use crate::{
     app::{context::Context, menu::Menu, message::Message, view::layout},
     ui::{
         color,
-        component::{button, separation, text, TransparentPickListStyle},
+        component::{button, separation, text::Text, TransparentPickListStyle},
         icon::{
             deposit_icon, home_icon, person_check_icon, plus_icon, send_icon, settings_icon,
             vaults_icon, warning_icon,
@@ -57,7 +57,7 @@ impl Sidebar {
                 .style(TransparentPickListStyle),
             )
         } else {
-            Container::new(text::simple(&context.role.to_string())).padding(10)
+            Container::new(Text::new(&context.role.to_string())).padding(10)
         };
         let home_button = if context.menu == Menu::Home {
             button::primary(
@@ -164,7 +164,7 @@ impl Sidebar {
                         Container::new(
                             Row::new()
                                 .push(warning_icon().color(color::PRIMARY))
-                                .push(text::simple("Emergency").color(color::PRIMARY))
+                                .push(Text::new("Emergency").color(color::PRIMARY))
                                 .spacing(10)
                                 .align_items(iced::Align::Center),
                         )

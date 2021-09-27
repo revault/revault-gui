@@ -13,7 +13,7 @@ use crate::{
     daemon::model,
     ui::{
         color,
-        component::{badge, button, card, scroll, text, ContainerBackgroundStyle},
+        component::{badge, button, card, scroll, text::Text, ContainerBackgroundStyle},
         icon,
     },
 };
@@ -51,9 +51,9 @@ impl SpendTransactionView {
     ) -> Element<'a, Message> {
         let mut col = Column::new().spacing(20);
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))))
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )))
         }
         col = col
             .push(spend_tx_with_feerate_view(
@@ -104,14 +104,18 @@ impl SpendTransactionView {
             vaults_amount - spend_amount - change_amount
         };
 
-        let mut col_header = Column::new().push(text::bold(text::small(&format!(
-            "txid: {}",
-            psbt.global.unsigned_tx.txid().to_string()
-        ))));
+        let mut col_header = Column::new().push(
+            Text::new(&format!(
+                "txid: {}",
+                psbt.global.unsigned_tx.txid().to_string()
+            ))
+            .small()
+            .bold(),
+        );
         if psbt.inputs.len() > 0 {
             col_header = col_header.push(
                 Row::new()
-                    .push(text::simple(&format!(
+                    .push(Text::new(&format!(
                         "Total number of signatures: {} / {}",
                         psbt.inputs[0].partial_sigs.len(),
                         ctx.managers_threshold,
@@ -152,26 +156,32 @@ impl SpendTransactionView {
                                     Column::new()
                                         .push(
                                             Row::new()
-                                                .push(text::bold(text::simple(&format!(
-                                                    "{}",
-                                                    ctx.converter.converts(spend_amount),
-                                                ))))
-                                                .push(text::small(&format!(
-                                                    " {}",
-                                                    ctx.converter.unit
-                                                )))
+                                                .push(
+                                                    Text::new(&format!(
+                                                        "{}",
+                                                        ctx.converter.converts(spend_amount),
+                                                    ))
+                                                    .bold(),
+                                                )
+                                                .push(
+                                                    Text::new(&format!(" {}", ctx.converter.unit))
+                                                        .small(),
+                                                )
                                                 .align_items(Align::Center),
                                         )
                                         .push(
                                             Row::new()
-                                                .push(text::small(&format!(
-                                                    "Fees: {}",
-                                                    ctx.converter.converts(fees),
-                                                )))
-                                                .push(text::small(&format!(
-                                                    " {}",
-                                                    ctx.converter.unit
-                                                )))
+                                                .push(
+                                                    Text::new(&format!(
+                                                        "Fees: {}",
+                                                        ctx.converter.converts(fees),
+                                                    ))
+                                                    .small(),
+                                                )
+                                                .push(
+                                                    Text::new(&format!(" {}", ctx.converter.unit))
+                                                        .small(),
+                                                )
                                                 .align_items(Align::Center),
                                         )
                                         .align_items(Align::End),
@@ -260,7 +270,7 @@ impl SpendTransactionSharePsbtView {
         let mut col_action = Column::new().spacing(20).push(
             Column::new().push(
                 Row::new()
-                    .push(Container::new(text::small(&psbt_str)).width(Length::Fill))
+                    .push(Container::new(Text::new(&psbt_str).small()).width(Length::Fill))
                     .push(
                         button::clipboard(&mut self.copy_button, Message::Clipboard(psbt_str))
                             .width(Length::Shrink),
@@ -269,9 +279,9 @@ impl SpendTransactionSharePsbtView {
             ),
         );
         if let Some(error) = warning {
-            col_action = col_action.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col_action = col_action.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         let mut button_update_action = button::important(
@@ -283,17 +293,17 @@ impl SpendTransactionSharePsbtView {
                 button_update_action.on_press(Message::SpendTx(SpendTxMessage::Update));
         }
         if *success {
-            col_action = col_action.push(text::success(text::simple("Transaction updated")));
+            col_action = col_action.push(Text::new("Transaction updated").success());
         }
         Container::new(
             col.push(card::white(Container::new(
                 col_action
-                    .push(text::simple("Enter PSBT:"))
+                    .push(Text::new("Enter PSBT:"))
                     .push(
                         TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
                             Message::SpendTx(SpendTxMessage::PsbtEdited(p))
                         })
-                        .size(15)
+                        .size(20)
                         .width(Length::Fill)
                         .padding(10),
                     )
@@ -359,9 +369,9 @@ impl SpendTransactionSignView {
 
         let mut col_action = Column::new().push(signer);
         if let Some(error) = warning {
-            col_action = col_action.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col_action = col_action.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         Container::new(
@@ -394,18 +404,18 @@ impl SpendTransactionDeleteView {
     ) -> Element<Message> {
         let mut col_action = Column::new();
         if let Some(error) = warning {
-            col_action = col_action.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col_action = col_action.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         if *processing {
-            col_action = col_action.push(text::simple("Deleting..."));
+            col_action = col_action.push(Text::new("Deleting..."));
         } else if *success {
-            col_action = col_action.push(text::simple("Deleted").color(color::SUCCESS));
+            col_action = col_action.push(Text::new("Deleted").color(color::SUCCESS));
         } else {
             col_action = col_action
-                .push(text::simple(
+                .push(Text::new(
                     "Are you sure you want to delete this transaction?",
                 ))
                 .push(
@@ -511,9 +521,9 @@ impl SpendTransactionBroadcastView {
 
         let mut col_action = Column::new();
         if let Some(error) = warning {
-            col_action = col_action.push(card::alert_warning(Container::new(text::small(
-                &error.to_string(),
-            ))));
+            col_action = col_action.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
         }
 
         Container::new(
@@ -531,7 +541,7 @@ impl SpendTransactionBroadcastView {
                 .push(
                     card::white(Container::new(
                         col_action
-                            .push(text::simple(
+                            .push(Text::new(
                                 "Are you sure you want to broadcast this transaction ?",
                             ))
                             .push(button_broadcast_action)
@@ -567,14 +577,18 @@ impl SpendTransactionListItemView {
         spend_amount: u64,
         fees: u64,
     ) -> Element<SpendTxMessage> {
-        let mut col = Column::new().push(text::bold(text::small(&format!(
-            "txid: {}",
-            tx.psbt.global.unsigned_tx.txid().to_string()
-        ))));
+        let mut col = Column::new().push(
+            Text::new(&format!(
+                "txid: {}",
+                tx.psbt.global.unsigned_tx.txid().to_string()
+            ))
+            .small()
+            .bold(),
+        );
         if tx.psbt.inputs.len() > 0 {
             col = col.push(
                 Row::new()
-                    .push(text::simple(&format!(
+                    .push(Text::new(&format!(
                         "{} / {}",
                         tx.psbt.inputs[0].partial_sigs.len(),
                         ctx.managers_threshold
@@ -602,20 +616,30 @@ impl SpendTransactionListItemView {
                             Column::new()
                                 .push(
                                     Row::new()
-                                        .push(text::bold(text::simple(&format!(
-                                            "{}",
-                                            ctx.converter.converts(spend_amount),
-                                        ))))
-                                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                        .push(
+                                            Text::new(&format!(
+                                                "{}",
+                                                ctx.converter.converts(spend_amount),
+                                            ))
+                                            .bold(),
+                                        )
+                                        .push(
+                                            Text::new(&format!(" {}", ctx.converter.unit)).small(),
+                                        )
                                         .align_items(Align::Center),
                                 )
                                 .push(
                                     Row::new()
-                                        .push(text::small(&format!(
-                                            "Fees: {}",
-                                            ctx.converter.converts(fees),
-                                        )))
-                                        .push(text::small(&format!(" {}", ctx.converter.unit)))
+                                        .push(
+                                            Text::new(&format!(
+                                                "Fees: {}",
+                                                ctx.converter.converts(fees),
+                                            ))
+                                            .small(),
+                                        )
+                                        .push(
+                                            Text::new(&format!(" {}", ctx.converter.unit)).small(),
+                                        )
                                         .align_items(Align::Center),
                                 )
                                 .align_items(Align::End),
