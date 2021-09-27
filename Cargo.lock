@@ -2561,7 +2561,7 @@ dependencies = [
 [[package]]
 name = "revaultd"
 version = "0.0.3"
-source = "git+https://github.com/edouardparis/revaultd?branch=refac-revaultd-crate#0b5ee23023ab1b7b42e28f280f6f806cc778a5d5"
+source = "git+https://github.com/revault/revaultd?branch=master#9c8a0cff8106a9650b8050a82190f9dc19cf9938"
 dependencies = [
  "base64",
  "daemonize-simple",
