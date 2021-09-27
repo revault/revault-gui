@@ -7,7 +7,7 @@ use crate::{
         message::{Message, VaultFilterMessage},
         view::{layout, sidebar::Sidebar},
     },
-    daemon::model::VaultStatus,
+    daemon::{client::Client, model::VaultStatus},
     ui::component::{navbar, scroll, text::Text, TransparentPickListStyle},
 };
 
@@ -72,9 +72,9 @@ impl VaultsView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
         vault_status_filter: &[VaultStatus],

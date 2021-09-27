@@ -13,7 +13,10 @@ use crate::{
 };
 
 use crate::{
-    daemon::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
+    daemon::{
+        client::Client,
+        model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
+    },
     revault::Role,
 };
 
@@ -33,9 +36,9 @@ impl VaultModal {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         vlt: &Vault,
         warning: Option<&Error>,
         panel_title: &str,
@@ -94,8 +97,8 @@ impl VaultModal {
     }
 }
 
-fn vault<'a>(
-    ctx: &Context,
+fn vault<'a, C: Client>(
+    ctx: &Context<C>,
     copy_button: &'a mut iced::button::State,
     vlt: &Vault,
 ) -> Container<'a, Message> {
@@ -170,9 +173,9 @@ impl VaultOnChainTransactionsPanel {
             action_button: iced::button::State::new(),
         }
     }
-    pub fn view(
+    pub fn view<C: Client>(
         &mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         vault: &Vault,
         txs: &VaultTransactions,
     ) -> Element<Message> {
@@ -290,8 +293,8 @@ impl VaultOnChainTransactionsPanel {
     }
 }
 
-fn transaction<'a, T: 'a>(
-    ctx: &Context,
+fn transaction<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     title: &str,
     transaction: &BroadcastedTransaction,
 ) -> Container<'a, T> {
@@ -335,8 +338,8 @@ fn transaction<'a, T: 'a>(
     )
 }
 
-fn input_and_outputs<'a, T: 'a>(
-    ctx: &Context,
+fn input_and_outputs<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     broadcasted: &BroadcastedTransaction,
 ) -> Container<'a, T> {
     let mut col_input = Column::new().push(Text::new("Inputs").bold()).spacing(10);
@@ -398,7 +401,7 @@ fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
 
 pub trait VaultView {
     fn new() -> Self;
-    fn view(&mut self, ctx: &Context, vault: &Vault) -> Element<Message>;
+    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> Element<Message>;
 }
 
 #[derive(Debug, Clone)]
@@ -413,7 +416,7 @@ impl VaultView for VaultListItemView {
         }
     }
 
-    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
         let updated_at = NaiveDateTime::from_timestamp(vault.updated_at, 0);
         button::white_card_button(
             &mut self.state,
@@ -474,7 +477,7 @@ impl VaultView for SecureVaultListItemView {
         }
     }
 
-    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
         if vault.status == VaultStatus::Funded || vault.status == VaultStatus::Unconfirmed {
             vault_ack_pending(&mut self.select_button, ctx, vault)
         } else {
@@ -483,7 +486,7 @@ impl VaultView for SecureVaultListItemView {
     }
 }
 
-fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T> {
+fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> Element<'a, T> {
     card::white(Container::new(
         Row::new()
             .push(
@@ -518,9 +521,9 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
     .into()
 }
 
-fn vault_ack_pending<'a>(
+fn vault_ack_pending<'a, C: Client>(
     state: &'a mut iced::button::State,
-    ctx: &Context,
+    ctx: &Context<C>,
     deposit: &Vault,
 ) -> Element<'a, Message> {
     Container::new(
@@ -579,14 +582,14 @@ impl VaultView for DelegateVaultListItemView {
         }
     }
 
-    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
+    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
         vault_delegate(&mut self.select_button, ctx, vault)
     }
 }
 
-fn vault_delegate<'a>(
+fn vault_delegate<'a, C: Client>(
     state: &'a mut iced::button::State,
-    ctx: &Context,
+    ctx: &Context<C>,
     deposit: &Vault,
 ) -> Element<'a, Message> {
     Container::new(
@@ -639,9 +642,9 @@ impl SecureVaultView {
         SecureVaultView {}
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         deposit: &Vault,
         signer: Element<'a, VaultMessage>,
@@ -712,9 +715,9 @@ impl DelegateVaultView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context,
+        _ctx: &Context<C>,
         _vault: &Vault,
         warning: Option<&Error>,
         signer: Element<'a, SignMessage>,
@@ -762,9 +765,9 @@ impl RevaultVaultView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context,
+        _ctx: &Context<C>,
         _vault: &Vault,
         processing: &bool,
         success: &bool,

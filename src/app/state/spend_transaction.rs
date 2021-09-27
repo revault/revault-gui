@@ -21,7 +21,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    daemon::model,
+    daemon::{client::Client, model},
 };
 
 #[derive(Debug)]
@@ -52,10 +52,21 @@ impl SpendTransactionState {
             view: SpendTransactionView::new(),
         }
     }
+
+    // TODO: remove it for subscription
+    pub fn sub(&self) -> Subscription<Message> {
+        if let SpendTransactionAction::Sign { signer, .. } = &self.action {
+            signer
+                .subscription()
+                .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg)))
+        } else {
+            Subscription::none()
+        }
+    }
 }
 
-impl State for SpendTransactionState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
@@ -105,16 +116,10 @@ impl State for SpendTransactionState {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if let SpendTransactionAction::Sign { signer, .. } = &self.action {
-            signer
-                .subscription()
-                .map(|msg| Message::SpendTx(SpendTxMessage::Sign(msg)))
-        } else {
-            Subscription::none()
-        }
+        self.sub()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
         self.view.view(
             ctx,
@@ -128,7 +133,7 @@ impl State for SpendTransactionState {
         )
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::perform(list_spend_txs(ctx.revaultd.clone(), None), |res| {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res))
         })
@@ -174,9 +179,9 @@ impl SpendTransactionAction {
             view: SpendTransactionSharePsbtView::new(),
         }
     }
-    fn update(
+    fn update<C: Client + Send + Sync + 'static>(
         &mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         deposits: &Vec<model::Vault>,
         psbt: &mut Psbt,
         message: SpendTxMessage,
@@ -381,7 +386,11 @@ impl SpendTransactionAction {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
+    fn view<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        psbt: &Psbt,
+    ) -> Element<Message> {
         match self {
             Self::Sign {
                 signer,
@@ -459,7 +468,10 @@ impl SpendTransactionListItem {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
+    pub fn view<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+    ) -> Element<SpendTxMessage> {
         self.view.view(ctx, &self.tx, self.spend_amount, self.fees)
     }
 }

@@ -20,7 +20,7 @@ use crate::{
         },
     },
     daemon::{
-        client::RevaultD,
+        client::{Client, RevaultD},
         model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
     },
 };
@@ -39,7 +39,7 @@ impl<T: VaultView> VaultListItem<T> {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
+    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
         self.view.view(ctx, &self.vault)
     }
 }
@@ -64,7 +64,11 @@ impl Vault {
         }
     }
 
-    pub fn update(&mut self, ctx: &Context, message: VaultMessage) -> Command<VaultMessage> {
+    pub fn update<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        message: VaultMessage,
+    ) -> Command<VaultMessage> {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
@@ -127,7 +131,7 @@ impl Vault {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
+    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
         self.view.view(
             ctx,
             &self.vault,
@@ -137,7 +141,10 @@ impl Vault {
         )
     }
 
-    pub fn load(&self, revaultd: Arc<RevaultD>) -> Command<VaultMessage> {
+    pub fn load<C: Client + Sync + Send + 'static>(
+        &self,
+        revaultd: Arc<RevaultD<C>>,
+    ) -> Command<VaultMessage> {
         Command::perform(
             get_onchain_txs(revaultd, self.vault.outpoint()),
             VaultMessage::OnChainTransactions,
@@ -196,7 +203,11 @@ impl VaultSection {
         }
     }
 
-    pub fn new_delegate_section(ctx: &Context, derivation_index: u32, unvault_tx: Psbt) -> Self {
+    pub fn new_delegate_section<C: Client>(
+        ctx: &Context<C>,
+        derivation_index: u32,
+        unvault_tx: Psbt,
+    ) -> Self {
         Self::Delegate {
             signer: Signer::new(UnvaultTransactionTarget::new(
                 ctx.revaultd
@@ -223,8 +234,8 @@ impl VaultSection {
         }
     }
 
-    pub fn new_ack_section(
-        ctx: &Context,
+    pub fn new_ack_section<C: Client>(
+        ctx: &Context<C>,
         derivation_index: u32,
         txs: RevocationTransactions,
     ) -> Self {
@@ -247,9 +258,9 @@ impl VaultSection {
         }
     }
 
-    fn update(
+    fn update<C: Client + Send + Sync + 'static>(
         &mut self,
-        revaultd: Arc<RevaultD>,
+        revaultd: Arc<RevaultD<C>>,
         vault: &mut model::Vault,
         message: VaultMessage,
     ) -> Command<VaultMessage> {
@@ -264,7 +275,7 @@ impl VaultSection {
                     *processing = true;
                     *warning = None;
                     return Command::perform(
-                        revault(revaultd, vault.outpoint()),
+                        revault(revaultd.clone(), vault.outpoint()),
                         VaultMessage::Revaulted,
                     );
                 }
@@ -302,7 +313,7 @@ impl VaultSection {
                         *processing = true;
                         return Command::perform(
                             set_unvault_tx(
-                                revaultd,
+                                revaultd.clone(),
                                 vault.outpoint(),
                                 signer.target.unvault_tx.clone(),
                             ),
@@ -381,7 +392,7 @@ impl VaultSection {
         Command::none()
     }
 
-    pub fn view(&mut self, ctx: &Context, vault: &model::Vault) -> Element<Message> {
+    pub fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &model::Vault) -> Element<Message> {
         match self {
             Self::Unloaded => iced::Container::new(iced::Column::new()).into(),
             Self::OnchainTransactions { txs, view } => view.view(ctx, &vault, &txs),

@@ -4,7 +4,7 @@ use iced::{Command, Element};
 
 use super::{cmd::list_vaults, State};
 
-use crate::daemon::model::VaultStatus;
+use crate::daemon::{client::Client, model::VaultStatus};
 
 use crate::app::{
     context::Context, error::Error, message::Message, state::cmd, view::EmergencyView,
@@ -39,8 +39,8 @@ impl EmergencyState {
     }
 }
 
-impl State for EmergencyState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => {
@@ -71,7 +71,7 @@ impl State for EmergencyState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         self.view.view(
             ctx,
             self.vaults_number,
@@ -83,7 +83,7 @@ impl State for EmergencyState {
         )
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(
                 ctx.revaultd.clone(),
@@ -101,8 +101,8 @@ impl State for EmergencyState {
     }
 }
 
-impl From<EmergencyState> for Box<dyn State> {
-    fn from(s: EmergencyState) -> Box<dyn State> {
+impl<C: Client + Send + Sync + 'static> From<EmergencyState> for Box<dyn State<C>> {
+    fn from(s: EmergencyState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }

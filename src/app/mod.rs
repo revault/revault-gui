@@ -19,16 +19,19 @@ use state::{
     VaultsState,
 };
 
-use crate::{app::context::Context, revault::Role};
+use crate::{app::context::Context, daemon::client::Client, revault::Role};
 
-pub struct App {
+pub struct App<C: Client + Send + Sync + 'static> {
     config: Config,
-    state: Box<dyn State>,
-    context: Context,
+    state: Box<dyn State<C>>,
+    context: Context<C>,
 }
 
 #[allow(unreachable_patterns)]
-pub fn new_state(context: &Context, config: &Config) -> Box<dyn State> {
+pub fn new_state<C: Client + Send + Sync + 'static>(
+    context: &Context<C>,
+    config: &Config,
+) -> Box<dyn State<C>> {
     match context.role {
         Role::Manager => match context.menu {
             Menu::Deposit => DepositState::new().into(),
@@ -53,8 +56,8 @@ pub fn new_state(context: &Context, config: &Config) -> Box<dyn State> {
     }
 }
 
-impl App {
-    pub fn new(context: Context, config: Config) -> (App, Command<Message>) {
+impl<C: Client + Send + Sync + 'static> App<C> {
+    pub fn new(context: Context<C>, config: Config) -> (App<C>, Command<Message>) {
         let state = new_state(&context, &config);
         let cmd = state.load(&context);
         (

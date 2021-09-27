@@ -14,7 +14,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
-    daemon::model::VaultStatus,
+    daemon::{client::Client, model::VaultStatus},
     ui::{
         component::{button, card, navbar, scroll, text::Text, TooltipStyle},
         icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
@@ -37,9 +37,9 @@ impl ManagerHomeView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
@@ -103,8 +103,8 @@ impl ManagerHomeView {
     }
 }
 
-fn manager_overview<'a, T: 'a>(
-    ctx: &Context,
+fn manager_overview<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     active_funds: u64,
     inactive_funds: u64,
 ) -> Container<'a, T> {
@@ -162,9 +162,9 @@ impl StakeholderHomeView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         moving_vaults: Vec<Element<'a, Message>>,
         balance: &HashMap<VaultStatus, (u64, u64)>,
@@ -223,9 +223,9 @@ impl StakeholderOverview {
         }
     }
 
-    pub fn view(
+    pub fn view<C: Client>(
         &mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         overview: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<Message> {
         let (nb_total_vaults, total_amount) =
@@ -333,8 +333,8 @@ impl StakeholderOverview {
     }
 }
 
-fn active_funds_overview_card<'a, T: 'a>(
-    ctx: &Context,
+fn active_funds_overview_card<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     active: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
     let (nb_active_vaults, active_amount) = active.unwrap_or(&(0, 0));
@@ -394,8 +394,8 @@ fn active_funds_overview_card<'a, T: 'a>(
     card::white(Container::new(col.spacing(20)))
 }
 
-fn secured_funds_overview_card<'a, T: 'a>(
-    ctx: &Context,
+fn secured_funds_overview_card<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     secure: Option<&(u64, u64)>,
     securing: Option<&(u64, u64)>,
     activating: Option<&(u64, u64)>,

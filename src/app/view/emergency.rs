@@ -2,6 +2,7 @@ use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
+    daemon::client::Client,
     ui::{
         color,
         component::{button, card, scroll, text::Text, ContainerBackgroundStyle},
@@ -25,9 +26,9 @@ impl EmergencyView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         vaults_number: usize,
         funds_amount: u64,
         warning: Option<&Error>,

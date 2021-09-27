@@ -10,7 +10,7 @@ use crate::{
         message::{Message, SpendTxMessage},
         view::manager::spend_tx_with_feerate_view,
     },
-    daemon::model,
+    daemon::{client::Client, model},
     ui::{
         color,
         component::{badge, button, card, scroll, text::Text, ContainerBackgroundStyle},
@@ -38,9 +38,9 @@ impl SpendTransactionView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
@@ -570,9 +570,9 @@ impl SpendTransactionListItemView {
         }
     }
 
-    pub fn view(
+    pub fn view<C: Client>(
         &mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         tx: &model::SpendTx,
         spend_amount: u64,
         fees: u64,

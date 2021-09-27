@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::daemon::{
-    client::{RevaultD, RevaultDError},
+    client::{Client, RevaultD, RevaultDError},
     model::{
         RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, SpendTxStatus,
         UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
@@ -11,18 +11,18 @@ use crate::daemon::{
 };
 
 /// retrieves a bitcoin address for deposit.
-pub async fn get_deposit_address(
-    revaultd: Arc<RevaultD>,
+pub async fn get_deposit_address<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
 ) -> Result<bitcoin::Address, RevaultDError> {
     revaultd.get_deposit_address().map(|res| res.address)
 }
 
-pub async fn get_blockheight(revaultd: Arc<RevaultD>) -> Result<u64, RevaultDError> {
+pub async fn get_blockheight<C: Client>(revaultd: Arc<RevaultD<C>>) -> Result<u64, RevaultDError> {
     revaultd.get_info().map(|res| res.blockheight)
 }
 
-pub async fn list_vaults(
-    revaultd: Arc<RevaultD>,
+pub async fn list_vaults<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     statuses: Option<&[VaultStatus]>,
     outpoints: Option<Vec<String>>,
 ) -> Result<Vec<Vault>, RevaultDError> {
@@ -31,8 +31,8 @@ pub async fn list_vaults(
         .map(|res| res.vaults)
 }
 
-pub async fn get_onchain_txs(
-    revaultd: Arc<RevaultD>,
+pub async fn get_onchain_txs<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     outpoint: String,
 ) -> Result<VaultTransactions, RevaultDError> {
     let list = revaultd.list_onchain_transactions(Some(vec![outpoint]))?;
@@ -45,15 +45,15 @@ pub async fn get_onchain_txs(
     Ok(list.onchain_transactions[0].to_owned())
 }
 
-pub async fn get_revocation_txs(
-    revaultd: Arc<RevaultD>,
+pub async fn get_revocation_txs<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     outpoint: String,
 ) -> Result<RevocationTransactions, RevaultDError> {
     revaultd.get_revocation_txs(&outpoint)
 }
 
-pub async fn set_revocation_txs(
-    revaultd: Arc<RevaultD>,
+pub async fn set_revocation_txs<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     outpoint: String,
     emergency_tx: Psbt,
     emergency_unvault_tx: Psbt,
@@ -62,23 +62,23 @@ pub async fn set_revocation_txs(
     revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)
 }
 
-pub async fn get_unvault_tx(
-    revaultd: Arc<RevaultD>,
+pub async fn get_unvault_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     outpoint: String,
 ) -> Result<UnvaultTransaction, RevaultDError> {
     revaultd.get_unvault_tx(&outpoint)
 }
 
-pub async fn set_unvault_tx(
-    revaultd: Arc<RevaultD>,
+pub async fn set_unvault_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     outpoint: String,
     unvault_tx: Psbt,
 ) -> Result<(), RevaultDError> {
     revaultd.set_unvault_tx(&outpoint, &unvault_tx)
 }
 
-pub async fn get_spend_tx(
-    revaultd: Arc<RevaultD>,
+pub async fn get_spend_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     inputs: Vec<String>,
     outputs: HashMap<String, u64>,
     feerate: u32,
@@ -86,36 +86,47 @@ pub async fn get_spend_tx(
     revaultd.get_spend_tx(&inputs, &outputs, &feerate)
 }
 
-pub async fn update_spend_tx(revaultd: Arc<RevaultD>, psbt: Psbt) -> Result<(), RevaultDError> {
+pub async fn update_spend_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+    psbt: Psbt,
+) -> Result<(), RevaultDError> {
     revaultd.update_spend_tx(&psbt)
 }
 
-pub async fn list_spend_txs(
-    revaultd: Arc<RevaultD>,
+pub async fn list_spend_txs<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     statuses: Option<&[SpendTxStatus]>,
 ) -> Result<Vec<SpendTx>, RevaultDError> {
     revaultd.list_spend_txs(statuses).map(|res| res.spend_txs)
 }
 
-pub async fn delete_spend_tx(revaultd: Arc<RevaultD>, txid: String) -> Result<(), RevaultDError> {
+pub async fn delete_spend_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+    txid: String,
+) -> Result<(), RevaultDError> {
     revaultd.delete_spend_tx(&txid)
 }
 
-pub async fn broadcast_spend_tx(
-    revaultd: Arc<RevaultD>,
+pub async fn broadcast_spend_tx<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
     txid: String,
 ) -> Result<(), RevaultDError> {
     revaultd.broadcast_spend_tx(&txid)
 }
 
-pub async fn revault(revaultd: Arc<RevaultD>, outpoint: String) -> Result<(), RevaultDError> {
+pub async fn revault<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+    outpoint: String,
+) -> Result<(), RevaultDError> {
     revaultd.revault(&outpoint)
 }
 
-pub async fn emergency(revaultd: Arc<RevaultD>) -> Result<(), RevaultDError> {
+pub async fn emergency<C: Client>(revaultd: Arc<RevaultD<C>>) -> Result<(), RevaultDError> {
     revaultd.emergency()
 }
 
-pub async fn get_server_status(revaultd: Arc<RevaultD>) -> Result<ServersStatuses, RevaultDError> {
+pub async fn get_server_status<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+) -> Result<ServersStatuses, RevaultDError> {
     revaultd.get_server_status()
 }

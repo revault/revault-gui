@@ -8,12 +8,14 @@ use iced::{Column, Command, Container, Element, Length};
 use crate::{
     app::config::Config as GUIConfig,
     daemon::{
-        client::{GetInfoResponse, RevaultD, RevaultDError},
+        client::{self, GetInfoResponse, RevaultDError},
         config::{Config, ConfigError},
         start_daemon, StartDaemonError,
     },
     ui::component::{image::revault_colored_logo, text::Text},
 };
+
+type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
 
 pub struct Loader {
     pub gui_config: GUIConfig,
@@ -181,7 +183,15 @@ async fn synced(
 
 async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     let cfg = Config::from_file(&revaultd_config_path)?;
-    let revaultd = RevaultD::new(&cfg)?;
+    let socket_path = cfg.socket_path().map_err(|e| {
+        RevaultDError::UnexpectedError(format!(
+            "Failed to find revaultd socket path: {}",
+            e.to_string()
+        ))
+    })?;
+
+    let client = client::jsonrpc::JsonRPCClient::new(socket_path);
+    let revaultd = RevaultD::new(&cfg, client)?;
 
     Ok(Arc::new(revaultd))
 }
@@ -205,7 +215,15 @@ async fn start_daemon_and_connect(
 
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
-        RevaultD::new(cfg).map(Arc::new).map_err(|e| {
+        let socket_path = cfg.socket_path().map_err(|e| {
+            RevaultDError::UnexpectedError(format!(
+                "Failed to find revaultd socket path: {}",
+                e.to_string()
+            ))
+        })?;
+
+        let client = client::jsonrpc::JsonRPCClient::new(socket_path);
+        RevaultD::new(cfg, client).map(Arc::new).map_err(|e| {
             tracing::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })

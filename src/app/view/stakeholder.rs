@@ -6,6 +6,7 @@ use iced::{
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
+    daemon::client::Client,
     ui::{
         component::{
             button, card, scroll, separation, text::Text, ContainerBackgroundStyle, TooltipStyle,
@@ -37,9 +38,9 @@ impl StakeholderCreateVaultsView {
         self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context,
+        _ctx: &Context<C>,
         deposits: Vec<Element<'a, Message>>,
         address: Option<&bitcoin::Address>,
     ) -> Element<'a, Message> {
@@ -153,9 +154,9 @@ impl StakeholderDelegateFundsView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         active_balance: &u64,
         activating_balance: &u64,
         vaults: Vec<Element<'a, Message>>,

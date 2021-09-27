@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use iced::{Command, Element, Subscription};
 
-use crate::daemon::model::{self, VaultStatus};
+use crate::daemon::{
+    client::Client,
+    model::{self, VaultStatus},
+};
 
 use crate::app::{
     context::Context,
@@ -61,7 +64,11 @@ impl StakeholderHomeState {
             .collect();
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        outpoint: String,
+    ) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
@@ -102,8 +109,8 @@ impl StakeholderHomeState {
     }
 }
 
-impl State for StakeholderHomeState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
@@ -120,7 +127,7 @@ impl State for StakeholderHomeState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
         }
@@ -140,7 +147,7 @@ impl State for StakeholderHomeState {
         Subscription::none()
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -155,8 +162,8 @@ impl State for StakeholderHomeState {
     }
 }
 
-impl From<StakeholderHomeState> for Box<dyn State> {
-    fn from(s: StakeholderHomeState) -> Box<dyn State> {
+impl<C: Client + Sync + Send + 'static> From<StakeholderHomeState> for Box<dyn State<C>> {
+    fn from(s: StakeholderHomeState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }
@@ -184,7 +191,11 @@ impl StakeholderCreateVaultsState {
         }
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        outpoint: String,
+    ) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 if self.deposits.len() == 1
@@ -231,8 +242,8 @@ impl StakeholderCreateVaultsState {
     }
 }
 
-impl State for StakeholderCreateVaultsState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::DepositAddress(res) => match res {
                 Ok(address) => {
@@ -274,7 +285,7 @@ impl State for StakeholderCreateVaultsState {
         Subscription::none()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         if let Some(selected) = &mut self.selected_vault {
             return selected.view(ctx);
         }
@@ -285,7 +296,7 @@ impl State for StakeholderCreateVaultsState {
         )
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![
             Command::perform(
                 get_deposit_address(ctx.revaultd.clone()),
@@ -299,8 +310,8 @@ impl State for StakeholderCreateVaultsState {
     }
 }
 
-impl From<StakeholderCreateVaultsState> for Box<dyn State> {
-    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State> {
+impl<C: Client + Send + Sync + 'static> From<StakeholderCreateVaultsState> for Box<dyn State<C>> {
+    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }
@@ -333,7 +344,11 @@ impl StakeholderDelegateFundsState {
         self.vaults = vaults.into_iter().map(VaultListItem::new).collect();
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        outpoint: String,
+    ) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
@@ -354,7 +369,11 @@ impl StakeholderDelegateFundsState {
         Command::none()
     }
 
-    pub fn on_vault_delegate(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_delegate<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        outpoint: String,
+    ) -> Command<Message> {
         if let Some(selected) = &mut self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 return selected
@@ -392,8 +411,8 @@ impl StakeholderDelegateFundsState {
     }
 }
 
-impl State for StakeholderDelegateFundsState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateFundsState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
@@ -414,7 +433,7 @@ impl State for StakeholderDelegateFundsState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
         }
@@ -438,7 +457,7 @@ impl State for StakeholderDelegateFundsState {
         Subscription::none()
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::perform(
             list_vaults(
                 ctx.revaultd.clone(),
@@ -454,8 +473,8 @@ impl State for StakeholderDelegateFundsState {
     }
 }
 
-impl From<StakeholderDelegateFundsState> for Box<dyn State> {
-    fn from(s: StakeholderDelegateFundsState) -> Box<dyn State> {
+impl<C: Client + Send + Sync + 'static> From<StakeholderDelegateFundsState> for Box<dyn State<C>> {
+    fn from(s: StakeholderDelegateFundsState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }

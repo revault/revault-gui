@@ -72,7 +72,7 @@ fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Erro
 pub enum GUI {
     Installer(Installer),
     Loader(Loader),
-    App(App),
+    App(App<daemon::client::jsonrpc::JsonRPCClient>),
 }
 
 #[derive(Debug)]

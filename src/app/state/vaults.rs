@@ -8,7 +8,7 @@ use super::{
     State,
 };
 
-use crate::daemon::{model, model::VaultStatus};
+use crate::daemon::{client::Client, model, model::VaultStatus};
 
 use crate::app::{
     context::Context,
@@ -51,7 +51,11 @@ impl VaultsState {
         self.loading = false;
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        outpoint: String,
+    ) -> Command<Message> {
         if let Some(selected) = &self.selected_vault {
             if selected.vault.outpoint() == outpoint {
                 self.selected_vault = None;
@@ -73,8 +77,8 @@ impl VaultsState {
     }
 }
 
-impl State for VaultsState {
-    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
@@ -110,7 +114,7 @@ impl State for VaultsState {
         Subscription::none()
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         if let Some(v) = &mut self.selected_vault {
             return v.view(ctx);
         }
@@ -123,7 +127,7 @@ impl State for VaultsState {
         )
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -134,8 +138,8 @@ impl State for VaultsState {
     }
 }
 
-impl From<VaultsState> for Box<dyn State> {
-    fn from(s: VaultsState) -> Box<dyn State> {
+impl<C: Client + Send + Sync + 'static> From<VaultsState> for Box<dyn State<C>> {
+    fn from(s: VaultsState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }
