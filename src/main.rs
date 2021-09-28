@@ -7,21 +7,14 @@ use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
-mod app;
-mod conversion;
-mod daemon;
-mod hw;
-mod installer;
-mod loader;
-mod revault;
-mod ui;
-
-use app::{config::ConfigError, context::Context, menu::Menu, App};
-use conversion::Converter;
-use daemon::config::default_datadir;
-use installer::Installer;
-use loader::Loader;
-use revault::Role;
+use revault_gui::{
+    app::{self, config::ConfigError, context::Context, menu::Menu, App},
+    conversion::Converter,
+    daemon::{self, config::default_datadir},
+    installer::{self, Installer},
+    loader::{self, Loader},
+    revault::Role,
+};
 
 #[derive(Debug, PartialEq)]
 enum Arg {

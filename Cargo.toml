@@ -8,6 +8,10 @@ license = "BSD-3-Clause"
 authors = ["Edouard Paris <m@edouard.paris>"]
 edition = "2018"
 
+[[bin]]
+name = "revault-gui"
+path = "src/main.rs"
+
 [dependencies]
 bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
 revault_tx = "0.3.0"
