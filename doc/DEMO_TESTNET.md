@@ -28,12 +28,12 @@ This tutorial has been tested on Linux, it *might* work on Unix and it won't wor
 Please refer to [practical-revault](https://github.com/revault/practical-revault/) for in-depth explanation of the architecture.
 
 Every stakeholder will need:
-- `revaultd`
+
 - `cosignerd`
 - `revault-gui`
 
 Every manager will need:
-- `revaultd`
+
 - `revault-gui`
 
 Also, there must be **one** `coordinatord`
@@ -46,7 +46,7 @@ See https://bitcoin.org/en/download
 
 ### Rust
 
-`revaultd`, `cosignerd` and `coordinatord` are written in Rust. Since we don't publish compiled binaries (yet!), 
+`cosignerd` and `coordinatord` are written in Rust. Since we don't publish compiled binaries (yet!), 
 you'll need to have the Rust toolchain installed to be able to compile the projects.
 
 Please refer to https://www.rust-lang.org/tools/install for instructions on how to install Rust.
@@ -129,19 +129,16 @@ cd revault_tutorial
 
 ### If you are a stakeholder:
 
-Download all the needed repositories: `cosignerd`, `revaultd`, `revault-gui`:
+Download all the needed repositories: `cosignerd`, `revault-gui`:
 
 ```
-git clone -b 0.2 https://github.com/revault/cosignerd
-git clone -b 0.2 https://github.com/revault/revaultd
-git clone -b 0.2 https://github.com/revault/revault-gui
+git clone -b 0.3 https://github.com/revault/cosignerd
+git clone -b 0.3 https://github.com/revault/revault-gui
 ```
 
 and build them:
 ```
 cd cosignerd
-cargo build
-cd ../revaultd
 cargo build
 cd ../revault-gui
 cargo build
@@ -150,18 +147,16 @@ cd ..
 
 ### If you are a manager:
 
-Download all the needed repositories: `revaultd`, `revault-gui`:
+Download `revault-gui`:
 
 ```
-git clone -b 0.2 https://github.com/revault/revaultd
-git clone -b 0.2 https://github.com/revault/revault-gui
+git clone -b 0.3 https://github.com/revault/revault-gui
 ```
 
-and build them:
+and build it:
+
 ```
-cd revaultd
-cargo build
-cd ../revault-gui
+cd revault-gui
 cargo build
 cd ..
 ```
@@ -180,7 +175,7 @@ As we said, we need just one coordinator running, no matter how many stakeholder
 
 Clone the `coordinatord`:
 ```
-git clone -b 0.2 https://github.com/revault/coordinatord
+git clone -b 0.3 https://github.com/revault/coordinatord
 ```
 
 Cd into the coordinatord, create a directory for all the data and build the project:
@@ -297,7 +292,7 @@ export REVAULTD_PATH=./revaultd/target/debug/revaultd
 Start the installation of the gui with:
 
 ```
-./revault-gui/target/debug/revault-gui --datadir .
+./revault-gui/target/debug/revault-gui --datadir . --testnet
 ```
 
 And follow the instructions. The installer should guide you into
@@ -311,23 +306,18 @@ as we'll need to give it to the coordinator.
 To start again the revault setup, do:
 
 ```
-./revault-gui/target/debug/revault-gui --conf revault_gui_testnet.toml
+./revault-gui/target/debug/revault-gui --datadir . --testnet
 ```
 
 ## Getting started as a manager
+
 ### Setting up Revault
+
 Go back to the `revault_tutorial` directory.
-
-First of all, we need to instruct the GUI where revaultd is:
-
-```
-export REVAULTD_PATH = ./revaultd/target/debug/revaultd
-```
-
 Start the install of the gui with:
 
 ```
-./revault-gui/target/debug/revault-gui --datadir .
+./revault-gui/target/debug/revault-gui --datadir . --testnet
 ```
 
 And follow the instructions. The installer should guide you into
@@ -341,7 +331,7 @@ as we'll need to give it to the coordinator and to the cosigners.
 To start again the revault setup, do:
 
 ```
-./revault-gui/target/debug/revault-gui --conf revault_gui_testnet.toml
+./revault-gui/target/debug/revault-gui --datadir . --testnet
 ```
 
 ## Updating the configurations
