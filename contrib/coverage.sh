@@ -7,7 +7,7 @@ fi
 
 cargo clean
 
-rm revault_gui_coverage_*.profraw
+rm -f revault_gui_coverage_*.profraw
 LLVM_PROFILE_FILE="revault_gui_coverage_%m.profraw" RUSTFLAGS="-Zinstrument-coverage" RUSTDOCFLAGS="$RUSTFLAGS -Z unstable-options --persist-doctests target/debug/doctestbins" cargo +nightly build --all-features
 LLVM_PROFILE_FILE="revault_gui_coverage_%m.profraw" RUSTFLAGS="-Zinstrument-coverage" RUSTDOCFLAGS="$RUSTFLAGS -Z unstable-options --persist-doctests target/debug/doctestbins" cargo +nightly test --all-features
 
