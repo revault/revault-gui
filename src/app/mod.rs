@@ -1,10 +1,10 @@
 pub mod config;
 pub mod context;
 pub mod menu;
+pub mod message;
+pub mod state;
 
 mod error;
-mod message;
-mod state;
 mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};

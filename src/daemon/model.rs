@@ -2,7 +2,7 @@ use bitcoin::{util::psbt::PartiallySignedTransaction, OutPoint, Transaction, Txi
 use serde::{Deserialize, Serialize};
 
 /// getdepositaddress response
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepositAddress {
     pub address: bitcoin::Address,
 }
