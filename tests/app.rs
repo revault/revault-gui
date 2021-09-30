@@ -22,7 +22,7 @@ use revault_gui::{
 
 #[tokio::test]
 async fn test_deposit_state() {
-    let address = bitcoin::Address::from_str(
+    let addr = bitcoin::Address::from_str(
         "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj",
     )
     .unwrap();
@@ -41,7 +41,7 @@ async fn test_deposit_state() {
         (
             json!({"method": "getdepositaddress", "params": Option::<Request>::None}),
             Ok(json!(DepositAddress {
-                address: address.clone()
+                address: addr.clone()
             })),
         ),
     ]
@@ -64,5 +64,11 @@ async fn test_deposit_state() {
 
     let sandbox = sandbox.load(&ctx).await;
 
-    assert_eq!(&address, sandbox.state().address.as_ref().unwrap());
+    assert!(
+        if let DepositState::Loaded { address, .. } = sandbox.state() {
+            addr == *address
+        } else {
+            false
+        }
+    )
 }

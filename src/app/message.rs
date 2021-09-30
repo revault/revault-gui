@@ -17,6 +17,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Reload,
     Clipboard(String),
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),

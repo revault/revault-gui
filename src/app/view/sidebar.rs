@@ -109,7 +109,8 @@ impl Sidebar {
                 &mut self.deposit_menu_button,
                 button::button_content(Some(deposit_icon()), "Deposit"),
             )
-            .on_press(Message::Menu(Menu::Deposit))
+            // DepositState supports reload
+            .on_press(Message::Reload)
             .width(Length::Units(200))
         } else {
             button::transparent(
