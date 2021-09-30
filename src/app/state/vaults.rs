@@ -3,7 +3,7 @@ use std::convert::From;
 use iced::{Command, Element, Subscription};
 
 use super::{
-    cmd::{get_blockheight, list_vaults},
+    cmd::list_vaults,
     vault::{Vault, VaultListItem},
     State,
 };
@@ -14,41 +14,63 @@ use crate::app::{
     context::Context,
     error::Error,
     message::{Message, VaultFilterMessage},
-    view::{vault::VaultListItemView, VaultsView},
+    view::{vault::VaultListItemView, LoadingDashboard, VaultsView},
 };
 
 #[derive(Debug)]
-pub struct VaultsState {
-    view: VaultsView,
+pub enum VaultsState {
+    Loading {
+        fail: Option<Error>,
+        view: LoadingDashboard,
+    },
+    Loaded {
+        selected_vault: Option<Vault>,
+        vault_status_filter: &'static [VaultStatus],
+        vaults: Vec<VaultListItem<VaultListItemView>>,
+        warning: Option<Error>,
 
-    blockheight: u64,
-
-    vault_status_filter: &'static [VaultStatus],
-    vaults: Vec<VaultListItem<VaultListItemView>>,
-    selected_vault: Option<Vault>,
-
-    warning: Option<Error>,
-
-    /// loading is true until Message::Vaults is handled
-    loading: bool,
+        view: VaultsView,
+    },
 }
 
 impl VaultsState {
     pub fn new() -> Self {
-        VaultsState {
-            view: VaultsView::new(),
-            blockheight: 0,
-            vault_status_filter: &VaultStatus::CURRENT,
-            vaults: Vec::new(),
-            selected_vault: None,
-            warning: None,
-            loading: true,
+        Self::Loading {
+            view: LoadingDashboard::new(),
+            fail: None,
         }
     }
 
-    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        self.vaults = vaults.into_iter().map(VaultListItem::new).collect();
-        self.loading = false;
+    pub fn update_vaults(&mut self, vlts: Vec<model::Vault>) {
+        match self {
+            Self::Loading { .. } => {
+                let vaults = vlts.into_iter().map(VaultListItem::new).collect();
+                *self = Self::Loaded {
+                    view: VaultsView::new(),
+                    vault_status_filter: &VaultStatus::CURRENT,
+                    vaults,
+                    selected_vault: None,
+                    warning: None,
+                };
+            }
+            Self::Loaded {
+                vaults, warning, ..
+            } => {
+                *vaults = vlts.into_iter().map(VaultListItem::new).collect();
+                *warning = None;
+            }
+        }
+    }
+
+    pub fn on_error(&mut self, error: Error) {
+        match self {
+            Self::Loading { fail, .. } => {
+                *fail = Some(error);
+            }
+            Self::Loaded { warning, .. } => {
+                *warning = Some(error);
+            }
+        }
     }
 
     pub fn on_vault_select<C: Client + Send + Sync + 'static>(
@@ -56,22 +78,25 @@ impl VaultsState {
         ctx: &Context<C>,
         outpoint: String,
     ) -> Command<Message> {
-        if let Some(selected) = &self.selected_vault {
-            if selected.vault.outpoint() == outpoint {
-                self.selected_vault = None;
-                return Command::none();
-            }
-        }
-
-        if let Some(selected) = self
-            .vaults
-            .iter()
-            .find(|vlt| vlt.vault.outpoint() == outpoint)
+        if let Self::Loaded {
+            selected_vault,
+            vaults,
+            ..
+        } = self
         {
-            let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(ctx.revaultd.clone());
-            self.selected_vault = Some(selected_vault);
-            return cmd.map(Message::Vault);
+            if let Some(selected) = selected_vault {
+                if selected.vault.outpoint() == outpoint {
+                    *selected_vault = None;
+                    return Command::none();
+                }
+            }
+
+            if let Some(selected) = vaults.iter().find(|vlt| vlt.vault.outpoint() == outpoint) {
+                let vault = Vault::new(selected.vault.clone());
+                let cmd = vault.load(ctx.revaultd.clone());
+                *selected_vault = Some(vault);
+                return cmd.map(Message::Vault);
+            };
         };
         Command::none()
     }
@@ -80,61 +105,84 @@ impl VaultsState {
 impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
     fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
+            Message::Reload => return self.load(ctx),
             Message::Vaults(res) => match res {
                 Ok(vaults) => self.update_vaults(vaults),
-                Err(e) => self.warning = Error::from(e).into(),
+                Err(e) => self.on_error(Error::from(e)),
             },
             Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
             Message::Vault(msg) => {
-                if let Some(selected) = &mut self.selected_vault {
-                    return selected.update(ctx, msg).map(Message::Vault);
+                if let Self::Loaded { selected_vault, .. } = self {
+                    if let Some(selected) = selected_vault {
+                        return selected.update(ctx, msg).map(Message::Vault);
+                    }
                 }
             }
             Message::FilterVaults(VaultFilterMessage::Status(statuses)) => {
-                self.loading = true;
-                self.vault_status_filter = statuses;
-                return Command::perform(
-                    list_vaults(ctx.revaultd.clone(), Some(self.vault_status_filter), None),
-                    Message::Vaults,
-                );
+                if let Self::Loaded {
+                    vault_status_filter,
+                    ..
+                } = self
+                {
+                    *vault_status_filter = statuses;
+                    return Command::perform(
+                        list_vaults(ctx.revaultd.clone(), Some(vault_status_filter), None),
+                        Message::Vaults,
+                    );
+                }
             }
-            Message::BlockHeight(b) => match b {
-                Ok(height) => self.blockheight = height,
-                Err(e) => self.warning = Error::from(e).into(),
-            },
             _ => {}
         };
         Command::none()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if let Some(v) = &self.selected_vault {
-            return v.subscription().map(Message::Vault);
+        if let Self::Loaded { selected_vault, .. } = self {
+            if let Some(v) = selected_vault {
+                return v.subscription().map(Message::Vault);
+            }
         }
         Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
-        if let Some(v) = &mut self.selected_vault {
-            return v.view(ctx);
+        match self {
+            Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
+            Self::Loaded {
+                selected_vault,
+                vaults,
+                vault_status_filter,
+                view,
+                warning,
+                ..
+            } => {
+                if let Some(v) = selected_vault {
+                    return v.view(ctx);
+                }
+                view.view(
+                    ctx,
+                    warning.as_ref(),
+                    vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    vault_status_filter,
+                )
+            }
         }
-        self.view.view(
-            ctx,
-            self.warning.as_ref(),
-            self.vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.vault_status_filter,
-            self.loading,
-        )
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
-        Command::batch(vec![
-            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
-            Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(self.vault_status_filter), None),
+        match self {
+            Self::Loading { .. } => Command::batch(vec![Command::perform(
+                list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
                 Message::Vaults,
-            ),
-        ])
+            )]),
+            Self::Loaded {
+                vault_status_filter,
+                ..
+            } => Command::batch(vec![Command::perform(
+                list_vaults(ctx.revaultd.clone(), Some(vault_status_filter), None),
+                Message::Vaults,
+            )]),
+        }
     }
 }
 
