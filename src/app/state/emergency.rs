@@ -7,34 +7,38 @@ use super::{cmd::list_vaults, State};
 use crate::daemon::{client::Client, model::VaultStatus};
 
 use crate::app::{
-    context::Context, error::Error, message::Message, state::cmd, view::EmergencyView,
+    context::Context,
+    error::Error,
+    menu::Menu,
+    message::Message,
+    state::cmd,
+    view::{EmergencyView, LoadingModal},
 };
 
 #[derive(Debug)]
-pub struct EmergencyState {
-    view: EmergencyView,
+pub enum EmergencyState {
+    Loading {
+        fail: Option<Error>,
+        view: LoadingModal,
+    },
+    Loaded {
+        view: EmergencyView,
 
-    vaults_number: usize,
-    funds_amount: u64,
+        vaults_number: usize,
+        funds_amount: u64,
 
-    warning: Option<Error>,
+        warning: Option<Error>,
 
-    /// loading is true until Message::Vaults is handled
-    loading: bool,
-    processing: bool,
-    success: bool,
+        processing: bool,
+        success: bool,
+    },
 }
 
 impl EmergencyState {
     pub fn new() -> Self {
-        EmergencyState {
-            view: EmergencyView::new(),
-            vaults_number: 0,
-            funds_amount: 0,
-            warning: None,
-            loading: true,
-            processing: false,
-            success: false,
+        Self::Loading {
+            view: LoadingModal::new(),
+            fail: None,
         }
     }
 }
@@ -42,28 +46,65 @@ impl EmergencyState {
 impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
     fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
-            Message::Vaults(res) => match res {
-                Ok(vaults) => {
-                    self.loading = false;
-                    self.vaults_number = vaults.len();
-                    self.funds_amount = vaults.into_iter().fold(0, |acc, vault| acc + vault.amount);
-                }
-                Err(e) => self.warning = Error::from(e).into(),
+            Message::Vaults(res) => match self {
+                Self::Loading { fail, .. } => match res {
+                    Ok(vaults) => {
+                        *self = Self::Loaded {
+                            view: EmergencyView::new(),
+                            vaults_number: vaults.len(),
+                            funds_amount: vaults
+                                .into_iter()
+                                .fold(0, |acc, vault| acc + vault.amount),
+                            warning: None,
+                            processing: false,
+                            success: false,
+                        };
+                    }
+                    Err(e) => *fail = Error::from(e).into(),
+                },
+                Self::Loaded {
+                    vaults_number,
+                    funds_amount,
+                    warning,
+                    ..
+                } => match res {
+                    Ok(vaults) => {
+                        *vaults_number = vaults.len();
+                        *funds_amount = vaults.into_iter().fold(0, |acc, vault| acc + vault.amount);
+                        *warning = None;
+                    }
+                    Err(e) => *warning = Error::from(e).into(),
+                },
             },
             Message::Emergency => {
-                self.processing = true;
-                self.warning = None;
-                return Command::perform(
-                    cmd::emergency(ctx.revaultd.clone()),
-                    Message::EmergencyBroadcasted,
-                );
+                if let Self::Loaded {
+                    processing,
+                    warning,
+                    ..
+                } = self
+                {
+                    *processing = true;
+                    *warning = None;
+                    return Command::perform(
+                        cmd::emergency(ctx.revaultd.clone()),
+                        Message::EmergencyBroadcasted,
+                    );
+                }
             }
             Message::EmergencyBroadcasted(res) => {
-                self.processing = false;
-                if let Err(e) = res {
-                    self.warning = Some(Error::RevaultDError(e));
-                } else {
-                    self.success = true;
+                if let Self::Loaded {
+                    processing,
+                    warning,
+                    success,
+                    ..
+                } = self
+                {
+                    *processing = false;
+                    if let Err(e) = res {
+                        *warning = Some(Error::RevaultDError(e));
+                    } else {
+                        *success = true;
+                    }
                 }
             }
             _ => {}
@@ -72,15 +113,24 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
     }
 
     fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
-        self.view.view(
-            ctx,
-            self.vaults_number,
-            self.funds_amount,
-            self.warning.as_ref(),
-            self.loading,
-            self.processing,
-            self.success,
-        )
+        match self {
+            Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
+            Self::Loaded {
+                view,
+                funds_amount,
+                warning,
+                processing,
+                success,
+                vaults_number,
+            } => view.view(
+                ctx,
+                *vaults_number,
+                *funds_amount,
+                warning.as_ref(),
+                *processing,
+                *success,
+            ),
+        }
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
