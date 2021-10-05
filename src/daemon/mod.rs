@@ -9,7 +9,7 @@ pub mod model;
 
 use revaultd::{
     common::config::Config,
-    daemon::{daemon_main, setup_panic_hook, RevaultD},
+    daemon::{daemon_main, RevaultD},
     revault_net::sodiumoxide,
     revault_tx::bitcoin::hashes::hex::ToHex,
 };
@@ -50,10 +50,25 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
         revaultd.coordinator_noisekey.0.to_hex()
     );
 
-    setup_panic_hook();
-
     let handle: JoinHandle<_> = Builder::new()
         .spawn(|| {
+            std::panic::set_hook(Box::new(move |panic_info| {
+                let file = panic_info
+                    .location()
+                    .map(|l| l.file())
+                    .unwrap_or_else(|| "'unknown'");
+                let line = panic_info
+                    .location()
+                    .map(|l| l.line().to_string())
+                    .unwrap_or_else(|| "'unknown'".to_string());
+
+                if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                    log::error!("panic occurred at line {} of file {}: {:?}", line, file, s);
+                } else {
+                    log::error!("panic occurred at line {} of file {}", line, file);
+                }
+            }));
+
             daemon_main(revaultd);
         })
         .map_err(|e| DaemonError::StartError(format!("{}", e)))?;
