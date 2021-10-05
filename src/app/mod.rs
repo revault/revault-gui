@@ -84,6 +84,17 @@ impl<C: Client + Send + Sync + 'static> App<C> {
         self.should_exit
     }
 
+    pub fn stop(&mut self) -> Command<Message> {
+        self.should_exit = true;
+        if self.context.internal_daemon {
+            return Command::perform(
+                state::cmd::stop(self.context.revaultd.clone()),
+                Message::StoppingDaemon,
+            );
+        }
+        Command::none()
+    }
+
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::ChangeRole(role) => {
@@ -100,18 +111,7 @@ impl<C: Client + Send + Sync + 'static> App<C> {
                 clipboard.write(text);
                 Command::none()
             }
-            Message::Event(event) => {
-                if let Event::Window(window::Event::CloseRequested) = event {
-                    self.should_exit = true;
-                    if self.context.internal_daemon {
-                        return Command::perform(
-                            state::cmd::stop(self.context.revaultd.clone()),
-                            Message::StoppingDaemon,
-                        );
-                    }
-                }
-                Command::none()
-            }
+            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
             _ => self.state.update(&self.context, message),
         }
     }

@@ -118,6 +118,11 @@ impl Installer {
         self.should_exit
     }
 
+    pub fn stop(&mut self) -> Command<Message> {
+        self.should_exit = true;
+        Command::none()
+    }
+
     pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::Next => {
@@ -155,11 +160,7 @@ impl Installer {
                     Message::Installed,
                 );
             }
-            Message::Event(event) => {
-                if let Event::Window(window::Event::CloseRequested) = event {
-                    self.should_exit = true;
-                }
-            }
+            Message::Event(Event::Window(window::Event::CloseRequested)) => return self.stop(),
             _ => {
                 self.current_step().update(message);
             }

@@ -144,28 +144,28 @@ impl Loader {
         }
     }
 
+    pub fn stop(&mut self) -> Command<Message> {
+        self.should_exit = true;
+        if self.daemon_started {
+            if let Step::Syncing {
+                revaultd_client, ..
+            } = &self.step
+            {
+                return Command::perform(
+                    stop_daemon(revaultd_client.clone()),
+                    Message::StoppingDaemon,
+                );
+            }
+        }
+        Command::none()
+    }
+
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Connected(res) => self.on_connect(res),
             Message::Loaded(res) => self.on_load(res),
             Message::Syncing(res) => self.on_sync(res),
-            Message::Event(event) => {
-                if let Event::Window(window::Event::CloseRequested) = event {
-                    self.should_exit = true;
-                    if self.daemon_started {
-                        if let Step::Syncing {
-                            revaultd_client, ..
-                        } = &self.step
-                        {
-                            return Command::perform(
-                                stop_daemon(revaultd_client.clone()),
-                                Message::StoppingDaemon,
-                            );
-                        }
-                    }
-                }
-                Command::none()
-            }
+            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
             _ => Command::none(),
         }
     }

@@ -72,6 +72,7 @@ enum State {
 
 #[derive(Debug)]
 pub enum Message {
+    CtrlC,
     Install(installer::Message),
     Load(loader::Message),
     Run(app::Message),
@@ -85,6 +86,14 @@ impl GUI {
             State::App(v) => v.should_exit(),
         }
     }
+}
+
+async fn ctrl_c() -> Result<(), ()> {
+    if let Err(e) = tokio::signal::ctrl_c().await {
+        log::error!("{}", e);
+    };
+    log::info!("Signal received, exiting");
+    Ok(())
 }
 
 impl Application for GUI {
@@ -109,7 +118,10 @@ impl Application for GUI {
                         state: State::Installer(install),
                         daemon_running: false,
                     },
-                    command.map(Message::Install),
+                    Command::batch(vec![
+                        command.map(Message::Install),
+                        Command::perform(ctrl_c(), |_| Message::CtrlC),
+                    ]),
                 )
             }
             Config::Run(cfg) => {
@@ -119,7 +131,10 @@ impl Application for GUI {
                         state: State::Loader(loader),
                         daemon_running: false,
                     },
-                    command.map(Message::Load),
+                    Command::batch(vec![
+                        command.map(Message::Load),
+                        Command::perform(ctrl_c(), |_| Message::CtrlC),
+                    ]),
                 )
             }
         }
@@ -130,6 +145,13 @@ impl Application for GUI {
         message: Self::Message,
         clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
+        if matches!(message, Message::CtrlC) {
+            return match &mut self.state {
+                State::Installer(v) => v.stop().map(Message::Install),
+                State::Loader(v) => v.stop().map(Message::Load),
+                State::App(v) => v.stop().map(Message::Run),
+            };
+        }
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
             let (loader, command) = Loader::new(cfg);
