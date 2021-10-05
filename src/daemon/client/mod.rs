@@ -208,7 +208,7 @@ impl<C: Client> RevaultD<C> {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct Request {}
+pub struct Request {}
 
 /// getinfo
 

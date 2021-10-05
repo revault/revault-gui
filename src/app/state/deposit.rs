@@ -14,7 +14,7 @@ use crate::{
 /// give it to its view in order to be rendered.
 #[derive(Debug)]
 pub struct DepositState {
-    address: Option<bitcoin::Address>,
+    pub address: Option<bitcoin::Address>,
     warning: Option<Error>,
 
     /// The deposit view is rendering the address.
