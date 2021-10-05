@@ -14,7 +14,7 @@ use crate::app::{
     view::SettingsView,
 };
 
-use crate::daemon::model::ServersStatuses;
+use crate::daemon::{client::Client, model::ServersStatuses};
 
 #[derive(Debug)]
 pub struct SettingsState {
@@ -37,8 +37,8 @@ impl SettingsState {
     }
 }
 
-impl State for SettingsState {
-    fn update(&mut self, _ctx: &Context, message: Message) -> Command<Message> {
+impl<C: Client + Send + Sync + 'static> State<C> for SettingsState {
+    fn update(&mut self, _ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
             Message::BlockHeight(b) => {
                 match b {
@@ -62,7 +62,7 @@ impl State for SettingsState {
         }
     }
 
-    fn view(&mut self, ctx: &Context) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         self.view.view(
             ctx,
             self.warning.as_ref(),
@@ -72,7 +72,7 @@ impl State for SettingsState {
         )
     }
 
-    fn load(&self, ctx: &Context) -> Command<Message> {
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -83,8 +83,8 @@ impl State for SettingsState {
     }
 }
 
-impl From<SettingsState> for Box<dyn State> {
-    fn from(s: SettingsState) -> Box<dyn State> {
+impl<C: Client + Send + Sync + 'static> From<SettingsState> for Box<dyn State<C>> {
+    fn from(s: SettingsState) -> Box<dyn State<C>> {
         Box::new(s)
     }
 }

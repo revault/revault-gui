@@ -12,7 +12,7 @@ use crate::{
         menu::Menu,
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     },
-    daemon::model,
+    daemon::{client::Client, model},
     ui::{
         component::{button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle},
         icon::trash_icon,
@@ -396,9 +396,9 @@ impl ManagerSelectInputsView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         inputs: Vec<Element<'a, Message>>,
         input_amount: u64,
         output_amount: u64,
@@ -523,8 +523,8 @@ impl ManagerSelectInputsView {
     }
 }
 
-pub fn manager_send_input_view<'a>(
-    ctx: &Context,
+pub fn manager_send_input_view<'a, C: Client>(
+    ctx: &Context<C>,
     outpoint: &str,
     amount: &u64,
     selected: bool,
@@ -690,8 +690,8 @@ impl ManagerSelectFeeView {
     }
 }
 
-pub fn spend_tx_with_feerate_view<'a, T: 'a>(
-    ctx: &Context,
+pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
     inputs: &[model::Vault],
     psbt: &Psbt,
     change_index: Option<usize>,
@@ -866,9 +866,9 @@ impl ManagerSignView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,
@@ -970,9 +970,9 @@ impl ManagerSpendTransactionCreatedView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,

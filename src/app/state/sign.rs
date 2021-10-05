@@ -13,6 +13,7 @@ use iced::{time, Command, Element, Subscription};
 
 use crate::{
     app::{context::Context, message::SignMessage, view::sign::SignerView},
+    daemon::client::Client,
     hw,
 };
 
@@ -194,7 +195,7 @@ impl<T> Signer<T> {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context) -> Element<SignMessage> {
+    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<SignMessage> {
         self.view
             .view(ctx, self.channel.is_some(), self.processing, self.signed)
     }

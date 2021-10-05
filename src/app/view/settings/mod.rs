@@ -8,6 +8,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
+    daemon::client::Client,
     ui::component::{navbar, scroll},
 };
 
@@ -30,9 +31,9 @@ impl SettingsView {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         blockheight: u64,
         config: &Config,
@@ -57,8 +58,8 @@ impl SettingsView {
         .into()
     }
 
-    pub fn display_boxes<'a>(
-        ctx: &Context,
+    pub fn display_boxes<'a, C: Client>(
+        ctx: &Context<C>,
         blockheight: u64,
         server_status: Option<ServersStatuses>,
         config: &Config,

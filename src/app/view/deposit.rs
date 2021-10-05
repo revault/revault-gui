@@ -7,6 +7,7 @@ use crate::{
         message::Message,
         view::{layout, sidebar::Sidebar},
     },
+    daemon::client::Client,
     ui::component::{button, card, navbar, scroll, text::Text},
 };
 
@@ -35,9 +36,9 @@ impl DepositView {
         self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        ctx: &Context,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         address: Option<&bitcoin::Address>,
     ) -> Element<'a, Message> {

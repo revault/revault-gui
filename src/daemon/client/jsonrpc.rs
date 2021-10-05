@@ -42,6 +42,18 @@ pub struct JsonRPCClient {
     timeout: Option<Duration>,
 }
 
+impl super::Client for JsonRPCClient {
+    type Error = Error;
+    fn request<S: Serialize + Debug, D: DeserializeOwned + Debug>(
+        &self,
+        method: &str,
+        params: Option<S>,
+    ) -> Result<D, Self::Error> {
+        self.send_request(method, params)
+            .and_then(|res| res.into_result())
+    }
+}
+
 impl JsonRPCClient {
     /// Creates a new client
     pub fn new<P: AsRef<Path>>(sockpath: P) -> JsonRPCClient {
@@ -210,6 +222,16 @@ impl error::Error for Error {
         match *self {
             Error::Json(ref e) => Some(e),
             _ => None,
+        }
+    }
+}
+
+impl From<Error> for super::RevaultDError {
+    fn from(e: Error) -> super::RevaultDError {
+        match e {
+            Error::Io(e) => super::RevaultDError::IOError(e.kind()),
+            Error::NoErrorOrResult => super::RevaultDError::NoAnswerError,
+            _ => super::RevaultDError::RPCError(format!("rpc error: {}", e)),
         }
     }
 }

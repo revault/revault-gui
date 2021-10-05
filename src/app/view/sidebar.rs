@@ -3,6 +3,7 @@ use iced::{pick_list, Column, Container, Length, Row};
 use crate::revault::Role;
 use crate::{
     app::{context::Context, menu::Menu, message::Message, view::layout},
+    daemon::client::Client,
     ui::{
         color,
         component::{button, separation, text::Text, TransparentPickListStyle},
@@ -43,7 +44,7 @@ impl Sidebar {
         }
     }
 
-    pub fn view(&mut self, context: &Context) -> Container<Message> {
+    pub fn view<C: Client>(&mut self, context: &Context<C>) -> Container<Message> {
         let role = if context.role_edit {
             Container::new(
                 pick_list::PickList::new(

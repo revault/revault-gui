@@ -7,12 +7,10 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, span, Level};
 
-mod jsonrpc;
+pub mod jsonrpc;
 
 use super::config::Config;
 use super::model::*;
-
-use jsonrpc::JsonRPCClient;
 
 #[derive(Debug, Clone)]
 pub enum RevaultDError {
@@ -33,25 +31,26 @@ impl std::fmt::Display for RevaultDError {
     }
 }
 
+pub trait Client {
+    type Error: Into<RevaultDError> + Debug;
+    fn request<S: Serialize + Debug, D: DeserializeOwned + Debug>(
+        &self,
+        method: &str,
+        params: Option<S>,
+    ) -> Result<D, Self::Error>;
+}
+
 #[derive(Debug, Clone)]
-pub struct RevaultD {
-    client: JsonRPCClient,
+pub struct RevaultD<C: Client> {
+    client: C,
     pub config: Config,
 }
 
-impl RevaultD {
-    pub fn new(config: &Config) -> Result<RevaultD, RevaultDError> {
+impl<C: Client> RevaultD<C> {
+    pub fn new(config: &Config, client: C) -> Result<RevaultD<C>, RevaultDError> {
         let span = span!(Level::INFO, "revaultd");
         let _enter = span.enter();
 
-        let socket_path = config.socket_path().map_err(|e| {
-            RevaultDError::UnexpectedError(format!(
-                "Failed to find revaultd socket path: {}",
-                e.to_string()
-            ))
-        })?;
-
-        let client = JsonRPCClient::new(socket_path);
         let revaultd = RevaultD {
             client,
             config: config.to_owned(),
@@ -79,17 +78,10 @@ impl RevaultD {
         let span = span!(Level::INFO, "request");
         let _guard = span.enter();
         info!(method);
-        self.client
-            .send_request(method, input)
-            .and_then(|res| res.into_result())
-            .map_err(|e| {
-                error!("method {} failed: {}", method, e);
-                match e {
-                    jsonrpc::Error::Io(e) => RevaultDError::IOError(e.kind()),
-                    jsonrpc::Error::NoErrorOrResult => RevaultDError::NoAnswerError,
-                    _ => RevaultDError::RPCError(format!("method {} failed: {}", method, e)),
-                }
-            })
+        self.client.request(method, input).map_err(|e| {
+            error!("method {} failed: {:?}", method, e);
+            e.into()
+        })
     }
 
     /// get a new deposit address.

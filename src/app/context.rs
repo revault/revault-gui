@@ -1,13 +1,15 @@
 use bitcoin::Network;
 
 use super::menu::Menu;
-use crate::{conversion::Converter, daemon::client::RevaultD, revault::Role};
+use crate::{
+    conversion::Converter, daemon::client::Client, daemon::client::RevaultD, revault::Role,
+};
 use std::sync::Arc;
 
 /// Context is an object passing general information
 /// and service clients through the application components.
-pub struct Context {
-    pub revaultd: Arc<RevaultD>,
+pub struct Context<C: Client> {
+    pub revaultd: Arc<RevaultD<C>>,
     pub converter: Converter,
     pub network: Network,
     pub network_up: bool,
@@ -17,9 +19,9 @@ pub struct Context {
     pub managers_threshold: usize,
 }
 
-impl Context {
+impl<C: Client> Context<C> {
     pub fn new(
-        revaultd: Arc<RevaultD>,
+        revaultd: Arc<RevaultD<C>>,
         converter: Converter,
         network: Network,
         role_edit: bool,

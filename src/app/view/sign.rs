@@ -2,6 +2,7 @@ use iced::{Column, Container, Element, Length};
 
 use crate::{
     app::{context::Context, message::SignMessage},
+    daemon::client::Client,
     ui::{
         component::{button, card, text::Text},
         icon,
@@ -20,9 +21,9 @@ impl SignerView {
         }
     }
 
-    pub fn view(
+    pub fn view<C: Client>(
         &mut self,
-        _ctx: &Context,
+        _ctx: &Context<C>,
         connected: bool,
         processing: bool,
         signed: bool,
