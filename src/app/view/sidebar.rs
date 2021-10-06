@@ -53,6 +53,7 @@ impl Sidebar {
                     Some(context.role),
                     Message::ChangeRole,
                 )
+                .text_size(20)
                 .padding(10)
                 .width(Length::Units(200))
                 .style(TransparentPickListStyle),
@@ -78,7 +79,8 @@ impl Sidebar {
                 &mut self.vaults_menu_button,
                 button::button_content(Some(vaults_icon()), "Vaults"),
             )
-            .on_press(Message::Menu(Menu::Vaults))
+            // VaultsState supports reload
+            .on_press(Message::Reload)
         } else {
             button::transparent(
                 &mut self.vaults_menu_button,
@@ -109,7 +111,8 @@ impl Sidebar {
                 &mut self.deposit_menu_button,
                 button::button_content(Some(deposit_icon()), "Deposit"),
             )
-            .on_press(Message::Menu(Menu::Deposit))
+            // DepositState supports reload
+            .on_press(Message::Reload)
             .width(Length::Units(200))
         } else {
             button::transparent(

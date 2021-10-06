@@ -32,7 +32,6 @@ impl EmergencyView {
         vaults_number: usize,
         funds_amount: u64,
         warning: Option<&Error>,
-        loading: bool,
         processing: bool,
         success: bool,
     ) -> Element<'a, Message> {
@@ -55,82 +54,48 @@ impl EmergencyView {
             )))))
         }
 
-        if !loading {
-            let mut emergency_button = button::primary(
-                &mut self.emergency_button,
-                button::button_content(None, "Emergency"),
+        let mut emergency_button = button::primary(
+            &mut self.emergency_button,
+            button::button_content(None, "Emergency"),
+        );
+
+        if !processing {
+            emergency_button = emergency_button.on_press(Message::Emergency);
+        }
+
+        if !success {
+            col = col.push(
+                card::border_primary(Container::new(
+                    Column::new()
+                        .push(warning_icon().color(color::PRIMARY))
+                        .push(
+                            Column::new()
+                                .push(
+                                    Row::new()
+                                        .push(Text::new("This action will send"))
+                                        .push(
+                                            Text::new(&format!(
+                                                " {} ",
+                                                ctx.converter.converts(funds_amount)
+                                            ))
+                                            .bold(),
+                                        )
+                                        .push(Text::new(&ctx.converter.unit.to_string()))
+                                        .push(Text::new(" from"))
+                                        .push(Text::new(&format!(" {} ", vaults_number)).bold())
+                                        .push(Text::new("vaults")),
+                                )
+                                .push(Text::new("to the Emergency Deep Vault"))
+                                .align_items(Align::Center),
+                        )
+                        .push(emergency_button)
+                        .spacing(30)
+                        .align_items(Align::Center),
+                ))
+                .padding(20)
+                .align_x(Align::Center)
+                .width(Length::Fill),
             );
-
-            if !processing {
-                emergency_button = emergency_button.on_press(Message::Emergency);
-            }
-
-            if !success {
-                col = col.push(
-                    card::border_primary(Container::new(
-                        Column::new()
-                            .push(warning_icon().color(color::PRIMARY))
-                            .push(
-                                Column::new()
-                                    .push(
-                                        Row::new()
-                                            .push(Text::new("This action will send"))
-                                            .push(
-                                                Text::new(&format!(
-                                                    " {} ",
-                                                    ctx.converter.converts(funds_amount)
-                                                ))
-                                                .bold(),
-                                            )
-                                            .push(Text::new(&ctx.converter.unit.to_string()))
-                                            .push(Text::new(" from"))
-                                            .push(Text::new(&format!(" {} ", vaults_number)).bold())
-                                            .push(Text::new("vaults")),
-                                    )
-                                    .push(Text::new("to the Emergency Deep Vault"))
-                                    .align_items(Align::Center),
-                            )
-                            .push(emergency_button)
-                            .spacing(30)
-                            .align_items(Align::Center),
-                    ))
-                    .padding(20)
-                    .align_x(Align::Center)
-                    .width(Length::Fill),
-                );
-            } else {
-                col = col.push(
-                    card::border_success(Container::new(
-                        Column::new()
-                            .push(warning_icon().color(color::SUCCESS))
-                            .push(
-                                Column::new()
-                                    .push(
-                                        Row::new()
-                                            .push(Text::new("Sending"))
-                                            .push(
-                                                Text::new(&format!(
-                                                    " {} ",
-                                                    ctx.converter.converts(funds_amount)
-                                                ))
-                                                .bold(),
-                                            )
-                                            .push(Text::new(&ctx.converter.unit.to_string()))
-                                            .push(Text::new(" from"))
-                                            .push(Text::new(&format!(" {} ", vaults_number)).bold())
-                                            .push(Text::new("vaults")),
-                                    )
-                                    .push(Text::new("to the Emergency Deep Vault"))
-                                    .align_items(Align::Center),
-                            )
-                            .spacing(30)
-                            .align_items(Align::Center),
-                    ))
-                    .padding(20)
-                    .align_x(Align::Center)
-                    .width(Length::Fill),
-                );
-            }
         }
 
         Container::new(scroll(&mut self.scroll, Container::new(col)))

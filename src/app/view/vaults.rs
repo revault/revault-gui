@@ -78,45 +78,18 @@ impl VaultsView {
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
         vault_status_filter: &[VaultStatus],
-        loading: bool,
     ) -> Element<'a, Message> {
-        let mut col = Column::new();
-
-        if !loading {
-            col = col
-                .push(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(Text::new(&format!(" {}", vaults.len())).bold())
-                                    .push(Text::new(" vaults")),
-                            )
-                            .width(Length::Fill),
-                        )
-                        .push(
-                            pick_list::PickList::new(
-                                &mut self.pick_filter,
-                                &VaultsFilter::ALL[..],
-                                Some(VaultsFilter::new(vault_status_filter)),
-                                |filter| {
-                                    Message::FilterVaults(VaultFilterMessage::Status(
-                                        filter.statuses(),
-                                    ))
-                                },
-                            )
-                            .text_size(15)
-                            .padding(10)
-                            .width(Length::Units(200))
-                            .style(TransparentPickListStyle),
-                        )
-                        .align_items(Align::Center),
-                )
-                .push(Column::with_children(vaults).spacing(5));
-        } else {
-            col = col.push(
+        let col = Column::new()
+            .push(
                 Row::new()
-                    .push(Container::new(Row::new()).width(Length::Fill))
+                    .push(
+                        Container::new(
+                            Row::new()
+                                .push(Text::new(&format!(" {}", vaults.len())).bold())
+                                .push(Text::new(" vaults")),
+                        )
+                        .width(Length::Fill),
+                    )
                     .push(
                         pick_list::PickList::new(
                             &mut self.pick_filter,
@@ -126,14 +99,14 @@ impl VaultsView {
                                 Message::FilterVaults(VaultFilterMessage::Status(filter.statuses()))
                             },
                         )
-                        .text_size(15)
+                        .text_size(20)
                         .padding(10)
                         .width(Length::Units(200))
                         .style(TransparentPickListStyle),
                     )
                     .align_items(Align::Center),
-            );
-        }
+            )
+            .push(Column::with_children(vaults).spacing(5));
 
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),

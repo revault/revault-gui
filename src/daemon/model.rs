@@ -7,7 +7,7 @@ pub struct DepositAddress {
     pub address: bitcoin::Address,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vault {
     /// Address of the vault deposit
     pub address: String,

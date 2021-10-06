@@ -225,7 +225,7 @@ pub struct GetInfoResponse {
 /// list_vaults
 
 /// listvaults response
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListVaultsResponse {
     pub vaults: Vec<Vault>,
 }

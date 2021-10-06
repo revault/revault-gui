@@ -40,29 +40,27 @@ impl DepositView {
         &'a mut self,
         ctx: &Context<C>,
         warning: Option<&Error>,
-        address: Option<&bitcoin::Address>,
+        address: &bitcoin::Address,
     ) -> Element<'a, Message> {
-        let mut col = Column::new().align_items(Align::Center).spacing(20);
-        if address.is_some() {
-            col = col.push(Text::new("Please, use this deposit address:").bold())
-        }
+        let mut col = Column::new()
+            .align_items(Align::Center)
+            .spacing(20)
+            .push(Text::new("Please, use this deposit address:").bold());
+
         if let Some(qr_code) = self.qr_code.as_mut() {
             col = col.push(Container::new(QRCode::new(qr_code).cell_size(5)));
         }
-        if let Some(addr) = address {
-            col = col.push(Container::new(
-                Row::new()
-                    .push(Container::new(Text::new(&addr.to_string()).small()))
-                    .push(
-                        button::clipboard(
-                            &mut self.copy_button,
-                            Message::Clipboard(addr.to_string()),
-                        )
+
+        let addr = address.to_string();
+        col = col.push(Container::new(
+            Row::new()
+                .push(Container::new(Text::new(&addr).small()))
+                .push(
+                    button::clipboard(&mut self.copy_button, Message::Clipboard(addr))
                         .width(Length::Shrink),
-                    )
-                    .align_items(Align::Center),
-            ));
-        }
+                )
+                .align_items(Align::Center),
+        ));
         layout::dashboard(
             navbar(layout::navbar_warning(warning)),
             self.sidebar.view(ctx),
