@@ -1,13 +1,14 @@
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
+use revault_ui::{
+    color,
+    component::{button, card, scroll, text::Text, ContainerBackgroundStyle},
+    icon::warning_icon,
+};
+
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
     daemon::client::Client,
-    ui::{
-        color,
-        component::{button, card, scroll, text::Text, ContainerBackgroundStyle},
-        icon::warning_icon,
-    },
 };
 
 #[derive(Debug)]

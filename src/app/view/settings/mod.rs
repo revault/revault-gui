@@ -1,5 +1,7 @@
 use iced::{scrollable, Column, Container, Element};
 
+use revault_ui::component::{navbar, scroll};
+
 use crate::revault::Role;
 use crate::{
     app::{
@@ -9,7 +11,6 @@ use crate::{
         view::{layout, sidebar::Sidebar},
     },
     daemon::client::Client,
-    ui::component::{navbar, scroll},
 };
 
 use crate::daemon::{config::Config, model::ServersStatuses};

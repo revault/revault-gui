@@ -1,5 +1,7 @@
 use iced::{pick_list, scrollable, Align, Column, Container, Element, Length, Row};
 
+use revault_ui::component::{navbar, scroll, text::Text, TransparentPickListStyle};
+
 use crate::{
     app::{
         context::Context,
@@ -8,7 +10,6 @@ use crate::{
         view::{layout, sidebar::Sidebar},
     },
     daemon::{client::Client, model::VaultStatus},
-    ui::component::{navbar, scroll, text::Text, TransparentPickListStyle},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

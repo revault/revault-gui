@@ -2430,6 +2430,7 @@ dependencies = [
  "dirs",
  "iced",
  "revault_tx",
+ "revault_ui",
  "serde",
  "serde_json",
  "serialport",
@@ -2452,6 +2453,13 @@ dependencies = [
  "base64",
  "bitcoinconsensus",
  "miniscript",
+]
+
+[[package]]
+name = "revault_ui"
+version = "0.1.0"
+dependencies = [
+ "iced",
 ]
 
 [[package]]

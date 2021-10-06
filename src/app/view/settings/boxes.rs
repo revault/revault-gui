@@ -1,13 +1,12 @@
 use iced::{Align, Column, Container, Length, Row};
 
-use crate::{
-    app::message::Message,
-    ui::{
-        color,
-        component::{badge, card, separation, text::Text},
-        icon::dot_icon,
-    },
+use revault_ui::{
+    color,
+    component::{badge, card, separation, text::Text},
+    icon::dot_icon,
 };
+
+use crate::app::message::Message;
 
 use crate::daemon::{config::Config, model::ServersStatuses};
 

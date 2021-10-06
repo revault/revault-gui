@@ -16,7 +16,7 @@ use crate::daemon::{
     model::{self, VaultStatus},
 };
 
-use crate::ui::component::form;
+use revault_ui::component::form;
 
 use crate::app::{
     context::Context,

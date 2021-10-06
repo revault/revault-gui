@@ -5,6 +5,8 @@ use std::sync::Arc;
 
 use iced::{Column, Command, Container, Element, Length};
 
+use revault_ui::component::{image::revault_colored_logo, text::Text};
+
 use crate::{
     app::config::Config as GUIConfig,
     daemon::{
@@ -12,7 +14,6 @@ use crate::{
         config::{Config, ConfigError},
         start_daemon, StartDaemonError,
     },
-    ui::component::{image::revault_colored_logo, text::Text},
 };
 
 type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;

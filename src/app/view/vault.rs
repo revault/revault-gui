@@ -1,15 +1,14 @@
 use chrono::NaiveDateTime;
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
-use crate::{
-    app::{
-        context::Context,
-        error::Error,
-        message::{Message, SignMessage, VaultMessage},
-    },
-    ui::component::{
-        badge, button, card, scroll, separation, text::Text, ContainerBackgroundStyle,
-    },
+use revault_ui::component::{
+    badge, button, card, scroll, separation, text::Text, ContainerBackgroundStyle,
+};
+
+use crate::app::{
+    context::Context,
+    error::Error,
+    message::{Message, SignMessage, VaultMessage},
 };
 
 use crate::{

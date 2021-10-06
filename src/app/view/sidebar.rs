@@ -1,17 +1,18 @@
 use iced::{pick_list, Column, Container, Length, Row};
 
+use revault_ui::{
+    color,
+    component::{button, separation, text::Text, TransparentPickListStyle},
+    icon::{
+        deposit_icon, home_icon, person_check_icon, plus_icon, send_icon, settings_icon,
+        vaults_icon, warning_icon,
+    },
+};
+
 use crate::revault::Role;
 use crate::{
     app::{context::Context, menu::Menu, message::Message, view::layout},
     daemon::client::Client,
-    ui::{
-        color,
-        component::{button, separation, text::Text, TransparentPickListStyle},
-        icon::{
-            deposit_icon, home_icon, person_check_icon, plus_icon, send_icon, settings_icon,
-            vaults_icon, warning_icon,
-        },
-    },
 };
 
 #[derive(Debug, Clone)]

@@ -5,6 +5,13 @@ use iced::{
     TextInput,
 };
 
+use revault_ui::{
+    component::{
+        button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle, ProgressBar,
+    },
+    icon::trash_icon,
+};
+
 use crate::{
     app::{
         context::Context,
@@ -13,10 +20,6 @@ use crate::{
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     },
     daemon::{client::Client, model},
-    ui::{
-        component::{button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle},
-        icon::trash_icon,
-    },
 };
 
 #[derive(Debug)]
@@ -207,7 +210,7 @@ impl ManagerSelectOutputsView {
     ) -> Element<'a, Message> {
         let header = Row::new()
             .push(Column::new().width(Length::Fill))
-            .push(crate::ui::component::ProgressBar::spend_bar().draw(0))
+            .push(ProgressBar::spend_bar().draw(0))
             .push(
                 Column::new()
                     .push(
@@ -419,7 +422,7 @@ impl ManagerSelectInputsView {
                     )
                     .width(Length::Fill),
             )
-            .push(crate::ui::component::ProgressBar::spend_bar().draw(2))
+            .push(ProgressBar::spend_bar().draw(2))
             .push(
                 Column::new()
                     .push(
@@ -596,7 +599,7 @@ impl ManagerSelectFeeView {
                     )
                     .width(Length::Fill),
             )
-            .push(crate::ui::component::ProgressBar::spend_bar().draw(1))
+            .push(ProgressBar::spend_bar().draw(1))
             .push(
                 Column::new()
                     .push(Container::new(
@@ -892,7 +895,7 @@ impl ManagerSignView {
                     )
                     .width(Length::Fill),
             )
-            .push(crate::ui::component::ProgressBar::spend_bar().draw(3))
+            .push(ProgressBar::spend_bar().draw(3))
             .push(
                 Column::new()
                     .push(
@@ -984,7 +987,7 @@ impl ManagerSpendTransactionCreatedView {
                 .push(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
-                        .push(crate::ui::component::ProgressBar::spend_bar().draw(4))
+                        .push(ProgressBar::spend_bar().draw(4))
                         .push(
                             Column::new()
                                 .push(

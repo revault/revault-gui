@@ -2,6 +2,12 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 use iced::{scrollable, Align, Column, Container, Element, Length, Row, TextInput};
 
+use revault_ui::{
+    color,
+    component::{badge, button, card, scroll, text::Text, ContainerBackgroundStyle},
+    icon,
+};
+
 use crate::{
     app::{
         context::Context,
@@ -11,11 +17,6 @@ use crate::{
         view::manager::spend_tx_with_feerate_view,
     },
     daemon::{client::Client, model},
-    ui::{
-        color,
-        component::{badge, button, card, scroll, text::Text, ContainerBackgroundStyle},
-        icon,
-    },
 };
 
 #[derive(Debug)]

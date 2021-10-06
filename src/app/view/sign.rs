@@ -1,12 +1,13 @@
 use iced::{Column, Container, Element, Length};
 
+use revault_ui::{
+    component::{button, card, text::Text},
+    icon,
+};
+
 use crate::{
     app::{context::Context, message::SignMessage},
     daemon::client::Client,
-    ui::{
-        component::{button, card, text::Text},
-        icon,
-    },
 };
 
 #[derive(Debug)]

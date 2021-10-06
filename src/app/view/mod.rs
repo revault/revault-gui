@@ -22,10 +22,11 @@ pub use vaults::VaultsView;
 
 use iced::{scrollable, Column, Container, Element, Length, Row};
 
+use revault_ui::component::{button, card, navbar, scroll, text::Text, ContainerBackgroundStyle};
+
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
     daemon::client::Client,
-    ui::component::{button, card, navbar, scroll, text::Text, ContainerBackgroundStyle},
 };
 
 #[derive(Debug)]
