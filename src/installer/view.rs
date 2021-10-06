@@ -3,16 +3,17 @@ use iced::{
     Length, Row,
 };
 
+use revault_ui::{
+    component::{
+        button, card, form, image::revault_colored_logo, scroll, text::Text,
+        ContainerBackgroundStyle,
+    },
+    icon,
+};
+
 use crate::{
     installer::message::{self, Message},
     revault::Role,
-    ui::{
-        component::{
-            button, card, form, image::revault_colored_logo, scroll, text::Text,
-            ContainerBackgroundStyle,
-        },
-        icon,
-    },
 };
 
 pub fn welcome(install_button: &mut Button) -> Element<Message> {

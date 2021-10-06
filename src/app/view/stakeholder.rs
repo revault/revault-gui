@@ -4,15 +4,16 @@ use iced::{
     Align, Column, Container, Element, Length, QRCode, Row,
 };
 
+use revault_ui::{
+    component::{
+        button, card, scroll, separation, text::Text, ContainerBackgroundStyle, TooltipStyle,
+    },
+    icon,
+};
+
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
     daemon::client::Client,
-    ui::{
-        component::{
-            button, card, scroll, separation, text::Text, ContainerBackgroundStyle, TooltipStyle,
-        },
-        icon,
-    },
 };
 
 #[derive(Debug)]

@@ -1,4 +1,4 @@
-use crate::ui::{
+use crate::{
     color,
     icon::{
         bitcoin_icon, block_icon, deposit_icon, network_icon, person_check_icon, send_icon,

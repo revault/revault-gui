@@ -12,6 +12,8 @@ use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
 use revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
 
+use revault_ui::component::form;
+
 use crate::{
     daemon::config,
     installer::{
@@ -19,7 +21,6 @@ use crate::{
         step::common::RequiredXpub,
         view,
     },
-    ui::component::form,
 };
 
 pub trait Step {

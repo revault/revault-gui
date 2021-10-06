@@ -1,10 +1,9 @@
-use crate::{
-    app::error::Error,
-    ui::{
-        color,
-        component::{card, text::Text},
-    },
+use revault_ui::{
+    color,
+    component::{card, text::Text},
 };
+
+use crate::app::error::Error;
 
 use iced::{container, Column, Container, Length, Row};
 

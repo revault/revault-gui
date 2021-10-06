@@ -1,5 +1,7 @@
 use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row};
 
+use revault_ui::component::{button, card, navbar, scroll, text::Text};
+
 use crate::{
     app::{
         context::Context,
@@ -8,7 +10,6 @@ use crate::{
         view::{layout, sidebar::Sidebar},
     },
     daemon::client::Client,
-    ui::component::{button, card, navbar, scroll, text::Text},
 };
 
 /// DepositView is the view rendering the deposit panel.

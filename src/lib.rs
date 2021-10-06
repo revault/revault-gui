@@ -6,4 +6,3 @@ pub mod loader;
 pub mod revault;
 
 mod hw;
-mod ui;

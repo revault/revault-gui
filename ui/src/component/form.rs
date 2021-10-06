@@ -3,7 +3,7 @@ use iced::{
     Column, Container, Length,
 };
 
-use crate::ui::{color, component::text::Text};
+use crate::{color, component::text::Text};
 
 #[derive(Debug, Clone)]
 pub struct Value<T> {

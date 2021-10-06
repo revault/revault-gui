@@ -1,7 +1,6 @@
-use crate::{
-    installer::{message, view},
-    ui::component::form,
-};
+use revault_ui::component::form;
+
+use crate::installer::{message, view};
 
 use iced::{button::State as Button, text_input, Element};
 

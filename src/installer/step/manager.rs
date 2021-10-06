@@ -10,6 +10,8 @@ use revault_tx::{
     scripts::{DepositDescriptor, UnvaultDescriptor},
 };
 
+use revault_ui::component::form;
+
 use crate::{
     daemon::config,
     installer::{
@@ -20,7 +22,6 @@ use crate::{
         },
         view,
     },
-    ui::component::form,
 };
 
 pub struct DefineStakeholderXpubs {

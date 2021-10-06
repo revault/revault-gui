@@ -6,6 +6,11 @@ use iced::{
     Align, Column, Container, Element, HorizontalAlignment, Length, Row,
 };
 
+use revault_ui::{
+    component::{button, card, navbar, scroll, text::Text, TooltipStyle},
+    icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
+};
+
 use crate::{
     app::{
         context::Context,
@@ -15,10 +20,6 @@ use crate::{
         view::{layout, sidebar::Sidebar},
     },
     daemon::{client::Client, model::VaultStatus},
-    ui::{
-        component::{button, card, navbar, scroll, text::Text, TooltipStyle},
-        icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
-    },
 };
 
 #[derive(Debug)]
