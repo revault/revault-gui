@@ -8,6 +8,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 
+pub mod error;
 pub mod jsonrpc;
 
 use super::config::Config;
