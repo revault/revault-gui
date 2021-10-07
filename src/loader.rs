@@ -165,6 +165,10 @@ impl Loader {
             Message::Connected(res) => self.on_connect(res),
             Message::Loaded(res) => self.on_load(res),
             Message::Syncing(res) => self.on_sync(res),
+            Message::Failure(_) => {
+                self.daemon_started = false;
+                Command::none()
+            }
             Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
             _ => Command::none(),
         }

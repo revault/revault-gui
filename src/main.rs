@@ -165,10 +165,9 @@ impl Application for GUI {
             return Command::none();
         }
 
-        if let Message::Load(loader::Message::Failure(e)) = message {
+        if let Message::Load(loader::Message::Failure(e)) = &message {
             log::info!("daemon panic {}", e);
             self.daemon_running = false;
-            return Command::none();
         }
 
         if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
