@@ -45,7 +45,7 @@ impl From<Error> for RevaultDError {
     fn from(e: Error) -> RevaultDError {
         match e {
             Error::MockedError(error) => error,
-            Error::ResponseNotFound(request) => RevaultDError::UnexpectedError(format!(
+            Error::ResponseNotFound(request) => RevaultDError::Unexpected(format!(
                 "mocked response not found for request: {}",
                 request
             )),
