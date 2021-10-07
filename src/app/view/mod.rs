@@ -10,6 +10,7 @@ pub mod spend_transaction;
 pub mod stakeholder;
 pub mod vault;
 mod vaults;
+mod warning;
 
 pub use deposit::DepositView;
 pub use emergency::EmergencyView;
@@ -22,7 +23,7 @@ pub use vaults::VaultsView;
 
 use iced::{scrollable, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{button, card, navbar, scroll, text::Text, ContainerBackgroundStyle};
+use revault_ui::component::{button, card, scroll, text::Text, ContainerBackgroundStyle};
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
@@ -31,15 +32,13 @@ use crate::{
 
 #[derive(Debug)]
 pub struct LoadingDashboard {
-    sidebar: sidebar::Sidebar,
-    scroll: scrollable::State,
+    dashboard: layout::Dashboard,
 }
 
 impl LoadingDashboard {
     pub fn new() -> Self {
         LoadingDashboard {
-            sidebar: sidebar::Sidebar::new(),
-            scroll: scrollable::State::new(),
+            dashboard: layout::Dashboard::new(),
         }
     }
 
@@ -48,15 +47,7 @@ impl LoadingDashboard {
         ctx: &Context<C>,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(Column::new()),
-            ))),
-        )
-        .into()
+        self.dashboard.view(ctx, warning, Column::new())
     }
 }
 

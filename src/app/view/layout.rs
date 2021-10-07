@@ -1,11 +1,19 @@
 use revault_ui::{
     color,
-    component::{card, text::Text},
+    component::{card, navbar, scroll, text::Text},
 };
 
-use crate::app::error::Error;
+use crate::{
+    app::{
+        context::Context,
+        error::Error,
+        message::Message,
+        view::{sidebar::Sidebar, warning::warn},
+    },
+    daemon::client::Client,
+};
 
-use iced::{container, Column, Container, Length, Row};
+use iced::{container, scrollable, Column, Container, Element, Length, Row};
 
 pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
     if let Some(e) = warning {
@@ -17,62 +25,51 @@ pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a
     None
 }
 
-pub fn dashboard<'a, T: 'a>(
-    header: Container<'a, T>,
-    sidebar: Container<'a, T>,
-    main: Container<'a, T>,
-) -> Container<'a, T> {
-    Container::new(
+#[derive(Debug, Clone)]
+pub struct Dashboard {
+    sidebar: Sidebar,
+    scroll: scrollable::State,
+}
+
+impl Dashboard {
+    pub fn new() -> Dashboard {
+        Self {
+            sidebar: Sidebar::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+        &'a mut self,
+        ctx: &Context<C>,
+        warning: Option<&Error>,
+        content: T,
+    ) -> Element<'a, Message> {
         Column::new()
-            .push(header)
+            .push(navbar())
             .push(
                 Row::new()
-                    .push(sidebar.width(Length::Shrink).height(Length::Fill))
-                    .push(main.width(Length::Fill).height(Length::Fill)),
+                    .push(
+                        self.sidebar
+                            .view(ctx)
+                            .width(Length::Shrink)
+                            .height(Length::Fill),
+                    )
+                    .push(
+                        Column::new().push(warn(warning)).push(
+                            main_section(Container::new(scroll(
+                                &mut self.scroll,
+                                Container::new(content),
+                            )))
+                            .width(Length::Fill)
+                            .height(Length::Fill),
+                        ),
+                    ),
             )
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
-    )
-}
-
-pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
-    Container::new(
-        Column::new()
-            .padding(10)
-            .push(menu.height(Length::Fill))
-            .push(footer.height(Length::Shrink)),
-    )
-    .style(SidebarStyle)
-}
-
-pub struct SidebarStyle;
-impl container::StyleSheet for SidebarStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: color::FOREGROUND.into(),
-            border_width: 1.0,
-            border_color: color::SECONDARY,
-            ..container::Style::default()
-        }
+            .height(iced::Length::Fill)
+            .into()
     }
-}
-
-pub struct SidebarMenuStyle;
-impl container::StyleSheet for SidebarMenuStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: color::FOREGROUND.into(),
-            ..container::Style::default()
-        }
-    }
-}
-
-pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T> {
-    let mut col = Column::new().padding(15).spacing(15);
-    for i in items {
-        col = col.push(i)
-    }
-    Container::new(col).style(SidebarMenuStyle)
 }
 
 pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {

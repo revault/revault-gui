@@ -216,8 +216,8 @@ impl container::StyleSheet for WarningBadgeStyle {
     fn style(&self) -> container::Style {
         container::Style {
             border_radius: 40.0,
-            background: color::WARNING_LIGHT.into(),
-            text_color: color::WARNING.into(),
+            background: color::ALERT_LIGHT.into(),
+            text_color: color::ALERT.into(),
             ..container::Style::default()
         }
     }
@@ -238,8 +238,8 @@ impl container::StyleSheet for AlertBadgeStyle {
     fn style(&self) -> container::Style {
         container::Style {
             border_radius: 40.0,
-            background: color::WARNING_LIGHT.into(),
-            text_color: color::WARNING.into(),
+            background: color::ALERT_LIGHT.into(),
+            text_color: color::ALERT.into(),
             ..container::Style::default()
         }
     }

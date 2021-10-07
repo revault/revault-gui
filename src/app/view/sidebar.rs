@@ -1,4 +1,4 @@
-use iced::{pick_list, Column, Container, Length, Row};
+use iced::{container, pick_list, Column, Container, Length, Row};
 
 use revault_ui::{
     color,
@@ -11,7 +11,7 @@ use revault_ui::{
 
 use crate::revault::Role;
 use crate::{
-    app::{context::Context, menu::Menu, message::Message, view::layout},
+    app::{context::Context, menu::Menu, message::Message},
     daemon::client::Client,
 };
 
@@ -179,8 +179,8 @@ impl Sidebar {
                     .width(iced::Length::Units(200)),
                 ));
         }
-        layout::sidebar(
-            layout::sidebar_menu(vec![
+        sidebar(
+            sidebar_menu(vec![
                 role.width(Length::Units(200)),
                 separation().width(iced::Length::Units(200)),
                 Container::new(home_button.width(Length::Units(200))),
@@ -191,4 +191,44 @@ impl Sidebar {
             Container::new(settings_button),
         )
     }
+}
+
+pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
+    Container::new(
+        Column::new()
+            .padding(10)
+            .push(menu.height(Length::Fill))
+            .push(footer.height(Length::Shrink)),
+    )
+    .style(SidebarStyle)
+}
+
+pub struct SidebarStyle;
+impl container::StyleSheet for SidebarStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::FOREGROUND.into(),
+            border_width: 1.0,
+            border_color: color::SECONDARY,
+            ..container::Style::default()
+        }
+    }
+}
+
+pub struct SidebarMenuStyle;
+impl container::StyleSheet for SidebarMenuStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::FOREGROUND.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
+pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T> {
+    let mut col = Column::new().padding(15).spacing(15);
+    for i in items {
+        col = col.push(i)
+    }
+    Container::new(col).style(SidebarMenuStyle)
 }

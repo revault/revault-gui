@@ -1,14 +1,9 @@
-use iced::{scrollable, Align, Column, Container, Element, Length, QRCode, Row};
+use iced::{Align, Column, Container, Element, Length, QRCode, Row};
 
-use revault_ui::component::{button, card, navbar, scroll, text::Text};
+use revault_ui::component::{button, card, text::Text};
 
 use crate::{
-    app::{
-        context::Context,
-        error::Error,
-        message::Message,
-        view::{layout, sidebar::Sidebar},
-    },
+    app::{context::Context, error::Error, message::Message, view::layout},
     daemon::client::Client,
 };
 
@@ -16,9 +11,8 @@ use crate::{
 /// this view is used by the Deposit State.
 #[derive(Debug)]
 pub struct DepositView {
-    sidebar: Sidebar,
+    dashboard: layout::Dashboard,
     qr_code: Option<iced::qr_code::State>,
-    scroll: scrollable::State,
     copy_button: iced::button::State,
 }
 
@@ -26,8 +20,7 @@ impl DepositView {
     pub fn new() -> Self {
         DepositView {
             qr_code: None,
-            sidebar: Sidebar::new(),
-            scroll: scrollable::State::new(),
+            dashboard: layout::Dashboard::new(),
             copy_button: iced::button::State::default(),
         }
     }
@@ -62,14 +55,7 @@ impl DepositView {
                 )
                 .align_items(Align::Center),
         ));
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                card::white(Container::new(col)),
-            ))),
-        )
-        .into()
+
+        self.dashboard.view(ctx, warning, card::white(col))
     }
 }

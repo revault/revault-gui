@@ -1,13 +1,13 @@
-use iced::{pick_list, scrollable, Align, Column, Container, Element, Length, Row};
+use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{navbar, scroll, text::Text, TransparentPickListStyle};
+use revault_ui::component::{text::Text, TransparentPickListStyle};
 
 use crate::{
     app::{
         context::Context,
         error::Error,
         message::{Message, VaultFilterMessage},
-        view::{layout, sidebar::Sidebar},
+        view::layout,
     },
     daemon::{client::Client, model::VaultStatus},
 };
@@ -59,16 +59,14 @@ impl std::fmt::Display for VaultsFilter {
 /// If the loading field is true, only the status pick_list component is displayed.
 #[derive(Debug)]
 pub struct VaultsView {
-    scroll: scrollable::State,
-    sidebar: Sidebar,
+    dashboard: layout::Dashboard,
     pick_filter: pick_list::State<VaultsFilter>,
 }
 
 impl VaultsView {
     pub fn new() -> Self {
         VaultsView {
-            sidebar: Sidebar::new(),
-            scroll: scrollable::State::new(),
+            dashboard: layout::Dashboard::new(),
             pick_filter: pick_list::State::default(),
         }
     }
@@ -109,14 +107,6 @@ impl VaultsView {
             )
             .push(Column::with_children(vaults).spacing(5));
 
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(col.spacing(20)),
-            ))),
-        )
-        .into()
+        self.dashboard.view(ctx, warning, col.spacing(20))
     }
 }

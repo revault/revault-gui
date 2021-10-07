@@ -1,34 +1,23 @@
-use iced::{scrollable, Column, Container, Element};
+use iced::{Column, Element};
 
-use revault_ui::component::{navbar, scroll};
-
-use crate::revault::Role;
 use crate::{
-    app::{
-        context::Context,
-        error::Error,
-        message::Message,
-        view::{layout, sidebar::Sidebar},
-    },
-    daemon::client::Client,
+    app::{context::Context, error::Error, message::Message, view::layout},
+    daemon::{client::Client, config::Config, model::ServersStatuses},
+    revault::Role,
 };
-
-use crate::daemon::{config::Config, model::ServersStatuses};
 
 mod boxes;
 use boxes::*;
 
 #[derive(Debug)]
 pub struct SettingsView {
-    scroll: scrollable::State,
-    sidebar: Sidebar,
+    dashboard: layout::Dashboard,
 }
 
 impl SettingsView {
     pub fn new() -> Self {
         SettingsView {
-            sidebar: Sidebar::new(),
-            scroll: scrollable::State::new(),
+            dashboard: layout::Dashboard::new(),
         }
     }
 
@@ -40,23 +29,11 @@ impl SettingsView {
         config: &Config,
         server_status: Option<ServersStatuses>,
     ) -> Element<'a, Message> {
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(
-                scroll(
-                    &mut self.scroll,
-                    Container::new(SettingsView::display_boxes(
-                        &ctx,
-                        blockheight,
-                        server_status,
-                        &config,
-                    )),
-                )
-                .spacing(8),
-            )),
+        self.dashboard.view(
+            ctx,
+            warning,
+            SettingsView::display_boxes(&ctx, blockheight, server_status, &config).spacing(8),
         )
-        .into()
     }
 
     pub fn display_boxes<'a, C: Client>(

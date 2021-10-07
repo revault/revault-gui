@@ -43,8 +43,8 @@ pub trait SettingsBox {
             } else {
                 Container::new(
                     Row::new()
-                        .push(dot_icon().size(5).color(color::WARNING))
-                        .push(Text::new("Not running").small().color(color::WARNING))
+                        .push(dot_icon().size(5).color(color::ALERT))
+                        .push(Text::new("Not running").small().color(color::ALERT))
                         .align_items(iced::Align::Center),
                 )
             };
