@@ -3,7 +3,7 @@ use iced::{
 };
 use std::net::SocketAddr;
 
-use crate::sign;
+use crate::api;
 
 #[derive(Debug, Clone)]
 pub enum ViewMessage {
@@ -42,7 +42,7 @@ impl SignSpendTxView {
         }
     }
 
-    pub fn render(&mut self, _req: &sign::SpendTransaction, signed: bool) -> Element<ViewMessage> {
+    pub fn render(&mut self, _req: &api::SpendTransaction, signed: bool) -> Element<ViewMessage> {
         if signed {
             return Container::new(Text::new("Signed spend transaction"))
                 .style(SuccessPageStyle)
@@ -101,11 +101,7 @@ impl SignUnvaultTxView {
         }
     }
 
-    pub fn render(
-        &mut self,
-        _req: &sign::UnvaultTransaction,
-        signed: bool,
-    ) -> Element<ViewMessage> {
+    pub fn render(&mut self, _req: &api::UnvaultTransaction, signed: bool) -> Element<ViewMessage> {
         if signed {
             return Container::new(Text::new("Signed unvault transaction"))
                 .style(SuccessPageStyle)
@@ -166,7 +162,7 @@ impl SignRevocationTxsView {
 
     pub fn render(
         &mut self,
-        _req: &sign::RevocationTransactions,
+        _req: &api::RevocationTransactions,
         signed: bool,
     ) -> Element<ViewMessage> {
         if signed {

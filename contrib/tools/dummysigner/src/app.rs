@@ -1,13 +1,13 @@
 use std::net::SocketAddr;
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings};
-use revault_tx::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+use revault_tx::bitcoin::util::bip32::ExtendedPrivKey;
 use serde_json::json;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{server, sign, view};
+use crate::{api, server, sign, view};
 
 pub fn run(cfg: Config) -> iced::Result {
     let settings = Settings::with_flags(cfg);
@@ -94,15 +94,8 @@ impl Application for App {
             Message::View(view::ViewMessage::Confirm) => {
                 if let AppStatus::Connected { method, writer, .. } = &mut self.status {
                     match method {
-                        Some(Method::SignUnvaultTx {
-                            derivation_path,
-                            target,
-                            signed,
-                            ..
-                        }) => {
-                            self.signer
-                                .sign_unvault_tx(derivation_path, target)
-                                .unwrap();
+                        Some(Method::SignUnvaultTx { target, signed, .. }) => {
+                            self.signer.sign_psbt(&mut target.unvault_tx).unwrap();
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
@@ -110,13 +103,8 @@ impl Application for App {
                             )
                             .map(Message::Server);
                         }
-                        Some(Method::SignSpendTx {
-                            derivation_paths,
-                            target,
-                            signed,
-                            ..
-                        }) => {
-                            self.signer.sign_spend_tx(derivation_paths, target).unwrap();
+                        Some(Method::SignSpendTx { target, signed, .. }) => {
+                            self.signer.sign_psbt(&mut target.spend_tx).unwrap();
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
@@ -124,15 +112,12 @@ impl Application for App {
                             )
                             .map(Message::Server);
                         }
-                        Some(Method::SignRevocationTxs {
-                            derivation_path,
-                            target,
-                            signed,
-                            ..
-                        }) => {
+                        Some(Method::SignRevocationTxs { target, signed, .. }) => {
+                            self.signer.sign_psbt(&mut target.emergency_tx).unwrap();
                             self.signer
-                                .sign_revocation_txs(derivation_path, target)
+                                .sign_psbt(&mut target.emergency_unvault_tx)
                                 .unwrap();
+                            self.signer.sign_psbt(&mut target.cancel_tx).unwrap();
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
@@ -177,51 +162,36 @@ impl Application for App {
 
 pub enum Method {
     SignSpendTx {
-        derivation_paths: Vec<DerivationPath>,
-        target: sign::SpendTransaction,
+        target: api::SpendTransaction,
         signed: bool,
         view: view::SignSpendTxView,
     },
     SignUnvaultTx {
-        derivation_path: DerivationPath,
-        target: sign::UnvaultTransaction,
+        target: api::UnvaultTransaction,
         signed: bool,
         view: view::SignUnvaultTxView,
     },
     SignRevocationTxs {
-        derivation_path: DerivationPath,
-        target: sign::RevocationTransactions,
+        target: api::RevocationTransactions,
         signed: bool,
         view: view::SignRevocationTxsView,
     },
 }
 
 impl Method {
-    pub fn new(request: sign::SignRequest) -> Method {
+    pub fn new(request: api::Request) -> Method {
         match request {
-            sign::SignRequest::SpendTransaction {
-                derivation_paths,
-                target,
-            } => Method::SignSpendTx {
-                derivation_paths,
+            api::Request::SpendTransaction(target) => Method::SignSpendTx {
                 target,
                 signed: false,
                 view: view::SignSpendTxView::new(),
             },
-            sign::SignRequest::UnvaultTransaction {
-                derivation_path,
-                target,
-            } => Method::SignUnvaultTx {
-                derivation_path,
+            api::Request::UnvaultTransaction(target) => Method::SignUnvaultTx {
                 target,
                 signed: false,
                 view: view::SignUnvaultTxView::new(),
             },
-            sign::SignRequest::RevocationTransactions {
-                derivation_path,
-                target,
-            } => Method::SignRevocationTxs {
-                derivation_path,
+            api::Request::RevocationTransactions(target) => Method::SignRevocationTxs {
                 target,
                 signed: false,
                 view: view::SignRevocationTxsView::new(),
