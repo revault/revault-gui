@@ -11,7 +11,6 @@ use crate::{
             Vault, VaultStatus, VaultTransactions,
         },
     },
-    hw,
     revault::Role,
 };
 
@@ -91,10 +90,10 @@ pub enum VaultFilterMessage {
 #[derive(Debug, Clone)]
 pub enum SignMessage {
     CheckConnection,
-    Ping(Result<(), hw::Error>),
+    Ping(Result<(), revault_hwi::Error>),
     SelectSign,
-    Connected(Result<Arc<Mutex<hw::Channel>>, hw::Error>),
-    Signed(Result<Box<Vec<Psbt>>, hw::Error>),
+    Connected(Result<Arc<Mutex<revault_hwi::Channel>>, revault_hwi::Error>),
+    Signed(Result<Box<Vec<Psbt>>, revault_hwi::Error>),
 }
 
 #[derive(Debug, Clone)]

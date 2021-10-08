@@ -1,5 +1,5 @@
 use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
-use iced::futures::{SinkExt, TryStreamExt};
+use futures::{stream::TryStreamExt, SinkExt};
 use serde_json::{json, Value};
 use tokio::net::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
@@ -44,7 +44,7 @@ impl DummySigner {
     }
 
     pub async fn send(&mut self, request: Value) -> Result<Value, Error> {
-        tracing::debug!("hw request: {:?}", request);
+        log::debug!("hw request: {:?}", request);
         self.sender
             .send(request)
             .await
@@ -56,7 +56,7 @@ impl DummySigner {
             .await
             .map_err(|e| Error(e.to_string()))?
         {
-            tracing::debug!("hw responded: {:?}", msg);
+            log::debug!("hw responded: {:?}", msg);
             return Ok(msg);
         }
         Err(Error("No answer from dummysigner".to_string()))

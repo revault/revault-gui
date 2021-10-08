@@ -2429,8 +2429,25 @@ dependencies = [
  "chrono",
  "dirs",
  "iced",
+ "revault_hwi",
  "revault_tx",
  "revault_ui",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "uds_windows",
+]
+
+[[package]]
+name = "revault_hwi"
+version = "0.1.0"
+dependencies = [
+ "bitcoin",
+ "futures",
+ "log",
  "serde",
  "serde_json",
  "serialport",
@@ -2438,10 +2455,6 @@ dependencies = [
  "tokio-serde",
  "tokio-serial",
  "tokio-util",
- "toml",
- "tracing",
- "tracing-subscriber",
- "uds_windows",
 ]
 
 [[package]]

@@ -4,5 +4,3 @@ pub mod daemon;
 pub mod installer;
 pub mod loader;
 pub mod revault;
-
-mod hw;
