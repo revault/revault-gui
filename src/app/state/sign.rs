@@ -8,10 +8,11 @@ use tokio::sync::Mutex;
 
 use iced::{time, Command, Element, Subscription};
 
+use revault_hwi::{Channel, Error};
+
 use crate::{
     app::{context::Context, message::SignMessage, view::sign::SignerView},
     daemon::client::Client,
-    hw,
 };
 
 #[derive(Debug)]
@@ -119,10 +120,10 @@ impl SpendTransactionTarget {
 
 #[derive(Debug)]
 pub struct Signer<T> {
-    channel: Option<Arc<Mutex<hw::Channel>>>,
+    channel: Option<Arc<Mutex<Channel>>>,
     processing: bool,
     signed: bool,
-    error: Option<hw::Error>,
+    error: Option<Error>,
 
     pub target: T,
 
@@ -149,7 +150,7 @@ impl<T> Signer<T> {
         if let Some(channel) = &self.channel {
             Command::perform(ping(channel.clone()), SignMessage::Ping)
         } else {
-            Command::perform(hw::Channel::try_connect(), |res| {
+            Command::perform(Channel::try_connect(), |res| {
                 SignMessage::Connected(res.map(|channel| Arc::new(Mutex::new(channel))))
             })
         }
@@ -183,7 +184,7 @@ impl<T> Signer<T> {
     }
 }
 
-pub async fn ping(channel: Arc<Mutex<hw::Channel>>) -> Result<(), hw::Error> {
+pub async fn ping(channel: Arc<Mutex<Channel>>) -> Result<(), Error> {
     channel.clone().lock().await.ping().await
 }
 
@@ -225,9 +226,9 @@ impl Signer<SpendTransactionTarget> {
 }
 
 pub async fn sign_spend_tx(
-    channel: Arc<Mutex<hw::Channel>>,
+    channel: Arc<Mutex<Channel>>,
     spend_tx: Psbt,
-) -> Result<Box<Vec<Psbt>>, hw::Error> {
+) -> Result<Box<Vec<Psbt>>, Error> {
     channel.clone().lock().await.sign_spend_tx(spend_tx).await
 }
 
@@ -266,9 +267,9 @@ impl Signer<UnvaultTransactionTarget> {
 }
 
 pub async fn sign_unvault_tx(
-    channel: Arc<Mutex<hw::Channel>>,
+    channel: Arc<Mutex<Channel>>,
     unvault_tx: Psbt,
-) -> Result<Box<Vec<Psbt>>, hw::Error> {
+) -> Result<Box<Vec<Psbt>>, Error> {
     channel
         .clone()
         .lock()
@@ -329,11 +330,11 @@ impl Signer<RevocationTransactionsTarget> {
 }
 
 pub async fn sign_revocation_txs(
-    channel: Arc<Mutex<hw::Channel>>,
+    channel: Arc<Mutex<Channel>>,
     emergency_tx: Psbt,
     emergency_unvault_tx: Psbt,
     cancel_tx: Psbt,
-) -> Result<Box<Vec<Psbt>>, hw::Error> {
+) -> Result<Box<Vec<Psbt>>, Error> {
     channel
         .clone()
         .lock()
