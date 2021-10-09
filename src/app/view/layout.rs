@@ -1,6 +1,7 @@
 use revault_ui::{
     color,
-    component::{card, navbar, scroll, text::Text},
+    component::{button, navbar, scroll, text::Text, ContainerBackgroundStyle, TooltipStyle},
+    icon,
 };
 
 use crate::{
@@ -13,17 +14,9 @@ use crate::{
     daemon::client::Client,
 };
 
-use iced::{container, scrollable, Column, Container, Element, Length, Row};
-
-pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
-    if let Some(e) = warning {
-        return Some(card::alert_warning(Container::new(Text::new(&format!(
-            "{}",
-            e
-        )))));
-    }
-    None
-}
+use iced::{
+    container, scrollable, tooltip, Align, Column, Container, Element, Length, Row, Tooltip,
+};
 
 #[derive(Debug, Clone)]
 pub struct Dashboard {
@@ -88,5 +81,78 @@ impl container::StyleSheet for MainSectionStyle {
             background: color::BACKGROUND.into(),
             ..container::Style::default()
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Modal {
+    scroll: scrollable::State,
+    close_button: iced::button::State,
+}
+
+impl Modal {
+    pub fn new() -> Self {
+        Modal {
+            scroll: scrollable::State::new(),
+            close_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+        &'a mut self,
+        _ctx: &Context<C>,
+        warning: Option<&Error>,
+        content: T,
+        tooltip: Option<&str>,
+        close_redirect: Message,
+    ) -> Element<'a, Message> {
+        let tt = if let Some(help) = tooltip {
+            Container::new(
+                Tooltip::new(
+                    Row::new()
+                        .push(icon::tooltip_icon().size(20))
+                        .push(Text::new(" Help")),
+                    help,
+                    tooltip::Position::Right,
+                )
+                .gap(5)
+                .size(20)
+                .padding(10)
+                .style(TooltipStyle),
+            )
+        } else {
+            Container::new(Column::new())
+        };
+        let col = Column::new()
+            .push(
+                Column::new()
+                    .push(warn(warning))
+                    .push(
+                        Row::new()
+                            .push(tt.width(Length::Fill))
+                            .push(
+                                Container::new(
+                                    button::close_button(&mut self.close_button)
+                                        .on_press(close_redirect),
+                                )
+                                .width(Length::Shrink),
+                            )
+                            .align_items(Align::Center)
+                            .padding(20),
+                    )
+                    .spacing(20),
+            )
+            .push(
+                Container::new(Container::new(content).max_width(1500))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .spacing(50);
+
+        Container::new(scroll(&mut self.scroll, Container::new(col)))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(ContainerBackgroundStyle)
+            .into()
     }
 }

@@ -14,7 +14,7 @@ use crate::{
         error::Error,
         menu::Menu,
         message::{Message, SpendTxMessage},
-        view::manager::spend_tx_with_feerate_view,
+        view::{manager::spend_tx_with_feerate_view, warning::warn},
     },
     daemon::{client::Client, model},
 };
@@ -50,13 +50,7 @@ impl SpendTransactionView {
         warning: Option<&Error>,
         show_delete_button: bool,
     ) -> Element<'a, Message> {
-        let mut col = Column::new().spacing(20);
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(&error.to_string()).small(),
-            )))
-        }
-        col = col
+        let col = Column::new()
             .push(spend_tx_with_feerate_view(
                 ctx,
                 spent_vaults,
@@ -65,7 +59,8 @@ impl SpendTransactionView {
                 cpfp_index,
                 None,
             ))
-            .push(action);
+            .push(action)
+            .spacing(20);
 
         let row = if show_delete_button {
             Row::new().push(
@@ -131,6 +126,7 @@ impl SpendTransactionView {
             &mut self.scroll,
             Container::new(
                 Column::new()
+                    .push(warn(warning))
                     .push(
                         row.push(
                             Container::new(

@@ -21,9 +21,7 @@ pub use stakeholder::{StakeholderCreateVaultsView, StakeholderDelegateFundsView}
 pub use vault::VaultView;
 pub use vaults::VaultsView;
 
-use iced::{scrollable, Column, Container, Element, Length, Row};
-
-use revault_ui::component::{button, card, scroll, text::Text, ContainerBackgroundStyle};
+use iced::{Column, Element};
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
@@ -53,48 +51,28 @@ impl LoadingDashboard {
 
 #[derive(Debug)]
 pub struct LoadingModal {
-    scroll: scrollable::State,
-    close_button: iced::button::State,
+    modal: layout::Modal,
 }
 
 impl LoadingModal {
     pub fn new() -> Self {
         LoadingModal {
-            scroll: scrollable::State::new(),
-            close_button: iced::button::State::new(),
+            modal: layout::Modal::new(),
         }
     }
 
     pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context<C>,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         close_redirect: Menu,
     ) -> Element<'a, Message> {
-        let mut col = Column::new()
-            .push(
-                Row::new().push(Column::new().width(Length::Fill)).push(
-                    Container::new(
-                        button::close_button(&mut self.close_button)
-                            .on_press(Message::Menu(close_redirect)),
-                    )
-                    .width(Length::Shrink),
-                ),
-            )
-            .spacing(50);
-
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(Text::new(&format!(
-                "{}",
-                error
-            )))))
-        }
-
-        Container::new(scroll(&mut self.scroll, Container::new(col)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(ContainerBackgroundStyle)
-            .padding(20)
-            .into()
+        self.modal.view(
+            ctx,
+            warning,
+            Column::new(),
+            None,
+            Message::Menu(close_redirect),
+        )
     }
 }

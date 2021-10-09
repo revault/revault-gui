@@ -1,5 +1,4 @@
 use std::convert::From;
-use std::io::ErrorKind;
 
 use iced::{Column, Container, Length};
 

@@ -377,8 +377,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
 #[derive(Debug)]
 pub struct ManagerImportSendTransactionState {
     psbt_imported: Option<Psbt>,
-    psbt_input: String,
-    warning: Option<String>,
+    psbt_input: form::Value<String>,
+    warning: Option<Error>,
 
     view: ManagerImportTransactionView,
 }
@@ -387,14 +387,14 @@ impl ManagerImportSendTransactionState {
     pub fn new() -> Self {
         Self {
             psbt_imported: None,
-            psbt_input: "".to_string(),
+            psbt_input: form::Value::default(),
             warning: None,
             view: ManagerImportTransactionView::new(),
         }
     }
 
     pub fn parse_pbst(&self) -> Option<Psbt> {
-        bitcoin::base64::decode(&self.psbt_input)
+        bitcoin::base64::decode(&self.psbt_input.value)
             .ok()
             .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok())
     }
@@ -405,24 +405,24 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerImportSendTransactio
         match message {
             Message::SpendTx(SpendTxMessage::Updated(res)) => match res {
                 Ok(()) => self.psbt_imported = self.parse_pbst(),
-                Err(e) => self.warning = Some(e.to_string()),
+                Err(e) => self.warning = Some(Error::from(e)),
             },
             Message::SpendTx(SpendTxMessage::PsbtEdited(psbt)) => {
                 self.warning = None;
-                self.psbt_input = psbt;
+                self.psbt_input.value = psbt;
             }
             Message::SpendTx(SpendTxMessage::Import) => {
-                if !self.psbt_input.is_empty() {
+                if !self.psbt_input.value.is_empty() {
                     if let Some(psbt) = self.parse_pbst() {
                         return Command::perform(
                             update_spend_tx(ctx.revaultd.clone(), psbt),
                             |res| Message::SpendTx(SpendTxMessage::Updated(res)),
                         );
                     } else {
-                        self.warning = Some("Please enter valid PSBT".to_string());
+                        self.psbt_input.valid = false;
                     }
                 } else {
-                    self.warning = Some("Please enter valid PSBT".to_string());
+                    self.psbt_input.valid = false;
                 }
             }
             _ => {}
@@ -430,8 +430,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerImportSendTransactio
         Command::none()
     }
 
-    fn view(&mut self, _ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
         self.view.view(
+            ctx,
             &self.psbt_input,
             self.psbt_imported.as_ref(),
             self.warning.as_ref(),
@@ -693,7 +694,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
         match &mut self.step {
-            ManagerSendStep::WelcomeUser(v) => v.view(),
+            ManagerSendStep::WelcomeUser(v) => v.view(ctx),
             ManagerSendStep::SelectOutputs(v) => {
                 let mut valid =
                     !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());

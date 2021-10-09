@@ -18,14 +18,14 @@ use crate::{
         error::Error,
         menu::Menu,
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
+        view::layout,
     },
     daemon::{client::Client, model},
 };
 
 #[derive(Debug)]
 pub struct ManagerImportTransactionView {
-    scroll: scrollable::State,
-    cancel_button: iced::button::State,
+    modal: layout::Modal,
     psbt_input: iced::text_input::State,
     import_button: iced::button::State,
 }
@@ -33,36 +33,32 @@ pub struct ManagerImportTransactionView {
 impl ManagerImportTransactionView {
     pub fn new() -> Self {
         ManagerImportTransactionView {
-            cancel_button: iced::button::State::new(),
-            scroll: scrollable::State::new(),
+            modal: layout::Modal::new(),
             psbt_input: iced::text_input::State::new(),
             import_button: iced::button::State::new(),
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, C: Client>(
         &'a mut self,
-        psbt_input: &str,
+        ctx: &Context<C>,
+        psbt_input: &form::Value<String>,
         psbt_imported: Option<&Psbt>,
-        warning: Option<&String>,
+        warning: Option<&Error>,
     ) -> Element<'a, Message> {
         let mut col = Column::new()
             .spacing(20)
             .push(Text::new("Import spend transaction").bold())
             .push(Text::new("Enter PSBT:"))
             .push(
-                TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
+                form::Form::new(&mut self.psbt_input, "PSBT", psbt_input, |p| {
                     Message::SpendTx(SpendTxMessage::PsbtEdited(p))
                 })
+                .warning("Please enter a valid xpub")
                 .size(20)
-                .width(Length::Fill)
-                .padding(10),
+                .padding(10)
+                .render(),
             );
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(error).small(),
-            )))
-        }
 
         if let Some(psbt) = psbt_imported {
             col = col.push(card::success(Container::new(
@@ -86,101 +82,61 @@ impl ManagerImportTransactionView {
                 .on_press(Message::SpendTx(SpendTxMessage::Import)),
             );
         }
-        Container::new(scroll(
-            &mut self.scroll,
-            Container::new(
-                Column::new()
-                    .push(
-                        Row::new().push(Column::new().width(Length::Fill)).push(
-                            Container::new(
-                                button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
-                            )
-                            .width(Length::Shrink),
-                        ),
-                    )
-                    .push(
-                        Container::new(
-                            Column::new()
-                                .push(card::white(Container::new(col)).width(Length::Fill))
-                                .spacing(20),
-                        )
-                        .width(Length::Fill)
-                        .align_x(Align::Center),
-                    )
-                    .spacing(20),
-            ),
-        ))
-        .style(ContainerBackgroundStyle)
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+
+        self.modal.view(
+            ctx,
+            warning,
+            card::white(Container::new(col)).width(Length::Fill),
+            None,
+            Message::Menu(Menu::Home),
+        )
     }
 }
 
 #[derive(Debug)]
 pub struct ManagerSendWelcomeView {
-    scroll: scrollable::State,
-    cancel_button: iced::button::State,
-    crate_transaction_button: iced::button::State,
+    modal: layout::Modal,
+    create_transaction_button: iced::button::State,
     import_transaction_button: iced::button::State,
 }
 
 impl ManagerSendWelcomeView {
     pub fn new() -> Self {
         ManagerSendWelcomeView {
-            cancel_button: iced::button::State::new(),
-            scroll: scrollable::State::new(),
-            crate_transaction_button: iced::button::State::new(),
+            modal: layout::Modal::new(),
+            create_transaction_button: iced::button::State::new(),
             import_transaction_button: iced::button::State::new(),
         }
     }
 
-    pub fn view(&mut self) -> Element<'_, Message> {
-        Container::new(scroll(
-            &mut self.scroll,
+    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<'_, Message> {
+        self.modal.view(
+            ctx,
+            None,
             Container::new(
                 Column::new()
                     .push(
-                        Row::new().push(Column::new().width(Length::Fill)).push(
-                            Container::new(
-                                button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
-                            )
-                            .width(Length::Shrink),
-                        ),
+                        button::primary(
+                            &mut self.create_transaction_button,
+                            button::button_content(None, "Initiate a spending"),
+                        )
+                        .on_press(Message::Next),
                     )
                     .push(
-                        Container::new(
-                            Column::new()
-                                .push(
-                                    button::primary(
-                                        &mut self.crate_transaction_button,
-                                        button::button_content(None, "Initiate a spending"),
-                                    )
-                                    .on_press(Message::Next),
-                                )
-                                .push(
-                                    button::primary(
-                                        &mut self.import_transaction_button,
-                                        button::button_content(None, "Participate in a spending"),
-                                    )
-                                    .on_press(Message::SpendTx(SpendTxMessage::Import)),
-                                )
-                                .spacing(20),
+                        button::primary(
+                            &mut self.import_transaction_button,
+                            button::button_content(None, "Take part in a spending"),
                         )
-                        .width(Length::Fill)
-                        .align_x(Align::Center),
+                        .on_press(Message::SpendTx(SpendTxMessage::Import)),
                     )
+                    .align_items(Align::Center)
                     .spacing(20),
-            ),
-        ))
-        .style(ContainerBackgroundStyle)
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+            )
+            .width(Length::Fill)
+            .align_x(Align::Center),
+            None,
+            Message::Menu(Menu::Home),
+        )
     }
 }
 
@@ -853,8 +809,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
 
 #[derive(Debug)]
 pub struct ManagerSignView {
-    scroll: scrollable::State,
-    cancel_button: iced::button::State,
+    modal: layout::Modal,
     next_button: iced::button::State,
     back_button: iced::button::State,
 }
@@ -862,10 +817,9 @@ pub struct ManagerSignView {
 impl ManagerSignView {
     pub fn new() -> Self {
         ManagerSignView {
-            cancel_button: iced::button::State::new(),
+            modal: layout::Modal::new(),
             next_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
-            scroll: scrollable::State::new(),
         }
     }
 
@@ -880,37 +834,12 @@ impl ManagerSignView {
         warning: Option<&Error>,
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
-        let header = Row::new()
+        let col = Column::new()
             .push(
-                Column::new()
-                    .push(
-                        button::transparent(
-                            &mut self.back_button,
-                            Container::new(Text::new("< Go back"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Previous),
-                    )
-                    .width(Length::Fill),
-            )
-            .push(ProgressBar::spend_bar().draw(3))
-            .push(
-                Column::new()
-                    .push(
-                        button::close_button(&mut self.cancel_button)
-                            .on_press(Message::Menu(Menu::Home)),
-                    )
+                Container::new(Text::new("Sign transaction").bold())
                     .width(Length::Fill)
-                    .align_items(Align::End),
+                    .align_x(Align::Center),
             )
-            .align_items(Align::End)
-            .width(Length::Fill)
-            .align_items(Align::End)
-            .padding(10)
-            .spacing(10);
-        let mut col = Column::new()
             .push(spend_tx_with_feerate_view(
                 ctx,
                 inputs,
@@ -919,39 +848,14 @@ impl ManagerSignView {
                 cpfp_index,
                 Some(feerate),
             ))
-            .spacing(20)
-            .max_width(1000);
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(&error.to_string()).small(),
-            )));
-        }
-        col = col.push(card::white(Container::new(signer)));
-        Container::new(
-            Column::new()
-                .push(header)
-                .push(
-                    Container::new(Text::new("Sign transaction").bold())
-                        .width(Length::Fill)
-                        .align_x(Align::Center),
-                )
-                .push(
-                    scroll(
-                        &mut self.scroll,
-                        Container::new(col)
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
-                    )
-                    .align_items(Align::Center)
+            .push(
+                card::white(Container::new(signer))
+                    .align_x(Align::Center)
                     .width(Length::Fill),
-                )
-                .spacing(20),
-        )
-        .style(ContainerBackgroundStyle)
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+            )
+            .spacing(20);
+        self.modal
+            .view(ctx, warning, col, None, Message::Menu(Menu::Home))
     }
 }
 
