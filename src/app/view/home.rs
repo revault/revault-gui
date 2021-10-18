@@ -19,6 +19,7 @@ use crate::{
 pub struct ManagerHomeView {
     dashboard: layout::Dashboard,
     deposit_button: iced::button::State,
+    history_button: iced::button::State,
 }
 
 impl ManagerHomeView {
@@ -26,6 +27,7 @@ impl ManagerHomeView {
         ManagerHomeView {
             dashboard: layout::Dashboard::new(),
             deposit_button: iced::button::State::default(),
+            history_button: iced::button::State::default(),
         }
     }
 
@@ -35,6 +37,7 @@ impl ManagerHomeView {
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
+        latest_events: Vec<Element<'a, Message>>,
         active_funds: u64,
         inactive_funds: u64,
     ) -> Element<'a, Message> {
@@ -56,7 +59,7 @@ impl ManagerHomeView {
             )
         }
 
-        if active_funds == 0 && inactive_funds == 0 {
+        if active_funds == 0 && inactive_funds == 0 && latest_events.is_empty() {
             content = content.push(card::simple(
                 Row::new()
                     .push(
@@ -81,6 +84,29 @@ impl ManagerHomeView {
                 .push(Text::new("Funds are moving:"))
                 .push(Column::with_children(moving_vaults).spacing(10))
         };
+
+        if !latest_events.is_empty() {
+            let length = latest_events.len();
+            content = content
+                .push(Text::new("Latest events:").small().bold())
+                .push(Column::with_children(latest_events).spacing(5));
+
+            if length >= 5 {
+                content = content.push(
+                    Container::new(
+                        button::transparent(
+                            &mut self.history_button,
+                            Container::new(Text::new("See more").small())
+                                .width(iced::Length::Fill)
+                                .align_x(iced::Align::Center),
+                        )
+                        .on_press(Message::Menu(Menu::History)),
+                    )
+                    .align_x(Align::Center)
+                    .width(Length::Fill),
+                )
+            }
+        }
 
         self.dashboard.view(ctx, warning, content.spacing(20))
     }
@@ -129,7 +155,7 @@ fn manager_overview<'a, T: 'a, C: Client>(
 pub struct StakeholderHomeView {
     dashboard: layout::Dashboard,
     overview: StakeholderOverview,
-    ack_fund_button: iced::button::State,
+    history_button: iced::button::State,
     deposit_button: iced::button::State,
 }
 
@@ -138,7 +164,7 @@ impl StakeholderHomeView {
         StakeholderHomeView {
             dashboard: layout::Dashboard::new(),
             overview: StakeholderOverview::new(),
-            ack_fund_button: iced::button::State::default(),
+            history_button: iced::button::State::default(),
             deposit_button: iced::button::State::default(),
         }
     }
@@ -148,10 +174,11 @@ impl StakeholderHomeView {
         ctx: &Context<C>,
         warning: Option<&Error>,
         moving_vaults: Vec<Element<'a, Message>>,
+        latest_events: Vec<Element<'a, Message>>,
         balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<'a, Message> {
         let mut col_body = Column::new().push(self.overview.view(ctx, balance));
-        if balance.is_empty() {
+        if balance.is_empty() && latest_events.is_empty() {
             col_body = col_body.push(card::simple(Container::new(
                 Row::new()
                     .push(
@@ -177,6 +204,29 @@ impl StakeholderHomeView {
                 .push(Column::with_children(moving_vaults).spacing(10))
                 .spacing(20)
         };
+
+        if !latest_events.is_empty() {
+            let length = latest_events.len();
+            col_body = col_body
+                .push(Text::new("Latest events:").small().bold())
+                .push(Column::with_children(latest_events).spacing(5));
+
+            if length >= 5 {
+                col_body = col_body.push(
+                    Container::new(
+                        button::transparent(
+                            &mut self.history_button,
+                            Container::new(Text::new("See more").small())
+                                .width(iced::Length::Fill)
+                                .align_x(iced::Align::Center),
+                        )
+                        .on_press(Message::Menu(Menu::History)),
+                    )
+                    .align_x(Align::Center)
+                    .width(Length::Fill),
+                )
+            }
+        }
 
         self.dashboard.view(ctx, warning, col_body.spacing(20))
     }

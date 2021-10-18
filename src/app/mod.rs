@@ -15,7 +15,7 @@ pub use message::Message;
 
 use menu::Menu;
 use state::{
-    DepositState, EmergencyState, ManagerHomeState, ManagerSendState, SettingsState,
+    DepositState, EmergencyState, HistoryState, ManagerHomeState, ManagerSendState, SettingsState,
     StakeholderCreateVaultsState, StakeholderDelegateVaultsState, StakeholderHomeState, State,
     VaultsState,
 };
@@ -34,27 +34,21 @@ pub fn new_state<C: Client + Send + Sync + 'static>(
     context: &Context<C>,
     config: &Config,
 ) -> Box<dyn State<C>> {
-    match context.role {
-        Role::Manager => match context.menu {
-            Menu::Deposit => DepositState::new().into(),
-            Menu::Home => ManagerHomeState::new().into(),
-            Menu::Vaults => VaultsState::new().into(),
-            Menu::Send => ManagerSendState::new().into(),
-            // Manager cannot delegate funds, the user is redirected to the home.
-            Menu::DelegateFunds => ManagerHomeState::new().into(),
-            Menu::Settings => SettingsState::new(config.clone()).into(),
-            _ => unreachable!(),
-        },
-        Role::Stakeholder => match context.menu {
-            Menu::Deposit => DepositState::new().into(),
-            Menu::Home => StakeholderHomeState::new().into(),
-            Menu::Vaults => VaultsState::new().into(),
-            Menu::CreateVaults => StakeholderCreateVaultsState::new().into(),
-            Menu::DelegateFunds => StakeholderDelegateVaultsState::new().into(),
-            Menu::Settings => SettingsState::new(config.clone()).into(),
-            Menu::Emergency => EmergencyState::new().into(),
-            _ => unreachable!(),
-        },
+    match (context.role, &context.menu) {
+        (_, Menu::Deposit) => DepositState::new().into(),
+        (_, Menu::History) => HistoryState::new().into(),
+        (_, Menu::Vaults) => VaultsState::new().into(),
+        (_, Menu::Settings) => SettingsState::new(config.clone()).into(),
+        (Role::Stakeholder, Menu::Home) => StakeholderHomeState::new().into(),
+        (Role::Stakeholder, Menu::CreateVaults) => StakeholderCreateVaultsState::new().into(),
+        (Role::Stakeholder, Menu::DelegateFunds) => StakeholderDelegateVaultsState::new().into(),
+        (Role::Stakeholder, Menu::Emergency) => EmergencyState::new().into(),
+        (Role::Manager, Menu::Home) => ManagerHomeState::new().into(),
+        (Role::Manager, Menu::Send) => ManagerSendState::new().into(),
+
+        // If menu is not available for the role, the user is redirected to Home.
+        (Role::Stakeholder, _) => StakeholderHomeState::new().into(),
+        (Role::Manager, _) => ManagerHomeState::new().into(),
     }
 }
 

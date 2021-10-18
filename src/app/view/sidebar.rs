@@ -4,8 +4,8 @@ use revault_ui::{
     color,
     component::{button, separation, text::Text, TransparentPickListStyle},
     icon::{
-        deposit_icon, home_icon, person_check_icon, plus_icon, send_icon, settings_icon,
-        vaults_icon, warning_icon,
+        deposit_icon, history_icon, home_icon, person_check_icon, plus_icon, send_icon,
+        settings_icon, vaults_icon, warning_icon,
     },
 };
 
@@ -23,6 +23,7 @@ pub struct Sidebar {
     delegate_menu_button: iced::button::State,
     emergency_menu_button: iced::button::State,
     home_menu_button: iced::button::State,
+    history_menu_button: iced::button::State,
     vaults_menu_button: iced::button::State,
     network_menu_button: iced::button::State,
     spend_menu_button: iced::button::State,
@@ -36,6 +37,7 @@ impl Sidebar {
             create_vault_button: iced::button::State::new(),
             delegate_menu_button: iced::button::State::new(),
             home_menu_button: iced::button::State::new(),
+            history_menu_button: iced::button::State::new(),
             emergency_menu_button: iced::button::State::new(),
             vaults_menu_button: iced::button::State::new(),
             network_menu_button: iced::button::State::new(),
@@ -74,6 +76,19 @@ impl Sidebar {
                 button::button_content(Some(home_icon()), "Home"),
             )
             .on_press(Message::Menu(Menu::Home))
+        };
+        let history_button = if context.menu == Menu::History {
+            button::primary(
+                &mut self.history_menu_button,
+                button::button_content(Some(history_icon()), "History"),
+            )
+            .on_press(Message::Reload)
+        } else {
+            button::transparent(
+                &mut self.history_menu_button,
+                button::button_content(Some(history_icon()), "History"),
+            )
+            .on_press(Message::Menu(Menu::History))
         };
         let vaults_button = if context.menu == Menu::Vaults {
             button::primary(
@@ -184,6 +199,7 @@ impl Sidebar {
                 role.width(Length::Units(200)),
                 separation().width(iced::Length::Units(200)),
                 Container::new(home_button.width(Length::Units(200))),
+                Container::new(history_button.width(Length::Units(200))),
                 Container::new(vaults_button.width(Length::Units(200))),
                 separation().width(Length::Units(200)),
                 Container::new(actions.width(Length::Units(200))),

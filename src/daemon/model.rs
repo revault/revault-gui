@@ -15,14 +15,10 @@ pub struct Vault {
     pub amount: u64,
     /// derivation_index is the index used to create scriptPubKey of the deposit address
     pub derivation_index: u32,
-    /// Timestamp of the deposit transaction reception time.
-    pub received_at: i64,
     /// Status of the vault
     pub status: VaultStatus,
     /// Deposit txid of the vault deposit transaction
     pub txid: Txid,
-    /// Timestamp of the last vault update.
-    pub updated_at: i64,
     /// Deposit vout of the vault deposit transaction
     pub vout: u32,
 }
@@ -305,4 +301,33 @@ pub struct ServersStatuses {
 pub struct ServerStatus {
     pub host: String,
     pub reachable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HistoryEvent {
+    pub txid: Txid,
+    pub date: i64,
+    pub kind: HistoryEventKind,
+    pub amount: Option<u64>,
+    pub fee: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum HistoryEventKind {
+    #[serde(rename = "cancel")]
+    Cancel,
+    #[serde(rename = "deposit")]
+    Deposit,
+    #[serde(rename = "spend")]
+    Spend,
+}
+
+impl std::fmt::Display for HistoryEventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Cancel => write!(f, "Cancel"),
+            Self::Deposit => write!(f, "Deposit"),
+            Self::Spend => write!(f, "Spend"),
+        }
+    }
 }

@@ -5,8 +5,8 @@ use std::sync::Arc;
 use crate::daemon::{
     client::{Client, RevaultD, RevaultDError},
     model::{
-        RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, SpendTxStatus,
-        UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
+        HistoryEvent, HistoryEventKind, RevocationTransactions, ServersStatuses, SpendTransaction,
+        SpendTx, SpendTxStatus, UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
     },
 };
 
@@ -133,4 +133,16 @@ pub async fn get_server_status<C: Client>(
 
 pub async fn stop<C: Client>(revaultd: Arc<RevaultD<C>>) -> Result<(), RevaultDError> {
     revaultd.stop()
+}
+
+pub async fn get_history<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+    kind: Vec<HistoryEventKind>,
+    start: u64,
+    end: u64,
+    limit: u64,
+) -> Result<Vec<HistoryEvent>, RevaultDError> {
+    revaultd
+        .get_history(&kind, start, end, limit)
+        .map(|res| res.events)
 }

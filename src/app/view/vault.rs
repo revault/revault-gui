@@ -87,15 +87,7 @@ fn vault<'a, C: Client>(
                                                 ))
                                                 .align_items(Align::Center),
                                         )
-                                        .push(Text::new(&format!(
-                                            "received at {}",
-                                            NaiveDateTime::from_timestamp(vlt.received_at, 0)
-                                        )))
-                                        .push(Text::new(&format!(
-                                            "{} ( {} )",
-                                            &vlt.status,
-                                            NaiveDateTime::from_timestamp(vlt.updated_at, 0)
-                                        ))),
+                                        .push(Text::new(&format!("{}", &vlt.status,))),
                                 )
                                 .align_items(Align::Center)
                                 .spacing(20),
@@ -339,7 +331,6 @@ impl VaultView for VaultListItemView {
     }
 
     fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
-        let updated_at = NaiveDateTime::from_timestamp(vault.updated_at, 0);
         button::white_card_button(
             &mut self.state,
             Container::new(
@@ -351,13 +342,7 @@ impl VaultView for VaultListItemView {
                                 .push(
                                     Column::new()
                                         .push(Text::new(&vault.outpoint()).bold().small())
-                                        .push(
-                                            Text::new(&format!(
-                                                "{} ( {} )",
-                                                &vault.status, updated_at
-                                            ))
-                                            .small(),
-                                        ),
+                                        .push(Text::new(&format!("{}", &vault.status,)).small()),
                                 )
                                 .spacing(20),
                         )

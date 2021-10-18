@@ -211,6 +211,19 @@ impl<C: Client> RevaultD<C> {
     pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
         self.call("getserverstatus", Option::<Request>::None)
     }
+
+    pub fn get_history(
+        &self,
+        kind: &Vec<HistoryEventKind>,
+        start: u64,
+        end: u64,
+        limit: u64,
+    ) -> Result<GetHistoryResponse, RevaultDError> {
+        self.call(
+            "gethistory",
+            Some(vec![json!(kind), json!(start), json!(end), json!(limit)]),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -234,6 +247,12 @@ pub struct GetInfoResponse {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListVaultsResponse {
     pub vaults: Vec<Vault>,
+}
+
+/// gethistory response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetHistoryResponse {
+    pub events: Vec<HistoryEvent>,
 }
 
 /// list_transactions
