@@ -2526,6 +2526,7 @@ name = "revault-gui"
 version = "0.0.1"
 dependencies = [
  "async-recursion",
+ "backtrace",
  "bitcoin",
  "chrono",
  "dirs",

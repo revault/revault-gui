@@ -62,10 +62,17 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
                     .map(|l| l.line().to_string())
                     .unwrap_or_else(|| "'unknown'".to_string());
 
+                let bt = backtrace::Backtrace::new();
                 if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-                    log::error!("panic occurred at line {} of file {}: {:?}", line, file, s);
+                    log::error!(
+                        "panic occurred at line {} of file {}: {:?}\n{:?}",
+                        line,
+                        file,
+                        s,
+                        bt
+                    );
                 } else {
-                    log::error!("panic occurred at line {} of file {}", line, file);
+                    log::error!("panic occurred at line {} of file {}\n{:?}", line, file, bt);
                 }
             }));
 
