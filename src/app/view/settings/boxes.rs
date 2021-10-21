@@ -166,7 +166,7 @@ impl SettingsBox for AdvancedBox {
             column = column.push(
                 Row::new()
                     .push(Container::new(Text::new(k).small()).width(Length::Fill))
-                    .push(Text::new(&v)),
+                    .push(Text::new(&v).small()),
             );
         }
         column
