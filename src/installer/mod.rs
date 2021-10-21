@@ -3,6 +3,7 @@ mod step;
 mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};
+use iced_native::{window, Event};
 
 use bitcoin::hashes::hex::FromHex;
 use std::io::Write;
@@ -17,8 +18,7 @@ use step::{
 };
 
 pub struct Installer {
-    /// Path to the revaultd binary.
-    revaultd_path: Option<PathBuf>,
+    should_exit: bool,
     current: usize,
     steps: Vec<Box<dyn Step>>,
 
@@ -92,7 +92,6 @@ impl Installer {
 
     pub fn new(
         destination_path: PathBuf,
-        revaultd_path: Option<PathBuf>,
         network: bitcoin::Network,
     ) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
@@ -101,7 +100,7 @@ impl Installer {
         config.daemon = Some(true);
         (
             Installer {
-                revaultd_path,
+                should_exit: false,
                 config,
                 current: 0,
                 steps: vec![Welcome::new().into(), DefineRole::new().into()],
@@ -112,7 +111,16 @@ impl Installer {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        iced_native::subscription::events().map(Message::Event)
+    }
+
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
+    }
+
+    pub fn stop(&mut self) -> Command<Message> {
+        self.should_exit = true;
+        Command::none()
     }
 
     pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
@@ -148,14 +156,11 @@ impl Installer {
             Message::Install => {
                 self.current_step().update(message);
                 return Command::perform(
-                    install(
-                        self.context.clone(),
-                        self.config.clone(),
-                        self.revaultd_path.clone(),
-                    ),
+                    install(self.context.clone(), self.config.clone()),
                     Message::Installed,
                 );
             }
+            Message::Event(Event::Window(window::Event::CloseRequested)) => return self.stop(),
             _ => {
                 self.current_step().update(message);
             }
@@ -176,11 +181,7 @@ fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
     }
 }
 
-pub async fn install(
-    ctx: Context,
-    mut cfg: revaultd_config::Config,
-    revaultd_path: Option<PathBuf>,
-) -> Result<PathBuf, Error> {
+pub async fn install(ctx: Context, mut cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
@@ -244,7 +245,6 @@ pub async fn install(
                         e
                     ))
                 })?,
-                revaultd_path,
             ))
             .unwrap()
             .as_bytes(),

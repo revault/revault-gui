@@ -17,6 +17,7 @@ pub struct Context<C: Client> {
     pub role: Role,
     pub role_edit: bool,
     pub managers_threshold: usize,
+    pub internal_daemon: bool,
 }
 
 impl<C: Client> Context<C> {
@@ -28,6 +29,7 @@ impl<C: Client> Context<C> {
         role: Role,
         menu: Menu,
         managers_threshold: usize,
+        internal_daemon: bool,
     ) -> Self {
         Self {
             revaultd,
@@ -38,6 +40,7 @@ impl<C: Client> Context<C> {
             network,
             network_up: true,
             managers_threshold,
+            internal_daemon,
         }
     }
 }

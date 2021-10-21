@@ -5,6 +5,7 @@ use crate::revault::Role;
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Event(iced_native::Event),
     Exit(PathBuf),
     Next,
     Previous,

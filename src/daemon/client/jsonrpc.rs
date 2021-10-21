@@ -33,7 +33,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_writer, Deserializer};
 
-use tracing::debug;
+use log::debug;
 
 /// A handle to a remote JSONRPC server
 #[derive(Debug, Clone)]

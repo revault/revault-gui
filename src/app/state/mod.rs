@@ -1,4 +1,4 @@
-mod cmd;
+pub mod cmd;
 mod deposit;
 mod emergency;
 pub mod manager;

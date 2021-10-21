@@ -17,6 +17,8 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Reload,
+    StoppingDaemon(Result<(), RevaultDError>),
+    Event(iced_native::Event),
     Clipboard(String),
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),

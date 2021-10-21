@@ -8,6 +8,7 @@ mod error;
 mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};
+use iced_native::{window, Event};
 
 pub use config::Config;
 pub use message::Message;
@@ -22,6 +23,7 @@ use state::{
 use crate::{app::context::Context, daemon::client::Client, revault::Role};
 
 pub struct App<C: Client + Send + Sync + 'static> {
+    should_exit: bool,
     config: Config,
     state: Box<dyn State<C>>,
     context: Context<C>,
@@ -62,6 +64,7 @@ impl<C: Client + Send + Sync + 'static> App<C> {
         let cmd = state.load(&context);
         (
             Self {
+                should_exit: false,
                 config,
                 state,
                 context,
@@ -71,7 +74,25 @@ impl<C: Client + Send + Sync + 'static> App<C> {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        self.state.subscription()
+        Subscription::batch(vec![
+            iced_native::subscription::events().map(Message::Event),
+            self.state.subscription(),
+        ])
+    }
+
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
+    }
+
+    pub fn stop(&mut self) -> Command<Message> {
+        self.should_exit = true;
+        if self.context.internal_daemon {
+            return Command::perform(
+                state::cmd::stop(self.context.revaultd.clone()),
+                Message::StoppingDaemon,
+            );
+        }
+        Command::none()
     }
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
@@ -90,6 +111,7 @@ impl<C: Client + Send + Sync + 'static> App<C> {
                 clipboard.write(text);
                 Command::none()
             }
+            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
             _ => self.state.update(&self.context, message),
         }
     }

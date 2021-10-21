@@ -1,65 +1,87 @@
-use std::path::Path;
-use std::process::Command;
+use std::path::PathBuf;
+use std::thread::{Builder, JoinHandle};
 
-use tracing::{debug, info};
+use log::{debug, info};
 
 pub mod client;
 pub mod config;
 pub mod model;
 
+use revaultd::{
+    common::config::Config,
+    daemon::{daemon_main, RevaultD},
+    revault_net::sodiumoxide,
+    revault_tx::bitcoin::hashes::hex::ToHex,
+};
+
 #[derive(Debug)]
-pub struct StartDaemonError(String);
-impl std::fmt::Display for StartDaemonError {
+pub enum DaemonError {
+    StartError(String),
+    PanicError(String),
+}
+
+impl std::fmt::Display for DaemonError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Revaultd error while starting: {}", self.0)
+        match self {
+            Self::StartError(e) => write!(f, "daemon error while starting: {}", e),
+            Self::PanicError(e) => write!(f, "daemon had a panic: {}", e),
+        }
     }
 }
 
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(
-    config_path: &Path,
-    revaultd_path: &Path,
-) -> Result<(), StartDaemonError> {
+pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
     debug!("starting revaultd daemon");
-    let mut child = Command::new(revaultd_path)
-        .arg("--conf")
-        .arg(config_path.to_path_buf().into_os_string().as_os_str())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| StartDaemonError(format!("Failed to launched revaultd: {}", e.to_string())))?;
 
-    debug!("waiting for revaultd daemon status");
+    sodiumoxide::init().map_err(|_| DaemonError::StartError("sodiumoxide::init".to_string()))?;
 
-    let tries_timeout = std::time::Duration::from_secs(1);
-    let start = std::time::Instant::now();
+    let config = Config::from_file(Some(config_path))
+        .map_err(|e| DaemonError::StartError(format!("Error parsing config: {}", e)))?;
 
-    while start.elapsed() < tries_timeout {
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                if !status.success() {
-                    // FIXME: there should be a better way to collect the output...
-                    let output = child.wait_with_output().unwrap();
-                    return Err(StartDaemonError(format!(
-                        "Error revaultd terminated with status: {} and stderr:\n{:?}",
-                        status.to_string(),
-                        String::from_utf8_lossy(&output.stderr),
-                    )));
+    let revaultd = RevaultD::from_config(config)
+        .map_err(|e| DaemonError::StartError(format!("Error creating global state: {}", e)))?;
+
+    info!(
+        "Using Noise static public key: '{}'",
+        revaultd.noise_pubkey().0.to_hex()
+    );
+    debug!(
+        "Coordinator static public key: '{}'",
+        revaultd.coordinator_noisekey.0.to_hex()
+    );
+
+    let handle: JoinHandle<_> = Builder::new()
+        .spawn(|| {
+            std::panic::set_hook(Box::new(move |panic_info| {
+                let file = panic_info
+                    .location()
+                    .map(|l| l.file())
+                    .unwrap_or_else(|| "'unknown'");
+                let line = panic_info
+                    .location()
+                    .map(|l| l.line().to_string())
+                    .unwrap_or_else(|| "'unknown'".to_string());
+
+                let bt = backtrace::Backtrace::new();
+                if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                    log::error!(
+                        "panic occurred at line {} of file {}: {:?}\n{:?}",
+                        line,
+                        file,
+                        s,
+                        bt
+                    );
                 } else {
-                    info!("revaultd daemon started");
-                    return Ok(());
+                    log::error!("panic occurred at line {} of file {}\n{:?}", line, file, bt);
                 }
-            }
-            Ok(None) => continue,
-            Err(e) => {
-                return Err(StartDaemonError(format!(
-                    "Child did not terminate: {}",
-                    e.to_string()
-                )));
-            }
-        }
-    }
+            }));
 
-    Err(StartDaemonError(
-        "Child did not terminate, do you have `daemon=false` in Revault conf?".to_string(),
-    ))
+            daemon_main(revaultd);
+        })
+        .map_err(|e| DaemonError::StartError(format!("{}", e)))?;
+
+    handle
+        .join()
+        .map_err(|e| DaemonError::PanicError(format!("{:?}", e)))?;
+    Ok(())
 }

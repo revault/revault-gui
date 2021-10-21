@@ -1,9 +1,6 @@
-use std::error::Error;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{error::Error, path::PathBuf, str::FromStr};
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
-use tracing_subscriber::filter::EnvFilter;
 extern crate serde;
 extern crate serde_json;
 
@@ -47,22 +44,27 @@ fn parse_args(args: Vec<String>) -> Result<Vec<Arg>, Box<dyn Error>> {
     Ok(res)
 }
 
-fn log_level_from_config(config: &app::Config) -> Result<EnvFilter, Box<dyn Error>> {
+fn log_level_from_config(config: &app::Config) -> Result<log::LevelFilter, Box<dyn Error>> {
     if let Some(level) = &config.log_level {
         match level.as_ref() {
-            "info" => EnvFilter::try_new("revault_gui=info").map_err(|e| e.into()),
-            "debug" => EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into()),
-            "trace" => EnvFilter::try_new("revault_gui=trace").map_err(|e| e.into()),
+            "info" => Ok(log::LevelFilter::Info),
+            "debug" => Ok(log::LevelFilter::Debug),
+            "trace" => Ok(log::LevelFilter::Trace),
             _ => Err(format!("Unknown loglevel '{:?}'.", level).into()),
         }
     } else if let Some(true) = config.debug {
-        EnvFilter::try_new("revault_gui=debug").map_err(|e| e.into())
+        Ok(log::LevelFilter::Debug)
     } else {
-        EnvFilter::try_new("revault_gui=info").map_err(|e| e.into())
+        Ok(log::LevelFilter::Info)
     }
 }
 
-pub enum GUI {
+pub struct GUI {
+    daemon_running: bool,
+    state: State,
+}
+
+enum State {
     Installer(Installer),
     Loader(Loader),
     App(App<daemon::client::jsonrpc::JsonRPCClient>),
@@ -70,9 +72,28 @@ pub enum GUI {
 
 #[derive(Debug)]
 pub enum Message {
+    CtrlC,
     Install(installer::Message),
     Load(loader::Message),
     Run(app::Message),
+}
+
+impl GUI {
+    fn exit_requested(&self) -> bool {
+        match &self.state {
+            State::Installer(v) => v.should_exit(),
+            State::Loader(v) => v.should_exit(),
+            State::App(v) => v.should_exit(),
+        }
+    }
+}
+
+async fn ctrl_c() -> Result<(), ()> {
+    if let Err(e) = tokio::signal::ctrl_c().await {
+        log::error!("{}", e);
+    };
+    log::info!("Signal received, exiting");
+    Ok(())
 }
 
 impl Application for GUI {
@@ -81,22 +102,40 @@ impl Application for GUI {
     type Flags = Config;
 
     fn title(&self) -> String {
-        match self {
-            Self::Installer(_) => String::from("Revault Installer"),
-            Self::App(_) => String::from("Revault GUI"),
-            Self::Loader(_) => String::from("Revault"),
+        match self.state {
+            State::Installer(_) => String::from("Revault Installer"),
+            State::App(_) => String::from("Revault GUI"),
+            State::Loader(..) => String::from("Revault"),
         }
     }
 
     fn new(config: Config) -> (GUI, Command<Self::Message>) {
         match config {
-            Config::Install(config_path, revaultd_path, network) => {
-                let (install, command) = Installer::new(config_path, revaultd_path, network);
-                (GUI::Installer(install), command.map(Message::Install))
+            Config::Install(config_path, network) => {
+                let (install, command) = Installer::new(config_path, network);
+                (
+                    Self {
+                        state: State::Installer(install),
+                        daemon_running: false,
+                    },
+                    Command::batch(vec![
+                        command.map(Message::Install),
+                        Command::perform(ctrl_c(), |_| Message::CtrlC),
+                    ]),
+                )
             }
             Config::Run(cfg) => {
                 let (loader, command) = Loader::new(cfg);
-                (GUI::Loader(loader), command.map(Message::Load))
+                (
+                    Self {
+                        state: State::Loader(loader),
+                        daemon_running: false,
+                    },
+                    Command::batch(vec![
+                        command.map(Message::Load),
+                        Command::perform(ctrl_c(), |_| Message::CtrlC),
+                    ]),
+                )
             }
         }
     }
@@ -106,15 +145,43 @@ impl Application for GUI {
         message: Self::Message,
         clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
+        if matches!(message, Message::CtrlC) {
+            return match &mut self.state {
+                State::Installer(v) => v.stop().map(Message::Install),
+                State::Loader(v) => v.stop().map(Message::Load),
+                State::App(v) => v.stop().map(Message::Run),
+            };
+        }
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
             let (loader, command) = Loader::new(cfg);
-            *self = GUI::Loader(loader);
+            self.state = State::Loader(loader);
             return command.map(Message::Load);
         }
 
+        if let Message::Load(loader::Message::DaemonStopped) = message {
+            log::info!("daemon stopped");
+            self.daemon_running = false;
+            return Command::none();
+        }
+
+        if let Message::Load(loader::Message::Failure(e)) = &message {
+            log::info!("daemon panic {}", e);
+            self.daemon_running = false;
+        }
+
+        if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
+            log::info!("stopping daemon {:?}", res);
+            return Command::none();
+        }
+
+        if let Message::Run(app::Message::StoppingDaemon(res)) = message {
+            log::info!("stopping daemon {:?}", res);
+            return Command::none();
+        }
+
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
-            if let GUI::Loader(loader) = self {
+            if let State::Loader(loader) = &mut self.state {
                 let config = loader.gui_config.clone();
                 let role = if revaultd.config.stakeholder_config.is_some() {
                     Role::Stakeholder
@@ -137,96 +204,88 @@ impl Application for GUI {
                     role,
                     Menu::Home,
                     info.managers_threshold,
+                    self.daemon_running,
                 );
 
                 let (app, command) = App::new(context, config);
-                *self = GUI::App(app);
+                self.state = State::App(app);
                 return command.map(Message::Run);
             }
             return Command::none();
         }
 
-        match (self, message) {
-            (Self::Installer(i), Message::Install(msg)) => {
+        match (&mut self.state, message) {
+            (State::Installer(i), Message::Install(msg)) => {
                 i.update(msg, clipboard).map(Message::Install)
             }
-            (Self::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
-            (Self::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
+            (State::Loader(loader), Message::Load(msg)) => {
+                let cmd = loader.update(msg).map(Message::Load);
+                if loader.daemon_started {
+                    self.daemon_running = true;
+                }
+                cmd
+            }
+            (State::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
             _ => Command::none(),
         }
     }
 
+    fn should_exit(&self) -> bool {
+        self.exit_requested() && !self.daemon_running
+    }
+
     fn subscription(&self) -> Subscription<Self::Message> {
-        match self {
-            Self::Installer(v) => v.subscription().map(Message::Install),
-            Self::App(v) => v.subscription().map(Message::Run),
-            _ => Subscription::none(),
+        match &self.state {
+            State::Installer(v) => v.subscription().map(Message::Install),
+            State::Loader(v) => v.subscription().map(Message::Load),
+            State::App(v) => v.subscription().map(Message::Run),
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        match self {
-            Self::Installer(v) => v.view().map(Message::Install),
-            Self::App(v) => v.view().map(Message::Run),
-            Self::Loader(v) => v.view().map(Message::Load),
+        match &mut self.state {
+            State::Installer(v) => v.view().map(Message::Install),
+            State::App(v) => v.view().map(Message::Run),
+            State::Loader(v) => v.view().map(Message::Load),
         }
     }
 }
 
 pub enum Config {
     Run(app::Config),
-    Install(PathBuf, Option<PathBuf>, bitcoin::Network),
+    Install(PathBuf, bitcoin::Network),
 }
 
 impl Config {
-    pub fn new(
-        datadir_path: PathBuf,
-        network: bitcoin::Network,
-        revaultd_path: Option<PathBuf>,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(datadir_path: PathBuf, network: bitcoin::Network) -> Result<Self, Box<dyn Error>> {
         let mut path = datadir_path.clone();
         path.push(app::Config::file_name(&network));
         match app::Config::from_file(&path) {
             Ok(cfg) => Ok(Config::Run(cfg)),
-            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, revaultd_path, network)),
+            Err(ConfigError::NotFound) => Ok(Config::Install(datadir_path, network)),
             Err(e) => Err(format!("Failed to read configuration file: {}", e).into()),
         }
     }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let revaultd_path = match std::env::var("REVAULTD_PATH") {
-        Ok(p) => Some(
-            PathBuf::from(p)
-                .canonicalize()
-                .map_err(|e| ConfigError::Unexpected(format!("REVAULTD_PATH: {}", e)))?,
-        ),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(std::env::VarError::NotUnicode(_)) => {
-            println!("Error: REVAULTD_CONF path has a wrong unicode format");
-            std::process::exit(1);
-        }
-    };
-
     let args = parse_args(std::env::args().collect())?;
     let config = match args.as_slice() {
         [] => {
             let datadir_path = default_datadir().unwrap();
-            Config::new(datadir_path, bitcoin::Network::Bitcoin, revaultd_path)
+            Config::new(datadir_path, bitcoin::Network::Bitcoin)
         }
         [Arg::Network(network)] => {
             let datadir_path = default_datadir().unwrap();
-            Config::new(datadir_path, network.clone(), revaultd_path)
+            Config::new(datadir_path, network.clone())
         }
         [Arg::ConfigPath(path)] => Ok(Config::Run(app::Config::from_file(&path)?)),
-        [Arg::DatadirPath(datadir_path)] => Config::new(
-            datadir_path.clone(),
-            bitcoin::Network::Bitcoin,
-            revaultd_path,
-        ),
+        [Arg::DatadirPath(datadir_path)] => {
+            Config::new(datadir_path.clone(), bitcoin::Network::Bitcoin)
+        }
         [Arg::DatadirPath(datadir_path), Arg::Network(network)]
         | [Arg::Network(network), Arg::DatadirPath(datadir_path)] => {
-            Config::new(datadir_path.clone(), network.clone(), revaultd_path)
+            Config::new(datadir_path.clone(), network.clone())
         }
         _ => {
             return Err("Unknown args combination".into());
@@ -236,18 +295,45 @@ fn main() -> Result<(), Box<dyn Error>> {
     let level = if let Config::Run(cfg) = &config {
         log_level_from_config(&cfg)?
     } else {
-        EnvFilter::try_new("revault_gui=info").unwrap()
+        log::LevelFilter::Info
     };
+    setup_logger(level)?;
 
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(level)
-            .finish(),
-    )?;
+    let mut settings = Settings::with_flags(config);
+    settings.exit_on_close_request = false;
 
-    if let Err(e) = GUI::run(Settings::with_flags(config)) {
+    if let Err(e) = GUI::run(settings) {
         return Err(format!("Failed to launch UI: {}", e).into());
     };
+    Ok(())
+}
+
+// This creates the log file automagically if it doesn't exist, and logs on stdout
+// if None is given
+pub fn setup_logger(log_level: log::LevelFilter) -> Result<(), fern::InitError> {
+    let dispatcher = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}][{}] {}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_else(|e| {
+                        println!("Can't get time since epoch: '{}'. Using a dummy value.", e);
+                        std::time::Duration::from_secs(0)
+                    })
+                    .as_secs(),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log_level)
+        .level_for("iced_wgpu", log::LevelFilter::Off)
+        .level_for("gfx_backend_vulkan", log::LevelFilter::Off)
+        .level_for("naga", log::LevelFilter::Off);
+
+    dispatcher.chain(std::io::stdout()).apply()?;
+
     Ok(())
 }
 

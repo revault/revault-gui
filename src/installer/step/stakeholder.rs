@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::Element;
-use revault_tx::{
+use revaultd::revault_tx::{
     miniscript::DescriptorPublicKey,
     scripts::{DepositDescriptor, UnvaultDescriptor},
 };

@@ -10,7 +10,7 @@ use std::str::FromStr;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
-use revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
+use revaultd::revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
 
 use revault_ui::component::form;
 
