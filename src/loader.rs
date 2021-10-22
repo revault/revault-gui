@@ -73,8 +73,14 @@ impl Loader {
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
-                Error::RevaultDError(RevaultDError::IOError(ErrorKind::ConnectionRefused))
-                | Error::RevaultDError(RevaultDError::IOError(ErrorKind::NotFound)) => {
+                Error::ConfigError(ConfigError::NotFound) => {
+                    self.step = Step::Error(e.into());
+                }
+                Error::RevaultDError(RevaultDError::Transport(
+                    Some(ErrorKind::ConnectionRefused),
+                    _,
+                ))
+                | Error::RevaultDError(RevaultDError::Transport(Some(ErrorKind::NotFound), _)) => {
                     self.step = Step::StartingDaemon;
                     self.daemon_started = true;
                     return Command::batch(vec![
@@ -220,10 +226,10 @@ async fn synced(
 async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     let cfg = Config::from_file(&revaultd_config_path)?;
     let socket_path = cfg.socket_path().map_err(|e| {
-        RevaultDError::UnexpectedError(format!(
-            "Failed to find revaultd socket path: {}",
-            e.to_string()
-        ))
+        RevaultDError::Transport(
+            Some(ErrorKind::NotFound),
+            format!("Failed to find revaultd socket path: {}", e.to_string()),
+        )
     })?;
 
     let client = client::jsonrpc::JsonRPCClient::new(socket_path);
@@ -245,10 +251,10 @@ async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Err
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
         let socket_path = cfg.socket_path().map_err(|e| {
-            RevaultDError::UnexpectedError(format!(
-                "Failed to find revaultd socket path: {}",
-                e.to_string()
-            ))
+            RevaultDError::Transport(
+                Some(ErrorKind::NotFound),
+                format!("Failed to find revaultd socket path: {}", e.to_string()),
+            )
         })?;
 
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);

@@ -293,6 +293,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
             ctx,
             self.deposits.iter_mut().map(|v| v.view(ctx)).collect(),
             self.address.as_ref(),
+            self.warning.as_ref(),
         )
     }
 

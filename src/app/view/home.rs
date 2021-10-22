@@ -1,39 +1,30 @@
 use std::collections::HashMap;
 
 use iced::{
-    scrollable,
     tooltip::{self, Tooltip},
     Align, Column, Container, Element, HorizontalAlignment, Length, Row,
 };
 
 use revault_ui::{
-    component::{button, card, navbar, scroll, text::Text, TooltipStyle},
+    component::{button, card, text::Text, TooltipStyle},
     icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
 };
 
 use crate::{
-    app::{
-        context::Context,
-        error::Error,
-        menu::Menu,
-        message::Message,
-        view::{layout, sidebar::Sidebar},
-    },
+    app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
     daemon::{client::Client, model::VaultStatus},
 };
 
 #[derive(Debug)]
 pub struct ManagerHomeView {
-    sidebar: Sidebar,
-    scroll: scrollable::State,
+    dashboard: layout::Dashboard,
     deposit_button: iced::button::State,
 }
 
 impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
-            scroll: scrollable::State::new(),
-            sidebar: Sidebar::new(),
+            dashboard: layout::Dashboard::new(),
             deposit_button: iced::button::State::default(),
         }
     }
@@ -66,7 +57,7 @@ impl ManagerHomeView {
         }
 
         if active_funds == 0 && inactive_funds == 0 {
-            content = content.push(card::simple(Container::new(
+            content = content.push(card::simple(
                 Row::new()
                     .push(
                         Container::new(Text::new(
@@ -82,25 +73,16 @@ impl ManagerHomeView {
                         .on_press(Message::Menu(Menu::Deposit)),
                     )
                     .align_items(iced::Align::Center),
-            )))
+            ))
         }
 
         if !moving_vaults.is_empty() {
             content = content
                 .push(Text::new("Funds are moving:"))
                 .push(Column::with_children(moving_vaults).spacing(10))
-                .spacing(20)
         };
 
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(content.spacing(20)),
-            ))),
-        )
-        .into()
+        self.dashboard.view(ctx, warning, content.spacing(20))
     }
 }
 
@@ -145,9 +127,8 @@ fn manager_overview<'a, T: 'a, C: Client>(
 
 #[derive(Debug)]
 pub struct StakeholderHomeView {
-    sidebar: Sidebar,
+    dashboard: layout::Dashboard,
     overview: StakeholderOverview,
-    scroll: scrollable::State,
     ack_fund_button: iced::button::State,
     deposit_button: iced::button::State,
 }
@@ -155,8 +136,7 @@ pub struct StakeholderHomeView {
 impl StakeholderHomeView {
     pub fn new() -> Self {
         StakeholderHomeView {
-            scroll: scrollable::State::new(),
-            sidebar: Sidebar::new(),
+            dashboard: layout::Dashboard::new(),
             overview: StakeholderOverview::new(),
             ack_fund_button: iced::button::State::default(),
             deposit_button: iced::button::State::default(),
@@ -198,15 +178,7 @@ impl StakeholderHomeView {
                 .spacing(20)
         };
 
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(col_body.spacing(20)),
-            ))),
-        )
-        .into()
+        self.dashboard.view(ctx, warning, col_body.spacing(20))
     }
 }
 

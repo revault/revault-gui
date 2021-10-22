@@ -1,78 +1,68 @@
 use revault_ui::{
     color,
-    component::{card, text::Text},
+    component::{button, navbar, scroll, text::Text, ContainerBackgroundStyle, TooltipStyle},
+    icon,
 };
 
-use crate::app::error::Error;
+use crate::{
+    app::{
+        context::Context,
+        error::Error,
+        message::Message,
+        view::{sidebar::Sidebar, warning::warn},
+    },
+    daemon::client::Client,
+};
 
-use iced::{container, Column, Container, Length, Row};
+use iced::{
+    container, scrollable, tooltip, Align, Column, Container, Element, Length, Row, Tooltip,
+};
 
-pub fn navbar_warning<'a, T: 'a>(warning: Option<&Error>) -> Option<Container<'a, T>> {
-    if let Some(e) = warning {
-        return Some(card::alert_warning(Container::new(Text::new(&format!(
-            "{}",
-            e
-        )))));
-    }
-    None
+#[derive(Debug, Clone)]
+pub struct Dashboard {
+    sidebar: Sidebar,
+    scroll: scrollable::State,
 }
 
-pub fn dashboard<'a, T: 'a>(
-    header: Container<'a, T>,
-    sidebar: Container<'a, T>,
-    main: Container<'a, T>,
-) -> Container<'a, T> {
-    Container::new(
+impl Dashboard {
+    pub fn new() -> Dashboard {
+        Self {
+            sidebar: Sidebar::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+        &'a mut self,
+        ctx: &Context<C>,
+        warning: Option<&Error>,
+        content: T,
+    ) -> Element<'a, Message> {
         Column::new()
-            .push(header)
+            .push(navbar())
             .push(
                 Row::new()
-                    .push(sidebar.width(Length::Shrink).height(Length::Fill))
-                    .push(main.width(Length::Fill).height(Length::Fill)),
+                    .push(
+                        self.sidebar
+                            .view(ctx)
+                            .width(Length::Shrink)
+                            .height(Length::Fill),
+                    )
+                    .push(
+                        Column::new().push(warn(warning)).push(
+                            main_section(Container::new(scroll(
+                                &mut self.scroll,
+                                Container::new(content),
+                            )))
+                            .width(Length::Fill)
+                            .height(Length::Fill),
+                        ),
+                    ),
             )
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
-    )
-}
-
-pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
-    Container::new(
-        Column::new()
-            .padding(10)
-            .push(menu.height(Length::Fill))
-            .push(footer.height(Length::Shrink)),
-    )
-    .style(SidebarStyle)
-}
-
-pub struct SidebarStyle;
-impl container::StyleSheet for SidebarStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: color::FOREGROUND.into(),
-            border_width: 1.0,
-            border_color: color::SECONDARY,
-            ..container::Style::default()
-        }
+            .height(iced::Length::Fill)
+            .into()
     }
-}
-
-pub struct SidebarMenuStyle;
-impl container::StyleSheet for SidebarMenuStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: color::FOREGROUND.into(),
-            ..container::Style::default()
-        }
-    }
-}
-
-pub fn sidebar_menu<'a, T: 'a>(items: Vec<Container<'a, T>>) -> Container<'a, T> {
-    let mut col = Column::new().padding(15).spacing(15);
-    for i in items {
-        col = col.push(i)
-    }
-    Container::new(col).style(SidebarMenuStyle)
 }
 
 pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {
@@ -91,5 +81,78 @@ impl container::StyleSheet for MainSectionStyle {
             background: color::BACKGROUND.into(),
             ..container::Style::default()
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Modal {
+    scroll: scrollable::State,
+    close_button: iced::button::State,
+}
+
+impl Modal {
+    pub fn new() -> Self {
+        Modal {
+            scroll: scrollable::State::new(),
+            close_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+        &'a mut self,
+        _ctx: &Context<C>,
+        warning: Option<&Error>,
+        content: T,
+        tooltip: Option<&str>,
+        close_redirect: Message,
+    ) -> Element<'a, Message> {
+        let tt = if let Some(help) = tooltip {
+            Container::new(
+                Tooltip::new(
+                    Row::new()
+                        .push(icon::tooltip_icon().size(20))
+                        .push(Text::new(" Help")),
+                    help,
+                    tooltip::Position::Right,
+                )
+                .gap(5)
+                .size(20)
+                .padding(10)
+                .style(TooltipStyle),
+            )
+        } else {
+            Container::new(Column::new())
+        };
+        let col = Column::new()
+            .push(
+                Column::new()
+                    .push(warn(warning))
+                    .push(
+                        Row::new()
+                            .push(tt.width(Length::Fill))
+                            .push(
+                                Container::new(
+                                    button::close_button(&mut self.close_button)
+                                        .on_press(close_redirect),
+                                )
+                                .width(Length::Shrink),
+                            )
+                            .align_items(Align::Center)
+                            .padding(20),
+                    )
+                    .spacing(20),
+            )
+            .push(
+                Container::new(Container::new(content).max_width(1500))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .spacing(50);
+
+        Container::new(scroll(&mut self.scroll, Container::new(col)))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(ContainerBackgroundStyle)
+            .into()
     }
 }

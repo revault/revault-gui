@@ -1,35 +1,24 @@
-use iced::{
-    scrollable,
-    tooltip::{self, Tooltip},
-    Align, Column, Container, Element, Length, QRCode, Row,
-};
+use iced::{Align, Column, Container, Element, Length, QRCode, Row};
 
-use revault_ui::{
-    component::{
-        button, card, scroll, separation, text::Text, ContainerBackgroundStyle, TooltipStyle,
-    },
-    icon,
-};
+use revault_ui::component::{button, card, separation, text::Text};
 
 use crate::{
-    app::{context::Context, error::Error, menu::Menu, message::Message},
+    app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
     daemon::client::Client,
 };
 
 #[derive(Debug)]
 pub struct StakeholderCreateVaultsView {
-    scroll: scrollable::State,
+    modal: layout::Modal,
     qr_code: Option<iced::qr_code::State>,
-    close_button: iced::button::State,
     copy_button: iced::button::State,
 }
 
 impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
         StakeholderCreateVaultsView {
+            modal: layout::Modal::new(),
             qr_code: None,
-            scroll: scrollable::State::new(),
-            close_button: iced::button::State::new(),
             copy_button: iced::button::State::new(),
         }
     }
@@ -41,9 +30,10 @@ impl StakeholderCreateVaultsView {
 
     pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context<C>,
+        ctx: &Context<C>,
         deposits: Vec<Element<'a, Message>>,
         address: Option<&bitcoin::Address>,
+        warning: Option<&Error>,
     ) -> Element<'a, Message> {
         let mut content = Column::new()
             .max_width(1000)
@@ -106,52 +96,19 @@ impl StakeholderCreateVaultsView {
             }
         }
 
-        let col = Column::new()
-            .push(
-                Row::new().push(Container::new(
-                            Tooltip::new(
-                                Row::new()
-                                    .push(icon::tooltip_icon().size(20))
-                                    .push(Text::new(" Help")),
-                                "A vault is a deposit with revocation transactions\nsigned and shared between stakeholders",
-                                tooltip::Position::Right,
-                            )
-                            .gap(5)
-                            .size(20)
-                            .padding(10)
-                            .style(TooltipStyle),
-                        )
-                        .width(Length::Fill)).push(
-                    Container::new(
-                        button::close_button(
-                            &mut self.close_button,
-                        )
-                        .on_press(Message::Menu(Menu::Home)),
-                    )
-                    .width(Length::Shrink),
-                ),
-            ).push(content).align_items(Align::Center).spacing(50);
-
-        Container::new(scroll(&mut self.scroll, Container::new(col)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(ContainerBackgroundStyle)
-            .padding(20)
-            .into()
+        self.modal.view(ctx, warning, content, Some("A vault is a deposit with revocation transactions\nsigned and shared between stakeholders"), Message::Menu(Menu::Home))
     }
 }
 
 #[derive(Debug)]
 pub struct StakeholderDelegateFundsView {
-    scroll: scrollable::State,
-    close_button: iced::button::State,
+    modal: layout::Modal,
 }
 
 impl StakeholderDelegateFundsView {
     pub fn new() -> Self {
         StakeholderDelegateFundsView {
-            scroll: scrollable::State::new(),
-            close_button: iced::button::State::default(),
+            modal: layout::Modal::new(),
         }
     }
 
@@ -163,15 +120,7 @@ impl StakeholderDelegateFundsView {
         vaults: Vec<Element<'a, Message>>,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        let mut col = Column::new();
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(Text::new(&format!(
-                "{}",
-                error
-            )))))
-        }
-
-        col = col
+        let mut col = Column::new()
             .push(
                 Column::new()
                     .push(
@@ -213,6 +162,7 @@ impl StakeholderDelegateFundsView {
                             .align_items(Align::Center),
                     ),
             );
+
         if !vaults.is_empty() {
             col = col.push(Container::new(
                 Column::new()
@@ -226,48 +176,12 @@ impl StakeholderDelegateFundsView {
             )
         }
 
-        let modal = Column::new()
-            .push(
-                Row::new()
-                    .push(
-                        Container::new(
-                            Tooltip::new(
-                                Row::new()
-                                    .push(icon::tooltip_icon().size(20))
-                                    .push(Text::new(" Help").small()),
-                                "By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction.",
-                                tooltip::Position::Right,
-                            )
-                            .gap(5)
-                            .size(20)
-                            .padding(10)
-                            .style(TooltipStyle),
-                        )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            button::close_button(
-                                &mut self.close_button,
-                            )
-                            .on_press(Message::Menu(Menu::Home)),
-                        )
-                        .width(Length::Shrink),
-                    )
-                    .align_items(Align::Center),
-            )
-            .push(
-                Container::new(col.spacing(30).max_width(1000))
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .spacing(50);
-
-        Container::new(scroll(&mut self.scroll, Container::new(modal)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(ContainerBackgroundStyle)
-            .padding(20)
-            .into()
+        self.modal.view(
+            ctx,
+            warning,
+            col.spacing(30).padding(20),
+            Some("By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction."),
+            Message::Menu(Menu::Home),
+        )
     }
 }

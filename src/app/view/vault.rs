@@ -1,14 +1,13 @@
 use chrono::NaiveDateTime;
-use iced::{scrollable, Align, Column, Container, Element, Length, Row};
+use iced::{Align, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{
-    badge, button, card, scroll, separation, text::Text, ContainerBackgroundStyle,
-};
+use revault_ui::component::{badge, button, card, separation, text::Text};
 
 use crate::app::{
     context::Context,
     error::Error,
     message::{Message, SignMessage, VaultMessage},
+    view::{layout, warning::warn},
 };
 
 use crate::{
@@ -21,17 +20,15 @@ use crate::{
 
 #[derive(Debug)]
 pub struct VaultModal {
-    cancel_button: iced::button::State,
     copy_button: iced::button::State,
-    scroll: scrollable::State,
+    modal: layout::Modal,
 }
 
 impl VaultModal {
     pub fn new() -> Self {
         VaultModal {
             copy_button: iced::button::State::default(),
-            cancel_button: iced::button::State::default(),
-            scroll: scrollable::State::new(),
+            modal: layout::Modal::new(),
         }
     }
 
@@ -43,56 +40,26 @@ impl VaultModal {
         panel_title: &str,
         panel: Element<'a, Message>,
     ) -> Element<'a, Message> {
-        let mut col = Column::new();
-        if let Some(error) = warning {
-            col = col.push(
-                Container::new(card::alert_warning(Container::new(
-                    Text::new(&error.to_string()).small(),
-                )))
-                .padding(20),
-            )
-        }
-        let header = Row::new().push(col.width(Length::Fill)).push(
-            Container::new(
-                button::close_button(&mut self.cancel_button)
-                    .on_press(Message::SelectVault(vlt.outpoint())),
-            )
-            .width(Length::Shrink),
-        );
-        Container::new(scroll(
-            &mut self.scroll,
+        self.modal.view(
+            ctx,
+            warning,
             Container::new(
                 Column::new()
-                    .push(header)
                     .push(
-                        Container::new(
-                            Column::new()
-                                .push(
-                                    Container::new(Text::new(&panel_title))
-                                        .width(Length::Fill)
-                                        .align_x(Align::Center),
-                                )
-                                .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
-                                .push(Container::new(panel))
-                                .spacing(20),
-                        )
-                        .max_width(1000)
-                        .align_x(Align::Center)
-                        .width(Length::Fill),
+                        Container::new(Text::new(&panel_title))
+                            .width(Length::Fill)
+                            .align_x(Align::Center),
                     )
-                    .width(Length::Fill)
-                    .align_items(Align::Center)
+                    .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
+                    .push(Container::new(panel))
+                    .max_width(1000)
                     .spacing(20),
             )
             .width(Length::Fill)
             .align_x(Align::Center),
-        ))
-        .style(ContainerBackgroundStyle)
-        .padding(20)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .align_x(Align::Center)
-        .into()
+            None,
+            Message::SelectVault(vlt.outpoint()),
+        )
     }
 }
 
@@ -648,57 +615,48 @@ impl SecureVaultView {
         deposit: &Vault,
         signer: Element<'a, VaultMessage>,
     ) -> Element<'a, VaultMessage> {
-        let mut col = Column::new()
-            .push(Container::new(
-                Row::new()
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(badge::shield())
-                                .push(
-                                    Container::new(Text::new(&deposit.address).bold().small())
-                                        .align_y(Align::Center),
-                                )
-                                .spacing(20)
-                                .align_items(Align::Center),
+        card::white(
+            Column::new()
+                .push(warn(warning))
+                .push(Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(badge::shield())
+                                    .push(
+                                        Container::new(Text::new(&deposit.address).bold().small())
+                                            .align_y(Align::Center),
+                                    )
+                                    .spacing(20)
+                                    .align_items(Align::Center),
+                            )
+                            .width(Length::Fill),
                         )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(
-                                    Text::new(&format!(
-                                        "{}",
-                                        ctx.converter.converts(deposit.amount)
-                                    ))
-                                    .bold(),
-                                )
-                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                .align_items(Align::Center),
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(deposit.amount)
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
+                                    .align_items(Align::Center),
+                            )
+                            .width(Length::Shrink),
                         )
-                        .width(Length::Shrink),
-                    )
-                    .spacing(20)
-                    .align_items(Align::Center),
-            ))
-            .push(separation().width(Length::Fill))
-            .push(signer)
-            .spacing(20)
-            .push(Column::new());
-
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Column::new()
-                    .push(Container::new(Text::new(&format!(
-                        "Failed to connect to revaultd: {}",
-                        error
-                    ))))
-                    .spacing(20),
-            )))
-        }
-
-        card::white(Container::new(col)).into()
+                        .spacing(20)
+                        .align_items(Align::Center),
+                ))
+                .push(separation().width(Length::Fill))
+                .push(signer)
+                .spacing(20)
+                .push(Column::new()),
+        )
+        .into()
     }
 }
 
@@ -721,18 +679,13 @@ impl DelegateVaultView {
         warning: Option<&Error>,
         signer: Element<'a, SignMessage>,
     ) -> Element<'a, Message> {
-        let mut col = Column::new();
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(&error.to_string()).small(),
-            )));
-        }
-        col.push(button::transparent(
+        Column::new().push(button::transparent(
                 &mut self.back_button,
                 Container::new(Text::new("< vault transactions").small()),
             ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
             .push(card::white(Container::new(
                 Column::new()
+                    .push(warn(warning))
                     .push(
                         Column::new()
                             .push(Text::new("Delegate vault to manager").bold())
@@ -772,13 +725,7 @@ impl RevaultVaultView {
         success: &bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        let mut col = Column::new();
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(&error.to_string()).small(),
-            )));
-        }
-
+        let mut col = Column::new().push(warn(warning));
         let button_broadcast_action = if *processing {
             col = col.push(Text::new("waiting for revauld..."));
             button::primary(

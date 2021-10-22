@@ -10,6 +10,7 @@ pub mod spend_transaction;
 pub mod stakeholder;
 pub mod vault;
 mod vaults;
+mod warning;
 
 pub use deposit::DepositView;
 pub use emergency::EmergencyView;
@@ -20,9 +21,7 @@ pub use stakeholder::{StakeholderCreateVaultsView, StakeholderDelegateFundsView}
 pub use vault::VaultView;
 pub use vaults::VaultsView;
 
-use iced::{scrollable, Column, Container, Element, Length, Row};
-
-use revault_ui::component::{button, card, navbar, scroll, text::Text, ContainerBackgroundStyle};
+use iced::{Column, Element};
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message},
@@ -31,15 +30,13 @@ use crate::{
 
 #[derive(Debug)]
 pub struct LoadingDashboard {
-    sidebar: sidebar::Sidebar,
-    scroll: scrollable::State,
+    dashboard: layout::Dashboard,
 }
 
 impl LoadingDashboard {
     pub fn new() -> Self {
         LoadingDashboard {
-            sidebar: sidebar::Sidebar::new(),
-            scroll: scrollable::State::new(),
+            dashboard: layout::Dashboard::new(),
         }
     }
 
@@ -48,62 +45,34 @@ impl LoadingDashboard {
         ctx: &Context<C>,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        layout::dashboard(
-            navbar(layout::navbar_warning(warning)),
-            self.sidebar.view(ctx),
-            layout::main_section(Container::new(scroll(
-                &mut self.scroll,
-                Container::new(Column::new()),
-            ))),
-        )
-        .into()
+        self.dashboard.view(ctx, warning, Column::new())
     }
 }
 
 #[derive(Debug)]
 pub struct LoadingModal {
-    scroll: scrollable::State,
-    close_button: iced::button::State,
+    modal: layout::Modal,
 }
 
 impl LoadingModal {
     pub fn new() -> Self {
         LoadingModal {
-            scroll: scrollable::State::new(),
-            close_button: iced::button::State::new(),
+            modal: layout::Modal::new(),
         }
     }
 
     pub fn view<'a, C: Client>(
         &'a mut self,
-        _ctx: &Context<C>,
+        ctx: &Context<C>,
         warning: Option<&Error>,
         close_redirect: Menu,
     ) -> Element<'a, Message> {
-        let mut col = Column::new()
-            .push(
-                Row::new().push(Column::new().width(Length::Fill)).push(
-                    Container::new(
-                        button::close_button(&mut self.close_button)
-                            .on_press(Message::Menu(close_redirect)),
-                    )
-                    .width(Length::Shrink),
-                ),
-            )
-            .spacing(50);
-
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(Text::new(&format!(
-                "{}",
-                error
-            )))))
-        }
-
-        Container::new(scroll(&mut self.scroll, Container::new(col)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(ContainerBackgroundStyle)
-            .padding(20)
-            .into()
+        self.modal.view(
+            ctx,
+            warning,
+            Column::new(),
+            None,
+            Message::Menu(close_redirect),
+        )
     }
 }

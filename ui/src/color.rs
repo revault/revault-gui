@@ -41,18 +41,21 @@ pub const SUCCESS_LIGHT: Color = Color::from_rgba(
     0.5f32,
 );
 
-pub const WARNING: Color = Color::from_rgb(
+pub const ALERT: Color = Color::from_rgb(
     0xF0 as f32 / 255.0,
     0x43 as f32 / 255.0,
     0x59 as f32 / 255.0,
 );
 
-pub const WARNING_LIGHT: Color = Color::from_rgba(
+pub const ALERT_LIGHT: Color = Color::from_rgba(
     0xF0 as f32 / 255.0,
     0x43 as f32 / 255.0,
     0x59 as f32 / 255.0,
     0.5f32,
 );
+
+pub const WARNING: Color =
+    Color::from_rgb(0xFF as f32 / 255.0, 0xa7 as f32 / 255.0, 0x0 as f32 / 255.0);
 
 pub const CANCEL: Color = Color::from_rgb(
     0x34 as f32 / 255.0,

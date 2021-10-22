@@ -2,6 +2,7 @@ pub mod badge;
 pub mod button;
 pub mod form;
 pub mod image;
+pub mod notification;
 pub mod text;
 
 use super::{color, font, icon};
@@ -23,11 +24,11 @@ pub fn scroll<'a, T: 'a>(
     Scrollable::new(state).push(Container::new(content).padding(10))
 }
 
-pub fn navbar<'a, T: 'a>(notification: Option<Container<'a, T>>) -> Container<'a, T> {
+pub fn navbar<'a, T: 'a>() -> Container<'a, T> {
     let svg = revault_colored_logo()
         .width(Length::Units(100))
         .height(Length::Fill);
-    let mut content = Row::new()
+    let content = Row::new()
         .push(Column::new().width(Length::Units(10)))
         .push(
             Container::new(svg)
@@ -36,9 +37,6 @@ pub fn navbar<'a, T: 'a>(notification: Option<Container<'a, T>>) -> Container<'a
                 .width(Length::Shrink),
         );
 
-    if let Some(n) = notification {
-        content = content.push(Container::new(n).width(Length::Fill));
-    }
     Container::new(content)
         .width(Length::Fill)
         .padding(10)
@@ -124,9 +122,9 @@ impl container::StyleSheet for TooltipStyle {
 
 pub mod card {
     use super::color;
-    use iced::{container, Container};
+    use iced::{container, Container, Element};
 
-    pub fn success<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn success<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content).padding(15).style(SuccessCardStyle)
     }
 
@@ -143,7 +141,7 @@ pub mod card {
         }
     }
 
-    pub fn border_primary<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn border_primary<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content)
             .padding(15)
             .style(BorderPrimaryCardStyle)
@@ -162,7 +160,7 @@ pub mod card {
         }
     }
 
-    pub fn border_success<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn border_success<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content)
             .padding(15)
             .style(BorderSuccessCardStyle)
@@ -181,7 +179,7 @@ pub mod card {
         }
     }
 
-    pub fn white<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn white<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content).padding(15).style(WhiteCardStyle)
     }
 
@@ -196,7 +194,7 @@ pub mod card {
         }
     }
 
-    pub fn simple<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn simple<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content).padding(15).style(SimpleCardStyle)
     }
 
@@ -211,7 +209,7 @@ pub mod card {
         }
     }
 
-    pub fn alert_warning<'a, T: 'a>(content: Container<'a, T>) -> Container<'a, T> {
+    pub fn alert_warning<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Container<'a, T> {
         Container::new(content).padding(15).style(WarningCardStyle)
     }
 
@@ -220,9 +218,9 @@ pub mod card {
         fn style(&self) -> container::Style {
             container::Style {
                 border_radius: 10.0,
-                text_color: color::WARNING.into(),
+                text_color: color::ALERT.into(),
                 background: color::FOREGROUND.into(),
-                border_color: color::WARNING_LIGHT.into(),
+                border_color: color::ALERT_LIGHT.into(),
                 ..container::Style::default()
             }
         }

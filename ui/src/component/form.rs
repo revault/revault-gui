@@ -77,7 +77,7 @@ where
                 return Container::new(
                     Column::with_children(vec![
                         self.input.style(InvalidFormStyle).into(),
-                        Text::new(&message).small().color(color::WARNING).into(),
+                        Text::new(&message).small().color(color::ALERT).into(),
                     ])
                     .width(Length::Fill)
                     .spacing(5),
@@ -97,13 +97,13 @@ impl text_input::StyleSheet for InvalidFormStyle {
             background: iced::Background::Color(color::FOREGROUND),
             border_radius: 5.0,
             border_width: 1.0,
-            border_color: color::WARNING,
+            border_color: color::ALERT,
         }
     }
 
     fn focused(&self) -> text_input::Style {
         text_input::Style {
-            border_color: color::WARNING,
+            border_color: color::ALERT,
             ..self.active()
         }
     }

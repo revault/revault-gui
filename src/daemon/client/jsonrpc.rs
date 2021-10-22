@@ -229,9 +229,16 @@ impl error::Error for Error {
 impl From<Error> for super::RevaultDError {
     fn from(e: Error) -> super::RevaultDError {
         match e {
-            Error::Io(e) => super::RevaultDError::IOError(e.kind()),
-            Error::NoErrorOrResult => super::RevaultDError::NoAnswerError,
-            _ => super::RevaultDError::RPCError(format!("rpc error: {}", e)),
+            Error::Io(e) => super::RevaultDError::Transport(Some(e.kind()), format!("io: {:?}", e)),
+            Error::Json(e) => super::RevaultDError::Transport(None, format!("json decode: {}", e)),
+            Error::NonceMismatch => {
+                super::RevaultDError::Transport(None, format!("transport: {}", e))
+            }
+            Error::VersionMismatch => {
+                super::RevaultDError::Transport(None, format!("transport: {}", e))
+            }
+            Error::NoErrorOrResult => super::RevaultDError::NoAnswer,
+            Error::Rpc(e) => super::RevaultDError::Rpc(e.code, e.message),
         }
     }
 }
