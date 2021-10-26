@@ -155,6 +155,7 @@ pub struct DefineManagerXpubs {
     managers_threshold: form::Value<usize>,
     spending_delay: form::Value<u32>,
     manager_xpubs: Vec<ParticipantXpub>,
+    cosigners_enabled: bool,
     cosigners: Vec<CosignerKey>,
     warning: Option<String>,
     view: view::DefineManagerXpubsAsStakeholderOnly,
@@ -175,6 +176,7 @@ impl DefineManagerXpubs {
                 valid: true,
             },
             manager_xpubs: Vec::new(),
+            cosigners_enabled: true,
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsStakeholderOnly::new(),
             stakeholder_xpubs: Vec::new(),
@@ -185,6 +187,7 @@ impl DefineManagerXpubs {
 impl Step for DefineManagerXpubs {
     fn load_context(&mut self, ctx: &Context) {
         self.stakeholder_xpubs = ctx.stakeholders_xpubs.clone();
+        self.cosigners_enabled = ctx.cosigners_enabled;
         while self.cosigners.len() != ctx.number_cosigners {
             match self.cosigners.len().cmp(&ctx.number_cosigners) {
                 Ordering::Greater => {
@@ -214,6 +217,9 @@ impl Step for DefineManagerXpubs {
                     if let Some(key) = self.cosigners.get_mut(i) {
                         key.update(msg)
                     };
+                }
+                message::DefineManagerXpubs::CosignersEnabled(enable) => {
+                    self.cosigners_enabled = enable
                 }
                 message::DefineManagerXpubs::ManagersThreshold(action) => match action {
                     message::Action::Increment => {
@@ -261,7 +267,7 @@ impl Step for DefineManagerXpubs {
             .manager_xpubs
             .iter()
             .any(|participant| !participant.xpub.valid)
-            || self.cosigners.iter().any(|cosigner| !cosigner.key.valid)
+            || (self.cosigners_enabled && self.cosigners.iter().any(|cosigner| !cosigner.key.valid))
             || !self.managers_threshold.valid
             || !self.spending_delay.valid
         {
@@ -294,18 +300,20 @@ impl Step for DefineManagerXpubs {
             .map(|xpub| DescriptorPublicKey::from_str(&xpub).expect("already checked"))
             .collect();
 
-        let mut cosigners_keys: Vec<String> = self
-            .cosigners
-            .iter()
-            .map(|cosigner| cosigner.key.value.clone())
-            .collect();
-
-        cosigners_keys.sort();
-
-        let cosigners_keys = cosigners_keys
-            .into_iter()
-            .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
-            .collect();
+        let cosigners_keys = if self.cosigners_enabled {
+            let mut cosigners_keys: Vec<String> = self
+                .cosigners
+                .iter()
+                .map(|cosigner| cosigner.key.value.clone())
+                .collect();
+            cosigners_keys.sort();
+            cosigners_keys
+                .into_iter()
+                .map(|key| DescriptorPublicKey::from_str(&key).expect("already checked"))
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         ctx.number_cosigners = self.cosigners.len();
         ctx.number_managers = managers_keys.len();
@@ -328,6 +336,21 @@ impl Step for DefineManagerXpubs {
     }
 
     fn view(&mut self) -> Element<Message> {
+        let cosigners = if self.cosigners_enabled {
+            self.cosigners
+                .iter_mut()
+                .enumerate()
+                .map(|(i, key)| {
+                    key.view().map(move |msg| {
+                        Message::DefineManagerXpubs(message::DefineManagerXpubs::CosignerKey(
+                            i, msg,
+                        ))
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         self.view.render(
             &self.managers_threshold,
             &self.spending_delay,
@@ -342,17 +365,8 @@ impl Step for DefineManagerXpubs {
                     })
                 })
                 .collect(),
-            self.cosigners
-                .iter_mut()
-                .enumerate()
-                .map(|(i, xpub)| {
-                    xpub.view().map(move |msg| {
-                        Message::DefineManagerXpubs(message::DefineManagerXpubs::CosignerKey(
-                            i, msg,
-                        ))
-                    })
-                })
-                .collect(),
+            cosigners,
+            self.cosigners_enabled,
             self.warning.as_ref(),
         )
     }

@@ -27,6 +27,9 @@ pub trait Step {
     fn update(&mut self, message: Message);
     fn view(&mut self) -> Element<Message>;
     fn load_context(&mut self, _ctx: &Context) {}
+    fn skip(&self, _ctx: &Context) -> bool {
+        false
+    }
     fn apply(&mut self, _ctx: &mut Context, _config: &mut config::Config) -> bool {
         true
     }
@@ -37,6 +40,7 @@ pub struct Context {
     pub private_noise_key: String,
     pub number_managers: usize,
     pub number_cosigners: usize,
+    pub cosigners_enabled: bool,
     pub stakeholders_xpubs: Vec<String>,
 }
 
@@ -47,6 +51,7 @@ impl Context {
             number_managers: 0,
             number_cosigners: 0,
             stakeholders_xpubs: Vec::new(),
+            cosigners_enabled: true,
         }
     }
 }
@@ -599,6 +604,12 @@ mod tests {
         }
     }
 
+    fn disable_cosigners(step: &mut dyn Step) {
+        step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::CosignersEnabled(false),
+        ));
+    }
+
     fn load_cosigners_keys(step: &mut dyn Step, keys: Vec<String>) {
         let mut i = 0;
         for key in keys {
@@ -653,6 +664,7 @@ mod tests {
         let mut ctx = Context::new();
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
+            cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
             number_cosigners: 4,
@@ -691,6 +703,7 @@ mod tests {
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
+            cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
             number_cosigners: 4,
@@ -715,6 +728,78 @@ mod tests {
                 COSIGNERS_KEYS[1].to_string(),
             ],
         );
+        stakeholder_step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::ManagersThreshold(Action::Increment),
+        ));
+        stakeholder_step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::SpendingDelay(Action::Increment),
+        ));
+
+        let mut stakeholder_config = Config::new();
+        stakeholder_step.apply(&mut ctx, &mut stakeholder_config);
+
+        assert_eq!(
+            manager_config.scripts_config.unvault_descriptor,
+            stakeholder_config.scripts_config.unvault_descriptor,
+        );
+    }
+
+    #[test]
+    fn define_unvault_descriptor_without_cosigners() {
+        let mut ctx = Context::new();
+        let mut manager_step = manager::DefineManagerXpubs::new();
+        manager_step.load_context(&Context {
+            cosigners_enabled: true,
+            private_noise_key: "".to_string(),
+            number_managers: 1,
+            number_cosigners: 4,
+            stakeholders_xpubs: vec![
+                STAKEHOLDERS_XPUBS[2].to_string(),
+                STAKEHOLDERS_XPUBS[1].to_string(),
+                STAKEHOLDERS_XPUBS[0].to_string(),
+                STAKEHOLDERS_XPUBS[3].to_string(),
+            ],
+        });
+
+        load_managers_xpubs(&mut manager_step, vec![MANAGERS_XPUBS[0].to_string()]);
+
+        disable_cosigners(&mut manager_step);
+
+        manager_step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::OurXpubEdited(MANAGERS_XPUBS[1].to_string()),
+        ));
+
+        manager_step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::ManagersThreshold(Action::Increment),
+        ));
+        manager_step.update(Message::DefineManagerXpubs(
+            DefineManagerXpubs::SpendingDelay(Action::Increment),
+        ));
+
+        let mut manager_config = Config::new();
+        manager_step.apply(&mut ctx, &mut manager_config);
+
+        let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
+        stakeholder_step.load_context(&Context {
+            cosigners_enabled: true,
+            private_noise_key: "".to_string(),
+            number_managers: 1,
+            number_cosigners: 4,
+            stakeholders_xpubs: vec![
+                STAKEHOLDERS_XPUBS[3].to_string(),
+                STAKEHOLDERS_XPUBS[2].to_string(),
+                STAKEHOLDERS_XPUBS[0].to_string(),
+                STAKEHOLDERS_XPUBS[1].to_string(),
+            ],
+        });
+
+        load_managers_xpubs(
+            &mut stakeholder_step,
+            vec![MANAGERS_XPUBS[1].to_string(), MANAGERS_XPUBS[0].to_string()],
+        );
+
+        disable_cosigners(&mut stakeholder_step);
+
         stakeholder_step.update(Message::DefineManagerXpubs(
             DefineManagerXpubs::ManagersThreshold(Action::Increment),
         ));
