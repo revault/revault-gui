@@ -398,10 +398,10 @@ fn bitcoind_default_cookie_path(network: bitcoin::Network) -> Option<String> {
 
 fn bitcoind_default_address(network: bitcoin::Network) -> String {
     match network {
-        bitcoin::Network::Bitcoin => "127.0.0.8332".to_string(),
-        bitcoin::Network::Testnet => "127.0.0.18332".to_string(),
-        bitcoin::Network::Regtest => "127.0.0.18443".to_string(),
-        bitcoin::Network::Signet => "127.0.0.38332".to_string(),
+        bitcoin::Network::Bitcoin => "127.0.0.1:8332".to_string(),
+        bitcoin::Network::Testnet => "127.0.0.1:18332".to_string(),
+        bitcoin::Network::Regtest => "127.0.0.1:18443".to_string(),
+        bitcoin::Network::Signet => "127.0.0.1:38332".to_string(),
     }
 }
 
