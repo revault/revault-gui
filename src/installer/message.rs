@@ -73,6 +73,7 @@ pub enum DefineManagerXpubs {
     SpendingDelay(Action),
     OurXpubEdited(String),
     ManagerXpub(usize, ParticipantXpub),
+    CosignersEnabled(bool),
     CosignerKey(usize, String),
     AddXpub,
 }

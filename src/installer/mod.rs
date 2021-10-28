@@ -132,6 +132,15 @@ impl Installer {
                     .expect("There is always a step");
                 if current_step.apply(&mut self.context, &mut self.config) {
                     self.next();
+                    // skip the step according to the current context.
+                    while self
+                        .steps
+                        .get(self.current)
+                        .expect("There is always a step")
+                        .skip(&self.context)
+                    {
+                        self.next();
+                    }
                     // calculate new current_step.
                     let current_step = self
                         .steps

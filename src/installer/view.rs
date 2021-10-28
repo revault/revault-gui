@@ -1,6 +1,6 @@
 use iced::{
-    button::State as Button, pick_list, scrollable, text_input, Align, Column, Container, Element,
-    Length, Row,
+    button::State as Button, pick_list, scrollable, text_input, Align, Checkbox, Column, Container,
+    Element, Length, Row,
 };
 
 use revault_ui::{
@@ -518,6 +518,7 @@ impl DefineManagerXpubsAsManager {
         our_xpub: &form::Value<String>,
         other_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
+        cosigners_enabled: bool,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
         let manager_xpub_col = Column::new()
@@ -575,7 +576,23 @@ impl DefineManagerXpubsAsManager {
             )
             .push(
                 Column::new()
-                    .push(Text::new("Cosigning servers keys:").bold())
+                    .push(
+                        Row::new()
+                            .push(
+                                Container::new(Text::new("Cosigning servers keys:").bold())
+                                    .width(Length::Fill),
+                            )
+                            .push(Container::new(Checkbox::new(
+                                cosigners_enabled,
+                                "Enable cosigners",
+                                |msg| {
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::CosignersEnabled(msg),
+                                    )
+                                },
+                            )))
+                            .width(Length::Shrink),
+                    )
                     .push(Column::with_children(cosigners).spacing(10))
                     .spacing(10),
             )
@@ -637,6 +654,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         spending_delay: &form::Value<u32>,
         manager_xpubs: Vec<Element<'a, Message>>,
         cosigners: Vec<Element<'a, Message>>,
+        cosigners_enabled: bool,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
         let mut row = Row::new().align_items(Align::Center).spacing(20);
@@ -693,7 +711,23 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .push(
                 Column::new()
                     .spacing(10)
-                    .push(Text::new("Cosigning servers keys:").bold())
+                    .push(
+                        Row::new()
+                            .push(
+                                Container::new(Text::new("Cosigning servers keys:").bold())
+                                    .width(Length::Fill),
+                            )
+                            .push(Container::new(Checkbox::new(
+                                cosigners_enabled,
+                                "Enable cosigners",
+                                |msg| {
+                                    Message::DefineManagerXpubs(
+                                        message::DefineManagerXpubs::CosignersEnabled(msg),
+                                    )
+                                },
+                            )))
+                            .width(Length::Shrink),
+                    )
                     .push(Column::with_children(cosigners).spacing(10)),
             )
             .width(Length::Fill)
