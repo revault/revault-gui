@@ -413,7 +413,11 @@ impl Step for DefineEmergencyAddress {
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         match bitcoin::Address::from_str(&self.address.value) {
             Ok(address) => {
-                if address.network != config.bitcoind_config.network {
+                // All good, signet addresses have the testnet type
+                if address.network == bitcoin::Network::Testnet
+                    && config.bitcoind_config.network == bitcoin::Network::Signet
+                {
+                } else if address.network != config.bitcoind_config.network {
                     self.warning = Some(format!(
                         "address is not not usable with the specified bitcoind network: {}",
                         config.bitcoind_config.network
