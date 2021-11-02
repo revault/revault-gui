@@ -289,13 +289,16 @@ impl StakeholderOverview {
                                 ctx,
                                 overview.get(&VaultStatus::Secured),
                                 overview.get(&VaultStatus::Securing),
-                                overview.get(&VaultStatus::Activating),
                             )
                             .width(Length::FillPortion(1)),
                         )
                         .push(
-                            active_funds_overview_card(ctx, overview.get(&VaultStatus::Active))
-                                .width(Length::FillPortion(1)),
+                            active_funds_overview_card(
+                                ctx,
+                                overview.get(&VaultStatus::Active),
+                                overview.get(&VaultStatus::Activating),
+                            )
+                            .width(Length::FillPortion(1)),
                         )
                         .spacing(10),
                 )
@@ -309,9 +312,10 @@ impl StakeholderOverview {
 fn active_funds_overview_card<'a, T: 'a, C: Client>(
     ctx: &Context<C>,
     active: Option<&(u64, u64)>,
+    activating: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
     let (nb_active_vaults, active_amount) = active.unwrap_or(&(0, 0));
-    let col = Column::new()
+    let mut col = Column::new()
         .push(
             Row::new()
                 .push(
@@ -363,7 +367,36 @@ fn active_funds_overview_card<'a, T: 'a, C: Client>(
                     .width(Length::Fill)
                     .align_x(Align::End),
                 ),
-        ).push(Container::new(Row::new().push(Text::new(" ").bold())));
+        );
+
+    if let Some((nb_activating_vaults, activating_amount)) = activating {
+        col = col.push(
+            Tooltip::new(
+                Row::new()
+                    .push(Column::new().width(Length::Fill))
+                    .push(Text::new("+ ").small().bold())
+                    .push(
+                        Text::new(&ctx.converter.converts(*activating_amount).to_string())
+                            .bold()
+                            .small(),
+                    )
+                    .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
+                    .push(Text::new(&nb_activating_vaults.to_string()).small().bold())
+                    .push(Text::new(" vaults ").small())
+                    .push(history_icon().size(20))
+                    .align_items(Align::End),
+                "Waiting for other stakeholders' signatures",
+                tooltip::Position::Bottom,
+            )
+            .gap(5)
+            .size(20)
+            .padding(10)
+            .style(TooltipStyle),
+        )
+    } else {
+        // An empty column is created in order to ensure the same card height.
+        col = col.push(Container::new(Row::new().push(Text::new(" ").small())));
+    }
     card::white(Container::new(col.spacing(20)))
 }
 
@@ -371,10 +404,8 @@ fn secured_funds_overview_card<'a, T: 'a, C: Client>(
     ctx: &Context<C>,
     secure: Option<&(u64, u64)>,
     securing: Option<&(u64, u64)>,
-    activating: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
     let (nb_secured_vaults, secured_amount) = secure.unwrap_or(&(0, 0));
-    let (nb_activating_vaults, activating_amount) = activating.unwrap_or(&(0, 0));
     let mut col = Column::new()
         .push(
             Row::new()
@@ -405,12 +436,8 @@ fn secured_funds_overview_card<'a, T: 'a, C: Client>(
                     Container::new(
                         Row::new()
                             .push(
-                                Text::new(
-                                    &ctx.converter
-                                        .converts(*secured_amount + *activating_amount)
-                                        .to_string(),
-                                )
-                                .bold(),
+                                Text::new(&ctx.converter.converts(*secured_amount).to_string())
+                                    .bold(),
                             )
                             .push(Text::new(&format!(
                                 " {:<6}",
@@ -424,10 +451,7 @@ fn secured_funds_overview_card<'a, T: 'a, C: Client>(
                 .push(
                     Container::new(
                         Row::new()
-                            .push(
-                                Text::new(&(nb_secured_vaults + nb_activating_vaults).to_string())
-                                    .bold(),
-                            )
+                            .push(Text::new(&(nb_secured_vaults).to_string()).bold())
                             .push(Text::new(" vaults")),
                     )
                     .width(Length::Fill)
