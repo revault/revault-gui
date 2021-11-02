@@ -475,24 +475,6 @@ impl SpendTransactionBroadcastView {
         success: &bool,
         warning: Option<&Error>,
     ) -> Element<Message> {
-        let button_broadcast_action = if *processing {
-            button::important(
-                &mut self.confirm_button,
-                button::button_content(None, "Broadcasting"),
-            )
-        } else if *success {
-            button::success(
-                &mut self.confirm_button,
-                button::button_content(None, "Broadcasted"),
-            )
-        } else {
-            button::important(
-                &mut self.confirm_button,
-                button::button_content(None, "Yes broadcast"),
-            )
-            .on_press(Message::SpendTx(SpendTxMessage::Broadcast))
-        };
-
         let mut button_share = button::transparent(
             &mut self.share_button,
             button::button_content(None, "Share and update"),
@@ -523,6 +505,36 @@ impl SpendTransactionBroadcastView {
             )));
         }
 
+        if *processing {
+            col_action = col_action
+                .push(Text::new(
+                    "Are you sure you want to broadcast this transaction?",
+                ))
+                .push(button::important(
+                    &mut self.confirm_button,
+                    button::button_content(None, "Broadcasting"),
+                ));
+        } else if *success {
+            col_action = col_action.push(
+                card::success(Text::new("Transaction is broadcasted"))
+                    .padding(20)
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            );
+        } else {
+            col_action = col_action
+                .push(Text::new(
+                    "Are you sure you want to broadcast this transaction?",
+                ))
+                .push(
+                    button::important(
+                        &mut self.confirm_button,
+                        button::button_content(None, "Yes, broadcast"),
+                    )
+                    .on_press(Message::SpendTx(SpendTxMessage::Broadcast)),
+                );
+        }
+
         Container::new(
             Column::new()
                 .push(
@@ -537,13 +549,7 @@ impl SpendTransactionBroadcastView {
                 )
                 .push(
                     card::white(Container::new(
-                        col_action
-                            .push(Text::new(
-                                "Are you sure you want to broadcast this transaction ?",
-                            ))
-                            .push(button_broadcast_action)
-                            .align_items(Align::Center)
-                            .spacing(20),
+                        col_action.align_items(Align::Center).spacing(20),
                     ))
                     .width(Length::Fill)
                     .align_x(Align::Center)

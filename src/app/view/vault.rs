@@ -726,34 +726,31 @@ impl RevaultVaultView {
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
         let mut col = Column::new().push(warn(warning));
-        let button_broadcast_action = if *processing {
-            col = col.push(Text::new("waiting for revauld..."));
-            button::primary(
+        if *processing {
+            col = col.push(button::primary(
                 &mut self.broadcast_button,
                 button::button_content(None, "Broadcasting"),
-            )
+            ));
         } else if *success {
-            col = col.push(Text::new("The cancel transaction is broadcasted"));
-            button::success(
-                &mut self.broadcast_button,
-                button::button_content(None, "Broadcasted"),
-            )
+            col = col.push(
+                card::success(Text::new("The cancel transaction is broadcasted"))
+                    .padding(20)
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            );
         } else {
             col = col
-                .push(Text::new("Revault vault").bold())
                 .push(Text::new("The cancel transaction will be broadcast"))
-                .push(Text::new("Are you sure to revault ?"));
-            button::primary(
-                &mut self.broadcast_button,
-                button::button_content(None, "Yes Revault"),
-            )
-            .on_press(Message::Vault(VaultMessage::Revault))
-        };
+                .push(Text::new("Are you sure to revault?"))
+                .push(
+                    button::primary(
+                        &mut self.broadcast_button,
+                        button::button_content(None, "Yes, Revault"),
+                    )
+                    .on_press(Message::Vault(VaultMessage::Revault)),
+                );
+        }
 
-        let col = col
-            .push(button_broadcast_action)
-            .spacing(20)
-            .align_items(Align::Center);
         Column::new()
             .push(
                 button::transparent(
@@ -763,7 +760,7 @@ impl RevaultVaultView {
                 .on_press(Message::Vault(VaultMessage::ListOnchainTransaction)),
             )
             .push(
-                card::white(Container::new(col))
+                card::white(Container::new(col.spacing(20).align_items(Align::Center)))
                     .width(Length::Fill)
                     .align_x(Align::Center)
                     .padding(20),
