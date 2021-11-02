@@ -61,18 +61,23 @@ impl ManagerImportTransactionView {
             );
 
         if let Some(psbt) = psbt_imported {
-            col = col.push(card::success(Container::new(
-                Column::new()
-                    .push(Text::new("Transaction imported"))
-                    .push(
-                        button::success(
-                            &mut self.import_button,
-                            button::button_content(None, "See transaction detail"),
+            col = col.push(
+                card::success(Container::new(
+                    Column::new()
+                        .align_items(Align::Center)
+                        .push(Text::new("Transaction imported"))
+                        .push(
+                            button::success(
+                                &mut self.import_button,
+                                button::button_content(None, "See transaction detail"),
+                            )
+                            .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
                         )
-                        .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
-                    )
-                    .spacing(20),
-            )));
+                        .spacing(20),
+                ))
+                .align_x(Align::Center)
+                .width(Length::Fill),
+            );
         } else {
             col = col.push(
                 button::primary(
@@ -86,7 +91,9 @@ impl ManagerImportTransactionView {
         self.modal.view(
             ctx,
             warning,
-            card::white(Container::new(col)).width(Length::Fill),
+            Container::new(card::white(col).max_width(1000))
+                .align_x(Align::Center)
+                .width(Length::Fill),
             None,
             Message::Menu(Menu::Home),
         )
