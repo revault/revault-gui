@@ -51,7 +51,7 @@ impl Context {
             number_managers: 0,
             number_cosigners: 0,
             stakeholders_xpubs: Vec::new(),
-            cosigners_enabled: true,
+            cosigners_enabled: false,
         }
     }
 }

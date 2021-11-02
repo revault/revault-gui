@@ -176,7 +176,7 @@ impl DefineManagerXpubs {
                 valid: true,
             },
             manager_xpubs: Vec::new(),
-            cosigners_enabled: true,
+            cosigners_enabled: false,
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsStakeholderOnly::new(),
             stakeholder_xpubs: Vec::new(),
