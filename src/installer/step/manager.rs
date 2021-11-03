@@ -169,7 +169,7 @@ pub struct DefineManagerXpubs {
 impl DefineManagerXpubs {
     pub fn new() -> Self {
         Self {
-            cosigners_enabled: true,
+            cosigners_enabled: false,
             managers_threshold: form::Value {
                 value: 1,
                 valid: true,
