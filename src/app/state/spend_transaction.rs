@@ -107,7 +107,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(ctx, &self.deposits, &mut self.psbt, msg)
+                    .update(ctx, &mut self.psbt, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
@@ -182,7 +182,6 @@ impl SpendTransactionAction {
     fn update<C: Client + Send + Sync + 'static>(
         &mut self,
         ctx: &Context<C>,
-        deposits: &Vec<model::Vault>,
         psbt: &mut Psbt,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
@@ -230,10 +229,11 @@ impl SpendTransactionAction {
                     processing: false,
                     warning: None,
                     signer: Signer::new(SpendTransactionTarget::new(
-                        ctx.revaultd.config.manager_config.as_ref().unwrap().xpub,
-                        &deposits
+                        &ctx.revaultd
+                            .config
+                            .managers_xpubs()
                             .iter()
-                            .map(|deposit| deposit.derivation_index)
+                            .map(|xpub| xpub.master_fingerprint())
                             .collect(),
                         psbt.clone(),
                     )),

@@ -1,8 +1,13 @@
 use bitcoin::{util::bip32, Network};
+use revaultd::revault_tx::{
+    miniscript::DescriptorPublicKey,
+    scripts::{DepositDescriptor, UnvaultDescriptor},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 // This file is adapted from github.com/re-vault/revaultd:
@@ -95,6 +100,35 @@ impl Config {
                 })
             })?;
         Ok(config)
+    }
+
+    pub fn stakeholders_xpubs(&self) -> Vec<DescriptorPublicKey> {
+        DepositDescriptor::from_str(&self.scripts_config.deposit_descriptor)
+            .expect("This a valid deposit descriptor")
+            .xpubs()
+    }
+
+    pub fn managers_xpubs(&self) -> Vec<DescriptorPublicKey> {
+        // The managers' xpubs are all the xpubs from the Unvault descriptor except the
+        // Stakehodlers' ones and the Cosigning Servers' ones.
+        let stk_xpubs = self.stakeholders_xpubs();
+        UnvaultDescriptor::from_str(&self.scripts_config.unvault_descriptor)
+            .expect("This a valid unvault descriptor")
+            .xpubs()
+            .into_iter()
+            .filter_map(|xpub| {
+                match xpub {
+                    DescriptorPublicKey::SinglePub(_) => None, // Cosig
+                    DescriptorPublicKey::XPub(_) => {
+                        if stk_xpubs.contains(&xpub) {
+                            None // Stakeholder
+                        } else {
+                            Some(xpub) // Manager
+                        }
+                    }
+                }
+            })
+            .collect()
     }
 
     /// default revaultd socket path is .revault/bitcoin/revaultd_rpc

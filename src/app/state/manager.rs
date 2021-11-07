@@ -627,17 +627,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
                             signer: Signer::new(SpendTransactionTarget::new(
-                                ctx.revaultd.config.manager_config.as_ref().unwrap().xpub,
-                                &self
-                                    .vaults
+                                &ctx.revaultd
+                                    .config
+                                    .managers_xpubs()
                                     .iter()
-                                    .filter_map(|v| {
-                                        if v.selected {
-                                            Some(v.vault.derivation_index)
-                                        } else {
-                                            None
-                                        }
-                                    })
+                                    .map(|xpub| xpub.master_fingerprint())
                                     .collect(),
                                 psbt.clone(),
                             )),
