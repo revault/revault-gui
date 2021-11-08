@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::util::{bip32::Fingerprint, psbt::PartiallySignedTransaction as Psbt};
 use std::convert::From;
 
 use iced::{Command, Element, Subscription};
@@ -344,6 +344,19 @@ impl SpendTransactionAction {
                                 "Entered PSBT is for a different transaction".to_string(),
                             )
                             .into();
+                        } else if is_unknown_sig(
+                            &ctx.revaultd
+                                .config
+                                .managers_xpubs()
+                                .into_iter()
+                                .map(|xpub| xpub.master_fingerprint())
+                                .collect(),
+                            &p,
+                        ) {
+                            *warning = Error::UnexpectedError(
+                                "Unknown signatures are in the PSBT".to_string(),
+                            )
+                            .into();
                         } else {
                             *processing = true;
                             return Command::perform(
@@ -425,6 +438,20 @@ impl SpendTransactionAction {
             } => view.view(&processing, &success, warning.as_ref()),
         }
     }
+}
+
+/// Returns true if the psbt has a signature from a key with a master fingerprint
+/// not contained in the given list of fingerprints
+pub fn is_unknown_sig(fingerprints: &Vec<Fingerprint>, psbt: &Psbt) -> bool {
+    psbt.inputs.iter().any(|input| {
+        input.partial_sigs.keys().any(|key| {
+            if let Some((fingerprint, _)) = input.bip32_derivation.get(key) {
+                !fingerprints.contains(fingerprint)
+            } else {
+                true
+            }
+        })
+    })
 }
 
 #[derive(Debug)]
