@@ -2,6 +2,7 @@ use bitcoin::util::{bip32::Fingerprint, psbt::PartiallySignedTransaction as Psbt
 use std::convert::From;
 
 use iced::{Command, Element, Subscription};
+use revault_ui::component::form;
 
 use crate::{
     app::{
@@ -143,7 +144,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
 #[derive(Debug)]
 pub enum SpendTransactionAction {
     SharePsbt {
-        psbt_input: String,
+        psbt_input: form::Value<String>,
         processing: bool,
         success: bool,
         warning: Option<Error>,
@@ -172,7 +173,7 @@ pub enum SpendTransactionAction {
 impl SpendTransactionAction {
     fn new() -> Self {
         Self::SharePsbt {
-            psbt_input: "".to_string(),
+            psbt_input: form::Value::default(),
             processing: false,
             success: false,
             warning: None,
@@ -323,7 +324,7 @@ impl SpendTransactionAction {
                 {
                     *success = false;
                     if !*processing {
-                        *psbt_input = input;
+                        psbt_input.value = input;
                     }
                 }
             }
@@ -335,15 +336,12 @@ impl SpendTransactionAction {
                     ..
                 } = self
                 {
-                    let p: Option<Psbt> = bitcoin::base64::decode(&psbt_input)
+                    let p: Option<Psbt> = bitcoin::base64::decode(&psbt_input.value)
                         .ok()
                         .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok());
                     if let Some(p) = p {
                         if p.global.unsigned_tx.txid() != psbt.global.unsigned_tx.txid() {
-                            *warning = Error::UnexpectedError(
-                                "Entered PSBT is for a different transaction".to_string(),
-                            )
-                            .into();
+                            psbt_input.valid = false;
                         } else if is_unknown_sig(
                             &ctx.revaultd
                                 .config
@@ -353,20 +351,18 @@ impl SpendTransactionAction {
                                 .collect(),
                             &p,
                         ) {
-                            *warning = Error::UnexpectedError(
-                                "Unknown signatures are in the PSBT".to_string(),
-                            )
-                            .into();
+                            psbt_input.valid = false;
                         } else {
                             *processing = true;
+                            *warning = None;
+                            psbt_input.valid = true;
                             return Command::perform(
                                 update_spend_tx(ctx.revaultd.clone(), p),
                                 SpendTxMessage::Updated,
                             );
                         }
                     } else {
-                        *warning =
-                            Error::UnexpectedError("Please enter a valid psbt".to_string()).into();
+                        psbt_input.valid = false;
                     }
                 }
             }
@@ -383,11 +379,11 @@ impl SpendTransactionAction {
                         Ok(()) => {
                             *success = true;
                             *psbt = bitcoin::consensus::encode::deserialize(
-                                &bitcoin::base64::decode(&psbt_input)
+                                &bitcoin::base64::decode(&psbt_input.value)
                                     .expect("psbt was successfully updated with the given input"),
                             )
                             .expect("psbt was successfully updated with the given input");
-                            *psbt_input = "".to_string();
+                            *psbt_input = form::Value::default();
                         }
                         Err(e) => *warning = Error::from(e).into(),
                     };

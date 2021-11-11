@@ -1,10 +1,10 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, TextInput};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
 use revault_ui::{
     color,
-    component::{badge, button, card, scroll, text::Text, ContainerBackgroundStyle},
+    component::{badge, button, card, form, scroll, text::Text, ContainerBackgroundStyle},
     icon,
 };
 
@@ -228,7 +228,7 @@ impl SpendTransactionSharePsbtView {
 
     pub fn view(
         &mut self,
-        psbt_input: &str,
+        psbt_input: &form::Value<String>,
         processing: &bool,
         success: &bool,
         psbt: &Psbt,
@@ -297,12 +297,13 @@ impl SpendTransactionSharePsbtView {
                 col_action
                     .push(Text::new("Enter PSBT:"))
                     .push(
-                        TextInput::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
+                        form::Form::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
                             Message::SpendTx(SpendTxMessage::PsbtEdited(p))
                         })
+                        .warning("PSBT is not valid or signatures are from unknown sources")
                         .size(20)
-                        .width(Length::Fill)
-                        .padding(10),
+                        .padding(10)
+                        .render(),
                     )
                     .push(button_update_action),
             )))
