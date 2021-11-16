@@ -234,35 +234,6 @@ impl SpendTransactionSharePsbtView {
         psbt: &Psbt,
         warning: Option<&Error>,
     ) -> Element<Message> {
-        let col = Column::new().push(
-            Container::new(
-                Row::new()
-                    .push(
-                        button::primary(
-                            &mut self.share_button,
-                            button::button_content(None, "Share and update"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectShare)),
-                    )
-                    .push(
-                        button::transparent(
-                            &mut self.sign_button,
-                            button::button_content(None, "Sign"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectSign)),
-                    )
-                    .push(
-                        button::transparent(
-                            &mut self.broadcast_button,
-                            button::button_content(None, "Broadcast"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast)),
-                    ),
-            )
-            .width(Length::Fill)
-            .align_x(Align::End),
-        );
-
         let psbt_str = bitcoin::base64::encode(&bitcoin::consensus::serialize(psbt));
         let mut col_action = Column::new().spacing(20).push(
             Column::new().push(
@@ -293,21 +264,35 @@ impl SpendTransactionSharePsbtView {
             col_action = col_action.push(Text::new("Transaction updated").success());
         }
         Container::new(
-            col.push(card::white(Container::new(
-                col_action
-                    .push(Text::new("Enter PSBT:"))
-                    .push(
-                        form::Form::new(&mut self.psbt_input, "Signed PSBT", &psbt_input, |p| {
-                            Message::SpendTx(SpendTxMessage::PsbtEdited(p))
-                        })
-                        .warning("PSBT is not valid or signatures are from unknown sources")
-                        .size(20)
-                        .padding(10)
-                        .render(),
+            Column::new()
+                .push(
+                    card::success(
+                        Row::new()
+                            .push(Text::from(icon::done_icon()).size(20).success())
+                            .push(Text::new("You signed").success())
+                            .spacing(20),
                     )
-                    .push(button_update_action),
-            )))
-            .spacing(20),
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+                )
+                .push(card::white(Container::new(
+                    col_action
+                        .push(Text::new("Enter PSBT:"))
+                        .push(
+                            form::Form::new(
+                                &mut self.psbt_input,
+                                "Signed PSBT",
+                                &psbt_input,
+                                |p| Message::SpendTx(SpendTxMessage::PsbtEdited(p)),
+                            )
+                            .warning("PSBT is not valid or signatures are from unknown sources")
+                            .size(20)
+                            .padding(10)
+                            .render(),
+                        )
+                        .push(button_update_action),
+                )))
+                .spacing(20),
         )
         .into()
     }
@@ -315,18 +300,12 @@ impl SpendTransactionSharePsbtView {
 
 #[derive(Debug)]
 pub struct SpendTransactionSignView {
-    share_button: iced::button::State,
-    sign_button: iced::button::State,
-    broadcast_button: iced::button::State,
     confirm_button: iced::button::State,
 }
 
 impl SpendTransactionSignView {
     pub fn new() -> Self {
         Self {
-            share_button: iced::button::State::new(),
-            sign_button: iced::button::State::new(),
-            broadcast_button: iced::button::State::new(),
             confirm_button: iced::button::State::new(),
         }
     }
@@ -336,35 +315,6 @@ impl SpendTransactionSignView {
         signer: Element<'a, Message>,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        let col = Column::new().push(
-            Container::new(
-                Row::new()
-                    .push(
-                        button::transparent(
-                            &mut self.share_button,
-                            button::button_content(None, "Share and update"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectShare)),
-                    )
-                    .push(
-                        button::primary(
-                            &mut self.sign_button,
-                            button::button_content(None, "Sign"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectSign)),
-                    )
-                    .push(
-                        button::transparent(
-                            &mut self.broadcast_button,
-                            button::button_content(None, "Broadcast"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast)),
-                    ),
-            )
-            .width(Length::Fill)
-            .align_x(Align::End),
-        );
-
         let mut col_action = Column::new().push(signer);
         if let Some(error) = warning {
             col_action = col_action.push(card::alert_warning(Container::new(
@@ -372,11 +322,7 @@ impl SpendTransactionSignView {
             )));
         }
 
-        Container::new(
-            col.push(card::white(Container::new(col_action)))
-                .spacing(20),
-        )
-        .into()
+        Container::new(card::white(Container::new(col_action))).into()
     }
 }
 
@@ -425,7 +371,7 @@ impl SpendTransactionDeleteView {
                                     .width(Length::Units(100))
                                     .align_x(Align::Center),
                             )
-                            .on_press(Message::SpendTx(SpendTxMessage::SelectShare)),
+                            .on_press(Message::SpendTx(SpendTxMessage::UnselectDelete)),
                         )
                         .push(
                             button::primary(
@@ -454,18 +400,12 @@ impl SpendTransactionDeleteView {
 
 #[derive(Debug)]
 pub struct SpendTransactionBroadcastView {
-    share_button: iced::button::State,
-    sign_button: iced::button::State,
-    broadcast_button: iced::button::State,
     confirm_button: iced::button::State,
 }
 
 impl SpendTransactionBroadcastView {
     pub fn new() -> Self {
         Self {
-            share_button: iced::button::State::new(),
-            sign_button: iced::button::State::new(),
-            broadcast_button: iced::button::State::new(),
             confirm_button: iced::button::State::new(),
         }
     }
@@ -476,29 +416,6 @@ impl SpendTransactionBroadcastView {
         success: &bool,
         warning: Option<&Error>,
     ) -> Element<Message> {
-        let mut button_share = button::transparent(
-            &mut self.share_button,
-            button::button_content(None, "Share and update"),
-        );
-        if !*success {
-            button_share = button_share.on_press(Message::SpendTx(SpendTxMessage::SelectShare));
-        }
-
-        let mut button_sign =
-            button::transparent(&mut self.sign_button, button::button_content(None, "Sign"));
-        if !*success {
-            button_sign = button_sign.on_press(Message::SpendTx(SpendTxMessage::SelectSign));
-        }
-
-        let mut button_broadcast = button::primary(
-            &mut self.broadcast_button,
-            button::button_content(None, "Broadcast"),
-        );
-        if !*success {
-            button_broadcast =
-                button_broadcast.on_press(Message::SpendTx(SpendTxMessage::SelectBroadcast));
-        }
-
         let mut col_action = Column::new();
         if let Some(error) = warning {
             col_action = col_action.push(card::alert_warning(Container::new(
@@ -508,9 +425,7 @@ impl SpendTransactionBroadcastView {
 
         if *processing {
             col_action = col_action
-                .push(Text::new(
-                    "Are you sure you want to broadcast this transaction?",
-                ))
+                .push(Text::new("Do you want to broadcast the transaction?"))
                 .push(button::important(
                     &mut self.confirm_button,
                     button::button_content(None, "Broadcasting"),
@@ -524,9 +439,7 @@ impl SpendTransactionBroadcastView {
             );
         } else {
             col_action = col_action
-                .push(Text::new(
-                    "Are you sure you want to broadcast this transaction?",
-                ))
+                .push(Text::new("Do you want to broadcast this transaction?"))
                 .push(
                     button::important(
                         &mut self.confirm_button,
@@ -539,14 +452,14 @@ impl SpendTransactionBroadcastView {
         Container::new(
             Column::new()
                 .push(
-                    Container::new(
+                    card::success(
                         Row::new()
-                            .push(button_share)
-                            .push(button_sign)
-                            .push(button_broadcast),
+                            .push(Text::from(icon::done_icon()).size(20).success())
+                            .push(Text::new("You signed").success())
+                            .spacing(20),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(Align::Center),
                 )
                 .push(
                     card::white(Container::new(

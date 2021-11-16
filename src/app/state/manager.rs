@@ -136,7 +136,7 @@ impl ManagerHomeState {
             .iter()
             .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
         {
-            let selected_spend_tx = SpendTransactionState::new(psbt);
+            let selected_spend_tx = SpendTransactionState::new(ctx, psbt);
             let cmd = selected_spend_tx.load(ctx);
             self.selected_spend_tx = Some(selected_spend_tx);
             return cmd;
@@ -325,8 +325,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
         match self {
             Self::CreateSendTransaction(state) => match message {
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self =
-                        ManagerSendState::SendTransactionDetail(SpendTransactionState::new(psbt));
+                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
+                        ctx, psbt,
+                    ));
                     self.load(ctx)
                 }
                 Message::SpendTx(SpendTxMessage::Import) => {
@@ -339,8 +340,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
             },
             Self::ImportSendTransaction(state) => match message {
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self =
-                        ManagerSendState::SendTransactionDetail(SpendTransactionState::new(psbt));
+                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
+                        ctx, psbt,
+                    ));
                     self.load(ctx)
                 }
                 _ => state.update(ctx, message),

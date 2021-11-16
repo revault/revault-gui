@@ -41,14 +41,14 @@ pub struct SpendTransactionState {
 }
 
 impl SpendTransactionState {
-    pub fn new(psbt: Psbt) -> Self {
+    pub fn new<C: Client + Send + Sync + 'static>(ctx: &Context<C>, psbt: Psbt) -> Self {
         Self {
             cpfp_index: 0,
             change_index: None,
+            action: SpendTransactionAction::new(ctx, &psbt),
             psbt,
             deposit_outpoints: Vec::new(),
             deposits: Vec::new(),
-            action: SpendTransactionAction::new(),
             warning: None,
             view: SpendTransactionView::new(),
         }
@@ -171,7 +171,55 @@ pub enum SpendTransactionAction {
 }
 
 impl SpendTransactionAction {
-    fn new() -> Self {
+    fn new<C: Client + Send + 'static>(ctx: &Context<C>, psbt: &Psbt) -> Self {
+        if let Some(input) = psbt.inputs.first() {
+            if input.partial_sigs.len() == ctx.managers_threshold {
+                return Self::Broadcast {
+                    processing: false,
+                    success: false,
+                    warning: None,
+                    view: SpendTransactionBroadcastView::new(),
+                };
+            } else if input.partial_sigs.keys().any(|key| {
+                input
+                    .bip32_derivation
+                    .get(key)
+                    .map(|(fingerprint, _)| {
+                        ctx.revaultd
+                            .config
+                            .manager_config
+                            .as_ref()
+                            .expect("User is a manager")
+                            .xpub
+                            .fingerprint()
+                            == *fingerprint
+                    })
+                    .unwrap_or(false)
+            }) {
+                return Self::SharePsbt {
+                    psbt_input: form::Value::default(),
+                    processing: false,
+                    success: false,
+                    warning: None,
+                    view: SpendTransactionSharePsbtView::new(),
+                };
+            } else {
+                return Self::Sign {
+                    processing: false,
+                    warning: None,
+                    signer: Signer::new(SpendTransactionTarget::new(
+                        &ctx.revaultd
+                            .config
+                            .managers_xpubs()
+                            .iter()
+                            .map(|xpub| xpub.master_fingerprint())
+                            .collect(),
+                        psbt.clone(),
+                    )),
+                    view: SpendTransactionSignView::new(),
+                };
+            }
+        }
         Self::SharePsbt {
             psbt_input: form::Value::default(),
             processing: false,
@@ -214,9 +262,6 @@ impl SpendTransactionAction {
                     };
                 }
             }
-            SpendTxMessage::SelectShare => {
-                *self = Self::new();
-            }
             SpendTxMessage::SelectDelete => {
                 *self = Self::Delete {
                     processing: false,
@@ -225,21 +270,8 @@ impl SpendTransactionAction {
                     view: SpendTransactionDeleteView::new(),
                 };
             }
-            SpendTxMessage::SelectSign => {
-                *self = Self::Sign {
-                    processing: false,
-                    warning: None,
-                    signer: Signer::new(SpendTransactionTarget::new(
-                        &ctx.revaultd
-                            .config
-                            .managers_xpubs()
-                            .iter()
-                            .map(|xpub| xpub.master_fingerprint())
-                            .collect(),
-                        psbt.clone(),
-                    )),
-                    view: SpendTransactionSignView::new(),
-                };
+            SpendTxMessage::UnselectDelete => {
+                *self = Self::new(ctx, psbt);
             }
             SpendTxMessage::Sign(msg) => {
                 if let Self::Sign {
@@ -271,21 +303,13 @@ impl SpendTransactionAction {
                         Ok(_) => {
                             // During this step state has a generated psbt
                             // and signer has a signed psbt.
-                            *warning = None;
                             *psbt = signer.target.spend_tx.clone();
+                            *self = Self::new(ctx, psbt);
                         }
 
                         Err(e) => *warning = Some(Error::RevaultDError(e)),
                     }
                 }
-            }
-            SpendTxMessage::SelectBroadcast => {
-                *self = Self::Broadcast {
-                    processing: false,
-                    success: false,
-                    warning: None,
-                    view: SpendTransactionBroadcastView::new(),
-                };
             }
             SpendTxMessage::Broadcast => {
                 if let Self::Broadcast { processing, .. } = self {
@@ -378,16 +402,58 @@ impl SpendTransactionAction {
                     match res {
                         Ok(()) => {
                             *success = true;
+                            *processing = false;
                             *psbt = bitcoin::consensus::encode::deserialize(
                                 &bitcoin::base64::decode(&psbt_input.value)
                                     .expect("psbt was successfully updated with the given input"),
                             )
                             .expect("psbt was successfully updated with the given input");
-                            *psbt_input = form::Value::default();
+                            if let Some(input) = psbt.inputs.first() {
+                                if input.partial_sigs.len() == ctx.managers_threshold {
+                                    *self = Self::Broadcast {
+                                        processing: false,
+                                        success: false,
+                                        warning: None,
+                                        view: SpendTransactionBroadcastView::new(),
+                                    };
+                                } else if !input.partial_sigs.keys().any(|key| {
+                                    input
+                                        .bip32_derivation
+                                        .get(key)
+                                        .map(|(fingerprint, _)| {
+                                            ctx.revaultd
+                                                .config
+                                                .manager_config
+                                                .as_ref()
+                                                .expect("User is a manager")
+                                                .xpub
+                                                .fingerprint()
+                                                == *fingerprint
+                                        })
+                                        .unwrap_or(false)
+                                }) {
+                                    *self = Self::Sign {
+                                        processing: false,
+                                        warning: None,
+                                        signer: Signer::new(SpendTransactionTarget::new(
+                                            &ctx.revaultd
+                                                .config
+                                                .managers_xpubs()
+                                                .iter()
+                                                .map(|xpub| xpub.master_fingerprint())
+                                                .collect(),
+                                            psbt.clone(),
+                                        )),
+                                        view: SpendTransactionSignView::new(),
+                                    };
+                                }
+                            }
                         }
-                        Err(e) => *warning = Error::from(e).into(),
+                        Err(e) => {
+                            *processing = false;
+                            *warning = Error::from(e).into();
+                        }
                     };
-                    *processing = false;
                 }
             }
             _ => {}
