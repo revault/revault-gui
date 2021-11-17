@@ -3,6 +3,8 @@ use iced::{
 };
 use std::net::SocketAddr;
 
+use revault_tx::bitcoin::Amount;
+
 use crate::api;
 
 #[derive(Debug, Clone)]
@@ -177,6 +179,152 @@ impl SignRevocationTxsView {
         Container::new(
             Column::new()
                 .push(Text::new("Sign revocation transactions"))
+                .push(
+                    Row::new()
+                        .push(
+                            Button::new(
+                                &mut self.cancel_button,
+                                Container::new(Text::new("Cancel"))
+                                    .width(Length::Units(100))
+                                    .align_x(Align::Center),
+                            )
+                            .on_press(ViewMessage::Cancel),
+                        )
+                        .push(
+                            Button::new(
+                                &mut self.confirm_button,
+                                Container::new(Text::new("Confirm"))
+                                    .width(Length::Units(100))
+                                    .align_x(Align::Center),
+                            )
+                            .on_press(ViewMessage::Confirm),
+                        )
+                        .spacing(20),
+                )
+                .spacing(20)
+                .align_items(Align::Center),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(Align::Center)
+        .align_y(Align::Center)
+        .into()
+    }
+}
+
+pub struct SecureBatchView {
+    cancel_button: button::State,
+    confirm_button: button::State,
+}
+
+impl SecureBatchView {
+    pub fn new() -> Self {
+        Self {
+            cancel_button: button::State::new(),
+            confirm_button: button::State::new(),
+        }
+    }
+
+    pub fn render(
+        &mut self,
+        total_amount: u64,
+        total_deposits: usize,
+        signed: bool,
+    ) -> Element<ViewMessage> {
+        if signed {
+            return Container::new(Column::new().push(Text::new(format!(
+                "Revocation transactions signed \n for {} deposits ({} BTC)",
+                total_deposits,
+                Amount::from_sat(total_amount).as_btc(),
+            ))))
+            .style(SuccessPageStyle)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Align::Center)
+            .align_y(Align::Center)
+            .into();
+        }
+        Container::new(
+            Column::new()
+                .push(Text::new(format!(
+                    "Vault {} deposits for a total of {} BTC",
+                    total_deposits,
+                    Amount::from_sat(total_amount).as_btc()
+                )))
+                .push(Text::new("Sign revocation transactions"))
+                .push(
+                    Row::new()
+                        .push(
+                            Button::new(
+                                &mut self.cancel_button,
+                                Container::new(Text::new("Cancel"))
+                                    .width(Length::Units(100))
+                                    .align_x(Align::Center),
+                            )
+                            .on_press(ViewMessage::Cancel),
+                        )
+                        .push(
+                            Button::new(
+                                &mut self.confirm_button,
+                                Container::new(Text::new("Confirm"))
+                                    .width(Length::Units(100))
+                                    .align_x(Align::Center),
+                            )
+                            .on_press(ViewMessage::Confirm),
+                        )
+                        .spacing(20),
+                )
+                .spacing(20)
+                .align_items(Align::Center),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(Align::Center)
+        .align_y(Align::Center)
+        .into()
+    }
+}
+
+pub struct DelegateBatchView {
+    cancel_button: button::State,
+    confirm_button: button::State,
+}
+
+impl DelegateBatchView {
+    pub fn new() -> Self {
+        Self {
+            cancel_button: button::State::new(),
+            confirm_button: button::State::new(),
+        }
+    }
+
+    pub fn render(
+        &mut self,
+        total_amount: u64,
+        total_vaults: usize,
+        signed: bool,
+    ) -> Element<ViewMessage> {
+        if signed {
+            return Container::new(Column::new().push(Text::new(format!(
+                "Unvault transactions signed \n for {} deposits ({} BTC)",
+                total_vaults,
+                Amount::from_sat(total_amount).as_btc(),
+            ))))
+            .style(SuccessPageStyle)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Align::Center)
+            .align_y(Align::Center)
+            .into();
+        }
+        Container::new(
+            Column::new()
+                .push(Text::new(format!(
+                    "Delegate {} vaults for a total of {} BTC",
+                    total_vaults,
+                    Amount::from_sat(total_amount).as_btc(),
+                )))
+                .push(Text::new("Sign unvault transactions"))
                 .push(
                     Row::new()
                         .push(

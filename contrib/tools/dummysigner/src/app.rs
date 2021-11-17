@@ -1,21 +1,16 @@
 use std::net::SocketAddr;
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings};
-use revault_tx::bitcoin::util::bip32::ExtendedPrivKey;
 use serde_json::json;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{api, server, sign, view};
+use crate::{api, config::Config, server, sign, view};
 
 pub fn run(cfg: Config) -> iced::Result {
     let settings = Settings::with_flags(cfg);
     App::run(settings)
-}
-
-pub struct Config {
-    pub keys: Vec<ExtendedPrivKey>,
 }
 
 pub struct App {
@@ -46,7 +41,15 @@ impl Application for App {
     fn new(cfg: Config) -> (App, Command<Message>) {
         (
             App {
-                signer: sign::Signer::new(cfg.keys),
+                signer: sign::Signer::new(
+                    cfg.keys,
+                    cfg.descriptors.map(|d| sign::Descriptors {
+                        deposit_descriptor: d.deposit_descriptor,
+                        unvault_descriptor: d.unvault_descriptor,
+                        cpfp_descriptor: d.cpfp_descriptor,
+                    }),
+                    cfg.emergency_address,
+                ),
                 status: AppStatus::Waiting,
             },
             Command::none(),
@@ -71,6 +74,21 @@ impl Application for App {
                 if let AppStatus::Connected { method, writer, .. } = &mut self.status {
                     match serde_json::from_value(msg) {
                         Ok(req) => {
+                            if (matches!(req, api::Request::SecureBatch { .. })
+                                && !(self.signer.has_descriptors()
+                                    && self.signer.has_emergency_address()))
+                                || (matches!(req, api::Request::DelegateBatch { .. })
+                                    && !self.signer.has_descriptors())
+                            {
+                                return Command::perform(
+                                    server::respond(
+                                        writer.clone(),
+                                        json!({"error": "batch unsupported"}),
+                                    ),
+                                    server::ServerMessage::Responded,
+                                )
+                                .map(Message::Server);
+                            }
                             *method = Some(Method::new(req));
                         }
                         Err(_) => {
@@ -121,6 +139,72 @@ impl Application for App {
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
+                        Some(Method::SecureBatch { target, signed, .. }) => {
+                            let mut response = Vec::new();
+                            for deposit in target.deposits.iter().clone() {
+                                let mut revocation_txs = self
+                                    .signer
+                                    .derive_revocation_txs(
+                                        deposit.outpoint,
+                                        deposit.amount,
+                                        deposit.derivation_index,
+                                    )
+                                    .unwrap();
+
+                                self.signer
+                                    .sign_psbt(&mut revocation_txs.emergency_tx)
+                                    .unwrap();
+
+                                self.signer
+                                    .sign_psbt(&mut revocation_txs.cancel_tx)
+                                    .unwrap();
+
+                                self.signer
+                                    .sign_psbt(&mut revocation_txs.emergency_unvault_tx)
+                                    .unwrap();
+
+                                response.push(api::RevocationTransactions {
+                                    cancel_tx: revocation_txs.cancel_tx,
+                                    emergency_tx: revocation_txs.emergency_tx,
+                                    emergency_unvault_tx: revocation_txs.emergency_unvault_tx,
+                                });
+                            }
+                            *signed = true;
+                            return Command::perform(
+                                server::respond(
+                                    writer.clone(),
+                                    json!({ "transactions": response }),
+                                ),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
+                        Some(Method::DelegateBatch { target, signed, .. }) => {
+                            let mut response = Vec::new();
+                            for deposit in target.vaults.iter().clone() {
+                                let mut unvault_tx = self
+                                    .signer
+                                    .derive_unvault_tx(
+                                        deposit.outpoint,
+                                        deposit.amount,
+                                        deposit.derivation_index,
+                                    )
+                                    .unwrap();
+
+                                self.signer.sign_psbt(&mut unvault_tx).unwrap();
+
+                                response.push(api::UnvaultTransaction { unvault_tx });
+                            }
+                            *signed = true;
+                            return Command::perform(
+                                server::respond(
+                                    writer.clone(),
+                                    json!({ "transactions": response }),
+                                ),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
@@ -176,6 +260,16 @@ pub enum Method {
         signed: bool,
         view: view::SignRevocationTxsView,
     },
+    SecureBatch {
+        target: api::SecureBatch,
+        signed: bool,
+        view: view::SecureBatchView,
+    },
+    DelegateBatch {
+        target: api::DelegateBatch,
+        signed: bool,
+        view: view::DelegateBatchView,
+    },
 }
 
 impl Method {
@@ -196,6 +290,16 @@ impl Method {
                 signed: false,
                 view: view::SignRevocationTxsView::new(),
             },
+            api::Request::SecureBatch(target) => Method::SecureBatch {
+                target,
+                signed: false,
+                view: view::SecureBatchView::new(),
+            },
+            api::Request::DelegateBatch(target) => Method::DelegateBatch {
+                target,
+                signed: false,
+                view: view::DelegateBatchView::new(),
+            },
         }
     }
     pub fn render(&mut self) -> Element<view::ViewMessage> {
@@ -204,20 +308,43 @@ impl Method {
                 view,
                 target,
                 signed,
-                ..
             } => view.render(&target, *signed),
             Self::SignUnvaultTx {
                 view,
                 target,
                 signed,
-                ..
             } => view.render(&target, *signed),
             Self::SignRevocationTxs {
                 view,
                 target,
                 signed,
-                ..
             } => view.render(&target, *signed),
+            Self::SecureBatch {
+                view,
+                target,
+                signed,
+            } => view.render(
+                target
+                    .deposits
+                    .iter()
+                    .map(|deposit| deposit.amount.as_sat())
+                    .sum::<u64>(),
+                target.deposits.len(),
+                *signed,
+            ),
+            Self::DelegateBatch {
+                view,
+                target,
+                signed,
+            } => view.render(
+                target
+                    .vaults
+                    .iter()
+                    .map(|vault| vault.amount.as_sat())
+                    .sum::<u64>(),
+                target.vaults.len(),
+                *signed,
+            ),
         }
     }
 }
