@@ -39,10 +39,7 @@ If the signature request was refused the response looks like:
 
 ```json
 {
-  "derivation_path": ["<string ex: m/1>"], // paths ordered by respective psbt input index
-  "target": {
-    "spend_tx": "<base64 encoded psbt>" 
-  }
+  "spend_tx": "<base64 encoded psbt>" 
 }
 ```
 
@@ -60,10 +57,7 @@ If the signature request was refused the response looks like:
 
 ```json
 {
-  "derivation_path": "<string ex: m/1>",
-  "target": {
-    "unvault_tx": "<base64 encoded psbt>" 
-  }
+  "unvault_tx": "<base64 encoded psbt>" 
 }
 ```
 
@@ -81,12 +75,9 @@ If the signature request was refused the response looks like:
 
 ```json
 {
-  "derivation_path": "<string ex: m/1>",
-  "target": {
-    "cancel_tx": "<base64 encoded psbt>",
-    "emergency_tx": "<base64 encoded psbt>",
-    "emergency_unvault_tx": "<base64 encoded psbt>"
-  }
+  "cancel_tx": "<base64 encoded psbt>",
+  "emergency_tx": "<base64 encoded psbt>",
+  "emergency_unvault_tx": "<base64 encoded psbt>"
 }
 ```
 
