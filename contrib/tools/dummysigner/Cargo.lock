@@ -1943,9 +1943,9 @@ dependencies = [
 
 [[package]]
 name = "revault_tx"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5342b21d7e70d39b01ab4fd9aa207849fca9d438f1930c67f5d9de27b21dfa4"
+checksum = "9a3e08e97cd866f7f1e4a11ca71604f422d7d6d77ec923fd1c140fb19827e381"
 dependencies = [
  "base64",
  "bitcoinconsensus",
