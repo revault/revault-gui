@@ -15,6 +15,15 @@ the [bip32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) form
 cargo run -- <xpriv> <xpriv> ... 
 ```
 
+The dummysigner handles revault descriptors
+
+```
+cargo run -- --conf  <config_path>
+```
+
+You can find an example of the configuration file
+[here](examples/examples_cfg.toml).
+
 ## Communication
 
 ### Transport
@@ -91,14 +100,76 @@ If the signature request was refused the response looks like:
 }
 ```
 
+### Secure deposits in batch
+
+This method requires the descriptors and the emergency address.
+
+#### request:
+
+```json
+{
+  "deposits": [
+    {
+      "outpoint": "<txid>:<vout>",
+      "amount": "<amount in satoshis>",
+      "derivation_index": "<derivation index>"
+    },
+    ...
+  ]
+}
+```
+
+#### response:
+
+```json
+[
+  {
+    "cancel_tx": "<base64 encoded psbt>",
+    "emergency_tx": "<base64 encoded psbt>",
+    "emergency_unvault_tx": "<base64 encoded psbt>"
+  },
+  ...
+]
+```
+
+### Delegate vaults in batch 
+
+This method requires the descriptors and the emergency address.
+
+#### request:
+
+```json
+{
+  "vaults": [
+    {
+      "outpoint": "<txid>:<vout>",
+      "amount": "<amount in satoshis>",
+      "derivation_index": "<derivation index>"
+    },
+    ...
+  ]
+}
+```
+
+#### response:
+
+```json
+[
+  {
+    "unvault_tx": "<base64 encoded psbt>"
+  },
+  ...
+]
+```
+
 ## Example
 
 ```
-cargo run -- xprv9zFeRZgUZaUZBEUq1vPFLpUavHPK5YZ6N2qeqCYe7GLxGVY9SRHuN5Uwd5YN56tMUKe2qPhmvP8fC1GBEAFRAwbJQi86swWvvGM5tXBpJt6
+cargo run -- --conf examples/examples_cfg.toml
 ```
 
 then run the client:
 
 ```
-cargo run --example stakeholder_client
+cargo run --example stakeholder_batch
 ```
