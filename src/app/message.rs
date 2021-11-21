@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 
 use crate::{
-    app::menu::Menu,
+    app::{error::Error, menu::Menu},
     daemon::{
         client::RevaultDError,
         model::{
@@ -24,6 +24,8 @@ pub enum Message {
     Vaults(Result<Vec<Vault>, RevaultDError>),
     SelectVault(String),
     DelegateVault(String),
+    Sign(SignMessage),
+    DepositsSecured(Result<Vec<String>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
@@ -93,7 +95,8 @@ pub enum SignMessage {
     Ping(Result<(), revault_hwi::Error>),
     SelectSign,
     Connected(Result<Arc<Mutex<revault_hwi::Channel>>, revault_hwi::Error>),
-    Signed(Result<Box<Vec<Psbt>>, revault_hwi::Error>),
+    RevocationTxsSigned(Result<Box<Vec<(Psbt, Psbt, Psbt)>>, revault_hwi::Error>),
+    PsbtSigned(Result<Box<Psbt>, revault_hwi::Error>),
 }
 
 #[derive(Debug, Clone)]

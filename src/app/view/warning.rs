@@ -19,6 +19,7 @@ pub struct WarningMessage(String);
 impl From<&Error> for WarningMessage {
     fn from(error: &Error) -> WarningMessage {
         match error {
+            Error::HardwareError(e) => WarningMessage(e.to_string()),
             Error::ConfigError(e) => match e {
                 ConfigError::NotFound => WarningMessage("Configuration file not fund".to_string()),
                 ConfigError::ReadingFile(_) => {

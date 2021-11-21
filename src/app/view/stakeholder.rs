@@ -1,102 +1,123 @@
-use iced::{Align, Column, Container, Element, Length, QRCode, Row};
+use iced::{Align, Column, Container, Element, Length, ProgressBar, Row};
 
-use revault_ui::component::{button, card, separation, text::Text};
+use revault_ui::{
+    component::{button, card, text::Text},
+    icon,
+};
 
 use crate::{
-    app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
-    daemon::client::Client,
+    app::{
+        context::Context,
+        error::Error,
+        menu::Menu,
+        message::{Message, SignMessage},
+        view::layout,
+    },
+    daemon::{
+        client::Client,
+        model::{Vault, VaultStatus},
+    },
 };
 
 #[derive(Debug)]
 pub struct StakeholderCreateVaultsView {
     modal: layout::Modal,
-    qr_code: Option<iced::qr_code::State>,
-    copy_button: iced::button::State,
+    sign_button: iced::button::State,
 }
 
 impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
         StakeholderCreateVaultsView {
             modal: layout::Modal::new(),
-            qr_code: None,
-            copy_button: iced::button::State::new(),
+            sign_button: iced::button::State::default(),
         }
-    }
-
-    // Address is loaded directly in the view in order to cache the created qrcode.
-    pub fn load(&mut self, address: &bitcoin::Address) {
-        self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
     pub fn view<'a, C: Client>(
         &'a mut self,
         ctx: &Context<C>,
-        deposits: Vec<Element<'a, Message>>,
-        address: Option<&bitcoin::Address>,
+        deposits: &Vec<Vault>,
+        processing: bool,
+        hw_connected: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
+        if deposits.len() == 0
+            || !deposits
+                .iter()
+                .any(|deposit| deposit.status == VaultStatus::Funded)
+        {
+            return self.modal.view(ctx, warning, Container::new(card::success(
+                        Column::new()
+                            .padding(20)
+                            .align_items(iced::Align::Center)
+                            .spacing(30)
+                            .push(Text::from(icon::done_icon().size(80)).width(Length::Fill).success())
+                            .push(Column::new()
+                                .align_items(Align::Center)
+                                .spacing(5)
+                                .push(Text::new("You pre-signed the security transactions for all new deposits.").success())
+                                .push(Text::new("The deposits will be available as secured Vaults when all the stakeholders have completed this process.").small().success())
+                            )
+                        )).height(Length::Fill).align_y(Align::Center), None, Message::Menu(Menu::Home));
+        }
+        let total_amount = deposits.iter().map(|deposit| deposit.amount).sum::<u64>();
         let mut content = Column::new()
             .max_width(1000)
-            .push(Text::new("Create some vaults").bold().size(50))
-            .spacing(20);
+            .padding(20)
+            .align_items(Align::Center)
+            .push(Text::new("Vault the new deposits").bold().size(50))
+            .push(
+                Row::new()
+                    .spacing(5)
+                    .push(Text::new(&format!("{}", deposits.len())).bold())
+                    .push(Text::new("new deposits ("))
+                    .push(Text::new(&format!("{}", ctx.converter.converts(total_amount))).bold())
+                    .push(Text::new("BTC ) will be secured in vaults")),
+            )
+            .spacing(30);
 
-        if !deposits.is_empty() {
-            content = content.push(Container::new(
-                Column::new()
-                    .push(Text::new(" Click on a deposit to create a vault:"))
-                    .push(Column::with_children(deposits).spacing(5))
-                    .spacing(20),
-            ))
-        } else {
-            content = content.push(Container::new(Text::new("No deposits")).padding(5))
-        }
-
-        if let Some(qr_code) = self.qr_code.as_mut() {
-            if let Some(addr) = address {
-                content = content.push(separation().width(Length::Fill)).push(
-                    card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Column::new()
-                                    .push(Text::new(
-                                        "Bitcoin deposits are needed in order to create a vault\n",
-                                    ))
-                                    .push(
-                                        Column::new()
-                                            .push(
-                                                Text::new("Please, use this deposit address:")
-                                                    .bold(),
-                                            )
-                                            .push(
-                                                Row::new()
-                                                    .push(Container::new(
-                                                        Text::new(&addr.to_string()).bold().small(),
-                                                    ))
-                                                    .push(
-                                                        button::clipboard(
-                                                            &mut self.copy_button,
-                                                            Message::Clipboard(addr.to_string()),
-                                                        )
-                                                        .width(Length::Shrink),
-                                                    )
-                                                    .align_items(Align::Center),
-                                            ),
-                                    )
-                                    .spacing(30)
-                                    .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(QRCode::new(qr_code).cell_size(5))
-                                    .width(Length::Shrink),
-                            )
-                            .spacing(10),
-                    ))
-                    .width(Length::Fill),
+        if hw_connected {
+            if processing {
+                let total_secured = deposits
+                    .iter()
+                    .filter(|deposit| {
+                        deposit.status == VaultStatus::Securing
+                            || deposit.status == VaultStatus::Secured
+                    })
+                    .count();
+                content = content.push(
+                    Column::new()
+                        .align_items(Align::Center)
+                        .push(ProgressBar::new(
+                            0.0..=deposits.len() as f32,
+                            total_secured as f32,
+                        ))
+                        .push(Text::new(&format!(
+                            "{}/{} deposits processed",
+                            total_secured,
+                            deposits.len()
+                        ))),
+                );
+            } else {
+                content = content.push(
+                    button::primary(
+                        &mut self.sign_button,
+                        button::button_content(None, " Start signing ").width(Length::Units(200)),
+                    )
+                    .on_press(Message::Sign(SignMessage::SelectSign)),
                 );
             }
+        } else {
+            content = content.push(
+                Row::new()
+                    .align_items(iced::Align::Center)
+                    .spacing(20)
+                    .push(icon::connect_device_icon().size(20))
+                    .push(Text::new("Connect hardware wallet")),
+            )
         }
 
-        self.modal.view(ctx, warning, content, Some("A vault is a deposit with revocation transactions\nsigned and shared between stakeholders"), Message::Menu(Menu::Home))
+        self.modal.view(ctx, warning, Container::new(content).height(Length::Fill).align_y(Align::Center), Some("A vault is a deposit with revocation transactions\nsigned and shared between stakeholders"), Message::Menu(Menu::Home))
     }
 }
 
