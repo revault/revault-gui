@@ -81,20 +81,11 @@ impl Vault {
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::UnvaultTransaction(res) => match res {
-                Ok(tx) => {
-                    self.section = VaultSection::new_delegate_section(
-                        ctx,
-                        self.vault.derivation_index,
-                        tx.unvault_tx,
-                    )
-                }
+                Ok(tx) => self.section = VaultSection::new_delegate_section(tx.unvault_tx),
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::RevocationTransactions(res) => match res {
-                Ok(tx) => {
-                    self.section =
-                        VaultSection::new_ack_section(ctx, self.vault.derivation_index, tx)
-                }
+                Ok(tx) => self.section = VaultSection::new_ack_section(ctx, tx),
                 Err(e) => self.warning = Error::from(e).into(),
             },
             VaultMessage::SelectRevault => {
@@ -203,22 +194,9 @@ impl VaultSection {
         }
     }
 
-    pub fn new_delegate_section<C: Client>(
-        ctx: &Context<C>,
-        derivation_index: u32,
-        unvault_tx: Psbt,
-    ) -> Self {
+    pub fn new_delegate_section(unvault_tx: Psbt) -> Self {
         Self::Delegate {
-            signer: Signer::new(UnvaultTransactionTarget::new(
-                ctx.revaultd
-                    .config
-                    .stakeholder_config
-                    .as_ref()
-                    .unwrap()
-                    .xpub,
-                derivation_index,
-                unvault_tx,
-            )),
+            signer: Signer::new(UnvaultTransactionTarget::new(unvault_tx)),
             processing: false,
             view: DelegateVaultView::new(),
             warning: None,
@@ -234,20 +212,15 @@ impl VaultSection {
         }
     }
 
-    pub fn new_ack_section<C: Client>(
-        ctx: &Context<C>,
-        derivation_index: u32,
-        txs: RevocationTransactions,
-    ) -> Self {
+    pub fn new_ack_section<C: Client>(ctx: &Context<C>, txs: RevocationTransactions) -> Self {
         Self::Secure {
             signer: Signer::new(RevocationTransactionsTarget::new(
-                ctx.revaultd
+                &ctx.revaultd
                     .config
-                    .stakeholder_config
-                    .as_ref()
-                    .unwrap()
-                    .xpub,
-                derivation_index,
+                    .stakeholders_xpubs()
+                    .iter()
+                    .map(|xpub| xpub.master_fingerprint())
+                    .collect(),
                 txs.cancel_tx,
                 txs.emergency_tx,
                 txs.emergency_unvault_tx,

@@ -1,9 +1,12 @@
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
+
 use bitcoin::{
-    secp256k1,
-    util::{bip32::ExtendedPubKey, psbt::PartiallySignedTransaction as Psbt},
+    util::{
+        bip32::{Fingerprint, KeySource},
+        psbt::PartiallySignedTransaction as Psbt,
+    },
+    PublicKey,
 };
-use revaultd::revault_tx::miniscript::DescriptorPublicKey;
-use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
 use iced::{time, Command, Element, Subscription};
@@ -24,36 +27,40 @@ pub struct RevocationTransactionsTarget {
 
 impl RevocationTransactionsTarget {
     pub fn new(
-        xpub: ExtendedPubKey,
-        derivation_index: u32,
+        fingerprints: &Vec<Fingerprint>,
         mut cancel_tx: Psbt,
         mut emergency_tx: Psbt,
         mut emergency_unvault_tx: Psbt,
     ) -> Self {
-        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
-        let xpub = xpub.derive(derivation_index);
-        let curve = secp256k1::Secp256k1::verification_only();
+        for input in &mut emergency_tx.inputs {
+            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
+            for (key, source) in &input.bip32_derivation {
+                if fingerprints.contains(&source.0) {
+                    new_derivation.insert(*key, source.clone());
+                }
+            }
+            input.bip32_derivation = new_derivation;
+        }
 
-        let pubkey = xpub.derive_public_key(&curve).unwrap();
-        let fingerprint = xpub.master_fingerprint();
-        let derivation_path = xpub.full_derivation_path();
+        for input in &mut cancel_tx.inputs {
+            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
+            for (key, source) in &input.bip32_derivation {
+                if fingerprints.contains(&source.0) {
+                    new_derivation.insert(*key, source.clone());
+                }
+            }
+            input.bip32_derivation = new_derivation;
+        }
 
-        cancel_tx.inputs.iter_mut().for_each(|input| {
-            input
-                .bip32_derivation
-                .insert(pubkey, (fingerprint, derivation_path.clone()));
-        });
-        emergency_tx.inputs.iter_mut().for_each(|input| {
-            input
-                .bip32_derivation
-                .insert(pubkey, (fingerprint, derivation_path.clone()));
-        });
-        emergency_unvault_tx.inputs.iter_mut().for_each(|input| {
-            input
-                .bip32_derivation
-                .insert(pubkey, (fingerprint, derivation_path.clone()));
-        });
-
+        for input in &mut emergency_unvault_tx.inputs {
+            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
+            for (key, source) in &input.bip32_derivation {
+                if fingerprints.contains(&source.0) {
+                    new_derivation.insert(*key, source.clone());
+                }
+            }
+            input.bip32_derivation = new_derivation;
+        }
         Self {
             cancel_tx,
             emergency_tx,
@@ -68,21 +75,7 @@ pub struct UnvaultTransactionTarget {
 }
 
 impl UnvaultTransactionTarget {
-    pub fn new(xpub: ExtendedPubKey, derivation_index: u32, mut unvault_tx: Psbt) -> Self {
-        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
-        let xpub = xpub.derive(derivation_index);
-        let curve = secp256k1::Secp256k1::verification_only();
-
-        let pubkey = xpub.derive_public_key(&curve).unwrap();
-        let fingerprint = xpub.master_fingerprint();
-        let derivation_path = xpub.full_derivation_path();
-
-        unvault_tx.inputs.iter_mut().for_each(|input| {
-            input
-                .bip32_derivation
-                .insert(pubkey, (fingerprint, derivation_path.clone()));
-        });
-
+    pub fn new(unvault_tx: Psbt) -> Self {
         Self { unvault_tx }
     }
 }
@@ -93,27 +86,19 @@ pub struct SpendTransactionTarget {
 }
 
 impl SpendTransactionTarget {
-    pub fn new(xpub: ExtendedPubKey, derivation_indexes: &Vec<u32>, mut spend_tx: Psbt) -> Self {
-        let xpub = DescriptorPublicKey::from_str(&format!("{}/*", xpub)).unwrap();
-        let curve = secp256k1::Secp256k1::verification_only();
-
-        let derived_keys: Vec<DescriptorPublicKey> = derivation_indexes
-            .iter()
-            .map(|index| xpub.clone().derive(*index))
-            .collect();
-
-        spend_tx
-            .inputs
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, input)| {
-                let key = &derived_keys[i];
-                input.bip32_derivation.insert(
-                    key.derive_public_key(&curve).unwrap(),
-                    (key.master_fingerprint(), key.full_derivation_path()),
-                );
-            });
-
+    /// Creates a new SpendTransactionTarget to sign with only the corresponding keys of the given
+    /// xpubs. The bip32_derivation of the psbt is filtered to possess only the given xpub
+    /// fingerprints.
+    pub fn new(fingerprints: &Vec<Fingerprint>, mut spend_tx: Psbt) -> Self {
+        for input in &mut spend_tx.inputs {
+            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
+            for (key, source) in &input.bip32_derivation {
+                if fingerprints.contains(&source.0) {
+                    new_derivation.insert(*key, source.clone());
+                }
+            }
+            input.bip32_derivation = new_derivation;
+        }
         Self { spend_tx }
     }
 }
