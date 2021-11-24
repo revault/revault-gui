@@ -144,6 +144,33 @@ impl DummySigner {
             .map(|txs| (txs.emergency_tx, txs.emergency_unvault_tx, txs.cancel_tx))
             .collect())
     }
+
+    pub async fn delegate_batch(
+        &mut self,
+        vaults: Vec<(OutPoint, Amount, u32)>,
+    ) -> Result<Vec<Psbt>, Error> {
+        let utxos: Vec<Utxo> = vaults
+            .into_iter()
+            .map(|(outpoint, amount, derivation_index)| Utxo {
+                outpoint,
+                amount,
+                derivation_index,
+            })
+            .collect();
+        let mut res = self
+            .send(json!({
+                "vaults": utxos,
+            }))
+            .await?;
+
+        if res.get("error") == Some(&json!("batch unsupported")) {
+            return Err(Error::UnimplementedMethod);
+        }
+
+        let txs: Vec<UnvaultTransaction> = serde_json::from_value(res["transactions"].take())
+            .map_err(|e| Error::Device(e.to_string()))?;
+        Ok(txs.into_iter().map(|txs| txs.unvault_tx).collect())
+    }
 }
 
 #[derive(Deserialize)]

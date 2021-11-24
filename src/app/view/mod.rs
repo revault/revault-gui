@@ -17,7 +17,10 @@ pub use emergency::EmergencyView;
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
-pub use stakeholder::{StakeholderCreateVaultsView, StakeholderDelegateFundsView};
+pub use stakeholder::{
+    StakeholderCreateVaultsView, StakeholderDelegateVaultsView,
+    StakeholderSelecteVaultsToDelegateView,
+};
 pub use vault::VaultView;
 pub use vaults::VaultsView;
 

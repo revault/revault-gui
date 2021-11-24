@@ -26,6 +26,7 @@ pub enum Message {
     DelegateVault(String),
     Sign(SignMessage),
     DepositsSecured(Result<Vec<String>, Error>),
+    VaultsDelegated(Result<Vec<String>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),

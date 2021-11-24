@@ -518,64 +518,85 @@ pub struct DelegateVaultListItemView {
     delegate_button: iced::button::State,
 }
 
-impl VaultView for DelegateVaultListItemView {
-    fn new() -> Self {
+impl DelegateVaultListItemView {
+    pub fn new() -> Self {
         DelegateVaultListItemView {
             select_button: iced::button::State::new(),
             delegate_button: iced::button::State::new(),
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
-        vault_delegate(&mut self.select_button, ctx, vault)
-    }
-}
-
-fn vault_delegate<'a, C: Client>(
-    state: &'a mut iced::button::State,
-    ctx: &Context<C>,
-    deposit: &Vault,
-) -> Element<'a, Message> {
-    Container::new(
-        button::white_card_button(
-            state,
-            Container::new(
-                Row::new()
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(badge::person_check())
-                                .push(
-                                    Container::new(Text::new(&deposit.address).small().bold())
+    pub fn view<C: Client>(
+        &mut self,
+        ctx: &Context<C>,
+        vault: &Vault,
+        selected: bool,
+    ) -> iced::Element<Message> {
+        Container::new(
+            button::white_card_button(
+                &mut self.select_button,
+                Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(if selected {
+                                        badge::person_check_success()
+                                    } else {
+                                        badge::person_check()
+                                    })
+                                    .push(
+                                        Container::new(if selected {
+                                            Text::new(&vault.outpoint()).small().bold().success()
+                                        } else {
+                                            Text::new(&vault.outpoint()).small().bold()
+                                        })
                                         .align_y(Align::Center),
-                                )
-                                .spacing(20)
-                                .align_items(Align::Center),
+                                    )
+                                    .spacing(20)
+                                    .align_items(Align::Center),
+                            )
+                            .width(Length::Fill),
                         )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(
-                                    Text::new(&format!(
-                                        "{}",
-                                        ctx.converter.converts(deposit.amount),
-                                    ))
-                                    .bold(),
-                                )
-                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                .align_items(Align::Center),
+                        .push(
+                            Container::new(if selected {
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(vault.amount),
+                                        ))
+                                        .bold()
+                                        .success(),
+                                    )
+                                    .push(
+                                        Text::new(&format!(" {}", ctx.converter.unit))
+                                            .small()
+                                            .success(),
+                                    )
+                                    .align_items(Align::Center)
+                            } else {
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(vault.amount),
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
+                                    .align_items(Align::Center)
+                            })
+                            .width(Length::Shrink),
                         )
-                        .width(Length::Shrink),
-                    )
-                    .spacing(20)
-                    .align_items(Align::Center),
-            ),
+                        .spacing(20)
+                        .align_items(Align::Center),
+                ),
+            )
+            .on_press(Message::SelectVault(vault.outpoint())),
         )
-        .on_press(Message::DelegateVault(deposit.outpoint())),
-    )
-    .into()
+        .into()
+    }
 }
 
 #[derive(Debug, Clone)]

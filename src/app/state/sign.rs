@@ -263,4 +263,23 @@ impl Device {
             Err(Error::DeviceDisconnected)
         }
     }
+
+    pub async fn delegate_batch(self, vaults: &Vec<Vault>) -> Result<Vec<Psbt>, Error> {
+        if let Some(channel) = self.channel {
+            let utxos: Vec<(OutPoint, Amount, u32)> = vaults
+                .iter()
+                .map(|vault| {
+                    (
+                        OutPoint::from_str(&vault.outpoint())
+                            .expect("OutPoint has the good format"),
+                        Amount::from_sat(vault.amount),
+                        vault.derivation_index,
+                    )
+                })
+                .collect();
+            channel.lock().await.delegate_batch(utxos).await
+        } else {
+            Err(Error::DeviceDisconnected)
+        }
+    }
 }

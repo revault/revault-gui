@@ -116,6 +116,18 @@ impl Channel {
             Self::Specter(_) | Self::SpecterSimulator(_) => Err(Error::UnimplementedMethod),
         }
     }
+
+    /// Delegate a batch of vaults by giving the utxos to an hardware wallet storing the
+    /// descriptors and deriving itself the unvault transactions.
+    pub async fn delegate_batch(
+        &mut self,
+        vaults: Vec<(OutPoint, Amount, u32)>,
+    ) -> Result<Vec<Psbt>, Error> {
+        match self {
+            Self::DummySigner(dummy) => dummy.delegate_batch(vaults).await,
+            Self::Specter(_) | Self::SpecterSimulator(_) => Err(Error::UnimplementedMethod),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
