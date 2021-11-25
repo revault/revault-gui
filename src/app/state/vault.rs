@@ -1,5 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use iced::{Command, Element, Subscription};
+use iced::{Command, Element};
 use std::sync::Arc;
 
 use crate::{
@@ -7,14 +6,8 @@ use crate::{
         context::Context,
         error::Error,
         message::{Message, VaultMessage},
-        state::{
-            cmd::{get_onchain_txs, get_unvault_tx, revault, set_unvault_tx},
-            sign::{Signer, UnvaultTransactionTarget},
-        },
-        view::vault::{
-            DelegateVaultView, RevaultVaultView, VaultModal, VaultOnChainTransactionsPanel,
-            VaultView,
-        },
+        state::cmd::{get_onchain_txs, revault},
+        view::vault::{RevaultVaultView, VaultModal, VaultOnChainTransactionsPanel, VaultView},
     },
     daemon::{
         client::{Client, RevaultD},
@@ -77,18 +70,8 @@ impl Vault {
                 Ok(txs) => self.section = VaultSection::new_onchain_txs_section(txs),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            VaultMessage::UnvaultTransaction(res) => match res {
-                Ok(tx) => self.section = VaultSection::new_delegate_section(tx.unvault_tx),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
             VaultMessage::SelectRevault => {
                 self.section = VaultSection::new_revault_section();
-            }
-            VaultMessage::SelectDelegate => {
-                return Command::perform(
-                    get_unvault_tx(ctx.revaultd.clone(), self.vault.outpoint()),
-                    VaultMessage::UnvaultTransaction,
-                );
             }
             _ => {
                 return self
@@ -97,15 +80,6 @@ impl Vault {
             }
         };
         Command::none()
-    }
-
-    pub fn subscription(&self) -> Subscription<VaultMessage> {
-        match &self.section {
-            VaultSection::Delegate { signer, .. } => {
-                signer.subscription().map(VaultMessage::Delegate)
-            }
-            __ => Subscription::none(),
-        }
     }
 
     pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
@@ -136,12 +110,6 @@ pub enum VaultSection {
         txs: VaultTransactions,
         view: VaultOnChainTransactionsPanel,
     },
-    Delegate {
-        signer: Signer<UnvaultTransactionTarget>,
-        processing: bool,
-        view: DelegateVaultView,
-        warning: Option<Error>,
-    },
     /// Revault action ask the user if the vault that is unvaulting
     /// should be revaulted and executes the revault command after
     /// confirmation from the user.
@@ -161,7 +129,6 @@ impl VaultSection {
                 VaultStatus::Funded | VaultStatus::Unconfirmed => "Deposit details",
                 _ => "Vault details",
             },
-            Self::Delegate { .. } => "Delegate vault",
             Self::Revault { .. } => "Revault funds",
         }
     }
@@ -170,15 +137,6 @@ impl VaultSection {
         Self::OnchainTransactions {
             txs,
             view: VaultOnChainTransactionsPanel::new(),
-        }
-    }
-
-    pub fn new_delegate_section(unvault_tx: Psbt) -> Self {
-        Self::Delegate {
-            signer: Signer::new(UnvaultTransactionTarget::new(unvault_tx)),
-            processing: false,
-            view: DelegateVaultView::new(),
-            warning: None,
         }
     }
 
@@ -232,49 +190,6 @@ impl VaultSection {
                     }
                 }
             }
-            VaultMessage::Delegate(msg) => {
-                if let VaultSection::Delegate {
-                    signer,
-                    warning,
-                    processing,
-                    ..
-                } = self
-                {
-                    *warning = None;
-                    let cmd = signer.update(msg);
-                    if signer.signed() && !*processing {
-                        *processing = true;
-                        return Command::perform(
-                            set_unvault_tx(
-                                revaultd.clone(),
-                                vault.outpoint(),
-                                signer.target.unvault_tx.clone(),
-                            ),
-                            VaultMessage::Delegated,
-                        );
-                    }
-                    return cmd.map(VaultMessage::Delegate);
-                }
-            }
-            VaultMessage::Delegated(res) => {
-                if let Self::Delegate {
-                    warning,
-                    processing,
-                    ..
-                } = self
-                {
-                    *processing = false;
-                    match res {
-                        Ok(()) => {
-                            *warning = None;
-                            vault.status = VaultStatus::Activating;
-                        }
-                        Err(e) => {
-                            *warning = Some(Error::RevaultDError(e));
-                        }
-                    }
-                }
-            }
             _ => {}
         };
         Command::none()
@@ -284,12 +199,6 @@ impl VaultSection {
         match self {
             Self::Unloaded => iced::Container::new(iced::Column::new()).into(),
             Self::OnchainTransactions { txs, view } => view.view(ctx, &vault, &txs),
-            Self::Delegate {
-                signer,
-                view,
-                warning,
-                ..
-            } => view.view(ctx, &vault, warning.as_ref(), signer.view(ctx)),
             Self::Revault {
                 processing,
                 success,

@@ -143,13 +143,6 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
         )
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        if let Some(v) = &self.selected_vault {
-            return v.subscription().map(Message::Vault);
-        }
-        Subscription::none()
-    }
-
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),

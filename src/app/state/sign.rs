@@ -20,17 +20,6 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct UnvaultTransactionTarget {
-    pub unvault_tx: Psbt,
-}
-
-impl UnvaultTransactionTarget {
-    pub fn new(unvault_tx: Psbt) -> Self {
-        Self { unvault_tx }
-    }
-}
-
-#[derive(Debug)]
 pub struct SpendTransactionTarget {
     pub spend_tx: Psbt,
 }
@@ -126,38 +115,6 @@ impl Signer<SpendTransactionTarget> {
                         log::info!("{:?}", e);
                         self.error = Some(e);
                     }
-                }
-            }
-            _ => return self.device.update(message),
-        };
-        Command::none()
-    }
-}
-
-impl Signer<UnvaultTransactionTarget> {
-    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
-        match message {
-            SignMessage::SelectSign => {
-                self.processing = true;
-                return Command::perform(
-                    self.device
-                        .clone()
-                        .sign_unvault_tx(self.target.unvault_tx.clone()),
-                    |tx| SignMessage::PsbtSigned(tx.map(Box::new)),
-                );
-            }
-            SignMessage::PsbtSigned(res) => {
-                self.processing = false;
-                match res {
-                    Ok(tx) => {
-                        if tx.global.unsigned_tx.txid()
-                            == self.target.unvault_tx.global.unsigned_tx.txid()
-                        {
-                            self.signed = true;
-                            self.target.unvault_tx = *tx;
-                        }
-                    }
-                    Err(e) => self.error = Some(e),
                 }
             }
             _ => return self.device.update(message),

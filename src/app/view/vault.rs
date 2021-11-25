@@ -6,7 +6,7 @@ use revault_ui::component::{badge, button, card, separation, text::Text};
 use crate::app::{
     context::Context,
     error::Error,
-    message::{Message, SignMessage, VaultMessage},
+    message::{Message, VaultMessage},
     view::{layout, warning::warn},
 };
 
@@ -148,28 +148,6 @@ impl VaultOnChainTransactionsPanel {
         let mut col = Column::new().spacing(20);
         if ctx.role == Role::Stakeholder {
             match vault.status {
-                VaultStatus::Secured => {
-                    col = col.push(card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Container::new(Text::new(
-                                    "Do you want to delegate the vault to the manager team? ",
-                                ))
-                                .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    button::important(
-                                        &mut self.action_button,
-                                        button::button_content(None, "Delegate vault"),
-                                    )
-                                    .on_press(Message::Vault(VaultMessage::SelectDelegate)),
-                                )
-                                .width(Length::Shrink),
-                            )
-                            .align_items(Align::Center),
-                    )))
-                }
                 VaultStatus::Unvaulted | VaultStatus::Unvaulting => {
                     col = col.push(card::white(Container::new(
                         Row::new()
@@ -596,46 +574,6 @@ impl DelegateVaultListItemView {
             .on_press(Message::SelectVault(vault.outpoint())),
         )
         .into()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct DelegateVaultView {
-    back_button: iced::button::State,
-}
-
-impl DelegateVaultView {
-    pub fn new() -> Self {
-        Self {
-            back_button: iced::button::State::new(),
-        }
-    }
-
-    pub fn view<'a, C: Client>(
-        &'a mut self,
-        _ctx: &Context<C>,
-        _vault: &Vault,
-        warning: Option<&Error>,
-        signer: Element<'a, SignMessage>,
-    ) -> Element<'a, Message> {
-        Column::new().push(button::transparent(
-                &mut self.back_button,
-                Container::new(Text::new("< vault transactions").small()),
-            ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
-            .push(card::white(Container::new(
-                Column::new()
-                    .push(warn(warning))
-                    .push(
-                        Column::new()
-                            .push(Text::new("Delegate vault to manager").bold())
-                            .push(Text::new("the unvault transaction must be signed in order to delegate the fund to the managers.")),
-                    )
-                    .push(signer.map(move |msg| match msg {
-                        _ => Message::Vault(VaultMessage::Delegate(msg)),
-                    }))
-                    .spacing(20),
-            )))
-            .into()
     }
 }
 
