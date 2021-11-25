@@ -20,57 +20,6 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct RevocationTransactionsTarget {
-    pub cancel_tx: Psbt,
-    pub emergency_tx: Psbt,
-    pub emergency_unvault_tx: Psbt,
-}
-
-impl RevocationTransactionsTarget {
-    pub fn new(
-        fingerprints: &Vec<Fingerprint>,
-        mut cancel_tx: Psbt,
-        mut emergency_tx: Psbt,
-        mut emergency_unvault_tx: Psbt,
-    ) -> Self {
-        for input in &mut emergency_tx.inputs {
-            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
-            for (key, source) in &input.bip32_derivation {
-                if fingerprints.contains(&source.0) {
-                    new_derivation.insert(*key, source.clone());
-                }
-            }
-            input.bip32_derivation = new_derivation;
-        }
-
-        for input in &mut cancel_tx.inputs {
-            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
-            for (key, source) in &input.bip32_derivation {
-                if fingerprints.contains(&source.0) {
-                    new_derivation.insert(*key, source.clone());
-                }
-            }
-            input.bip32_derivation = new_derivation;
-        }
-
-        for input in &mut emergency_unvault_tx.inputs {
-            let mut new_derivation: BTreeMap<PublicKey, KeySource> = BTreeMap::new();
-            for (key, source) in &input.bip32_derivation {
-                if fingerprints.contains(&source.0) {
-                    new_derivation.insert(*key, source.clone());
-                }
-            }
-            input.bip32_derivation = new_derivation;
-        }
-        Self {
-            cancel_tx,
-            emergency_tx,
-            emergency_unvault_tx,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct UnvaultTransactionTarget {
     pub unvault_tx: Psbt,
 }
@@ -206,56 +155,6 @@ impl Signer<UnvaultTransactionTarget> {
                         {
                             self.signed = true;
                             self.target.unvault_tx = *tx;
-                        }
-                    }
-                    Err(e) => self.error = Some(e),
-                }
-            }
-            _ => return self.device.update(message),
-        };
-        Command::none()
-    }
-}
-
-impl Signer<RevocationTransactionsTarget> {
-    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
-        match message {
-            SignMessage::SelectSign => {
-                self.processing = true;
-                return Command::perform(
-                    self.device.clone().sign_revocation_txs(
-                        self.target.emergency_tx.clone(),
-                        self.target.emergency_unvault_tx.clone(),
-                        self.target.cancel_tx.clone(),
-                    ),
-                    |tx| SignMessage::RevocationTxsSigned(tx.map(|tx| Box::new(vec![tx]))),
-                );
-            }
-            SignMessage::RevocationTxsSigned(res) => {
-                self.processing = false;
-                match res {
-                    Ok(vec) => {
-                        if let Some((emergency_tx, emergency_unvault_tx, cancel_tx)) =
-                            vec.into_iter().nth(0)
-                        {
-                            if emergency_tx.global.unsigned_tx.txid()
-                                == self.target.emergency_tx.global.unsigned_tx.txid()
-                            {
-                                self.target.emergency_tx = emergency_tx;
-                                self.signed = true;
-                            }
-                            if emergency_unvault_tx.global.unsigned_tx.txid()
-                                == self.target.emergency_unvault_tx.global.unsigned_tx.txid()
-                            {
-                                self.target.emergency_unvault_tx = emergency_unvault_tx;
-                                self.signed = true;
-                            }
-                            if cancel_tx.global.unsigned_tx.txid()
-                                == self.target.cancel_tx.global.unsigned_tx.txid()
-                            {
-                                self.target.cancel_tx = cancel_tx;
-                                self.signed = true;
-                            }
                         }
                     }
                     Err(e) => self.error = Some(e),

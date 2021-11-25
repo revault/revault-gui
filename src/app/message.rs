@@ -7,8 +7,8 @@ use crate::{
     daemon::{
         client::RevaultDError,
         model::{
-            RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, UnvaultTransaction,
-            Vault, VaultStatus, VaultTransactions,
+            ServersStatuses, SpendTransaction, SpendTx, UnvaultTransaction, Vault, VaultStatus,
+            VaultTransactions,
         },
     },
     revault::Role,
@@ -70,15 +70,11 @@ pub enum SpendTxMessage {
 pub enum VaultMessage {
     Tick(Instant),
     ListOnchainTransaction,
-    RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
     SelectDelegate,
     Delegate(SignMessage),
     Delegated(Result<(), RevaultDError>),
-    SelectSecure,
-    Secure(SignMessage),
-    Secured(Result<(), RevaultDError>),
     SelectRevault,
     Revault,
     Revaulted(Result<(), RevaultDError>),

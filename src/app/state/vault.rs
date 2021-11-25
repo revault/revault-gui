@@ -8,20 +8,17 @@ use crate::{
         error::Error,
         message::{Message, VaultMessage},
         state::{
-            cmd::{
-                get_onchain_txs, get_revocation_txs, get_unvault_tx, revault, set_revocation_txs,
-                set_unvault_tx,
-            },
-            sign::{RevocationTransactionsTarget, Signer, UnvaultTransactionTarget},
+            cmd::{get_onchain_txs, get_unvault_tx, revault, set_unvault_tx},
+            sign::{Signer, UnvaultTransactionTarget},
         },
         view::vault::{
-            DelegateVaultView, RevaultVaultView, SecureVaultView, VaultModal,
-            VaultOnChainTransactionsPanel, VaultView,
+            DelegateVaultView, RevaultVaultView, VaultModal, VaultOnChainTransactionsPanel,
+            VaultView,
         },
     },
     daemon::{
         client::{Client, RevaultD},
-        model::{self, RevocationTransactions, VaultStatus, VaultTransactions},
+        model::{self, VaultStatus, VaultTransactions},
     },
 };
 
@@ -84,10 +81,6 @@ impl Vault {
                 Ok(tx) => self.section = VaultSection::new_delegate_section(tx.unvault_tx),
                 Err(e) => self.warning = Error::from(e).into(),
             },
-            VaultMessage::RevocationTransactions(res) => match res {
-                Ok(tx) => self.section = VaultSection::new_ack_section(ctx, tx),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
             VaultMessage::SelectRevault => {
                 self.section = VaultSection::new_revault_section();
             }
@@ -95,12 +88,6 @@ impl Vault {
                 return Command::perform(
                     get_unvault_tx(ctx.revaultd.clone(), self.vault.outpoint()),
                     VaultMessage::UnvaultTransaction,
-                );
-            }
-            VaultMessage::SelectSecure => {
-                return Command::perform(
-                    get_revocation_txs(ctx.revaultd.clone(), self.vault.outpoint()),
-                    VaultMessage::RevocationTransactions,
                 );
             }
             _ => {
@@ -114,7 +101,6 @@ impl Vault {
 
     pub fn subscription(&self) -> Subscription<VaultMessage> {
         match &self.section {
-            VaultSection::Secure { signer, .. } => signer.subscription().map(VaultMessage::Secure),
             VaultSection::Delegate { signer, .. } => {
                 signer.subscription().map(VaultMessage::Delegate)
             }
@@ -156,12 +142,6 @@ pub enum VaultSection {
         view: DelegateVaultView,
         warning: Option<Error>,
     },
-    Secure {
-        signer: Signer<RevocationTransactionsTarget>,
-        processing: bool,
-        view: SecureVaultView,
-        warning: Option<Error>,
-    },
     /// Revault action ask the user if the vault that is unvaulting
     /// should be revaulted and executes the revault command after
     /// confirmation from the user.
@@ -182,7 +162,6 @@ impl VaultSection {
                 _ => "Vault details",
             },
             Self::Delegate { .. } => "Delegate vault",
-            Self::Secure { .. } => "Create vault",
             Self::Revault { .. } => "Revault funds",
         }
     }
@@ -208,25 +187,6 @@ impl VaultSection {
             processing: false,
             success: false,
             view: RevaultVaultView::new(),
-            warning: None,
-        }
-    }
-
-    pub fn new_ack_section<C: Client>(ctx: &Context<C>, txs: RevocationTransactions) -> Self {
-        Self::Secure {
-            signer: Signer::new(RevocationTransactionsTarget::new(
-                &ctx.revaultd
-                    .config
-                    .stakeholders_xpubs()
-                    .iter()
-                    .map(|xpub| xpub.master_fingerprint())
-                    .collect(),
-                txs.cancel_tx,
-                txs.emergency_tx,
-                txs.emergency_unvault_tx,
-            )),
-            processing: false,
-            view: SecureVaultView::new(),
             warning: None,
         }
     }
@@ -315,51 +275,6 @@ impl VaultSection {
                     }
                 }
             }
-            VaultMessage::Secured(res) => {
-                if let VaultSection::Secure {
-                    warning,
-                    processing,
-                    ..
-                } = self
-                {
-                    *processing = false;
-                    match res {
-                        Ok(()) => {
-                            *warning = None;
-                            vault.status = VaultStatus::Securing;
-                        }
-                        Err(e) => {
-                            *warning = Some(Error::RevaultDError(e));
-                        }
-                    }
-                }
-            }
-            VaultMessage::Secure(msg) => {
-                if let VaultSection::Secure {
-                    signer,
-                    warning,
-                    processing,
-                    ..
-                } = self
-                {
-                    *warning = None;
-                    let cmd = signer.update(msg);
-                    if signer.signed() && !*processing {
-                        *processing = true;
-                        return Command::perform(
-                            set_revocation_txs(
-                                revaultd,
-                                vault.outpoint(),
-                                signer.target.emergency_tx.clone(),
-                                signer.target.emergency_unvault_tx.clone(),
-                                signer.target.cancel_tx.clone(),
-                            ),
-                            VaultMessage::Secured,
-                        );
-                    }
-                    return cmd.map(VaultMessage::Secure);
-                }
-            }
             _ => {}
         };
         Command::none()
@@ -375,19 +290,6 @@ impl VaultSection {
                 warning,
                 ..
             } => view.view(ctx, &vault, warning.as_ref(), signer.view(ctx)),
-            Self::Secure {
-                warning,
-                view,
-                signer,
-                ..
-            } => view
-                .view(
-                    ctx,
-                    warning.as_ref(),
-                    vault,
-                    signer.view(ctx).map(VaultMessage::Secure),
-                )
-                .map(Message::Vault),
             Self::Revault {
                 processing,
                 success,
