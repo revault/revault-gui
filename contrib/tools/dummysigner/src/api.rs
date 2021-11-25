@@ -1,4 +1,8 @@
-use revault_tx::bitcoin::util::psbt::PartiallySignedTransaction;
+use revault_tx::bitcoin::{
+    blockdata::transaction::OutPoint,
+    util::{bip32::ChildNumber, psbt::PartiallySignedTransaction},
+    Amount,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -7,6 +11,18 @@ pub enum Request {
     RevocationTransactions(RevocationTransactions),
     UnvaultTransaction(UnvaultTransaction),
     SpendTransaction(SpendTransaction),
+    SecureBatch(SecureBatch),
+    DelegateBatch(DelegateBatch),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SecureBatch {
+    pub deposits: Vec<UTXO>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DelegateBatch {
+    pub vaults: Vec<UTXO>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,6 +47,55 @@ pub struct UnvaultTransaction {
 pub struct SpendTransaction {
     #[serde(with = "bitcoin_psbt")]
     pub spend_tx: PartiallySignedTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UTXO {
+    #[serde(with = "bitcoin_outpoint")]
+    pub outpoint: OutPoint,
+    #[serde(with = "bitcoin_amount")]
+    pub amount: Amount,
+    #[serde(with = "bitcoin_derivation_index")]
+    pub derivation_index: ChildNumber,
+}
+
+mod bitcoin_outpoint {
+    use revault_tx::bitcoin::blockdata::transaction::OutPoint;
+    use serde::{self, Deserialize, Deserializer};
+    use std::str::FromStr;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OutPoint, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)
+            .and_then(|s| OutPoint::from_str(&s).map_err(serde::de::Error::custom))
+    }
+}
+
+mod bitcoin_amount {
+    use revault_tx::bitcoin::Amount;
+    use serde::{self, Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Amount, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        u64::deserialize(deserializer).map(|a| Amount::from_sat(a))
+    }
+}
+
+mod bitcoin_derivation_index {
+    use revault_tx::bitcoin::util::bip32::ChildNumber;
+    use serde::{self, Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ChildNumber, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        u32::deserialize(deserializer)
+            .and_then(|i| ChildNumber::from_normal_idx(i).map_err(serde::de::Error::custom))
+    }
 }
 
 mod bitcoin_psbt {
