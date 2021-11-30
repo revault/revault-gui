@@ -1,8 +1,19 @@
-# your extended private keys
-keys =["xprv9zFeRZgUZaUZBEUq1vPFLpUavHPK5YZ6N2qeqCYe7GLxGVY9SRHuN5Uwd5YN56tMUKe2qPhmvP8fC1GBEAFRAwbJQi86swWvvGM5tXBpJt6","xprvA27zVGM23jVKNzHhtfX3rd244KovFwAadjBz19Ke396eFBUWsVQYLfk7FAK6dENumsrtd8mJCSFxnm9BkyaWXuBVSd5tZ2c9r5tjPNkz7A9", "xprv9yZtssy7SLcqLCQetFHe35ENDKT58vh87MNFYdNkMyphUAcfCXdxLzgG4enc7ZT8NXjBtivtLrtpjZAJzyiTEAKM6NKUeFerP97DZdctJPr"]
-
 # optional if you are a manager
 emergency_address = "bcrt1qewc2348370pgw8kjz8gy09z8xyh0d9fxde6nzamd3txc9gkmjqmq8m4cdq"
+
+# your extended private keys
+[[keys]]
+name = "stk1"
+xpriv = "xprv9zFeRZgUZaUZBEUq1vPFLpUavHPK5YZ6N2qeqCYe7GLxGVY9SRHuN5Uwd5YN56tMUKe2qPhmvP8fC1GBEAFRAwbJQi86swWvvGM5tXBpJt6"
+
+[[keys]]
+name = "stk2"
+xpriv = "xprvA27zVGM23jVKNzHhtfX3rd244KovFwAadjBz19Ke396eFBUWsVQYLfk7FAK6dENumsrtd8mJCSFxnm9BkyaWXuBVSd5tZ2c9r5tjPNkz7A9"
+
+[[keys]]
+name = "man1"
+xpriv = "xprv9yZtssy7SLcqLCQetFHe35ENDKT58vh87MNFYdNkMyphUAcfCXdxLzgG4enc7ZT8NXjBtivtLrtpjZAJzyiTEAKM6NKUeFerP97DZdctJPr"
+
 
 [descriptors]
 cpfp_descriptor = "wsh(thresh(1,pk(xpub6Doj75MBvKp7bgHxF1KeDGxm36rd4wonZWv8sfzTeNoNVX2QZaQdrEcs7NDXvs4Cbsy9TPMx5VDcMK6JjSKepBbYDPiJ9bLBR4bqfdHmxZx/*)))#r9m50cqk"

@@ -1,5 +1,6 @@
 use iced::{
-    button, container, Align, Button, Color, Column, Container, Element, Length, Row, Text,
+    button, container, Align, Button, Checkbox, Color, Column, Container, Element, Length, Row,
+    Text,
 };
 use std::net::SocketAddr;
 
@@ -11,6 +12,12 @@ use crate::api;
 pub enum ViewMessage {
     Confirm,
     Cancel,
+    Key(usize, KeyMessage),
+}
+
+#[derive(Debug, Clone)]
+pub enum KeyMessage {
+    Selected(bool),
 }
 
 pub fn waiting_connection<'a>() -> Element<'a, ViewMessage> {
@@ -44,7 +51,13 @@ impl SignSpendTxView {
         }
     }
 
-    pub fn render(&mut self, _req: &api::SpendTransaction, signed: bool) -> Element<ViewMessage> {
+    pub fn render<'a>(
+        &'a mut self,
+        _req: &api::SpendTransaction,
+        signed: bool,
+        keys: Vec<Element<'a, ViewMessage>>,
+        can_confirm: bool,
+    ) -> Element<ViewMessage> {
         if signed {
             return Container::new(Text::new("Signed spend transaction"))
                 .style(SuccessPageStyle)
@@ -54,31 +67,21 @@ impl SignSpendTxView {
                 .align_y(Align::Center)
                 .into();
         }
+
+        if keys.is_empty() {
+            return error_no_keys(&mut self.cancel_button);
+        }
+
         Container::new(
             Column::new()
-                .push(Text::new("Sign spend transaction"))
-                .push(
-                    Row::new()
-                        .push(
-                            Button::new(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("Cancel"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Cancel),
-                        )
-                        .push(
-                            Button::new(
-                                &mut self.confirm_button,
-                                Container::new(Text::new("Confirm"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Confirm),
-                        )
-                        .spacing(20),
-                )
+                .push(Text::new("Send funds"))
+                .push(Text::new("Select keys to sign the transaction with"))
+                .push(Column::with_children(keys).spacing(10))
+                .push(confirmation_footer(
+                    &mut self.cancel_button,
+                    &mut self.confirm_button,
+                    can_confirm,
+                ))
                 .spacing(20)
                 .align_items(Align::Center),
         )
@@ -103,7 +106,13 @@ impl SignUnvaultTxView {
         }
     }
 
-    pub fn render(&mut self, _req: &api::UnvaultTransaction, signed: bool) -> Element<ViewMessage> {
+    pub fn render<'a>(
+        &'a mut self,
+        _req: &api::UnvaultTransaction,
+        signed: bool,
+        keys: Vec<Element<'a, ViewMessage>>,
+        can_confirm: bool,
+    ) -> Element<'a, ViewMessage> {
         if signed {
             return Container::new(Text::new("Signed unvault transaction"))
                 .style(SuccessPageStyle)
@@ -113,31 +122,21 @@ impl SignUnvaultTxView {
                 .align_y(Align::Center)
                 .into();
         }
+
+        if keys.is_empty() {
+            return error_no_keys(&mut self.cancel_button);
+        }
+
         Container::new(
             Column::new()
-                .push(Text::new("Sign unvault tx"))
-                .push(
-                    Row::new()
-                        .push(
-                            Button::new(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("Cancel"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Cancel),
-                        )
-                        .push(
-                            Button::new(
-                                &mut self.confirm_button,
-                                Container::new(Text::new("Confirm"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Confirm),
-                        )
-                        .spacing(20),
-                )
+                .push(Text::new("Delegate vault"))
+                .push(Text::new("Select keys to sign unvault transaction with"))
+                .push(Column::with_children(keys).spacing(10))
+                .push(confirmation_footer(
+                    &mut self.cancel_button,
+                    &mut self.confirm_button,
+                    can_confirm,
+                ))
                 .spacing(20)
                 .align_items(Align::Center),
         )
@@ -162,11 +161,13 @@ impl SignRevocationTxsView {
         }
     }
 
-    pub fn render(
-        &mut self,
+    pub fn render<'a>(
+        &'a mut self,
         _req: &api::RevocationTransactions,
         signed: bool,
-    ) -> Element<ViewMessage> {
+        keys: Vec<Element<'a, ViewMessage>>,
+        can_confirm: bool,
+    ) -> Element<'a, ViewMessage> {
         if signed {
             return Container::new(Text::new("Signed revocation transactions"))
                 .style(SuccessPageStyle)
@@ -176,31 +177,23 @@ impl SignRevocationTxsView {
                 .align_y(Align::Center)
                 .into();
         }
+
+        if keys.is_empty() {
+            return error_no_keys(&mut self.cancel_button);
+        }
+
         Container::new(
             Column::new()
-                .push(Text::new("Sign revocation transactions"))
-                .push(
-                    Row::new()
-                        .push(
-                            Button::new(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("Cancel"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Cancel),
-                        )
-                        .push(
-                            Button::new(
-                                &mut self.confirm_button,
-                                Container::new(Text::new("Confirm"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Confirm),
-                        )
-                        .spacing(20),
-                )
+                .push(Text::new("Secure deposit"))
+                .push(Text::new(
+                    "Select keys to sign revocation transactions with",
+                ))
+                .push(Column::with_children(keys).spacing(10))
+                .push(confirmation_footer(
+                    &mut self.cancel_button,
+                    &mut self.confirm_button,
+                    can_confirm,
+                ))
                 .spacing(20)
                 .align_items(Align::Center),
         )
@@ -225,11 +218,13 @@ impl SecureBatchView {
         }
     }
 
-    pub fn render(
-        &mut self,
+    pub fn render<'a>(
+        &'a mut self,
         total_amount: u64,
         total_deposits: usize,
         signed: bool,
+        keys: Vec<Element<'a, ViewMessage>>,
+        can_confirm: bool,
     ) -> Element<ViewMessage> {
         if signed {
             return Container::new(Column::new().push(Text::new(format!(
@@ -244,6 +239,11 @@ impl SecureBatchView {
             .align_y(Align::Center)
             .into();
         }
+
+        if keys.is_empty() {
+            return error_no_keys(&mut self.cancel_button);
+        }
+
         Container::new(
             Column::new()
                 .push(Text::new(format!(
@@ -251,29 +251,15 @@ impl SecureBatchView {
                     total_deposits,
                     Amount::from_sat(total_amount).as_btc()
                 )))
-                .push(Text::new("Sign revocation transactions"))
-                .push(
-                    Row::new()
-                        .push(
-                            Button::new(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("Cancel"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Cancel),
-                        )
-                        .push(
-                            Button::new(
-                                &mut self.confirm_button,
-                                Container::new(Text::new("Confirm"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Confirm),
-                        )
-                        .spacing(20),
-                )
+                .push(Text::new(
+                    "Select keys to sign the revocation transactions with:",
+                ))
+                .push(Column::with_children(keys).spacing(10))
+                .push(confirmation_footer(
+                    &mut self.cancel_button,
+                    &mut self.confirm_button,
+                    can_confirm,
+                ))
                 .spacing(20)
                 .align_items(Align::Center),
         )
@@ -298,11 +284,13 @@ impl DelegateBatchView {
         }
     }
 
-    pub fn render(
-        &mut self,
+    pub fn render<'a>(
+        &'a mut self,
         total_amount: u64,
         total_vaults: usize,
         signed: bool,
+        keys: Vec<Element<'a, ViewMessage>>,
+        can_confirm: bool,
     ) -> Element<ViewMessage> {
         if signed {
             return Container::new(Column::new().push(Text::new(format!(
@@ -317,6 +305,11 @@ impl DelegateBatchView {
             .align_y(Align::Center)
             .into();
         }
+
+        if keys.is_empty() {
+            return error_no_keys(&mut self.cancel_button);
+        }
+
         Container::new(
             Column::new()
                 .push(Text::new(format!(
@@ -324,29 +317,13 @@ impl DelegateBatchView {
                     total_vaults,
                     Amount::from_sat(total_amount).as_btc(),
                 )))
-                .push(Text::new("Sign unvault transactions"))
-                .push(
-                    Row::new()
-                        .push(
-                            Button::new(
-                                &mut self.cancel_button,
-                                Container::new(Text::new("Cancel"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Cancel),
-                        )
-                        .push(
-                            Button::new(
-                                &mut self.confirm_button,
-                                Container::new(Text::new("Confirm"))
-                                    .width(Length::Units(100))
-                                    .align_x(Align::Center),
-                            )
-                            .on_press(ViewMessage::Confirm),
-                        )
-                        .spacing(20),
-                )
+                .push(Text::new("Select keys to sign unvault transactions with"))
+                .push(Column::with_children(keys).spacing(10))
+                .push(confirmation_footer(
+                    &mut self.cancel_button,
+                    &mut self.confirm_button,
+                    can_confirm,
+                ))
                 .spacing(20)
                 .align_items(Align::Center),
         )
@@ -356,6 +333,66 @@ impl DelegateBatchView {
         .align_y(Align::Center)
         .into()
     }
+}
+
+pub fn key_view(name: &str, selected: bool) -> Element<'static, KeyMessage> {
+    Container::new(Checkbox::new(selected, name, KeyMessage::Selected)).into()
+}
+
+pub fn confirmation_footer<'a>(
+    cancel_button: &'a mut button::State,
+    confirm_button: &'a mut button::State,
+    can_confirm: bool,
+) -> Element<'a, ViewMessage> {
+    let mut confirm_button = Button::new(
+        confirm_button,
+        Container::new(Text::new("Sign"))
+            .width(Length::Units(100))
+            .align_x(Align::Center),
+    );
+
+    if can_confirm {
+        confirm_button = confirm_button.on_press(ViewMessage::Confirm);
+    }
+
+    Row::new()
+        .push(
+            Button::new(
+                cancel_button,
+                Container::new(Text::new("Cancel"))
+                    .width(Length::Units(100))
+                    .align_x(Align::Center),
+            )
+            .on_press(ViewMessage::Cancel),
+        )
+        .push(confirm_button)
+        .spacing(20)
+        .into()
+}
+
+pub fn error_no_keys<'a>(cancel_button: &'a mut button::State) -> Element<'a, ViewMessage> {
+    return Container::new(
+        Column::new()
+            .align_items(Align::Center)
+            .spacing(20)
+            .push(Text::new(
+                "No keys matched the specified key fingerprints in the psbt",
+            ))
+            .push(
+                Button::new(
+                    cancel_button,
+                    Container::new(Text::new("Cancel"))
+                        .width(Length::Units(100))
+                        .align_x(Align::Center),
+                )
+                .on_press(ViewMessage::Cancel),
+            ),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .align_x(Align::Center)
+    .align_y(Align::Center)
+    .into();
 }
 
 pub struct SuccessPageStyle;

@@ -19,7 +19,6 @@ use revault_tx::{
 pub struct Error(String);
 
 pub struct Signer {
-    keys: Vec<ExtendedPrivKey>,
     descriptors: Option<Descriptors>,
     emergency_address: Option<EmergencyAddress>,
     curve: secp256k1::Secp256k1<secp256k1::All>,
@@ -33,12 +32,10 @@ pub struct Descriptors {
 
 impl Signer {
     pub fn new(
-        keys: Vec<ExtendedPrivKey>,
         descriptors: Option<Descriptors>,
         emergency_address: Option<EmergencyAddress>,
     ) -> Signer {
         Self {
-            keys,
             descriptors,
             emergency_address,
             curve: secp256k1::Secp256k1::new(),
@@ -53,7 +50,29 @@ impl Signer {
         self.emergency_address.is_some()
     }
 
-    pub fn sign_psbt(&self, psbt: &mut PartiallySignedTransaction) -> Result<(), Error> {
+    pub fn requires_key_for_psbt(
+        &self,
+        key: &ExtendedPrivKey,
+        psbt: &PartiallySignedTransaction,
+    ) -> bool {
+        let key_fingerprint = key.fingerprint(&self.curve);
+        for input in &psbt.inputs {
+            for (_, (fingerprint, _)) in &input.bip32_derivation {
+                if key_fingerprint == *fingerprint {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Sign the psbt with the given keys.
+    pub fn sign_psbt(
+        &self,
+        keys: &Vec<ExtendedPrivKey>,
+        psbt: &mut PartiallySignedTransaction,
+    ) -> Result<(), Error> {
         for (input_index, input) in psbt.inputs.iter_mut().enumerate() {
             let prev_value = input
                 .witness_utxo
@@ -77,7 +96,7 @@ impl Signer {
             let sighash = secp256k1::Message::from_slice(&sighash).expect("Sighash is 32 bytes");
 
             for (pubkey, (fingerprint, derivation_path)) in &input.bip32_derivation {
-                for xkey in &self.keys {
+                for xkey in keys {
                     if xkey.fingerprint(&self.curve) == *fingerprint {
                         let pkey = xkey
                             .derive_priv(&self.curve, &derivation_path)
@@ -187,7 +206,6 @@ mod tests {
     fn derive_revocation_txs() {
         let cfg = Config::from_file(&PathBuf::from("examples/examples_cfg.toml")).unwrap();
         let signer = Signer::new(
-            cfg.keys,
             cfg.descriptors.map(|d| Descriptors {
                 deposit_descriptor: d.deposit_descriptor,
                 unvault_descriptor: d.unvault_descriptor,
@@ -225,7 +243,6 @@ mod tests {
     fn derive_unvault_tx() {
         let cfg = Config::from_file(&PathBuf::from("examples/examples_cfg.toml")).unwrap();
         let signer = Signer::new(
-            cfg.keys,
             cfg.descriptors.map(|d| Descriptors {
                 deposit_descriptor: d.deposit_descriptor,
                 unvault_descriptor: d.unvault_descriptor,
