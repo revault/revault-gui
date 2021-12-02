@@ -54,7 +54,7 @@ impl ManagerImportTransactionView {
                 form::Form::new(&mut self.psbt_input, "PSBT", psbt_input, |p| {
                     Message::SpendTx(SpendTxMessage::PsbtEdited(p))
                 })
-                .warning("Please enter a valid xpub")
+                .warning("Please enter a valid PSBT")
                 .size(20)
                 .padding(10)
                 .render(),
