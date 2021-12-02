@@ -192,7 +192,7 @@ impl SpendTransactionAction {
         psbt: &Psbt,
     ) -> Self {
         if let Some(input) = psbt.inputs.first() {
-            if input.partial_sigs.len() == managers_threshold {
+            if input.partial_sigs.len() >= managers_threshold {
                 return Self::Broadcast {
                     processing: false,
                     success: false,
