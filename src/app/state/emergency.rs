@@ -12,7 +12,7 @@ use crate::app::{
     menu::Menu,
     message::Message,
     state::cmd,
-    view::{EmergencyView, LoadingModal},
+    view::{EmergencyTriggeredView, EmergencyView, LoadingModal},
 };
 
 #[derive(Debug)]
@@ -30,7 +30,11 @@ pub enum EmergencyState {
         warning: Option<Error>,
 
         processing: bool,
-        success: bool,
+    },
+    Triggered {
+        vaults_number: usize,
+        funds_amount: u64,
+        view: EmergencyTriggeredView,
     },
 }
 
@@ -49,16 +53,30 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
             Message::Vaults(res) => match self {
                 Self::Loading { fail, .. } => match res {
                     Ok(vaults) => {
-                        *self = Self::Loaded {
-                            view: EmergencyView::new(),
-                            vaults_number: vaults.len(),
-                            funds_amount: vaults
-                                .into_iter()
-                                .fold(0, |acc, vault| acc + vault.amount),
-                            warning: None,
-                            processing: false,
-                            success: false,
-                        };
+                        if vaults.iter().any(|vault| {
+                            vault.status == VaultStatus::EmergencyVaulting
+                                || vault.status == VaultStatus::EmergencyVaulted
+                                || vault.status == VaultStatus::UnvaultEmergencyVaulting
+                                || vault.status == VaultStatus::UnvaultEmergencyVaulted
+                        }) {
+                            *self = Self::Triggered {
+                                view: EmergencyTriggeredView::new(),
+                                vaults_number: vaults.len(),
+                                funds_amount: vaults
+                                    .into_iter()
+                                    .fold(0, |acc, vault| acc + vault.amount),
+                            };
+                        } else {
+                            *self = Self::Loaded {
+                                view: EmergencyView::new(),
+                                vaults_number: vaults.len(),
+                                funds_amount: vaults
+                                    .into_iter()
+                                    .fold(0, |acc, vault| acc + vault.amount),
+                                warning: None,
+                                processing: false,
+                            };
+                        }
                     }
                     Err(e) => *fail = Error::from(e).into(),
                 },
@@ -75,6 +93,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
+                _ => {}
             },
             Message::Emergency => {
                 if let Self::Loaded {
@@ -95,7 +114,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                 if let Self::Loaded {
                     processing,
                     warning,
-                    success,
+                    vaults_number,
+                    funds_amount,
                     ..
                 } = self
                 {
@@ -103,7 +123,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                     if let Err(e) = res {
                         *warning = Some(Error::RevaultDError(e));
                     } else {
-                        *success = true;
+                        *self = Self::Triggered {
+                            view: EmergencyTriggeredView::new(),
+                            vaults_number: *vaults_number,
+                            funds_amount: *funds_amount,
+                        };
                     }
                 }
             }
@@ -120,7 +144,6 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                 funds_amount,
                 warning,
                 processing,
-                success,
                 vaults_number,
             } => view.view(
                 ctx,
@@ -128,8 +151,12 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                 *funds_amount,
                 warning.as_ref(),
                 *processing,
-                *success,
             ),
+            Self::Triggered {
+                view,
+                funds_amount,
+                vaults_number,
+            } => view.view(ctx, *vaults_number, *funds_amount),
         }
     }
 
@@ -143,6 +170,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                     VaultStatus::Activating,
                     VaultStatus::Unvaulting,
                     VaultStatus::Unvaulted,
+                    VaultStatus::EmergencyVaulting,
+                    VaultStatus::EmergencyVaulted,
+                    VaultStatus::UnvaultEmergencyVaulting,
+                    VaultStatus::UnvaultEmergencyVaulted,
                 ]),
                 None,
             ),

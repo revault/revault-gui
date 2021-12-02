@@ -32,7 +32,6 @@ impl EmergencyView {
         funds_amount: u64,
         warning: Option<&Error>,
         processing: bool,
-        success: bool,
     ) -> Element<'a, Message> {
         let mut emergency_button = button::primary(
             &mut self.emergency_button,
@@ -43,79 +42,103 @@ impl EmergencyView {
             emergency_button = emergency_button.on_press(Message::Emergency);
         }
 
-        let mut col = Column::new();
-
-        if !success {
-            col = col.push(
-                card::border_primary(Container::new(
+        let content = if funds_amount != 0 {
+            Column::new()
+                .push(warning_icon().color(color::PRIMARY))
+                .push(
                     Column::new()
-                        .push(warning_icon().color(color::PRIMARY))
                         .push(
-                            Column::new()
+                            Row::new()
+                                .push(Text::new("This action will send"))
                                 .push(
-                                    Row::new()
-                                        .push(Text::new("This action will send"))
-                                        .push(
-                                            Text::new(&format!(
-                                                " {} ",
-                                                ctx.converter.converts(funds_amount)
-                                            ))
-                                            .bold(),
-                                        )
-                                        .push(Text::new(&ctx.converter.unit.to_string()))
-                                        .push(Text::new(" from"))
-                                        .push(Text::new(&format!(" {} ", vaults_number)).bold())
-                                        .push(Text::new("vaults")),
+                                    Text::new(&format!(
+                                        " {} ",
+                                        ctx.converter.converts(funds_amount)
+                                    ))
+                                    .bold(),
                                 )
-                                .push(Text::new("to the Emergency Deep Vault"))
-                                .align_items(Align::Center),
+                                .push(Text::new(&ctx.converter.unit.to_string()))
+                                .push(Text::new(" from"))
+                                .push(Text::new(&format!(" {} ", vaults_number)).bold())
+                                .push(Text::new("vaults")),
                         )
-                        .push(emergency_button)
-                        .spacing(30)
+                        .push(Text::new("to the Emergency Deep Vault"))
                         .align_items(Align::Center),
-                ))
-                .padding(20)
-                .align_x(Align::Center)
-                .width(Length::Fill),
-            );
+                )
+                .push(emergency_button)
+                .spacing(30)
+                .align_items(Align::Center)
         } else {
-            col = col.push(
-                card::border_success(Container::new(
-                    Column::new()
-                        .push(warning_icon().color(color::SUCCESS))
-                        .push(
-                            Column::new()
-                                .push(
-                                    Row::new()
-                                        .push(Text::new("Sending"))
-                                        .push(
-                                            Text::new(&format!(
-                                                " {} ",
-                                                ctx.converter.converts(funds_amount)
-                                            ))
-                                            .bold(),
-                                        )
-                                        .push(Text::new(&ctx.converter.unit.to_string()))
-                                        .push(Text::new(" from"))
-                                        .push(Text::new(&format!(" {} ", vaults_number)).bold())
-                                        .push(Text::new("vaults")),
-                                )
-                                .push(Text::new("to the Emergency Deep Vault"))
-                                .align_items(Align::Center),
-                        )
-                        .spacing(30)
-                        .align_items(Align::Center),
-                ))
-                .padding(20)
-                .align_x(Align::Center)
-                .width(Length::Fill),
-            );
-        }
+            Column::new()
+                .push(warning_icon().color(color::PRIMARY))
+                .push(Text::new("No funds to send to the Emergency Deep Vault"))
+                .spacing(30)
+                .align_items(Align::Center)
+        };
 
         self.modal.view(
             ctx,
             warning,
-            card::white(col),
+            card::border_primary(Container::new(content))
+                .padding(20)
+                .align_x(Align::Center)
+                .width(Length::Fill),
+            None,
+            Message::Menu(Menu::Home),
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct EmergencyTriggeredView {
+    modal: layout::Modal,
+}
+
+impl EmergencyTriggeredView {
+    pub fn new() -> Self {
+        EmergencyTriggeredView {
+            modal: layout::Modal::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client>(
+        &'a mut self,
+        ctx: &Context<C>,
+        vaults_number: usize,
+        funds_amount: u64,
+    ) -> Element<'a, Message> {
+        self.modal.view(
+            ctx,
+            None,
+            card::border_success(Container::new(
+                Column::new()
+                    .push(warning_icon().color(color::SUCCESS))
+                    .push(
+                        Column::new()
+                            .push(
+                                Row::new()
+                                    .push(Text::new("Sending"))
+                                    .push(
+                                        Text::new(&format!(
+                                            " {} ",
+                                            ctx.converter.converts(funds_amount)
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(Text::new(&ctx.converter.unit.to_string()))
+                                    .push(Text::new(" from"))
+                                    .push(Text::new(&format!(" {} ", vaults_number)).bold())
+                                    .push(Text::new("vaults")),
+                            )
+                            .push(Text::new("to the Emergency Deep Vault"))
+                            .align_items(Align::Center),
+                    )
+                    .spacing(30)
+                    .align_items(Align::Center),
+            ))
+            .padding(20)
+            .align_x(Align::Center)
+            .width(Length::Fill),
             None,
             Message::Menu(Menu::Home),
         )
