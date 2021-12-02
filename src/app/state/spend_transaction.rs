@@ -1,8 +1,12 @@
-use bitcoin::util::{bip32::Fingerprint, psbt::PartiallySignedTransaction as Psbt};
+use bitcoin::util::{
+    bip32::{ExtendedPubKey, Fingerprint},
+    psbt::PartiallySignedTransaction as Psbt,
+};
 use std::convert::From;
 
 use iced::{Command, Element, Subscription};
 use revault_ui::component::form;
+use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use crate::{
     app::{
@@ -45,7 +49,17 @@ impl SpendTransactionState {
         Self {
             cpfp_index: 0,
             change_index: None,
-            action: SpendTransactionAction::new(ctx, &psbt),
+            action: SpendTransactionAction::new(
+                ctx.managers_threshold,
+                &ctx.revaultd
+                    .config
+                    .manager_config
+                    .as_ref()
+                    .expect("User is a manager")
+                    .xpub,
+                &ctx.revaultd.config.managers_xpubs(),
+                &psbt,
+            ),
             psbt,
             deposit_outpoints: Vec::new(),
             deposits: Vec::new(),
@@ -171,9 +185,14 @@ pub enum SpendTransactionAction {
 }
 
 impl SpendTransactionAction {
-    fn new<C: Client + Send + 'static>(ctx: &Context<C>, psbt: &Psbt) -> Self {
+    fn new(
+        managers_threshold: usize,
+        user_manager_xpub: &ExtendedPubKey,
+        managers_xpubs: &Vec<DescriptorPublicKey>,
+        psbt: &Psbt,
+    ) -> Self {
         if let Some(input) = psbt.inputs.first() {
-            if input.partial_sigs.len() == ctx.managers_threshold {
+            if input.partial_sigs.len() >= managers_threshold {
                 return Self::Broadcast {
                     processing: false,
                     success: false,
@@ -184,16 +203,7 @@ impl SpendTransactionAction {
                 input
                     .bip32_derivation
                     .get(key)
-                    .map(|(fingerprint, _)| {
-                        ctx.revaultd
-                            .config
-                            .manager_config
-                            .as_ref()
-                            .expect("User is a manager")
-                            .xpub
-                            .fingerprint()
-                            == *fingerprint
-                    })
+                    .map(|(fingerprint, _)| user_manager_xpub.fingerprint() == *fingerprint)
                     .unwrap_or(false)
             }) {
                 return Self::SharePsbt {
@@ -208,9 +218,7 @@ impl SpendTransactionAction {
                     processing: false,
                     warning: None,
                     signer: Signer::new(SpendTransactionTarget::new(
-                        &ctx.revaultd
-                            .config
-                            .managers_xpubs()
+                        &managers_xpubs
                             .iter()
                             .map(|xpub| xpub.master_fingerprint())
                             .collect(),
@@ -271,7 +279,17 @@ impl SpendTransactionAction {
                 };
             }
             SpendTxMessage::UnselectDelete => {
-                *self = Self::new(ctx, psbt);
+                *self = Self::new(
+                    ctx.managers_threshold,
+                    &ctx.revaultd
+                        .config
+                        .manager_config
+                        .as_ref()
+                        .expect("User is a manager")
+                        .xpub,
+                    &ctx.revaultd.config.managers_xpubs(),
+                    psbt,
+                );
             }
             SpendTxMessage::Sign(msg) => {
                 if let Self::Sign {
@@ -304,7 +322,17 @@ impl SpendTransactionAction {
                             // During this step state has a generated psbt
                             // and signer has a signed psbt.
                             *psbt = signer.target.spend_tx.clone();
-                            *self = Self::new(ctx, psbt);
+                            *self = Self::new(
+                                ctx.managers_threshold,
+                                &ctx.revaultd
+                                    .config
+                                    .manager_config
+                                    .as_ref()
+                                    .expect("User is a manager")
+                                    .xpub,
+                                &ctx.revaultd.config.managers_xpubs(),
+                                psbt,
+                            );
                         }
 
                         Err(e) => *warning = Some(Error::RevaultDError(e)),
@@ -562,5 +590,40 @@ impl SpendTransactionListItem {
         ctx: &Context<C>,
     ) -> Element<SpendTxMessage> {
         self.view.view(ctx, &self.tx, self.spend_amount, self.fees)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bitcoin::util::{
+        bip32::ExtendedPubKey, ecdsa::PublicKey, psbt::PartiallySignedTransaction as Psbt,
+    };
+    use std::str::FromStr;
+
+    #[test]
+    fn test_new_spend_transaction_action() {
+        let mut psbt = Psbt::from_str("cHNidP8BALQCAAAAAc1946BSKWX5trghNlBq/IIYScLPYqr9Bqs2LfqOYuqcAAAAAAAIAAAAA+BAAAAAAAAAIgAgCOQxrx6W/t0dSZikMBNYG2Yyam/3LIoVrAy6e8ZDUAyA8PoCAAAAACIAIMuwqNTx88KHHtIR0EeURzEu9pUmbnUxd22KzYKi25A2CBH6AgAAAAAiACB18mkXdMgWd4MYRrAoIgDiiLLFlxC1j3Qxg9SSVQfbxQAAAAAAAQEruFn1BQAAAAAiACBI6M9l6zams92tyCK/4gbWyNfJMJzgoOv34L0X7GTovAEDBAEAAAABBWEhAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmrFGHZHapFHKpXyKvmhuuuFL5qVJy+MIdmPJkiKxrdqkUtsmtuJyMk3Jsg+KhtdlHidd7lWGIrGyTUodnWLJoIgYCApM6sQN+rQqkp4WMbUnWcF4fs7xfZrAJGK97nwDs1SYIJR1gCQAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAA").unwrap();
+        let user_manager_xpub = ExtendedPubKey::from_str("xpub6CZFHPW1GiB8YgV7zGpeQDB6mMHZYPQyUaHrM1nMvKMgLxwok4xCtnzjuxQ3p1LHJUkz5i1Y7bRy5fmGrdg8UBVb39XdXNtWWd2wTsNd7T9").unwrap();
+
+        let action = SpendTransactionAction::new(2, &user_manager_xpub, &Vec::new(), &psbt);
+        assert!(matches!(action, SpendTransactionAction::Sign { .. }));
+
+        psbt.inputs[0].partial_sigs.insert(
+            PublicKey::from_str(
+                "0202933ab1037ead0aa4a7858c6d49d6705e1fb3bc5f66b00918af7b9f00ecd526",
+            )
+            .unwrap(),
+            "304402202f5eec50f34929e4bd8f6b7e81426795b0cd3608a4dad53ffab3e7af38ab627a02204ff61d9df2432ff3272c17d9baee1ec6b6dcb72b198be7f4ef843d5d47010a0401".as_bytes().to_vec(),
+        );
+
+        let action = SpendTransactionAction::new(2, &user_manager_xpub, &Vec::new(), &psbt);
+        assert!(matches!(action, SpendTransactionAction::SharePsbt { .. }));
+
+        let action = SpendTransactionAction::new(1, &user_manager_xpub, &Vec::new(), &psbt);
+        assert!(matches!(action, SpendTransactionAction::Broadcast { .. }));
+
+        let action = SpendTransactionAction::new(0, &user_manager_xpub, &Vec::new(), &psbt);
+        assert!(matches!(action, SpendTransactionAction::Broadcast { .. }));
     }
 }
