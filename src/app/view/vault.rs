@@ -148,28 +148,6 @@ impl VaultOnChainTransactionsPanel {
         let mut col = Column::new().spacing(20);
         if ctx.role == Role::Stakeholder {
             match vault.status {
-                VaultStatus::Funded => {
-                    col = col.push(card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Container::new(Text::new(
-                                    "Do you want to create a vault from this deposit?",
-                                ))
-                                .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    button::important(
-                                        &mut self.action_button,
-                                        button::button_content(None, "Create vault"),
-                                    )
-                                    .on_press(Message::Vault(VaultMessage::SelectSecure)),
-                                )
-                                .width(Length::Shrink),
-                            )
-                            .align_items(Align::Center),
-                    )))
-                }
                 VaultStatus::Secured => {
                     col = col.push(card::white(Container::new(
                         Row::new()
@@ -598,66 +576,6 @@ fn vault_delegate<'a, C: Client>(
         .on_press(Message::DelegateVault(deposit.outpoint())),
     )
     .into()
-}
-
-#[derive(Debug)]
-pub struct SecureVaultView {}
-
-impl SecureVaultView {
-    pub fn new() -> Self {
-        SecureVaultView {}
-    }
-
-    pub fn view<'a, C: Client>(
-        &'a mut self,
-        ctx: &Context<C>,
-        warning: Option<&Error>,
-        deposit: &Vault,
-        signer: Element<'a, VaultMessage>,
-    ) -> Element<'a, VaultMessage> {
-        card::white(
-            Column::new()
-                .push(warn(warning))
-                .push(Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(badge::shield())
-                                    .push(
-                                        Container::new(Text::new(&deposit.address).bold().small())
-                                            .align_y(Align::Center),
-                                    )
-                                    .spacing(20)
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Fill),
-                        )
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        Text::new(&format!(
-                                            "{}",
-                                            ctx.converter.converts(deposit.amount)
-                                        ))
-                                        .bold(),
-                                    )
-                                    .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Shrink),
-                        )
-                        .spacing(20)
-                        .align_items(Align::Center),
-                ))
-                .push(separation().width(Length::Fill))
-                .push(signer)
-                .spacing(20)
-                .push(Column::new()),
-        )
-        .into()
-    }
 }
 
 #[derive(Debug, Clone)]

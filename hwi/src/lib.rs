@@ -1,4 +1,6 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{
+    blockdata::transaction::OutPoint, util::psbt::PartiallySignedTransaction as Psbt, Amount,
+};
 use std::fmt::Debug;
 
 mod dummysigner;
@@ -27,7 +29,7 @@ impl Channel {
         if let Ok(device) = Specter::try_connect_serial().await {
             return Ok(Self::Specter(device));
         }
-        Err(Error("Failed to find device".to_string()))
+        Err(Error::DeviceNotFound)
     }
 
     pub async fn ping(&mut self) -> Result<(), Error> {
@@ -49,7 +51,7 @@ impl Channel {
         emergency_tx: Psbt,
         emergency_unvault_tx: Psbt,
         cancel_tx: Psbt,
-    ) -> Result<Box<Vec<Psbt>>, Error> {
+    ) -> Result<(Psbt, Psbt, Psbt), Error> {
         match self {
             Self::DummySigner(dummy) => {
                 dummy
@@ -66,11 +68,7 @@ impl Channel {
                     .await
                     .map_err(Error::from)?;
                 let cancel_tx = specter.sign_psbt(&cancel_tx).await.map_err(Error::from)?;
-                Ok(Box::new(vec![
-                    emergency_tx,
-                    emergency_unvault_tx,
-                    cancel_tx,
-                ]))
+                Ok((emergency_tx, emergency_unvault_tx, cancel_tx))
             }
             Self::SpecterSimulator(specter) => {
                 let emergency_tx = specter
@@ -82,49 +80,65 @@ impl Channel {
                     .await
                     .map_err(Error::from)?;
                 let cancel_tx = specter.sign_psbt(&cancel_tx).await.map_err(Error::from)?;
-                Ok(Box::new(vec![
-                    emergency_tx,
-                    emergency_unvault_tx,
-                    cancel_tx,
-                ]))
+                Ok((emergency_tx, emergency_unvault_tx, cancel_tx))
             }
         }
     }
 
-    pub async fn sign_unvault_tx(&mut self, unvault_tx: Psbt) -> Result<Box<Vec<Psbt>>, Error> {
+    pub async fn sign_unvault_tx(&mut self, unvault_tx: Psbt) -> Result<Psbt, Error> {
         match self {
             Self::DummySigner(dummy) => dummy.sign_unvault_tx(unvault_tx).await,
-            Self::Specter(specter) => {
-                let unvault_tx = specter.sign_psbt(&unvault_tx).await?;
-                Ok(Box::new(vec![unvault_tx]))
-            }
+            Self::Specter(specter) => specter.sign_psbt(&unvault_tx).await.map_err(|e| e.into()),
             Self::SpecterSimulator(specter) => {
-                let unvault_tx = specter.sign_psbt(&unvault_tx).await?;
-                Ok(Box::new(vec![unvault_tx]))
+                specter.sign_psbt(&unvault_tx).await.map_err(|e| e.into())
             }
         }
     }
 
-    pub async fn sign_spend_tx(&mut self, spend_tx: Psbt) -> Result<Box<Vec<Psbt>>, Error> {
+    pub async fn sign_spend_tx(&mut self, spend_tx: Psbt) -> Result<Psbt, Error> {
         match self {
             Self::DummySigner(dummy) => dummy.sign_spend_tx(spend_tx).await,
-            Self::Specter(specter) => {
-                let spend_tx = specter.sign_psbt(&spend_tx).await?;
-                Ok(Box::new(vec![spend_tx]))
-            }
+            Self::Specter(specter) => specter.sign_psbt(&spend_tx).await.map_err(|e| e.into()),
             Self::SpecterSimulator(specter) => {
-                let spend_tx = specter.sign_psbt(&spend_tx).await?;
-                Ok(Box::new(vec![spend_tx]))
+                specter.sign_psbt(&spend_tx).await.map_err(|e| e.into())
             }
+        }
+    }
+
+    /// Secure a batch of deposits by giving the utxos to an hardware wallet storing the
+    /// descriptors and deriving itself the revocation transactions.
+    pub async fn secure_batch(
+        &mut self,
+        deposits: Vec<(OutPoint, Amount, u32)>,
+    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, Error> {
+        match self {
+            Self::DummySigner(dummy) => dummy.secure_batch(deposits).await,
+            Self::Specter(_) | Self::SpecterSimulator(_) => Err(Error::UnimplementedMethod),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Error(String);
+pub enum Error {
+    DeviceDisconnected,
+    DeviceNotFound,
+    UnimplementedMethod,
+    Device(String),
+}
 
 impl From<SpecterError> for Error {
     fn from(e: SpecterError) -> Error {
-        Error(e.to_string())
+        Error::Device(e.to_string())
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::DeviceDisconnected => write!(f, "Hardware device disconnected"),
+            Self::DeviceNotFound => write!(f, "Hardware device not found"),
+            Self::UnimplementedMethod => write!(f, "Hardware device does not know the command"),
+            Self::Device(e) => write!(f, "{}", e),
+        }
     }
 }

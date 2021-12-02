@@ -3,12 +3,12 @@ use std::{sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 
 use crate::{
-    app::menu::Menu,
+    app::{error::Error, menu::Menu},
     daemon::{
         client::RevaultDError,
         model::{
-            RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, UnvaultTransaction,
-            Vault, VaultStatus, VaultTransactions,
+            ServersStatuses, SpendTransaction, SpendTx, UnvaultTransaction, Vault, VaultStatus,
+            VaultTransactions,
         },
     },
     revault::Role,
@@ -24,6 +24,8 @@ pub enum Message {
     Vaults(Result<Vec<Vault>, RevaultDError>),
     SelectVault(String),
     DelegateVault(String),
+    Sign(SignMessage),
+    DepositsSecured(Result<Vec<String>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
@@ -68,15 +70,11 @@ pub enum SpendTxMessage {
 pub enum VaultMessage {
     Tick(Instant),
     ListOnchainTransaction,
-    RevocationTransactions(Result<RevocationTransactions, RevaultDError>),
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     UnvaultTransaction(Result<UnvaultTransaction, RevaultDError>),
     SelectDelegate,
     Delegate(SignMessage),
     Delegated(Result<(), RevaultDError>),
-    SelectSecure,
-    Secure(SignMessage),
-    Secured(Result<(), RevaultDError>),
     SelectRevault,
     Revault,
     Revaulted(Result<(), RevaultDError>),
@@ -93,7 +91,8 @@ pub enum SignMessage {
     Ping(Result<(), revault_hwi::Error>),
     SelectSign,
     Connected(Result<Arc<Mutex<revault_hwi::Channel>>, revault_hwi::Error>),
-    Signed(Result<Box<Vec<Psbt>>, revault_hwi::Error>),
+    RevocationTxsSigned(Result<Box<Vec<(Psbt, Psbt, Psbt)>>, revault_hwi::Error>),
+    PsbtSigned(Result<Box<Psbt>, revault_hwi::Error>),
 }
 
 #[derive(Debug, Clone)]

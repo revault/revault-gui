@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use iced::{Command, Element, Subscription};
 
 use crate::daemon::{
-    client::Client,
+    client::{Client, RevaultD},
     model::{self, VaultStatus},
 };
 
@@ -11,15 +12,17 @@ use crate::app::{
     context::Context,
     error::Error,
     menu::Menu,
-    message::{Message, VaultMessage},
+    message::{Message, SignMessage, VaultMessage},
     state::{
-        cmd::{get_blockheight, get_deposit_address, get_revocation_txs, list_vaults},
+        cmd::{get_blockheight, list_vaults},
+        sign::Device,
         vault::{Vault, VaultListItem},
         State,
     },
     view::{
-        vault::{DelegateVaultListItemView, SecureVaultListItemView, VaultListItemView},
-        StakeholderCreateVaultsView, StakeholderDelegateFundsView, StakeholderHomeView,
+        vault::{DelegateVaultListItemView, VaultListItemView},
+        LoadingModal, StakeholderCreateVaultsView, StakeholderDelegateFundsView,
+        StakeholderHomeView,
     },
 };
 
@@ -169,145 +172,185 @@ impl<C: Client + Sync + Send + 'static> From<StakeholderHomeState> for Box<dyn S
 }
 
 #[derive(Debug)]
-pub struct StakeholderCreateVaultsState {
-    warning: Option<Error>,
-    balance: u64,
-    address: Option<bitcoin::Address>,
-    deposits: Vec<VaultListItem<SecureVaultListItemView>>,
-    selected_vault: Option<Vault>,
-
-    view: StakeholderCreateVaultsView,
+pub enum StakeholderCreateVaultsState {
+    Loading {
+        fail: Option<Error>,
+        view: LoadingModal,
+    },
+    Loaded {
+        device: Device,
+        processing: bool,
+        deposits: Vec<model::Vault>,
+        warning: Option<Error>,
+        view: StakeholderCreateVaultsView,
+    },
 }
 
 impl StakeholderCreateVaultsState {
     pub fn new() -> Self {
-        StakeholderCreateVaultsState {
-            address: None,
-            warning: None,
-            deposits: Vec::new(),
-            view: StakeholderCreateVaultsView::new(),
-            balance: 0,
-            selected_vault: None,
+        StakeholderCreateVaultsState::Loading {
+            fail: None,
+            view: LoadingModal::new(),
         }
-    }
-
-    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        outpoint: String,
-    ) -> Command<Message> {
-        if let Some(selected) = &self.selected_vault {
-            if selected.vault.outpoint() == outpoint {
-                if self.deposits.len() == 1
-                    && self.deposits[0].vault.outpoint() == outpoint
-                    && (selected.vault.status == VaultStatus::Secured
-                        || selected.vault.status == VaultStatus::Securing)
-                {
-                    self.selected_vault = None;
-                    return Command::perform(async { Menu::Home }, Message::Menu);
-                }
-                self.selected_vault = None;
-                return self.load(ctx);
-            }
-        }
-
-        if let Some(selected) = self
-            .deposits
-            .iter()
-            .find(|vlt| vlt.vault.outpoint() == outpoint)
-        {
-            self.selected_vault = Some(Vault::new(selected.vault.clone()));
-            return Command::perform(
-                get_revocation_txs(ctx.revaultd.clone(), selected.vault.outpoint()),
-                move |res| Message::Vault(VaultMessage::RevocationTransactions(res)),
-            );
-        };
-        Command::none()
-    }
-
-    fn update_deposits(&mut self, vaults: Vec<model::Vault>) {
-        self.calculate_balance(&vaults);
-        self.deposits = vaults.into_iter().map(VaultListItem::new).collect();
-    }
-
-    fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        let mut balance: u64 = 0;
-        for vault in vaults {
-            if vault.status == VaultStatus::Funded {
-                balance += vault.amount;
-            }
-        }
-
-        self.balance = balance;
     }
 }
 
 impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsState {
     fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
-        match message {
-            Message::DepositAddress(res) => match res {
-                Ok(address) => {
-                    // Address is loaded directly in the view in order to cache the created qrcode.
-                    self.view.load(&address);
-                    self.address = Some(address);
-                    Command::none()
-                }
-                Err(e) => {
-                    self.warning = Some(Error::RevaultDError(e));
-                    Command::none()
-                }
-            },
-            Message::SelectVault(outpoint) => self.on_vault_select(ctx, outpoint),
-            Message::Vault(msg) => {
-                if let Some(selected) = &mut self.selected_vault {
-                    return selected.update(ctx, msg).map(Message::Vault);
+        match self {
+            Self::Loading { fail, .. } => {
+                if let Message::Vaults(res) = message {
+                    match res {
+                        Ok(deposits) => {
+                            *self = Self::Loaded {
+                                device: Device::new(),
+                                processing: false,
+                                deposits,
+                                warning: None,
+                                view: StakeholderCreateVaultsView::new(),
+                            };
+                        }
+                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                    };
                 }
                 Command::none()
             }
-            Message::Vaults(res) => match res {
-                Ok(vaults) => {
-                    self.update_deposits(vaults);
-                    Command::none()
+            Self::Loaded {
+                device,
+                processing,
+                deposits,
+                warning,
+                ..
+            } => match message {
+                Message::DepositsSecured(res) => match res {
+                    Ok(secured_deposits_outpoints) => {
+                        let mut deposits_to_secure = Vec::new();
+                        for deposit in deposits.iter_mut() {
+                            if secured_deposits_outpoints.contains(&deposit.outpoint()) {
+                                deposit.status = VaultStatus::Securing;
+                            } else if deposit.status != VaultStatus::Securing
+                                && deposit.status != VaultStatus::Secured
+                            {
+                                deposits_to_secure.push(deposit.clone());
+                            }
+                        }
+                        if !deposits_to_secure.is_empty() {
+                            Command::perform(
+                                secure_deposits(
+                                    ctx.revaultd.clone(),
+                                    device.clone(),
+                                    deposits_to_secure.clone(),
+                                ),
+                                Message::DepositsSecured,
+                            )
+                        } else {
+                            Command::none()
+                        }
+                    }
+                    Err(e) => {
+                        *warning = Some(e);
+                        Command::none()
+                    }
+                },
+                Message::Sign(SignMessage::SelectSign) => {
+                    *processing = true;
+                    if !deposits.is_empty() {
+                        Command::perform(
+                            secure_deposits(ctx.revaultd.clone(), device.clone(), deposits.clone()),
+                            Message::DepositsSecured,
+                        )
+                    } else {
+                        Command::none()
+                    }
                 }
-                Err(e) => {
-                    self.warning = Error::from(e).into();
-                    Command::none()
-                }
+                Message::Sign(msg) => device.update(msg).map(Message::Sign),
+                _ => Command::none(),
             },
-            _ => Command::none(),
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if let Some(v) = &self.selected_vault {
-            return v.subscription().map(Message::Vault);
+        match self {
+            Self::Loaded { device, .. } => device.subscription().map(Message::Sign),
+            _ => Subscription::none(),
         }
-        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
-        if let Some(selected) = &mut self.selected_vault {
-            return selected.view(ctx);
+        match self {
+            Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
+            Self::Loaded {
+                view,
+                warning,
+                deposits,
+                processing,
+                device,
+                ..
+            } => view.view(
+                ctx,
+                deposits,
+                *processing,
+                device.is_connected(),
+                warning.as_ref(),
+            ),
         }
-        self.view.view(
-            ctx,
-            self.deposits.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.address.as_ref(),
-            self.warning.as_ref(),
-        )
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
-        Command::batch(vec![
-            Command::perform(
-                get_deposit_address(ctx.revaultd.clone()),
-                Message::DepositAddress,
-            ),
-            Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
-                Message::Vaults,
-            ),
-        ])
+        Command::batch(vec![Command::perform(
+            list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
+            Message::Vaults,
+        )])
+    }
+}
+
+pub async fn secure_deposits<C: Client>(
+    revaultd: Arc<RevaultD<C>>,
+    device: Device,
+    deposits: Vec<model::Vault>,
+) -> Result<Vec<String>, Error> {
+    match device.clone().secure_batch(&deposits).await {
+        Ok(revocation_txs) => {
+            for (i, (emergency_tx, emergency_unvault_tx, cancel_tx)) in
+                revocation_txs.into_iter().enumerate()
+            {
+                revaultd.set_revocation_txs(
+                    &deposits[i].outpoint(),
+                    &emergency_tx,
+                    &emergency_unvault_tx,
+                    &cancel_tx,
+                )?;
+            }
+
+            return Ok(deposits
+                .into_iter()
+                .map(|deposit| deposit.outpoint())
+                .collect());
+        }
+        Err(revault_hwi::Error::UnimplementedMethod) => {
+            log::info!("device does not support batching");
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    // Batching is not supported, so we secure only the first one.
+    if let Some(deposit) = deposits.into_iter().nth(0) {
+        let outpoint = deposit.outpoint();
+        let revocation_txs = revaultd.get_revocation_txs(&outpoint)?;
+
+        let (emergency_tx, emergency_unvault_tx, cancel_tx) = device
+            .sign_revocation_txs(
+                revocation_txs.emergency_tx.clone(),
+                revocation_txs.emergency_unvault_tx.clone(),
+                revocation_txs.cancel_tx.clone(),
+            )
+            .await?;
+
+        revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)?;
+
+        Ok(vec![outpoint])
+    } else {
+        Ok(Vec::new())
     }
 }
 
