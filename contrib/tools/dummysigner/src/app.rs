@@ -1,12 +1,17 @@
 use std::net::SocketAddr;
 
 use iced::{executor, Application, Clipboard, Command, Element, Settings};
+use revault_tx::bitcoin::util::bip32::ExtendedPrivKey;
 use serde_json::json;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{api, config::Config, server, sign, view};
+use crate::{
+    api,
+    config::{self, Config},
+    server, sign, view,
+};
 
 pub fn run(cfg: Config) -> iced::Result {
     let settings = Settings::with_flags(cfg);
@@ -14,6 +19,7 @@ pub fn run(cfg: Config) -> iced::Result {
 }
 
 pub struct App {
+    keys: Vec<config::Key>,
     signer: sign::Signer,
     status: AppStatus,
 }
@@ -42,7 +48,6 @@ impl Application for App {
         (
             App {
                 signer: sign::Signer::new(
-                    cfg.keys,
                     cfg.descriptors.map(|d| sign::Descriptors {
                         deposit_descriptor: d.deposit_descriptor,
                         unvault_descriptor: d.unvault_descriptor,
@@ -50,6 +55,7 @@ impl Application for App {
                     }),
                     cfg.emergency_address,
                 ),
+                keys: cfg.keys,
                 status: AppStatus::Waiting,
             },
             Command::none(),
@@ -89,7 +95,7 @@ impl Application for App {
                                 )
                                 .map(Message::Server);
                             }
-                            *method = Some(Method::new(req));
+                            *method = Some(Method::new(&self.keys, &self.signer, req));
                         }
                         Err(_) => {
                             return Command::perform(
@@ -109,33 +115,35 @@ impl Application for App {
                 self.status = AppStatus::Waiting {};
                 Command::none()
             }
+            Message::View(view::ViewMessage::Key(i, view::KeyMessage::Selected(selected))) => {
+                if let AppStatus::Connected { method, .. } = &mut self.status {
+                    match method {
+                        Some(Method::SignSpendTx { keys, .. }) => keys[i].selected = selected,
+                        Some(Method::SignUnvaultTx { keys, .. }) => keys[i].selected = selected,
+                        Some(Method::SignRevocationTxs { keys, .. }) => keys[i].selected = selected,
+                        Some(Method::SecureBatch { keys, .. }) => keys[i].selected = selected,
+                        Some(Method::DelegateBatch { keys, .. }) => keys[i].selected = selected,
+                        _ => {}
+                    }
+                }
+                Command::none()
+            }
             Message::View(view::ViewMessage::Confirm) => {
                 if let AppStatus::Connected { method, writer, .. } = &mut self.status {
                     match method {
-                        Some(Method::SignUnvaultTx { target, signed, .. }) => {
-                            self.signer.sign_psbt(&mut target.unvault_tx).unwrap();
-                            *signed = true;
-                            return Command::perform(
-                                server::respond(writer.clone(), json!(target)),
-                                server::ServerMessage::Responded,
-                            )
-                            .map(Message::Server);
-                        }
-                        Some(Method::SignSpendTx { target, signed, .. }) => {
-                            self.signer.sign_psbt(&mut target.spend_tx).unwrap();
-                            *signed = true;
-                            return Command::perform(
-                                server::respond(writer.clone(), json!(target)),
-                                server::ServerMessage::Responded,
-                            )
-                            .map(Message::Server);
-                        }
-                        Some(Method::SignRevocationTxs { target, signed, .. }) => {
-                            self.signer.sign_psbt(&mut target.emergency_tx).unwrap();
+                        Some(Method::SignUnvaultTx {
+                            target,
+                            signed,
+                            keys,
+                            ..
+                        }) => {
+                            let selected_keys = keys
+                                .iter()
+                                .filter_map(|k| if k.selected { Some(k.xpriv) } else { None })
+                                .collect();
                             self.signer
-                                .sign_psbt(&mut target.emergency_unvault_tx)
+                                .sign_psbt(&selected_keys, &mut target.unvault_tx)
                                 .unwrap();
-                            self.signer.sign_psbt(&mut target.cancel_tx).unwrap();
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
@@ -143,68 +151,103 @@ impl Application for App {
                             )
                             .map(Message::Server);
                         }
-                        Some(Method::SecureBatch { target, signed, .. }) => {
-                            let mut response = Vec::new();
-                            for deposit in target.deposits.iter().clone() {
-                                let mut revocation_txs = self
-                                    .signer
-                                    .derive_revocation_txs(
-                                        deposit.outpoint,
-                                        deposit.amount,
-                                        deposit.derivation_index,
-                                    )
-                                    .unwrap();
-
-                                self.signer
-                                    .sign_psbt(&mut revocation_txs.emergency_tx)
-                                    .unwrap();
-
-                                self.signer
-                                    .sign_psbt(&mut revocation_txs.cancel_tx)
-                                    .unwrap();
-
-                                self.signer
-                                    .sign_psbt(&mut revocation_txs.emergency_unvault_tx)
-                                    .unwrap();
-
-                                response.push(api::RevocationTransactions {
-                                    cancel_tx: revocation_txs.cancel_tx,
-                                    emergency_tx: revocation_txs.emergency_tx,
-                                    emergency_unvault_tx: revocation_txs.emergency_unvault_tx,
-                                });
-                            }
+                        Some(Method::SignSpendTx {
+                            target,
+                            signed,
+                            keys,
+                            ..
+                        }) => {
+                            let selected_keys = keys
+                                .iter()
+                                .filter_map(|k| if k.selected { Some(k.xpriv) } else { None })
+                                .collect();
+                            self.signer
+                                .sign_psbt(&selected_keys, &mut target.spend_tx)
+                                .unwrap();
                             *signed = true;
                             return Command::perform(
-                                server::respond(
-                                    writer.clone(),
-                                    json!({ "transactions": response }),
-                                ),
+                                server::respond(writer.clone(), json!(target)),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
                         }
-                        Some(Method::DelegateBatch { target, signed, .. }) => {
-                            let mut response = Vec::new();
-                            for deposit in target.vaults.iter().clone() {
-                                let mut unvault_tx = self
-                                    .signer
-                                    .derive_unvault_tx(
-                                        deposit.outpoint,
-                                        deposit.amount,
-                                        deposit.derivation_index,
-                                    )
+                        Some(Method::SignRevocationTxs {
+                            target,
+                            signed,
+                            keys,
+                            ..
+                        }) => {
+                            let selected_keys = keys
+                                .iter()
+                                .filter_map(|k| if k.selected { Some(k.xpriv) } else { None })
+                                .collect();
+                            self.signer
+                                .sign_psbt(&selected_keys, &mut target.emergency_tx)
+                                .unwrap();
+                            self.signer
+                                .sign_psbt(&selected_keys, &mut target.emergency_unvault_tx)
+                                .unwrap();
+                            self.signer
+                                .sign_psbt(&selected_keys, &mut target.cancel_tx)
+                                .unwrap();
+                            *signed = true;
+                            return Command::perform(
+                                server::respond(writer.clone(), json!(target)),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
+                        Some(Method::SecureBatch {
+                            target,
+                            signed,
+                            keys,
+                            ..
+                        }) => {
+                            let selected_keys = keys
+                                .iter()
+                                .filter_map(|k| if k.selected { Some(k.xpriv) } else { None })
+                                .collect();
+                            for revocation_txs in target.iter_mut() {
+                                self.signer
+                                    .sign_psbt(&selected_keys, &mut revocation_txs.emergency_tx)
                                     .unwrap();
 
-                                self.signer.sign_psbt(&mut unvault_tx).unwrap();
+                                self.signer
+                                    .sign_psbt(&selected_keys, &mut revocation_txs.cancel_tx)
+                                    .unwrap();
 
-                                response.push(api::UnvaultTransaction { unvault_tx });
+                                self.signer
+                                    .sign_psbt(
+                                        &selected_keys,
+                                        &mut revocation_txs.emergency_unvault_tx,
+                                    )
+                                    .unwrap();
                             }
                             *signed = true;
                             return Command::perform(
-                                server::respond(
-                                    writer.clone(),
-                                    json!({ "transactions": response }),
-                                ),
+                                server::respond(writer.clone(), json!({ "transactions": target })),
+                                server::ServerMessage::Responded,
+                            )
+                            .map(Message::Server);
+                        }
+                        Some(Method::DelegateBatch {
+                            target,
+                            signed,
+                            keys,
+                            ..
+                        }) => {
+                            let selected_keys = keys
+                                .iter()
+                                .filter_map(|k| if k.selected { Some(k.xpriv) } else { None })
+                                .collect();
+                            for tx in target.iter_mut() {
+                                self.signer
+                                    .sign_psbt(&selected_keys, &mut tx.unvault_tx)
+                                    .unwrap();
+                            }
+                            *signed = true;
+                            return Command::perform(
+                                server::respond(writer.clone(), json!({ "transactions": target })),
                                 server::ServerMessage::Responded,
                             )
                             .map(Message::Server);
@@ -244,106 +287,317 @@ impl Application for App {
     }
 }
 
+pub struct Key {
+    name: String,
+    xpriv: ExtendedPrivKey,
+    selected: bool,
+}
+
+impl Key {
+    pub fn new(name: String, xpriv: ExtendedPrivKey) -> Self {
+        Key {
+            name,
+            xpriv,
+            selected: false,
+        }
+    }
+
+    pub fn render(&self) -> Element<view::KeyMessage> {
+        if self.name != "" {
+            view::key_view(&self.name, self.selected)
+        } else {
+            view::key_view(&self.xpriv.to_string(), self.selected)
+        }
+    }
+}
+
 pub enum Method {
     SignSpendTx {
+        keys: Vec<Key>,
         target: api::SpendTransaction,
         signed: bool,
         view: view::SignSpendTxView,
     },
     SignUnvaultTx {
+        keys: Vec<Key>,
         target: api::UnvaultTransaction,
         signed: bool,
         view: view::SignUnvaultTxView,
     },
     SignRevocationTxs {
+        keys: Vec<Key>,
         target: api::RevocationTransactions,
         signed: bool,
         view: view::SignRevocationTxsView,
     },
     SecureBatch {
-        target: api::SecureBatch,
+        keys: Vec<Key>,
+        target: Vec<api::RevocationTransactions>,
+        total_amount: u64,
         signed: bool,
         view: view::SecureBatchView,
     },
     DelegateBatch {
-        target: api::DelegateBatch,
+        keys: Vec<Key>,
+        target: Vec<api::UnvaultTransaction>,
+        total_amount: u64,
         signed: bool,
         view: view::DelegateBatchView,
     },
 }
 
 impl Method {
-    pub fn new(request: api::Request) -> Method {
+    pub fn new(
+        config_keys: &Vec<config::Key>,
+        signer: &sign::Signer,
+        request: api::Request,
+    ) -> Method {
         match request {
-            api::Request::SpendTransaction(target) => Method::SignSpendTx {
-                target,
-                signed: false,
-                view: view::SignSpendTxView::new(),
-            },
-            api::Request::UnvaultTransaction(target) => Method::SignUnvaultTx {
-                target,
-                signed: false,
-                view: view::SignUnvaultTxView::new(),
-            },
-            api::Request::RevocationTransactions(target) => Method::SignRevocationTxs {
-                target,
-                signed: false,
-                view: view::SignRevocationTxsView::new(),
-            },
-            api::Request::SecureBatch(target) => Method::SecureBatch {
-                target,
-                signed: false,
-                view: view::SecureBatchView::new(),
-            },
-            api::Request::DelegateBatch(target) => Method::DelegateBatch {
-                target,
-                signed: false,
-                view: view::DelegateBatchView::new(),
-            },
+            api::Request::SpendTransaction(target) => {
+                let mut keys: Vec<Key> = config_keys
+                    .iter()
+                    .filter_map(|key| {
+                        if signer.requires_key_for_psbt(&key.xpriv, &target.spend_tx) {
+                            Some(Key::new(key.name.clone(), key.xpriv))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                // if there is only one key, then it is automatically selected
+                if keys.len() == 1 {
+                    keys[0].selected = true;
+                }
+
+                Method::SignSpendTx {
+                    keys,
+                    target,
+                    signed: false,
+                    view: view::SignSpendTxView::new(),
+                }
+            }
+            api::Request::UnvaultTransaction(target) => {
+                let mut keys: Vec<Key> = config_keys
+                    .iter()
+                    .filter_map(|key| {
+                        if signer.requires_key_for_psbt(&key.xpriv, &target.unvault_tx) {
+                            Some(Key::new(key.name.clone(), key.xpriv))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                // if there is only one key, then it is automatically selected
+                if keys.len() == 1 {
+                    keys[0].selected = true;
+                }
+
+                Method::SignUnvaultTx {
+                    keys,
+                    target,
+                    signed: false,
+                    view: view::SignUnvaultTxView::new(),
+                }
+            }
+            api::Request::RevocationTransactions(target) => {
+                let mut keys: Vec<Key> = config_keys
+                    .iter()
+                    .filter_map(|key| {
+                        if signer.requires_key_for_psbt(&key.xpriv, &target.emergency_tx) {
+                            Some(Key::new(key.name.clone(), key.xpriv))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                // if there is only one key, then it is automatically selected
+                if keys.len() == 1 {
+                    keys[0].selected = true;
+                }
+
+                Method::SignRevocationTxs {
+                    keys,
+                    target,
+                    signed: false,
+                    view: view::SignRevocationTxsView::new(),
+                }
+            }
+            api::Request::SecureBatch(target) => {
+                let total_amount = target
+                    .deposits
+                    .iter()
+                    .map(|deposit| deposit.amount.as_sat())
+                    .sum::<u64>();
+
+                let target: Vec<api::RevocationTransactions> = target
+                    .deposits
+                    .into_iter()
+                    .map(|deposit| {
+                        let txs = signer
+                            .derive_revocation_txs(
+                                deposit.outpoint,
+                                deposit.amount,
+                                deposit.derivation_index,
+                            )
+                            .unwrap();
+                        api::RevocationTransactions {
+                            cancel_tx: txs.cancel_tx,
+                            emergency_unvault_tx: txs.emergency_unvault_tx,
+                            emergency_tx: txs.emergency_tx,
+                        }
+                    })
+                    .collect();
+
+                let mut keys: Vec<Key> = config_keys
+                    .iter()
+                    .filter_map(|key| {
+                        if signer.requires_key_for_psbt(&key.xpriv, &target[0].emergency_tx) {
+                            Some(Key::new(key.name.clone(), key.xpriv))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                // if there is only one key, then it is automatically selected
+                if keys.len() == 1 {
+                    keys[0].selected = true;
+                }
+
+                Method::SecureBatch {
+                    total_amount,
+                    keys,
+                    target,
+                    signed: false,
+                    view: view::SecureBatchView::new(),
+                }
+            }
+            api::Request::DelegateBatch(target) => {
+                let total_amount = target
+                    .vaults
+                    .iter()
+                    .map(|vault| vault.amount.as_sat())
+                    .sum::<u64>();
+
+                let target: Vec<api::UnvaultTransaction> = target
+                    .vaults
+                    .into_iter()
+                    .map(|deposit| {
+                        let tx = signer
+                            .derive_unvault_tx(
+                                deposit.outpoint,
+                                deposit.amount,
+                                deposit.derivation_index,
+                            )
+                            .unwrap();
+                        api::UnvaultTransaction { unvault_tx: tx }
+                    })
+                    .collect();
+
+                let mut keys: Vec<Key> = config_keys
+                    .iter()
+                    .filter_map(|key| {
+                        if signer.requires_key_for_psbt(&key.xpriv, &target[0].unvault_tx) {
+                            Some(Key::new(key.name.clone(), key.xpriv))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                // if there is only one key, then it is automatically selected
+                if keys.len() == 1 {
+                    keys[0].selected = true;
+                }
+
+                Method::DelegateBatch {
+                    total_amount,
+                    keys,
+                    target,
+                    signed: false,
+                    view: view::DelegateBatchView::new(),
+                }
+            }
         }
     }
+
     pub fn render(&mut self) -> Element<view::ViewMessage> {
         match self {
             Self::SignSpendTx {
                 view,
                 target,
                 signed,
-            } => view.render(&target, *signed),
+                keys,
+            } => view.render(
+                &target,
+                *signed,
+                keys.iter()
+                    .enumerate()
+                    .map(|(i, key)| key.render().map(move |msg| view::ViewMessage::Key(i, msg)))
+                    .collect(),
+                keys.iter().any(|key| key.selected),
+            ),
             Self::SignUnvaultTx {
                 view,
                 target,
                 signed,
-            } => view.render(&target, *signed),
+                keys,
+            } => view.render(
+                &target,
+                *signed,
+                keys.iter()
+                    .enumerate()
+                    .map(|(i, key)| key.render().map(move |msg| view::ViewMessage::Key(i, msg)))
+                    .collect(),
+                keys.iter().any(|key| key.selected),
+            ),
             Self::SignRevocationTxs {
                 view,
                 target,
                 signed,
-            } => view.render(&target, *signed),
+                keys,
+            } => view.render(
+                &target,
+                *signed,
+                keys.iter()
+                    .enumerate()
+                    .map(|(i, key)| key.render().map(move |msg| view::ViewMessage::Key(i, msg)))
+                    .collect(),
+                keys.iter().any(|key| key.selected),
+            ),
             Self::SecureBatch {
                 view,
+                total_amount,
                 target,
                 signed,
+                keys,
             } => view.render(
-                target
-                    .deposits
-                    .iter()
-                    .map(|deposit| deposit.amount.as_sat())
-                    .sum::<u64>(),
-                target.deposits.len(),
+                *total_amount,
+                target.len(),
                 *signed,
+                keys.iter()
+                    .enumerate()
+                    .map(|(i, key)| key.render().map(move |msg| view::ViewMessage::Key(i, msg)))
+                    .collect(),
+                keys.iter().any(|key| key.selected),
             ),
             Self::DelegateBatch {
+                total_amount,
                 view,
                 target,
                 signed,
+                keys,
             } => view.render(
-                target
-                    .vaults
-                    .iter()
-                    .map(|vault| vault.amount.as_sat())
-                    .sum::<u64>(),
-                target.vaults.len(),
+                *total_amount,
+                target.len(),
                 *signed,
+                keys.iter()
+                    .enumerate()
+                    .map(|(i, key)| key.render().map(move |msg| view::ViewMessage::Key(i, msg)))
+                    .collect(),
+                keys.iter().any(|key| key.selected),
             ),
         }
     }

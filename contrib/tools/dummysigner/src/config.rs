@@ -10,10 +10,16 @@ use revault_tx::{
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    #[serde(deserialize_with = "deserialize_vecfromstr")]
-    pub keys: Vec<ExtendedPrivKey>,
+    pub keys: Vec<Key>,
     pub descriptors: Option<Descriptors>,
     pub emergency_address: Option<EmergencyAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Key {
+    pub name: String,
+    #[serde(deserialize_with = "deserialize_fromstr")]
+    pub xpriv: ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,9 +33,15 @@ pub struct Descriptors {
 }
 
 impl Config {
-    pub fn new(keys: Vec<ExtendedPrivKey>) -> Self {
+    pub fn new(xprivs: Vec<ExtendedPrivKey>) -> Self {
         Self {
-            keys,
+            keys: xprivs
+                .into_iter()
+                .map(|xpriv| Key {
+                    name: "".to_string(),
+                    xpriv,
+                })
+                .collect(),
             descriptors: None,
             emergency_address: None,
         }
@@ -72,20 +84,4 @@ where
     let string = String::deserialize(deserializer)?;
     T::from_str(&string)
         .map_err(|e| de::Error::custom(format!("Error parsing descriptor '{}': '{}'", string, e)))
-}
-
-fn deserialize_vecfromstr<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: FromStr,
-    <T as FromStr>::Err: std::fmt::Display,
-{
-    let array: Vec<String> = Vec::deserialize(deserializer)?;
-    let mut result: Vec<T> = Vec::new();
-    for item in array {
-        let res = T::from_str(&item)
-            .map_err(|e| de::Error::custom(format!("Error parsing '{}': '{}'", item, e)))?;
-        result.push(res);
-    }
-    Ok(result)
 }
