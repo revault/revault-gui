@@ -5,7 +5,7 @@ use bitcoin::util::bip32::ExtendedPubKey;
 use iced::Element;
 use revaultd::revault_tx::{
     miniscript::DescriptorPublicKey,
-    scripts::{DepositDescriptor, UnvaultDescriptor},
+    scripts::{DepositDescriptor, EmergencyAddress, UnvaultDescriptor},
 };
 
 use revault_ui::component::form;
@@ -413,13 +413,18 @@ impl Step for DefineEmergencyAddress {
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
         match bitcoin::Address::from_str(&self.address.value) {
             Ok(address) => {
+                if EmergencyAddress::from(address.clone()).is_err() {
+                    self.warning = Some("address is not a v0 P2WSH".to_string());
+                    return false;
+                }
+
                 // All good, signet addresses have the testnet type
                 if address.network == bitcoin::Network::Testnet
                     && config.bitcoind_config.network == bitcoin::Network::Signet
                 {
                 } else if address.network != config.bitcoind_config.network {
                     self.warning = Some(format!(
-                        "address is not not usable with the specified bitcoind network: {}",
+                        "address is not usable with the specified bitcoind network: {}",
                         config.bitcoind_config.network
                     ));
                     return false;
