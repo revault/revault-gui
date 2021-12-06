@@ -13,7 +13,7 @@ mod vaults;
 mod warning;
 
 pub use deposit::DepositView;
-pub use emergency::EmergencyView;
+pub use emergency::{EmergencyTriggeredView, EmergencyView};
 pub use home::{ManagerHomeView, StakeholderHomeView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};

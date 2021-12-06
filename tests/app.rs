@@ -100,6 +100,10 @@ async fn test_emergency_state() {
                 VaultStatus::Activating,
                 VaultStatus::Unvaulting,
                 VaultStatus::Unvaulted,
+                VaultStatus::EmergencyVaulting,
+                VaultStatus::EmergencyVaulted,
+                VaultStatus::UnvaultEmergencyVaulting,
+                VaultStatus::UnvaultEmergencyVaulted,
             ]])}),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
@@ -169,8 +173,5 @@ async fn test_emergency_state() {
     }
 
     let sandbox = sandbox.update(&ctx, Message::Emergency).await;
-    assert!(matches!(sandbox.state(), EmergencyState::Loaded { .. }));
-    if let EmergencyState::Loaded { success, .. } = sandbox.state() {
-        assert!(*success);
-    }
+    assert!(matches!(sandbox.state(), EmergencyState::Triggered { .. }));
 }
