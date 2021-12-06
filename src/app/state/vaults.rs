@@ -1,6 +1,6 @@
 use std::convert::From;
 
-use iced::{Command, Element, Subscription};
+use iced::{Command, Element};
 
 use super::{
     cmd::list_vaults,
@@ -134,15 +134,6 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
             _ => {}
         };
         Command::none()
-    }
-
-    fn subscription(&self) -> Subscription<Message> {
-        if let Self::Loaded { selected_vault, .. } = self {
-            if let Some(v) = selected_vault {
-                return v.subscription().map(Message::Vault);
-            }
-        }
-        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context<C>) -> Element<Message> {

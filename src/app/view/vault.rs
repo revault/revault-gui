@@ -6,7 +6,7 @@ use revault_ui::component::{badge, button, card, separation, text::Text};
 use crate::app::{
     context::Context,
     error::Error,
-    message::{Message, SignMessage, VaultMessage},
+    message::{Message, VaultMessage},
     view::{layout, warning::warn},
 };
 
@@ -148,28 +148,6 @@ impl VaultOnChainTransactionsPanel {
         let mut col = Column::new().spacing(20);
         if ctx.role == Role::Stakeholder {
             match vault.status {
-                VaultStatus::Secured => {
-                    col = col.push(card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Container::new(Text::new(
-                                    "Do you want to delegate the vault to the manager team? ",
-                                ))
-                                .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    button::important(
-                                        &mut self.action_button,
-                                        button::button_content(None, "Delegate vault"),
-                                    )
-                                    .on_press(Message::Vault(VaultMessage::SelectDelegate)),
-                                )
-                                .width(Length::Shrink),
-                            )
-                            .align_items(Align::Center),
-                    )))
-                }
                 VaultStatus::Unvaulted | VaultStatus::Unvaulting => {
                     col = col.push(card::white(Container::new(
                         Row::new()
@@ -518,103 +496,84 @@ pub struct DelegateVaultListItemView {
     delegate_button: iced::button::State,
 }
 
-impl VaultView for DelegateVaultListItemView {
-    fn new() -> Self {
+impl DelegateVaultListItemView {
+    pub fn new() -> Self {
         DelegateVaultListItemView {
             select_button: iced::button::State::new(),
             delegate_button: iced::button::State::new(),
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
-        vault_delegate(&mut self.select_button, ctx, vault)
-    }
-}
-
-fn vault_delegate<'a, C: Client>(
-    state: &'a mut iced::button::State,
-    ctx: &Context<C>,
-    deposit: &Vault,
-) -> Element<'a, Message> {
-    Container::new(
-        button::white_card_button(
-            state,
-            Container::new(
-                Row::new()
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(badge::person_check())
-                                .push(
-                                    Container::new(Text::new(&deposit.address).small().bold())
+    pub fn view<C: Client>(
+        &mut self,
+        ctx: &Context<C>,
+        vault: &Vault,
+        selected: bool,
+    ) -> iced::Element<Message> {
+        Container::new(
+            button::white_card_button(
+                &mut self.select_button,
+                Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(
+                                Row::new()
+                                    .push(if selected {
+                                        badge::person_check_success()
+                                    } else {
+                                        badge::person_check()
+                                    })
+                                    .push(
+                                        Container::new(if selected {
+                                            Text::new(&vault.outpoint()).small().bold().success()
+                                        } else {
+                                            Text::new(&vault.outpoint()).small().bold()
+                                        })
                                         .align_y(Align::Center),
-                                )
-                                .spacing(20)
-                                .align_items(Align::Center),
+                                    )
+                                    .spacing(20)
+                                    .align_items(Align::Center),
+                            )
+                            .width(Length::Fill),
                         )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            Row::new()
-                                .push(
-                                    Text::new(&format!(
-                                        "{}",
-                                        ctx.converter.converts(deposit.amount),
-                                    ))
-                                    .bold(),
-                                )
-                                .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                .align_items(Align::Center),
+                        .push(
+                            Container::new(if selected {
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(vault.amount),
+                                        ))
+                                        .bold()
+                                        .success(),
+                                    )
+                                    .push(
+                                        Text::new(&format!(" {}", ctx.converter.unit))
+                                            .small()
+                                            .success(),
+                                    )
+                                    .align_items(Align::Center)
+                            } else {
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "{}",
+                                            ctx.converter.converts(vault.amount),
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
+                                    .align_items(Align::Center)
+                            })
+                            .width(Length::Shrink),
                         )
-                        .width(Length::Shrink),
-                    )
-                    .spacing(20)
-                    .align_items(Align::Center),
-            ),
+                        .spacing(20)
+                        .align_items(Align::Center),
+                ),
+            )
+            .on_press(Message::SelectVault(vault.outpoint())),
         )
-        .on_press(Message::DelegateVault(deposit.outpoint())),
-    )
-    .into()
-}
-
-#[derive(Debug, Clone)]
-pub struct DelegateVaultView {
-    back_button: iced::button::State,
-}
-
-impl DelegateVaultView {
-    pub fn new() -> Self {
-        Self {
-            back_button: iced::button::State::new(),
-        }
-    }
-
-    pub fn view<'a, C: Client>(
-        &'a mut self,
-        _ctx: &Context<C>,
-        _vault: &Vault,
-        warning: Option<&Error>,
-        signer: Element<'a, SignMessage>,
-    ) -> Element<'a, Message> {
-        Column::new().push(button::transparent(
-                &mut self.back_button,
-                Container::new(Text::new("< vault transactions").small()),
-            ).on_press(Message::Vault(VaultMessage::ListOnchainTransaction)))
-            .push(card::white(Container::new(
-                Column::new()
-                    .push(warn(warning))
-                    .push(
-                        Column::new()
-                            .push(Text::new("Delegate vault to manager").bold())
-                            .push(Text::new("the unvault transaction must be signed in order to delegate the fund to the managers.")),
-                    )
-                    .push(signer.map(move |msg| match msg {
-                        _ => Message::Vault(VaultMessage::Delegate(msg)),
-                    }))
-                    .spacing(20),
-            )))
-            .into()
+        .into()
     }
 }
 

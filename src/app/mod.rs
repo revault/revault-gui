@@ -16,7 +16,7 @@ pub use message::Message;
 use menu::Menu;
 use state::{
     DepositState, EmergencyState, ManagerHomeState, ManagerSendState, SettingsState,
-    StakeholderCreateVaultsState, StakeholderDelegateFundsState, StakeholderHomeState, State,
+    StakeholderCreateVaultsState, StakeholderDelegateVaultsState, StakeholderHomeState, State,
     VaultsState,
 };
 
@@ -50,7 +50,7 @@ pub fn new_state<C: Client + Send + Sync + 'static>(
             Menu::Home => StakeholderHomeState::new().into(),
             Menu::Vaults => VaultsState::new().into(),
             Menu::CreateVaults => StakeholderCreateVaultsState::new().into(),
-            Menu::DelegateFunds => StakeholderDelegateFundsState::new().into(),
+            Menu::DelegateFunds => StakeholderDelegateVaultsState::new().into(),
             Menu::Settings => SettingsState::new(config.clone()).into(),
             Menu::Emergency => EmergencyState::new().into(),
             _ => unreachable!(),

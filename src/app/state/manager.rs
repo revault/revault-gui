@@ -253,9 +253,6 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if let Some(v) = &self.selected_vault {
-            return v.subscription().map(Message::Vault);
-        }
         if let Some(v) = &self.selected_spend_tx {
             return v.sub();
         }
