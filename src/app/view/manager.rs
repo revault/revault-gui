@@ -171,22 +171,27 @@ impl ManagerSelectOutputsView {
         valid: bool,
         no_duplicate: bool,
     ) -> Element<'a, Message> {
-        let header = Row::new()
-            .push(Column::new().width(Length::Fill))
-            .push(ProgressBar::spend_bar().draw(0))
+        let header = Column::new()
             .push(
-                Column::new()
+                Row::new()
+                    .push(Column::new().width(Length::Fill))
                     .push(
-                        button::close_button(&mut self.cancel_button)
-                            .on_press(Message::Menu(Menu::Home)),
+                        Column::new()
+                            .push(
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
+                            )
+                            .align_items(Align::End)
+                            .width(Length::Fill),
                     )
+                    .width(Length::Fill)
                     .align_items(Align::End)
-                    .width(Length::Fill),
+                    .padding(10)
+                    .spacing(10),
             )
-            .width(Length::Fill)
-            .align_items(Align::End)
-            .padding(10)
-            .spacing(10);
+            .push(ProgressBar::spend_bar().draw(0))
+            .align_items(Align::Center);
+
         let mut col_outputs = Column::new()
             .spacing(20)
             .width(Length::Fill)
@@ -239,24 +244,26 @@ impl ManagerSelectOutputsView {
             Column::new()
                 .push(header)
                 .push(
-                    Container::new(Text::new("Add recipients").bold())
-                        .width(Length::Fill)
-                        .align_x(Align::Center),
-                )
-                .push(
-                    scroll(
-                        &mut self.scroll,
-                        Container::new(
-                            Column::new()
-                                .push(
-                                    Container::new(element)
-                                        .width(Length::Fill)
-                                        .align_x(Align::Center),
-                                )
-                                .spacing(20),
-                        ),
-                    )
-                    .height(Length::FillPortion(4)),
+                    Column::new()
+                        .push(
+                            Container::new(Text::new("Add recipients").bold())
+                                .padding(20)
+                                .width(Length::Fill)
+                                .align_x(Align::Center),
+                        )
+                        .push(scroll(
+                            &mut self.scroll,
+                            Container::new(
+                                Column::new()
+                                    .push(
+                                        Container::new(element)
+                                            .width(Length::Fill)
+                                            .align_x(Align::Center),
+                                    )
+                                    .spacing(20),
+                            ),
+                        ))
+                        .height(Length::Fill),
                 )
                 .push(if no_duplicate {
                     Container::new(footer)
@@ -274,7 +281,8 @@ impl ManagerSelectOutputsView {
                             .push(footer),
                     )
                 })
-                .spacing(20),
+                .height(Length::Fill)
+                .spacing(30),
         )
         .style(ContainerBackgroundStyle)
         .padding(20)
@@ -370,46 +378,38 @@ impl ManagerSelectInputsView {
         output_amount: u64,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        let header = Row::new()
+        let header = Column::new()
             .push(
-                Column::new()
+                Row::new()
                     .push(
-                        button::transparent(
-                            &mut self.back_button,
-                            Container::new(Text::new("< Go back"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Previous),
+                        Column::new()
+                            .push(
+                                button::transparent(
+                                    &mut self.back_button,
+                                    Container::new(Text::new("< Go back"))
+                                        .padding(10)
+                                        .align_x(Align::Center),
+                                )
+                                .on_press(Message::Previous),
+                            )
+                            .width(Length::Fill),
                     )
-                    .width(Length::Fill),
+                    .push(
+                        Column::new()
+                            .push(
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
+                            )
+                            .align_items(Align::End)
+                            .width(Length::Fill),
+                    )
+                    .width(Length::Fill)
+                    .align_items(Align::End)
+                    .padding(10)
+                    .spacing(10),
             )
             .push(ProgressBar::spend_bar().draw(2))
-            .push(
-                Column::new()
-                    .push(
-                        button::close_button(&mut self.cancel_button)
-                            .on_press(Message::Menu(Menu::Home)),
-                    )
-                    .align_items(Align::End)
-                    .width(Length::Fill),
-            )
-            .width(Length::Fill)
-            .align_items(Align::End)
-            .padding(10)
-            .spacing(10);
-        let mut col_inputs = Column::new()
-            .spacing(20)
-            .width(Length::Fill)
             .align_items(Align::Center);
-        for (i, element) in inputs.into_iter().enumerate() {
-            if i > 0 {
-                col_inputs = col_inputs.push(separation().width(Length::Fill));
-            }
-            col_inputs = col_inputs.push(element);
-        }
-        let element: Element<_> = col_inputs.max_width(1000).into();
 
         let mut footer = Column::new().spacing(10).align_items(Align::Center);
         if let Some(error) = warning {
@@ -446,32 +446,40 @@ impl ManagerSelectInputsView {
             Column::new()
                 .push(header)
                 .push(
-                    Container::new(
-                        Text::new(&format!(
-                            "Select coins worth at least {} {}",
-                            &ctx.converter.converts(output_amount),
-                            ctx.converter.unit
-                        ))
-                        .bold(),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                )
-                .push(
-                    scroll(
-                        &mut self.scroll,
-                        Container::new(
-                            Column::new()
-                                .push(
-                                    Container::new(element)
+                    Column::new()
+                        .push(
+                            Container::new(
+                                Text::new(&format!(
+                                    "Select coins worth at least {} {}",
+                                    &ctx.converter.converts(output_amount),
+                                    ctx.converter.unit
+                                ))
+                                .bold(),
+                            )
+                            .padding(20)
+                            .width(Length::Fill)
+                            .align_x(Align::Center),
+                        )
+                        .push(scroll(
+                            &mut self.scroll,
+                            Container::new(
+                                Column::new()
+                                    .push(
+                                        Container::new(
+                                            Column::with_children(inputs)
+                                                .spacing(20)
+                                                .max_width(1000)
+                                                .width(Length::Fill)
+                                                .align_items(Align::Center),
+                                        )
                                         .width(Length::Fill)
                                         .align_x(Align::Center),
-                                )
-                                .align_items(Align::Center)
-                                .spacing(20),
-                        ),
-                    )
-                    .height(Length::FillPortion(4)),
+                                    )
+                                    .align_items(Align::Center)
+                                    .spacing(20),
+                            ),
+                        ))
+                        .height(Length::Fill),
                 )
                 .push(
                     Column::new()
@@ -479,7 +487,8 @@ impl ManagerSelectInputsView {
                         .width(Length::Fill)
                         .align_items(Align::Center),
                 )
-                .spacing(20),
+                .height(Length::Fill)
+                .spacing(30),
         )
         .style(ContainerBackgroundStyle)
         .padding(20)
@@ -521,9 +530,7 @@ pub fn manager_send_input_view<'a, C: Client>(
 pub struct ManagerSelectFeeView {
     scroll: scrollable::State,
     cancel_button: iced::button::State,
-    next_button: iced::button::State,
     back_button: iced::button::State,
-    slider: iced::slider::State,
     generate_button: iced::button::State,
     feerate_input: iced::text_input::State,
 }
@@ -532,10 +539,8 @@ impl ManagerSelectFeeView {
     pub fn new() -> Self {
         ManagerSelectFeeView {
             cancel_button: iced::button::State::new(),
-            next_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
-            slider: iced::slider::State::new(),
             generate_button: iced::button::State::new(),
             feerate_input: iced::text_input::State::new(),
         }
@@ -547,35 +552,43 @@ impl ManagerSelectFeeView {
         valid_feerate: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        let header = Row::new()
+        let header = Column::new()
             .push(
-                Column::new()
+                Row::new()
                     .push(
-                        button::transparent(
-                            &mut self.back_button,
-                            Container::new(Text::new("< Go back"))
-                                .padding(10)
-                                .width(Length::Units(100))
-                                .align_x(Align::Center),
-                        )
-                        .on_press(Message::Previous),
+                        Column::new()
+                            .push(
+                                button::transparent(
+                                    &mut self.back_button,
+                                    Container::new(Text::new("< Go back"))
+                                        .padding(10)
+                                        .width(Length::Fill)
+                                        .align_x(Align::Center),
+                                )
+                                .on_press(Message::Previous),
+                            )
+                            .width(Length::Fill),
                     )
-                    .width(Length::Fill),
-            )
-            .push(ProgressBar::spend_bar().draw(1))
-            .push(
-                Column::new()
-                    .push(Container::new(
-                        button::close_button(&mut self.cancel_button)
-                            .on_press(Message::Menu(Menu::Home)),
-                    ))
+                    .push(
+                        Column::new()
+                            .push(Container::new(
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
+                            ))
+                            .width(Length::Shrink)
+                            .align_items(Align::End),
+                    )
                     .width(Length::Fill)
-                    .align_items(Align::End),
+                    .padding(10)
+                    .spacing(10),
             )
-            .width(Length::Fill)
-            .align_items(Align::End)
-            .padding(10)
-            .spacing(10);
+            .push(
+                Container::new(ProgressBar::spend_bar().draw(1))
+                    .width(Length::Fill)
+                    .align_x(Align::Center),
+            )
+            .align_items(Align::Center);
+
         let fee_button = if valid_feerate {
             button::primary(
                 &mut self.generate_button,
@@ -597,32 +610,34 @@ impl ManagerSelectFeeView {
 
         let mut col_fee = Column::new()
             .push(
-                Container::new(Text::new("Select fee").bold())
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .push(
-                Container::new(
-                    Row::new()
-                        .push(
-                            TextInput::new(
-                                &mut self.feerate_input,
-                                "",
-                                &feerate
-                                    .map(|f| f.to_string())
-                                    .unwrap_or_else(|| "".to_string()),
-                                |f| Message::SpendTx(SpendTxMessage::FeerateEdited(f)),
+                Column::new()
+                    .push(
+                        Container::new(Text::new("Select fee").bold())
+                            .padding(20)
+                            .width(Length::Fill)
+                            .align_x(Align::Center),
+                    )
+                    .push(
+                        Row::new()
+                            .push(
+                                TextInput::new(
+                                    &mut self.feerate_input,
+                                    "",
+                                    &feerate
+                                        .map(|f| f.to_string())
+                                        .unwrap_or_else(|| "".to_string()),
+                                    |f| Message::SpendTx(SpendTxMessage::FeerateEdited(f)),
+                                )
+                                .width(Length::Units(70))
+                                .padding(10),
                             )
-                            .width(Length::Units(70))
-                            .padding(10),
-                        )
-                        .push(Text::new("sats/vbyte"))
-                        .spacing(5)
-                        .align_items(Align::Center),
-                )
-                .height(Length::Fill),
+                            .push(Text::new("sats/vbyte"))
+                            .spacing(5)
+                            .align_items(Align::Center),
+                    )
+                    .align_items(Align::Center),
             )
-            .spacing(20)
+            .height(Length::Fill)
             .align_items(Align::Center);
 
         if let Some(error) = warning {
@@ -631,25 +646,21 @@ impl ManagerSelectFeeView {
             )));
         }
 
-        col_fee = col_fee.push(fee_button);
-
         let col = Column::new()
             .push(header)
             .push(
-                Container::new(
-                    Column::new()
-                        .push(col_fee)
-                        .align_items(Align::Center)
-                        .max_width(1000),
-                )
-                .align_x(Align::Center),
+                Column::new()
+                    .push(col_fee)
+                    .push(fee_button)
+                    .align_items(Align::Center)
+                    .max_width(1000),
             )
             .align_items(Align::Center)
-            .spacing(20)
-            .padding(20);
+            .spacing(30);
 
         Container::new(col)
             .style(ContainerBackgroundStyle)
+            .padding(20)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
@@ -815,17 +826,17 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
 }
 
 #[derive(Debug)]
-pub struct ManagerSignView {
+pub struct ManagerStepSignView {
     modal: layout::Modal,
-    next_button: iced::button::State,
+    cancel_button: iced::button::State,
     back_button: iced::button::State,
 }
 
-impl ManagerSignView {
+impl ManagerStepSignView {
     pub fn new() -> Self {
-        ManagerSignView {
+        ManagerStepSignView {
             modal: layout::Modal::new(),
-            next_button: iced::button::State::new(),
+            cancel_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
         }
     }
@@ -841,28 +852,90 @@ impl ManagerSignView {
         warning: Option<&Error>,
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
-        let col = Column::new()
+        let header = Column::new()
+            .push(
+                Row::new()
+                    .push(
+                        Column::new()
+                            .push(
+                                button::transparent(
+                                    &mut self.back_button,
+                                    Container::new(Text::new("< Go back"))
+                                        .padding(10)
+                                        .align_x(Align::Center),
+                                )
+                                .on_press(Message::Previous),
+                            )
+                            .width(Length::Fill),
+                    )
+                    .push(
+                        Column::new()
+                            .push(
+                                button::close_button(&mut self.cancel_button)
+                                    .on_press(Message::Menu(Menu::Home)),
+                            )
+                            .align_items(Align::End)
+                            .width(Length::Fill),
+                    )
+                    .width(Length::Fill)
+                    .align_items(Align::End)
+                    .padding(10)
+                    .spacing(10),
+            )
+            .push(ProgressBar::spend_bar().draw(3))
+            .align_items(Align::Center);
+
+        let mut col = Column::new()
             .push(
                 Container::new(Text::new("Sign transaction").bold())
                     .width(Length::Fill)
-                    .align_x(Align::Center),
-            )
-            .push(spend_tx_with_feerate_view(
-                ctx,
-                inputs,
-                psbt,
-                change_index,
-                cpfp_index,
-                Some(feerate),
-            ))
-            .push(
-                card::white(Container::new(signer))
                     .align_x(Align::Center)
-                    .width(Length::Fill),
+                    .padding(20),
             )
-            .spacing(20);
-        self.modal
-            .view(ctx, warning, col, None, Message::Menu(Menu::Home))
+            .push(
+                Column::new()
+                    .push(spend_tx_with_feerate_view(
+                        ctx,
+                        inputs,
+                        psbt,
+                        change_index,
+                        cpfp_index,
+                        Some(feerate),
+                    ))
+                    .push(
+                        card::white(Container::new(signer))
+                            .align_x(Align::Center)
+                            .width(Length::Fill),
+                    )
+                    .spacing(20),
+            );
+
+        if let Some(error) = warning {
+            col = col.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
+        }
+
+        Container::new(
+            Column::new()
+                .push(header)
+                .push(
+                    Container::new(
+                        Column::new()
+                            .push(col)
+                            .align_items(Align::Center)
+                            .max_width(1000),
+                    )
+                    .align_x(Align::Center),
+                )
+                .align_items(Align::Center)
+                .spacing(30)
+                .padding(20),
+        )
+        .style(ContainerBackgroundStyle)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 }
 
