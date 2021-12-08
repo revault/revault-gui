@@ -249,6 +249,10 @@ impl Application for GUI {
             State::Loader(v) => v.view().map(Message::Load),
         }
     }
+
+    fn scale_factor(&self) -> f64 {
+        1.0
+    }
 }
 
 pub enum Config {
