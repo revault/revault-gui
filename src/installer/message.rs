@@ -13,6 +13,7 @@ pub enum Message {
     Installed(Result<PathBuf, Error>),
     Role(&'static [Role]),
     PrivateNoiseKey(String),
+    Network(bitcoin::Network),
     DefineStakeholderXpubs(DefineStakeholderXpubs),
     DefineManagerXpubs(DefineManagerXpubs),
     DefineCpfpDescriptor(DefineCpfpDescriptor),
@@ -25,7 +26,6 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum DefineBitcoind {
-    NetworkEdited(bitcoin::Network),
     CookiePathEdited(String),
     AddressEdited(String),
 }

@@ -16,73 +16,121 @@ use crate::{
     revault::Role,
 };
 
-pub fn welcome(install_button: &mut Button) -> Element<Message> {
-    Container::new(Container::new(
-        Column::new()
-            .push(Container::new(
-                revault_colored_logo()
-                    .width(Length::Units(400))
-                    .height(Length::Fill),
-            ))
-            .push(
-                button::primary(install_button, button::button_content(None, "Install"))
-                    .on_press(Message::Next)
-                    .min_width(200),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center),
-    ))
-    .center_y()
-    .center_x()
-    .height(Length::Fill)
-    .width(Length::Fill)
-    .into()
+const NETWORKS: [bitcoin::Network; 4] = [
+    bitcoin::Network::Bitcoin,
+    bitcoin::Network::Testnet,
+    bitcoin::Network::Signet,
+    bitcoin::Network::Regtest,
+];
+
+pub struct Welcome {
+    network_input: pick_list::State<bitcoin::Network>,
+    install_button: Button,
 }
 
-pub fn define_role<'a>(
-    stakeholder_button: &'a mut Button,
-    manager_button: &'a mut Button,
-    stakeholder_manager_button: &'a mut Button,
-    scroll: &'a mut scrollable::State,
-) -> Element<'a, Message> {
-    layout_center(
-        scroll,
-        Column::new()
-            .push(
-                Row::new()
-                    .push(
-                        button::white_card_button(
-                            stakeholder_button,
-                            button::button_content(None, "Stakeholder"),
-                        )
-                        .on_press(Message::Role(&Role::STAKEHOLDER_ONLY)),
+impl Welcome {
+    pub fn new() -> Self {
+        Self {
+            network_input: pick_list::State::default(),
+            install_button: Button::default(),
+        }
+    }
+
+    pub fn render(&mut self, network: &bitcoin::Network) -> Element<Message> {
+        Container::new(Container::new(
+            Column::new()
+                .push(Container::new(
+                    revault_colored_logo()
+                        .width(Length::Units(400))
+                        .height(Length::Fill),
+                ))
+                .push(Container::new(
+                    pick_list::PickList::new(
+                        &mut self.network_input,
+                        &NETWORKS[..],
+                        Some(*network),
+                        message::Message::Network,
                     )
-                    .push(
-                        button::white_card_button(
-                            stakeholder_manager_button,
-                            button::button_content(None, "Stakeholder & Manager"),
-                        )
-                        .on_press(Message::Role(&Role::STAKEHOLDER_AND_MANAGER)),
+                    .padding(10),
+                ))
+                .push(
+                    button::primary(
+                        &mut self.install_button,
+                        button::button_content(None, "Install"),
                     )
-                    .push(
-                        button::white_card_button(
-                            manager_button,
-                            button::button_content(None, "Manager"),
+                    .on_press(Message::Next)
+                    .min_width(200),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center),
+        ))
+        .center_y()
+        .center_x()
+        .height(Length::Fill)
+        .width(Length::Fill)
+        .into()
+    }
+}
+
+pub struct DefineRole {
+    previous_button: Button,
+    manager_button: Button,
+    stakeholder_button: Button,
+    stakeholder_manager_button: Button,
+    scroll: scrollable::State,
+}
+
+impl DefineRole {
+    pub fn new() -> Self {
+        Self {
+            previous_button: Button::new(),
+            manager_button: Button::new(),
+            stakeholder_button: Button::new(),
+            stakeholder_manager_button: Button::new(),
+            scroll: scrollable::State::new(),
+        }
+    }
+    pub fn render(&mut self) -> Element<Message> {
+        layout(
+            &mut self.scroll,
+            &mut self.previous_button,
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(
+                            button::white_card_button(
+                                &mut self.stakeholder_button,
+                                button::button_content(None, "Stakeholder"),
+                            )
+                            .on_press(Message::Role(&Role::STAKEHOLDER_ONLY)),
                         )
-                        .on_press(Message::Role(&Role::MANAGER_ONLY)),
-                    )
-                    .spacing(20),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .spacing(50)
-            .align_items(Align::Center)
-            .into(),
-    )
+                        .push(
+                            button::white_card_button(
+                                &mut self.stakeholder_manager_button,
+                                button::button_content(None, "Stakeholder & Manager"),
+                            )
+                            .on_press(Message::Role(&Role::STAKEHOLDER_AND_MANAGER)),
+                        )
+                        .push(
+                            button::white_card_button(
+                                &mut self.manager_button,
+                                button::button_content(None, "Manager"),
+                            )
+                            .on_press(Message::Role(&Role::MANAGER_ONLY)),
+                        )
+                        .spacing(20),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .spacing(50)
+                .align_items(Align::Center)
+                .into(),
+        )
+    }
 }
 
 pub fn participant_xpub<'a>(
@@ -1056,15 +1104,8 @@ impl DefineCosigners {
         )
     }
 }
-const NETWORKS: [bitcoin::Network; 4] = [
-    bitcoin::Network::Bitcoin,
-    bitcoin::Network::Testnet,
-    bitcoin::Network::Signet,
-    bitcoin::Network::Regtest,
-];
 
 pub struct DefineBitcoind {
-    network_input: pick_list::State<bitcoin::Network>,
     address_input: text_input::State,
     cookie_path_input: text_input::State,
     scroll: scrollable::State,
@@ -1075,7 +1116,6 @@ pub struct DefineBitcoind {
 impl DefineBitcoind {
     pub fn new() -> Self {
         Self {
-            network_input: pick_list::State::default(),
             address_input: text_input::State::new(),
             cookie_path_input: text_input::State::new(),
             scroll: scrollable::State::new(),
@@ -1085,7 +1125,6 @@ impl DefineBitcoind {
     }
     pub fn render<'a>(
         &'a mut self,
-        network: &bitcoin::Network,
         address: &form::Value<String>,
         cookie_path: &form::Value<String>,
     ) -> Element<'a, Message> {
@@ -1127,15 +1166,6 @@ impl DefineBitcoind {
                         .bold()
                         .size(50),
                 )
-                .push(Container::new(
-                    pick_list::PickList::new(
-                        &mut self.network_input,
-                        &NETWORKS[..],
-                        Some(*network),
-                        |msg| Message::DefineBitcoind(message::DefineBitcoind::NetworkEdited(msg)),
-                    )
-                    .padding(10),
-                ))
                 .push(col_address)
                 .push(col_cookie)
                 .push(
@@ -1252,17 +1282,4 @@ fn layout<'a>(
     .height(Length::Fill)
     .width(Length::Fill)
     .into()
-}
-
-fn layout_center<'a>(
-    scroll_state: &'a mut scrollable::State,
-    content: Element<'a, Message>,
-) -> Element<'a, Message> {
-    Container::new(scroll(scroll_state, Container::new(content)))
-        .style(ContainerBackgroundStyle)
-        .center_y()
-        .center_x()
-        .height(Length::Fill)
-        .width(Length::Fill)
-        .into()
 }
