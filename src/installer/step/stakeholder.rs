@@ -15,7 +15,7 @@ use crate::{
     installer::{
         message::{self, Message},
         step::{
-            common::{CosignerKey, ParticipantXpub},
+            common::{CosignerKey, ParticipantXpub, RequiredXpub},
             Context, Step,
         },
         view,
@@ -24,7 +24,7 @@ use crate::{
 
 pub struct DefineStakeholderXpubs {
     other_xpubs: Vec<ParticipantXpub>,
-    our_xpub: form::Value<String>,
+    our_xpub: RequiredXpub,
     warning: Option<String>,
 
     view: view::DefineStakeholderXpubsAsStakeholder,
@@ -34,7 +34,7 @@ impl DefineStakeholderXpubs {
     pub fn new() -> Self {
         Self {
             warning: None,
-            our_xpub: form::Value::default(),
+            our_xpub: RequiredXpub::new(),
             other_xpubs: Vec::new(),
             view: view::DefineStakeholderXpubsAsStakeholder::new(),
         }
@@ -46,8 +46,7 @@ impl Step for DefineStakeholderXpubs {
         if let Message::DefineStakeholderXpubs(msg) = message {
             match msg {
                 message::DefineStakeholderXpubs::OurXpubEdited(xpub) => {
-                    self.our_xpub.value = xpub;
-                    self.our_xpub.valid = true;
+                    self.our_xpub.update(xpub);
                 }
                 message::DefineStakeholderXpubs::StakeholderXpub(
                     i,
@@ -69,12 +68,12 @@ impl Step for DefineStakeholderXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.other_xpubs {
-            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok();
+            participant.check_validity(&ctx.network);
         }
 
-        self.our_xpub.valid = ExtendedPubKey::from_str(&self.our_xpub.value).is_ok();
+        self.our_xpub.check_validity(&ctx.network);
 
-        if !self.our_xpub.valid
+        if !self.our_xpub.xpub.valid
             || self
                 .other_xpubs
                 .iter()
@@ -84,7 +83,7 @@ impl Step for DefineStakeholderXpubs {
         }
 
         config.stakeholder_config = Some(config::StakeholderConfig {
-            xpub: ExtendedPubKey::from_str(&self.our_xpub.value).expect("already checked"),
+            xpub: ExtendedPubKey::from_str(&self.our_xpub.xpub.value).expect("already checked"),
             watchtowers: Vec::new(),
             emergency_address: "".to_string(),
         });
@@ -94,7 +93,7 @@ impl Step for DefineStakeholderXpubs {
             .iter()
             .map(|participant| participant.xpub.value.clone())
             .collect();
-        xpubs.push(self.our_xpub.value.clone());
+        xpubs.push(self.our_xpub.xpub.value.clone());
 
         xpubs.sort();
 
@@ -122,7 +121,7 @@ impl Step for DefineStakeholderXpubs {
 
     fn view(&mut self) -> Element<Message> {
         return self.view.render(
-            &self.our_xpub,
+            &self.our_xpub.xpub,
             self.other_xpubs
                 .iter_mut()
                 .enumerate()
@@ -252,7 +251,7 @@ impl Step for DefineManagerXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.manager_xpubs {
-            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok();
+            participant.check_validity(&ctx.network);
         }
 
         for cosigner in &mut self.cosigners {

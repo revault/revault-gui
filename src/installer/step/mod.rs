@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use bitcoin::hashes::hex::FromHex;
-use bitcoin::util::bip32::ExtendedPubKey;
 use iced::Element;
 use revaultd::revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
 
@@ -218,9 +217,9 @@ impl Step for DefineCpfpDescriptor {
         };
     }
 
-    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.manager_xpubs {
-            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok()
+            participant.check_validity(&ctx.network);
         }
 
         if self

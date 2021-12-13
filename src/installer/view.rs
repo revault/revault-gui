@@ -149,7 +149,7 @@ pub fn participant_xpub<'a>(
                             xpub,
                             message::ParticipantXpub::XpubEdited,
                         )
-                        .warning("Please enter a valid xpub")
+                        .warning("Please enter a valid xpub according to the chosen network")
                         .size(20)
                         .padding(10)
                         .render(),
@@ -174,7 +174,7 @@ pub fn required_xpub<'a>(
         Column::new()
             .push(
                 form::Form::new(xpub_input, "Xpub", xpub, |msg| msg)
-                    .warning("Please enter a valid xpub")
+                    .warning("Please enter a valid xpub according to the chosen network")
                     .size(20)
                     .padding(10)
                     .render(),

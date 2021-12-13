@@ -4,6 +4,9 @@ use crate::installer::{message, view};
 
 use iced::{button::State as Button, text_input, Element};
 
+use revaultd::revault_tx::miniscript::DescriptorPublicKey;
+use std::str::FromStr;
+
 #[derive(Clone)]
 pub struct ParticipantXpub {
     pub xpub: form::Value<String>,
@@ -25,6 +28,19 @@ impl ParticipantXpub {
         if let message::ParticipantXpub::XpubEdited(xpub) = msg {
             self.xpub.value = xpub;
             self.xpub.valid = true;
+        }
+    }
+
+    pub fn check_validity(&mut self, network: &bitcoin::Network) {
+        if let Ok(DescriptorPublicKey::XPub(xpub)) = DescriptorPublicKey::from_str(&self.xpub.value)
+        {
+            if *network == bitcoin::Network::Bitcoin {
+                self.xpub.valid = xpub.xkey.network == bitcoin::Network::Bitcoin;
+            } else {
+                self.xpub.valid = xpub.xkey.network == bitcoin::Network::Testnet;
+            }
+        } else {
+            self.xpub.valid = false;
         }
     }
 
@@ -51,6 +67,19 @@ impl RequiredXpub {
     pub fn update(&mut self, msg: String) {
         self.xpub.value = msg;
         self.xpub.valid = true;
+    }
+
+    pub fn check_validity(&mut self, network: &bitcoin::Network) {
+        if let Ok(DescriptorPublicKey::XPub(xpub)) = DescriptorPublicKey::from_str(&self.xpub.value)
+        {
+            if *network == bitcoin::Network::Bitcoin {
+                self.xpub.valid = xpub.xkey.network == bitcoin::Network::Bitcoin;
+            } else {
+                self.xpub.valid = xpub.xkey.network == bitcoin::Network::Testnet;
+            }
+        } else {
+            self.xpub.valid = false;
+        }
     }
 
     pub fn view(&mut self) -> Element<String> {
