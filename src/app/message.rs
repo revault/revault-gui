@@ -7,7 +7,8 @@ use crate::{
     daemon::{
         client::RevaultDError,
         model::{
-            ServersStatuses, SpendTransaction, SpendTx, Vault, VaultStatus, VaultTransactions,
+            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTransaction, SpendTx, Vault,
+            VaultStatus, VaultTransactions,
         },
     },
     revault::Role,
@@ -30,6 +31,8 @@ pub enum Message {
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),
     ServerStatus(Result<ServersStatuses, RevaultDError>),
+    HistoryEvents(Result<Vec<HistoryEvent>, RevaultDError>),
+    FilterHistoryEvents(Option<HistoryEventKind>),
     Menu(Menu),
     Next,
     Previous,

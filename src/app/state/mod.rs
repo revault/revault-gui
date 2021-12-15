@@ -1,6 +1,7 @@
 pub mod cmd;
 mod deposit;
 mod emergency;
+mod history;
 pub mod manager;
 mod settings;
 mod sign;
@@ -13,6 +14,7 @@ use iced::{Command, Element, Subscription};
 
 pub use deposit::DepositState;
 pub use emergency::EmergencyState;
+pub use history::HistoryState;
 pub use manager::{ManagerHomeState, ManagerSendState};
 pub use settings::SettingsState;
 pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};

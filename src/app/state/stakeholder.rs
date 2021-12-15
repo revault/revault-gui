@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use iced::{Command, Element, Subscription};
 
 use crate::daemon::{
     client::{Client, RevaultD},
-    model::{self, VaultStatus},
+    model::{self, HistoryEventKind, VaultStatus},
 };
 
 use crate::app::{
@@ -14,7 +15,8 @@ use crate::app::{
     menu::Menu,
     message::{Message, SignMessage},
     state::{
-        cmd::{get_blockheight, list_vaults},
+        cmd::{get_blockheight, get_history, list_vaults},
+        history::HistoryEventState,
         sign::Device,
         vault::{Vault, VaultListItem},
         State,
@@ -35,6 +37,8 @@ pub struct StakeholderHomeState {
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
 
+    latest_events: Vec<HistoryEventState>,
+
     view: StakeholderHomeView,
 }
 
@@ -45,6 +49,7 @@ impl StakeholderHomeState {
             view: StakeholderHomeView::new(),
             balance: HashMap::new(),
             moving_vaults: Vec::new(),
+            latest_events: Vec::new(),
             selected_vault: None,
         }
     }
@@ -125,6 +130,14 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
                     return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
+            Message::HistoryEvents(res) => match res {
+                Ok(events) => {
+                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                }
+                Err(e) => {
+                    self.warning = Error::from(e).into();
+                }
+            },
             _ => {}
         }
         Command::none()
@@ -139,11 +152,16 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             ctx,
             None,
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
             &self.balance,
         )
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -153,6 +171,20 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
                     None,
                 ),
                 Message::Vaults,
+            ),
+            Command::perform(
+                get_history(
+                    ctx.revaultd.clone(),
+                    vec![
+                        HistoryEventKind::Cancel,
+                        HistoryEventKind::Deposit,
+                        HistoryEventKind::Spend,
+                    ],
+                    0,
+                    now,
+                    5,
+                ),
+                Message::HistoryEvents,
             ),
         ])
     }

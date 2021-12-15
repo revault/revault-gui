@@ -111,8 +111,6 @@ async fn test_emergency_state() {
                         address: "".to_string(),
                         amount: 500,
                         derivation_index: 0,
-                        received_at: 0,
-                        updated_at: 0,
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
@@ -124,8 +122,6 @@ async fn test_emergency_state() {
                         address: "".to_string(),
                         amount: 700,
                         derivation_index: 0,
-                        received_at: 0,
-                        updated_at: 0,
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"

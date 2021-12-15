@@ -2,18 +2,21 @@ use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use std::collections::HashMap;
 use std::convert::From;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use iced::{Command, Element, Subscription};
 
 use super::{
-    cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
+    cmd::{
+        get_blockheight, get_history, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx,
+    },
     vault::{Vault, VaultListItem},
     State,
 };
 
 use crate::daemon::{
     client::Client,
-    model::{self, VaultStatus},
+    model::{self, HistoryEventKind, VaultStatus},
 };
 
 use revault_ui::component::form;
@@ -23,6 +26,7 @@ use crate::app::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
+        history::HistoryEventState,
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
     },
@@ -54,6 +58,8 @@ pub struct ManagerHomeState {
     spend_txs_item: Vec<SpendTransactionListItem>,
     selected_spend_tx: Option<SpendTransactionState>,
 
+    latest_events: Vec<HistoryEventState>,
+
     loading_vaults: bool,
 }
 
@@ -71,6 +77,7 @@ impl ManagerHomeState {
             spend_txs: Vec::new(),
             spend_txs_item: Vec::new(),
             selected_spend_tx: None,
+            latest_events: Vec::new(),
             loading_vaults: true,
         }
     }
@@ -247,6 +254,14 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                     self.warning = Error::from(e).into();
                 }
             },
+            Message::HistoryEvents(res) => match res {
+                Ok(events) => {
+                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                }
+                Err(e) => {
+                    self.warning = Error::from(e).into();
+                }
+            },
             _ => {}
         };
         Command::none()
@@ -276,12 +291,17 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
                 .collect(),
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
             self.active_funds,
             self.inactive_funds,
         )
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -294,6 +314,20 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                     Some(&[model::SpendTxStatus::NonFinal]),
                 ),
                 Message::SpendTransactions,
+            ),
+            Command::perform(
+                get_history(
+                    ctx.revaultd.clone(),
+                    vec![
+                        HistoryEventKind::Cancel,
+                        HistoryEventKind::Deposit,
+                        HistoryEventKind::Spend,
+                    ],
+                    0,
+                    now,
+                    5,
+                ),
+                Message::HistoryEvents,
             ),
         ])
     }
