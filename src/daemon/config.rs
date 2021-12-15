@@ -35,8 +35,13 @@ pub struct WatchtowerConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StakeholderConfig {
     pub xpub: bip32::ExtendedPubKey,
+    #[serde(default = "default_watchtowers")]
     pub watchtowers: Vec<WatchtowerConfig>,
     pub emergency_address: String,
+}
+
+fn default_watchtowers() -> Vec<WatchtowerConfig> {
+    vec![]
 }
 
 // Same fields as the WatchtowerConfig struct for now, but leave them separate.
@@ -50,7 +55,12 @@ pub struct CosignerConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ManagerConfig {
     pub xpub: bip32::ExtendedPubKey,
+    #[serde(default = "default_cosigners")]
     pub cosigners: Vec<CosignerConfig>,
+}
+
+fn default_cosigners() -> Vec<CosignerConfig> {
+    vec![]
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
