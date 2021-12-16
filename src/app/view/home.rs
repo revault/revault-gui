@@ -18,7 +18,6 @@ use crate::{
 #[derive(Debug)]
 pub struct ManagerHomeView {
     dashboard: layout::Dashboard,
-    deposit_button: iced::button::State,
     history_button: iced::button::State,
 }
 
@@ -26,7 +25,6 @@ impl ManagerHomeView {
     pub fn new() -> Self {
         ManagerHomeView {
             dashboard: layout::Dashboard::new(),
-            deposit_button: iced::button::State::default(),
             history_button: iced::button::State::default(),
         }
     }
@@ -57,26 +55,6 @@ impl ManagerHomeView {
                     .push(Column::with_children(spend_txs).spacing(10))
                     .spacing(20),
             )
-        }
-
-        if active_funds == 0 && inactive_funds == 0 && latest_events.is_empty() {
-            content = content.push(card::simple(
-                Row::new()
-                    .push(
-                        Container::new(Text::new(
-                            "No vaults yet, start using Revault by making a deposit",
-                        ))
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        button::primary(
-                            &mut self.deposit_button,
-                            button::button_content(None, "Deposit"),
-                        )
-                        .on_press(Message::Menu(Menu::Deposit)),
-                    )
-                    .align_items(iced::Align::Center),
-            ))
         }
 
         if !moving_vaults.is_empty() {
