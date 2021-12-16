@@ -827,6 +827,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
 
 #[derive(Debug)]
 pub struct ManagerStepSignView {
+    scroll: scrollable::State,
     modal: layout::Modal,
     cancel_button: iced::button::State,
     back_button: iced::button::State,
@@ -835,6 +836,7 @@ pub struct ManagerStepSignView {
 impl ManagerStepSignView {
     pub fn new() -> Self {
         ManagerStepSignView {
+            scroll: scrollable::State::new(),
             modal: layout::Modal::new(),
             cancel_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
@@ -894,14 +896,20 @@ impl ManagerStepSignView {
             )
             .push(
                 Column::new()
-                    .push(spend_tx_with_feerate_view(
-                        ctx,
-                        inputs,
-                        psbt,
-                        change_index,
-                        cpfp_index,
-                        Some(feerate),
-                    ))
+                    .push(
+                        scroll(
+                            &mut self.scroll,
+                            spend_tx_with_feerate_view(
+                                ctx,
+                                inputs,
+                                psbt,
+                                change_index,
+                                cpfp_index,
+                                Some(feerate),
+                            ),
+                        )
+                        .height(Length::Fill),
+                    )
                     .push(
                         card::white(Container::new(signer))
                             .align_x(Align::Center)
