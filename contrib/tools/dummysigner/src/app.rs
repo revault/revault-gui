@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
-use iced::{executor, Application, Clipboard, Command, Element, Settings};
+use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
+use iced_native::{window, Event};
 use revault_tx::bitcoin::util::bip32::ExtendedPrivKey;
 use serde_json::json;
 
@@ -14,11 +15,13 @@ use crate::{
 };
 
 pub fn run(cfg: Config) -> iced::Result {
-    let settings = Settings::with_flags(cfg);
+    let mut settings = Settings::with_flags(cfg);
+    settings.exit_on_close_request = false;
     App::run(settings)
 }
 
 pub struct App {
+    exit: bool,
     keys: Vec<config::Key>,
     signer: sign::Signer,
     status: AppStatus,
@@ -35,6 +38,8 @@ pub enum AppStatus {
 
 #[derive(Debug)]
 pub enum Message {
+    CtrlC,
+    Event(Event),
     Server(server::ServerMessage),
     View(view::ViewMessage),
 }
@@ -47,6 +52,7 @@ impl Application for App {
     fn new(cfg: Config) -> (App, Command<Message>) {
         (
             App {
+                exit: false,
                 signer: sign::Signer::new(
                     cfg.descriptors.map(|d| sign::Descriptors {
                         deposit_descriptor: d.deposit_descriptor,
@@ -58,7 +64,7 @@ impl Application for App {
                 keys: cfg.keys,
                 status: AppStatus::Waiting,
             },
-            Command::none(),
+            Command::perform(ctrl_c(), |_| Message::CtrlC),
         )
     }
 
@@ -66,8 +72,17 @@ impl Application for App {
         String::from("Dummy signer - Revault")
     }
 
+    fn should_exit(&self) -> bool {
+        self.exit
+    }
+
     fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
         match message {
+            Message::CtrlC | Message::Event(Event::Window(window::Event::CloseRequested)) => {
+                self.exit = true;
+                self.status = AppStatus::Waiting {};
+                Command::none()
+            }
             Message::Server(server::ServerMessage::NewConnection(addr, writer)) => {
                 self.status = AppStatus::Connected {
                     addr,
@@ -111,7 +126,8 @@ impl Application for App {
                 }
                 Command::none()
             }
-            Message::Server(server::ServerMessage::ConnectionDropped) => {
+            Message::Server(server::ServerMessage::ConnectionDropped)
+            | Message::Server(server::ServerMessage::Stopped) => {
                 self.status = AppStatus::Waiting {};
                 Command::none()
             }
@@ -273,7 +289,14 @@ impl Application for App {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::Subscription::batch(vec![server::listen("0.0.0.0:8080").map(Message::Server)])
+        if !self.exit {
+            Subscription::batch(vec![
+                iced_native::subscription::events().map(Message::Event),
+                server::listen("0.0.0.0:8080").map(Message::Server),
+            ])
+        } else {
+            Subscription::none()
+        }
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -285,6 +308,11 @@ impl Application for App {
             },
         }
     }
+}
+
+async fn ctrl_c() -> Result<(), ()> {
+    tokio::signal::ctrl_c().await.unwrap();
+    Ok(())
 }
 
 pub struct Key {
