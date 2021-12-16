@@ -425,7 +425,7 @@ impl SpendTransactionBroadcastView {
 
         if *processing {
             col_action = col_action
-                .push(Text::new("Do you want to broadcast the transaction?"))
+                .push(Text::new("Transaction is fully signed"))
                 .push(button::important(
                     &mut self.confirm_button,
                     button::button_content(None, "Broadcasting"),
@@ -439,11 +439,11 @@ impl SpendTransactionBroadcastView {
             );
         } else {
             col_action = col_action
-                .push(Text::new("Do you want to broadcast this transaction?"))
+                .push(Text::new("Transaction is fully signed"))
                 .push(
                     button::important(
                         &mut self.confirm_button,
-                        button::button_content(None, "Yes, broadcast"),
+                        button::button_content(None, "Broadcast"),
                     )
                     .on_press(Message::SpendTx(SpendTxMessage::Broadcast)),
                 );
