@@ -727,10 +727,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                     !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());
                 let mut no_duplicate = true;
                 for (i, output) in self.outputs.iter().enumerate() {
-                    if self.outputs[i + 1..]
-                        .iter()
-                        .any(|o| o.address.value == output.address.value)
-                    {
+                    if self.outputs[i + 1..].iter().any(|o| {
+                        o.address.value == output.address.value && !output.address.value.is_empty()
+                    }) {
                         valid = false;
                         no_duplicate = false;
                     }
