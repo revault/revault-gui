@@ -294,7 +294,7 @@ impl StakeholderSelecteVaultsToDelegateView {
         if !vaults.is_empty() {
             col = col.push(
                 Column::new()
-                    .push(Text::new(" Click on the vaults to delegate:").width(Length::Fill))
+                    .push(Text::new("Select vaults to delegate:").width(Length::Fill))
                     .push(Column::with_children(vaults).spacing(5))
                     .spacing(20),
             )
