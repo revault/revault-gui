@@ -34,7 +34,7 @@ use crate::app::{
         manager::{
             manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
             ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
-            ManagerSendWelcomeView, ManagerSignView, ManagerSpendTransactionCreatedView,
+            ManagerSendWelcomeView, ManagerSpendTransactionCreatedView, ManagerStepSignView,
         },
         vault::VaultListItemView,
         ManagerHomeView,
@@ -485,7 +485,7 @@ enum ManagerSendStep {
     SelectInputs(ManagerSelectInputsView),
     Sign {
         signer: Signer<SpendTransactionTarget>,
-        view: ManagerSignView,
+        view: ManagerStepSignView,
     },
     Success(ManagerSpendTransactionCreatedView),
 }
@@ -668,7 +668,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                                     .collect(),
                                 psbt.clone(),
                             )),
-                            view: ManagerSignView::new(),
+                            view: ManagerStepSignView::new(),
                         };
                     }
                 }

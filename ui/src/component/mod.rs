@@ -257,22 +257,6 @@ pub mod card {
     pub fn progress_doing<'a, T: 'a>() -> Container<'a, T> {
         Container::new(iced::Row::new()).style(ProgressBarDoingCardStyle)
     }
-
-    pub struct ProgressBarTodoCardStyle;
-    impl container::StyleSheet for ProgressBarTodoCardStyle {
-        fn style(&self) -> container::Style {
-            container::Style {
-                border_radius: 10.0,
-                background: color::SECONDARY.into(),
-                ..container::Style::default()
-            }
-        }
-    }
-
-    // An empty card used as decoration in the progress bar
-    pub fn progress_todo<'a, T: 'a>() -> Container<'a, T> {
-        Container::new(iced::Row::new()).style(ProgressBarTodoCardStyle)
-    }
 }
 
 pub struct ProgressBar {
@@ -295,69 +279,36 @@ impl ProgressBar {
                 Ordering::Greater => row = row.push(self.progress_circle_todo(step)),
             }
         }
-        Container::new(row)
+        Container::new(row.align_items(iced::Align::Center))
     }
 
     fn progress_circle_todo<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
         Container::new(
-            Column::new()
-                .push(
-                    Row::new()
-                        .push(icon::todo_icon().color(color::DARK_GREY))
-                        .push(Text::new(step).small().color(color::DARK_GREY))
-                        .spacing(10)
-                        .align_items(iced::Align::Center),
-                )
-                .push(
-                    card::progress_todo()
-                        .height(Length::Units(5))
-                        .width(Length::Fill),
-                )
-                .width(Length::Units(120))
-                .align_items(iced::Align::Center)
-                .spacing(10),
+            Row::new()
+                .push(icon::todo_icon().color(color::DARK_GREY))
+                .push(Text::new(step).small().color(color::DARK_GREY))
+                .spacing(10)
+                .align_items(iced::Align::Center),
         )
     }
 
     fn progress_circle_doing<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
         Container::new(
-            Column::new()
-                .push(
-                    Row::new()
-                        .push(icon::todo_icon().color(color::DARK_GREY))
-                        .push(Text::new(step).small().color(color::DARK_GREY))
-                        .spacing(10)
-                        .align_items(iced::Align::Center),
-                )
-                .push(
-                    card::progress_doing()
-                        .height(Length::Units(5))
-                        .width(Length::Fill),
-                )
-                .width(Length::Units(120))
-                .align_items(iced::Align::Center)
-                .spacing(10),
+            Row::new()
+                .push(icon::todo_icon().color(color::DARK_GREY))
+                .push(Text::new(step).small().color(color::DARK_GREY))
+                .spacing(10)
+                .align_items(iced::Align::Center),
         )
     }
 
     fn progress_circle_done<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
         Container::new(
-            Column::new()
-                .push(
-                    Row::new()
-                        .push(icon::done_icon())
-                        .push(Text::new(step).small())
-                        .spacing(10)
-                        .align_items(iced::Align::Center),
-                )
-                .push(
-                    card::progress_done()
-                        .height(Length::Units(5))
-                        .width(Length::Fill),
-                )
-                .width(Length::Units(120))
-                .align_items(iced::Align::Center)
-                .spacing(10),
+            Row::new()
+                .push(icon::done_icon())
+                .push(Text::new(step).small())
+                .spacing(10)
+                .align_items(iced::Align::Center),
         )
     }
 }
