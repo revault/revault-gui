@@ -473,7 +473,7 @@ impl Step for DefineCosigners {
 
     /// skip this step if cosigners are disabled
     fn skip(&self, ctx: &Context) -> bool {
-        ctx.cosigners_enabled
+        !ctx.cosigners_enabled
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
