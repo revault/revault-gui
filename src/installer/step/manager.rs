@@ -17,7 +17,7 @@ use crate::{
     installer::{
         message::{self, Message},
         step::{
-            common::{CosignerKey, ParticipantXpub},
+            common::{CosignerKey, ParticipantXpub, RequiredXpub},
             Context, Step,
         },
         view,
@@ -77,15 +77,10 @@ impl Step for DefineStakeholderXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.stakeholder_xpubs {
-            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok()
-        }
-
-        if self
-            .stakeholder_xpubs
-            .iter()
-            .any(|participant| !participant.xpub.valid)
-        {
-            return false;
+            participant.check_validity(&ctx.network);
+            if !participant.xpub.valid {
+                return false;
+            }
         }
 
         let mut xpubs: Vec<String> = self
@@ -155,7 +150,7 @@ pub struct DefineManagerXpubs {
     cosigners_enabled: bool,
     cosigners: Vec<CosignerKey>,
     other_xpubs: Vec<ParticipantXpub>,
-    our_xpub: form::Value<String>,
+    our_xpub: RequiredXpub,
     managers_threshold: form::Value<usize>,
     spending_delay: form::Value<u32>,
     warning: Option<String>,
@@ -178,7 +173,7 @@ impl DefineManagerXpubs {
                 value: 10,
                 valid: true,
             },
-            our_xpub: form::Value::default(),
+            our_xpub: RequiredXpub::new(),
             other_xpubs: Vec::new(),
             cosigners: Vec::new(),
             view: view::DefineManagerXpubsAsManager::new(),
@@ -213,8 +208,7 @@ impl Step for DefineManagerXpubs {
         if let Message::DefineManagerXpubs(msg) = message {
             match msg {
                 message::DefineManagerXpubs::OurXpubEdited(xpub) => {
-                    self.our_xpub.value = xpub;
-                    self.our_xpub.valid = true;
+                    self.our_xpub.update(xpub);
                 }
                 message::DefineManagerXpubs::ManagerXpub(i, message::ParticipantXpub::Delete) => {
                     self.other_xpubs.remove(i);
@@ -265,10 +259,10 @@ impl Step for DefineManagerXpubs {
 
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.other_xpubs {
-            participant.xpub.valid = DescriptorPublicKey::from_str(&participant.xpub.value).is_ok();
+            participant.check_validity(&ctx.network);
         }
 
-        self.our_xpub.valid = DescriptorPublicKey::from_str(&self.our_xpub.value).is_ok();
+        self.our_xpub.check_validity(&ctx.network);
 
         for cosigner in &mut self.cosigners {
             cosigner.key.valid = DescriptorPublicKey::from_str(&cosigner.key.value).is_ok();
@@ -279,7 +273,7 @@ impl Step for DefineManagerXpubs {
             && self.managers_threshold.value <= self.other_xpubs.len() + 1;
         self.spending_delay.valid = self.spending_delay.value != 0;
 
-        if !self.our_xpub.valid
+        if !self.our_xpub.xpub.valid
             || self
                 .other_xpubs
                 .iter()
@@ -294,9 +288,9 @@ impl Step for DefineManagerXpubs {
         let mut managers_xpubs: Vec<String> = self
             .other_xpubs
             .iter()
-            .map(|participant| format!("{}/*", participant.xpub.value.clone()))
+            .map(|participant| format!("{}/*", participant.xpub.value))
             .collect();
-        managers_xpubs.push(format!("{}/*", self.our_xpub.value.clone()));
+        managers_xpubs.push(format!("{}/*", self.our_xpub.xpub.value));
 
         managers_xpubs.sort();
 
@@ -337,7 +331,7 @@ impl Step for DefineManagerXpubs {
         ctx.number_managers = managers_keys.len();
 
         config.manager_config = Some(config::ManagerConfig {
-            xpub: ExtendedPubKey::from_str(&self.our_xpub.value).expect("already checked"),
+            xpub: ExtendedPubKey::from_str(&self.our_xpub.xpub.value).expect("already checked"),
             cosigners: Vec::new(),
         });
 
@@ -377,7 +371,7 @@ impl Step for DefineManagerXpubs {
         return self.view.render(
             &self.managers_threshold,
             &self.spending_delay,
-            &self.our_xpub,
+            &self.our_xpub.xpub,
             self.other_xpubs
                 .iter_mut()
                 .enumerate()
@@ -479,7 +473,7 @@ impl Step for DefineCosigners {
 
     /// skip this step if cosigners are disabled
     fn skip(&self, ctx: &Context) -> bool {
-        ctx.cosigners_enabled
+        !ctx.cosigners_enabled
     }
 
     fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {

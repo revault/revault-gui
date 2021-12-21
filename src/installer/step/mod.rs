@@ -8,8 +8,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use bitcoin::hashes::hex::FromHex;
-use bitcoin::util::bip32::ExtendedPubKey;
-use iced::{button::State as Button, scrollable, Element};
+use iced::Element;
 use revaultd::revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescriptor};
 
 use revault_ui::component::form;
@@ -37,6 +36,7 @@ pub trait Step {
 
 #[derive(Clone)]
 pub struct Context {
+    pub network: bitcoin::Network,
     pub private_noise_key: String,
     pub number_managers: usize,
     pub number_cosigners: usize,
@@ -45,8 +45,9 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new() -> Self {
+    pub fn new(network: bitcoin::Network) -> Self {
         Self {
+            network,
             private_noise_key: "".to_string(),
             number_managers: 0,
             number_cosigners: 0,
@@ -58,32 +59,43 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Self {
-        Self::new()
+        Self::new(bitcoin::Network::Bitcoin)
     }
 }
 
 pub struct Welcome {
-    install_button: Button,
+    network: bitcoin::Network,
+    view: view::Welcome,
 }
 
 impl Welcome {
-    pub fn new() -> Self {
+    pub fn new(network: bitcoin::Network) -> Self {
         Self {
-            install_button: Button::new(),
+            network,
+            view: view::Welcome::new(),
         }
     }
 }
 
 impl Step for Welcome {
-    fn update(&mut self, _message: Message) {}
+    fn update(&mut self, message: Message) {
+        if let message::Message::Network(network) = message {
+            self.network = network;
+        }
+    }
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
+        ctx.network = self.network.clone();
+        config.bitcoind_config.network = self.network.clone();
+        true
+    }
     fn view(&mut self) -> Element<Message> {
-        view::welcome(&mut self.install_button)
+        self.view.render(&self.network)
     }
 }
 
 impl Default for Welcome {
     fn default() -> Self {
-        Self::new()
+        Self::new(bitcoin::Network::Bitcoin)
     }
 }
 
@@ -93,33 +105,18 @@ impl From<Welcome> for Box<dyn Step> {
     }
 }
 
-pub struct DefineRole {
-    stakeholder_button: Button,
-    manager_button: Button,
-    stakeholder_manager_button: Button,
-    scroll: scrollable::State,
-}
+pub struct DefineRole(view::DefineRole);
 
 impl DefineRole {
     pub fn new() -> Self {
-        Self {
-            stakeholder_button: Button::new(),
-            manager_button: Button::new(),
-            stakeholder_manager_button: Button::new(),
-            scroll: scrollable::State::new(),
-        }
+        DefineRole(view::DefineRole::new())
     }
 }
 
 impl Step for DefineRole {
     fn update(&mut self, _message: Message) {}
     fn view(&mut self) -> Element<Message> {
-        view::define_role(
-            &mut self.stakeholder_button,
-            &mut self.manager_button,
-            &mut self.stakeholder_manager_button,
-            &mut self.scroll,
-        )
+        self.0.render()
     }
 }
 
@@ -220,9 +217,9 @@ impl Step for DefineCpfpDescriptor {
         };
     }
 
-    fn apply(&mut self, _ctx: &mut Context, config: &mut config::Config) -> bool {
+    fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
         for participant in &mut self.manager_xpubs {
-            participant.xpub.valid = ExtendedPubKey::from_str(&participant.xpub.value).is_ok()
+            participant.check_validity(&ctx.network);
         }
 
         if self
@@ -355,14 +352,13 @@ impl From<DefineCoordinator> for Box<dyn Step> {
 }
 
 pub struct DefineBitcoind {
-    network: bitcoin::Network,
     cookie_path: form::Value<String>,
     address: form::Value<String>,
 
     view: view::DefineBitcoind,
 }
 
-fn bitcoind_default_cookie_path(network: bitcoin::Network) -> Option<String> {
+fn bitcoind_default_cookie_path(network: &bitcoin::Network) -> Option<String> {
     #[cfg(target_os = "linux")]
     let configs_dir = dirs::home_dir();
 
@@ -396,7 +392,7 @@ fn bitcoind_default_cookie_path(network: bitcoin::Network) -> Option<String> {
     None
 }
 
-fn bitcoind_default_address(network: bitcoin::Network) -> String {
+fn bitcoind_default_address(network: &bitcoin::Network) -> String {
     match network {
         bitcoin::Network::Bitcoin => "127.0.0.1:8332".to_string(),
         bitcoin::Network::Testnet => "127.0.0.1:18332".to_string(),
@@ -406,23 +402,25 @@ fn bitcoind_default_address(network: bitcoin::Network) -> String {
 }
 
 impl DefineBitcoind {
-    pub fn new(network: bitcoin::Network) -> Self {
+    pub fn new() -> Self {
         Self {
-            network,
-            cookie_path: form::Value {
-                value: bitcoind_default_cookie_path(network).unwrap_or_else(String::new),
-                valid: true,
-            },
-            address: form::Value {
-                value: bitcoind_default_address(network),
-                valid: true,
-            },
+            cookie_path: form::Value::default(),
+            address: form::Value::default(),
             view: view::DefineBitcoind::new(),
         }
     }
 }
 
 impl Step for DefineBitcoind {
+    fn load_context(&mut self, ctx: &Context) {
+        if self.cookie_path.value.is_empty() {
+            self.cookie_path.value =
+                bitcoind_default_cookie_path(&ctx.network).unwrap_or_else(String::new);
+        }
+        if self.address.value.is_empty() {
+            self.address.value = bitcoind_default_address(&ctx.network);
+        }
+    }
     fn update(&mut self, message: Message) {
         if let Message::DefineBitcoind(msg) = message {
             match msg {
@@ -432,14 +430,6 @@ impl Step for DefineBitcoind {
                 }
                 message::DefineBitcoind::CookiePathEdited(path) => {
                     self.cookie_path.value = path;
-                    self.address.valid = true;
-                }
-                message::DefineBitcoind::NetworkEdited(network) => {
-                    self.network = network;
-                    self.cookie_path.value =
-                        bitcoind_default_cookie_path(network).unwrap_or_else(String::new);
-                    self.cookie_path.valid = true;
-                    self.address.value = bitcoind_default_address(network);
                     self.address.valid = true;
                 }
             };
@@ -465,26 +455,21 @@ impl Step for DefineBitcoind {
                 false
             }
             (Ok(path), Ok(addr)) => {
-                config.bitcoind_config = config::BitcoindConfig {
-                    network: self.network,
-                    cookie_path: path,
-                    poll_interval_secs: None,
-                    addr,
-                };
+                config.bitcoind_config.cookie_path = path;
+                config.bitcoind_config.addr = addr;
                 true
             }
         }
     }
 
     fn view(&mut self) -> Element<Message> {
-        self.view
-            .render(&self.network, &self.address, &self.cookie_path)
+        self.view.render(&self.address, &self.cookie_path)
     }
 }
 
 impl Default for DefineBitcoind {
     fn default() -> Self {
-        Self::new(bitcoin::Network::Bitcoin)
+        Self::new()
     }
 }
 
@@ -622,7 +607,7 @@ mod tests {
 
     #[test]
     fn define_deposit_descriptor() {
-        let mut ctx = Context::new();
+        let mut ctx = Context::new(bitcoin::Network::Bitcoin);
         let mut manager_step = manager::DefineStakeholderXpubs::new();
         load_stakeholders_xpubs(
             &mut manager_step,
@@ -661,9 +646,10 @@ mod tests {
 
     #[test]
     fn define_unvault_descriptor() {
-        let mut ctx = Context::new();
+        let mut ctx = Context::new(bitcoin::Network::Bitcoin);
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
+            network: bitcoin::Network::Bitcoin,
             cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
@@ -703,6 +689,7 @@ mod tests {
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
+            network: bitcoin::Network::Bitcoin,
             cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
@@ -746,9 +733,10 @@ mod tests {
 
     #[test]
     fn define_unvault_descriptor_without_cosigners() {
-        let mut ctx = Context::new();
+        let mut ctx = Context::new(bitcoin::Network::Bitcoin);
         let mut manager_step = manager::DefineManagerXpubs::new();
         manager_step.load_context(&Context {
+            network: bitcoin::Network::Bitcoin,
             cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
@@ -781,6 +769,7 @@ mod tests {
 
         let mut stakeholder_step = stakeholder::DefineManagerXpubs::new();
         stakeholder_step.load_context(&Context {
+            network: bitcoin::Network::Bitcoin,
             cosigners_enabled: true,
             private_noise_key: "".to_string(),
             number_managers: 1,
@@ -818,7 +807,7 @@ mod tests {
 
     #[test]
     fn define_cpfp_descriptor() {
-        let mut ctx = Context::new();
+        let mut ctx = Context::new(bitcoin::Network::Bitcoin);
         ctx.number_managers = 2;
         let mut cpfp_1_step = DefineCpfpDescriptorStep::new();
         cpfp_1_step.load_context(&ctx);

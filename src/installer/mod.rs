@@ -40,10 +40,10 @@ impl Installer {
         }
     }
 
-    fn update_steps(&mut self, role: &[Role]) {
+    fn update_steps(&mut self, network: bitcoin::Network, role: &[Role]) {
         if role == Role::MANAGER_ONLY {
             self.steps = vec![
-                Welcome::new().into(),
+                Welcome::new(network).into(),
                 DefineRole::new().into(),
                 DefinePrivateNoiseKey::new().into(),
                 manager::DefineStakeholderXpubs::new().into(),
@@ -51,25 +51,25 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
-                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
+                DefineBitcoind::new().into(),
                 Final::new().into(),
             ];
         } else if role == Role::STAKEHOLDER_ONLY {
             self.steps = vec![
-                Welcome::new().into(),
+                Welcome::new(network).into(),
                 DefineRole::new().into(),
                 DefinePrivateNoiseKey::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
                 stakeholder::DefineManagerXpubs::new().into(),
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
-                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
+                DefineBitcoind::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
         } else {
             self.steps = vec![
-                Welcome::new().into(),
+                Welcome::new(network).into(),
                 DefineRole::new().into(),
                 DefinePrivateNoiseKey::new().into(),
                 stakeholder::DefineStakeholderXpubs::new().into(),
@@ -77,7 +77,7 @@ impl Installer {
                 DefineCpfpDescriptor::new().into(),
                 DefineCoordinator::new().into(),
                 manager::DefineCosigners::new().into(),
-                DefineBitcoind::new(self.config.bitcoind_config.network).into(),
+                DefineBitcoind::new().into(),
                 stakeholder::DefineEmergencyAddress::new().into(),
                 Final::new().into(),
             ];
@@ -95,7 +95,6 @@ impl Installer {
         network: bitcoin::Network,
     ) -> (Installer, Command<Message>) {
         let mut config = revaultd_config::Config::new();
-        config.bitcoind_config.network = network;
         config.data_dir = Some(destination_path);
         config.daemon = Some(true);
         (
@@ -103,8 +102,11 @@ impl Installer {
                 should_exit: false,
                 config,
                 current: 0,
-                steps: vec![Welcome::new().into(), DefineRole::new().into()],
-                context: Context::new(),
+                steps: vec![
+                    Welcome::new(network.clone()).into(),
+                    DefineRole::new().into(),
+                ],
+                context: Context::new(network),
             },
             Command::none(),
         )
@@ -155,11 +157,12 @@ impl Installer {
             Message::Role(role) => {
                 // reset config
                 let mut config = revaultd_config::Config::new();
+                config.bitcoind_config.network = self.context.network.clone();
                 config.data_dir = self.config.data_dir.clone();
                 config.daemon = Some(true);
                 self.config = config;
 
-                self.update_steps(role);
+                self.update_steps(self.context.network.clone(), role);
                 self.next();
             }
             Message::Install => {
