@@ -24,7 +24,7 @@ daemon = ["revaultd"]
 
 [dependencies]
 bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
-revaultd = { git = "https://github.com/revault/revaultd", branch = "master", optional = true}
+revaultd = { version = "0.3", optional = true}
 backtrace = "0.3"
 
 iced = { version = "0.3", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }

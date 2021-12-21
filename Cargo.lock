@@ -2582,8 +2582,9 @@ dependencies = [
 
 [[package]]
 name = "revault_net"
-version = "0.1.0"
-source = "git+https://github.com/danielabrozzoni/revault_net/?branch=revault_tx_update#e6c2d055454bc98cdeb8673f9af1e810b2ce9aa8"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b575bcdb8edf9f5b45c051a8273c17472283a82bdcaea4b95a779dc63ccd0f"
 dependencies = [
  "bitcoin",
  "log",
@@ -2596,8 +2597,9 @@ dependencies = [
 
 [[package]]
 name = "revault_tx"
-version = "0.4.0"
-source = "git+https://github.com/danielabrozzoni/revault_tx/?branch=2021109_support_cpfp#2870c7b17c75b9f9d504c221c89f75e67782979e"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59ba676f3936696e931380bce36e567e16aab4f433cfe0e39830dcbe527669ec"
 dependencies = [
  "base64",
  "bitcoinconsensus",
@@ -2614,8 +2616,9 @@ dependencies = [
 
 [[package]]
 name = "revaultd"
-version = "0.0.3"
-source = "git+https://github.com/revault/revaultd?branch=master#3ddbb761b7c599c0cf6ae894cee8c91b3b6f7202"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "882acd8b0e2ad43755de5581b652611d4d35e8106d865ba7a337b35e8970cbd5"
 dependencies = [
  "backtrace",
  "base64",
@@ -2657,9 +2660,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.26.1"
+version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a82b0b91fad72160c56bf8da7a549b25d7c31109f52cc1437eac4c0ad2550a7"
+checksum = "4ba4d3462c8b2e4d7f4fcfcf2b296dc6b65404fbbc7b63daa37fd485c149daf7"
 dependencies = [
  "bitflags",
  "fallible-iterator",
