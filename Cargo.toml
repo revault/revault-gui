@@ -1,6 +1,6 @@
 [package]
 name = "revault-gui"
-version = "0.0.1"
+version = "0.3.0"
 readme = "README.md"
 description = "Revault GUI"
 repository = "https://github.com/re-vault/revault-gui"
