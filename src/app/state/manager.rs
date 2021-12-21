@@ -678,6 +678,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                 _ => (),
             },
             Message::Previous => {
+                // Because the process is going backward, the warning can be ignored.
+                // Once the process goes upward again, the checks will set again
+                // the warning in case of error.
+                self.warning = None;
                 self.step = match self.step {
                     ManagerSendStep::SelectInputs(_) => {
                         ManagerSendStep::SelectFee(ManagerSelectFeeView::new())
@@ -835,6 +839,14 @@ impl ManagerSendOutput {
             ));
         }
 
+        if let Ok(address) = bitcoin::Address::from_str(&self.address.value) {
+            if amount <= address.script_pubkey().dust_value() {
+                return Err(Error::UnexpectedError(
+                    "Amount must be superior to script dust value".to_string(),
+                ));
+            }
+        }
+
         Ok(amount.as_sat())
     }
 
@@ -849,8 +861,13 @@ impl ManagerSendOutput {
         match message {
             RecipientMessage::AddressEdited(address) => {
                 self.address.value = address;
-                if !self.address.value.is_empty() {
-                    self.address.valid = bitcoin::Address::from_str(&self.address.value).is_ok();
+                if !self.address.value.is_empty()
+                    && bitcoin::Address::from_str(&self.address.value).is_ok()
+                {
+                    self.address.valid = true;
+                    if !self.amount.value.is_empty() {
+                        self.amount.valid = self.amount().is_ok();
+                    }
                 } else {
                     // Make the error disappear if we deleted the invalid address
                     self.address.valid = true;
