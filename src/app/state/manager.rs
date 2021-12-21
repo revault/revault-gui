@@ -678,6 +678,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                 _ => (),
             },
             Message::Previous => {
+                // Because the process is going backward, the warning can be ignored.
+                // Once the process goes upward again, the checks will set again
+                // the warning in case of error.
+                self.warning = None;
                 self.step = match self.step {
                     ManagerSendStep::SelectInputs(_) => {
                         ManagerSendStep::SelectFee(ManagerSelectFeeView::new())
