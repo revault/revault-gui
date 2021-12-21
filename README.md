@@ -3,6 +3,9 @@
 Revault GUI is an user graphical interface written in rust for the 
 [Revault daemon](https://github.com/revault/revaultd).
 
+<img src="screenshots/revault-gui-stakeholder.png" alt="stakeholder-regtest" width="100%"/>
+<img src="screenshots/revault-gui-manager.png" alt="manager-regtest" width="100%"/>
+
 ## Dependencies
 
 - [`pkg-config`](https://www.freedesktop.org/wiki/Software/pkg-config/) (On Debian/Ubuntu `apt install pkg-config`)
