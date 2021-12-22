@@ -26,7 +26,7 @@ impl container::StyleSheet for WarningStyle {
             border_radius: 0.0,
             text_color: iced::Color::BLACK.into(),
             background: color::WARNING.into(),
-            border_color: color::WARNING.into(),
+            border_color: color::WARNING,
             ..container::Style::default()
         }
     }
@@ -40,8 +40,7 @@ impl container::StyleSheet for TooltipWarningStyle {
             border_width: 1.0,
             text_color: color::WARNING.into(),
             background: color::FOREGROUND.into(),
-            border_color: color::WARNING.into(),
-            ..container::Style::default()
+            border_color: color::WARNING,
         }
     }
 }
