@@ -220,7 +220,7 @@ pub mod card {
                 border_radius: 10.0,
                 text_color: color::ALERT.into(),
                 background: color::FOREGROUND.into(),
-                border_color: color::ALERT_LIGHT.into(),
+                border_color: color::ALERT_LIGHT,
                 ..container::Style::default()
             }
         }

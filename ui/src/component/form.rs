@@ -77,7 +77,7 @@ where
                 return Container::new(
                     Column::with_children(vec![
                         self.input.style(InvalidFormStyle).into(),
-                        Text::new(&message).small().color(color::ALERT).into(),
+                        Text::new(message).small().color(color::ALERT).into(),
                     ])
                     .width(Length::Fill)
                     .spacing(5),
