@@ -3,9 +3,9 @@ name = "revault-gui"
 version = "0.3.0"
 readme = "README.md"
 description = "Revault GUI"
-repository = "https://github.com/re-vault/revault-gui"
+repository = "https://github.com/revault/revault-gui"
 license = "BSD-3-Clause"
-authors = ["Edouard Paris <m@edouard.paris>"]
+authors = ["Edouard Paris <m@edouard.paris>", "Daniela Brozzoni <danielabrozzoni@protonmail.com>"]
 edition = "2018"
 
 [workspace]
