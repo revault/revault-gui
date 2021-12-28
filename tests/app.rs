@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use utils::{
-    mock::{DaemonClient, MockedRequests},
+    mock::{Daemon, DaemonClient},
     sandbox::Sandbox,
 };
 
@@ -31,10 +31,9 @@ async fn test_deposit_state() {
         "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj",
     )
     .unwrap();
-    let sandbox: Sandbox<DaemonClient, DepositState> = Sandbox::new(DepositState::new());
-    let requests: MockedRequests = [
+    let daemon = Daemon::new(vec![
         (
-            json!({"method": "getinfo", "params": Option::<Request>::None}),
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
             Ok(json!(GetInfoResponse {
                 blockheight: 0,
                 network: "testnet".to_string(),
@@ -44,19 +43,17 @@ async fn test_deposit_state() {
             })),
         ),
         (
-            json!({"method": "getdepositaddress", "params": Option::<Request>::None}),
+            Some(json!({"method": "getdepositaddress", "params": Option::<Request>::None})),
             Ok(json!(DepositAddress {
                 address: addr.clone()
             })),
         ),
-    ]
-    .iter()
-    .cloned()
-    .map(|(k, v)| (k.to_string(), v))
-    .collect();
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, DepositState> = Sandbox::new(DepositState::new());
 
     let cfg = Config::default();
-    let client = DaemonClient::new(requests);
+    let client = daemon.run();
     let ctx = Context::new(
         Arc::new(RevaultD::new(&cfg, client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
@@ -81,10 +78,9 @@ async fn test_deposit_state() {
 
 #[tokio::test]
 async fn test_emergency_state() {
-    let sandbox: Sandbox<DaemonClient, EmergencyState> = Sandbox::new(EmergencyState::new());
-    let requests: MockedRequests = [
+    let daemon = Daemon::new(vec![
         (
-            json!({"method": "getinfo", "params": Option::<Request>::None}),
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
             Ok(json!(GetInfoResponse {
                 blockheight: 0,
                 network: "testnet".to_string(),
@@ -94,7 +90,7 @@ async fn test_emergency_state() {
             })),
         ),
         (
-            json!({"method": "listvaults", "params": Some(&[[
+            Some(json!({"method": "listvaults", "params": Some(&[[
                 VaultStatus::Secured,
                 VaultStatus::Active,
                 VaultStatus::Activating,
@@ -104,7 +100,7 @@ async fn test_emergency_state() {
                 VaultStatus::EmergencyVaulted,
                 VaultStatus::UnvaultEmergencyVaulting,
                 VaultStatus::UnvaultEmergencyVaulted,
-            ]])}),
+            ]])})),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
                     Vault {
@@ -133,17 +129,15 @@ async fn test_emergency_state() {
             })),
         ),
         (
-            json!({"method": "emergency", "params": Option::<Request>::None}),
+            Some(json!({"method": "emergency", "params": Option::<Request>::None})),
             Ok(json!({})),
         ),
-    ]
-    .iter()
-    .cloned()
-    .map(|(k, v)| (k.to_string(), v))
-    .collect();
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, EmergencyState> = Sandbox::new(EmergencyState::new());
 
     let cfg = Config::default();
-    let client = DaemonClient::new(requests);
+    let client = daemon.run();
     let ctx = Context::new(
         Arc::new(RevaultD::new(&cfg, client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
