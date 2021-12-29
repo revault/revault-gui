@@ -14,13 +14,13 @@ use revault_gui::{
         context::Context,
         menu::Menu,
         message::Message,
-        state::{DepositState, EmergencyState},
+        state::{DepositState, EmergencyState, HistoryState},
     },
     conversion::Converter,
     daemon::{
-        client::{GetInfoResponse, ListVaultsResponse, Request, RevaultD},
+        client::{GetHistoryResponse, GetInfoResponse, ListVaultsResponse, Request, RevaultD},
         config::Config,
-        model::{DepositAddress, Vault, VaultStatus},
+        model::{DepositAddress, HistoryEvent, HistoryEventKind, Vault, VaultStatus},
     },
     revault::Role,
 };
@@ -164,4 +164,108 @@ async fn test_emergency_state() {
 
     let sandbox = sandbox.update(&ctx, Message::Emergency).await;
     assert!(matches!(sandbox.state(), EmergencyState::Triggered { .. }));
+}
+
+#[tokio::test]
+async fn test_history_state() {
+    let daemon = Daemon::new(vec![
+        (
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
+            Ok(json!(GetInfoResponse {
+                blockheight: 0,
+                network: "testnet".to_string(),
+                sync: 1.0,
+                version: "0.1".to_string(),
+                managers_threshold: 3
+            })),
+        ),
+        (
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: vec![
+                    HistoryEvent {
+                        date: 1,
+                        txid: bitcoin::Txid::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
+                        )
+                        .unwrap(),
+                        kind: HistoryEventKind::Spend,
+                        amount: Some(1_000_000),
+                        fee: Some(2000),
+                    },
+                    HistoryEvent {
+                        date: 0,
+                        txid: bitcoin::Txid::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
+                        )
+                        .unwrap(),
+                        kind: HistoryEventKind::Spend,
+                        amount: Some(2_000_000),
+                        fee: None,
+                    },
+                ]
+            })),
+        ),
+        (
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: vec![HistoryEvent {
+                    date: 0,
+                    txid: bitcoin::Txid::from_str(
+                        "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
+                    )
+                    .unwrap(),
+                    kind: HistoryEventKind::Spend,
+                    amount: Some(2_000_000),
+                    fee: None,
+                },]
+            })),
+        ),
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+
+    let cfg = Config::default();
+    let client = daemon.run();
+    let ctx = Context::new(
+        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        Converter::new(bitcoin::Network::Bitcoin),
+        bitcoin::Network::Bitcoin,
+        false,
+        Role::Stakeholder,
+        Menu::Vaults,
+        3,
+        false,
+    );
+
+    let sandbox = sandbox.load(&ctx).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events,
+        event_kind_filter,
+        ..
+    } = sandbox.state()
+    {
+        assert!(event_kind_filter.is_none());
+        assert_eq!(events.len(), 2);
+    }
+
+    let sandbox = sandbox
+        .update(
+            &ctx,
+            Message::FilterHistoryEvents(Some(HistoryEventKind::Deposit)),
+        )
+        .await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events,
+        event_kind_filter,
+        ..
+    } = sandbox.state()
+    {
+        assert_eq!(*event_kind_filter, Some(HistoryEventKind::Deposit));
+        assert_eq!(events.len(), 1);
+    }
 }
