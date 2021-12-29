@@ -262,7 +262,7 @@ pub struct GetHistoryResponse {
 pub struct ListTransactionsRequest(Vec<String>);
 
 /// listtransactions response
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListOnchainTransactionsResponse {
     pub onchain_transactions: Vec<VaultTransactions>,
 }
