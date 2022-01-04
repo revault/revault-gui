@@ -352,7 +352,7 @@ pub async fn secure_deposits<C: Client>(
                 .map(|deposit| deposit.outpoint())
                 .collect());
         }
-        Err(revault_hwi::Error::UnimplementedMethod) => {
+        Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
         }
         Err(e) => return Err(e.into()),
@@ -621,7 +621,7 @@ pub async fn delegate_vaults<C: Client>(
 
             return Ok(vaults.into_iter().map(|vault| vault.outpoint()).collect());
         }
-        Err(revault_hwi::Error::UnimplementedMethod) => {
+        Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
         }
         Err(e) => return Err(e.into()),

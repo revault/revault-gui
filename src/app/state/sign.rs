@@ -12,10 +12,10 @@ use tokio::sync::Mutex;
 
 use iced::{time, Command, Element, Subscription};
 
-use revault_hwi::{Channel, Error};
+use revault_hwi::{HWIError, RevaultHWI};
 
 use crate::{
-    app::{context::Context, message::SignMessage, view::sign::SignerView},
+    app::{context::Context, hw, message::SignMessage, view::sign::SignerView},
     daemon::{client::Client, model::Vault},
 };
 
@@ -47,7 +47,7 @@ pub struct Signer<T> {
     device: Device,
     processing: bool,
     signed: bool,
-    error: Option<Error>,
+    error: Option<HWIError>,
 
     pub target: T,
 
@@ -125,7 +125,7 @@ impl Signer<SpendTransactionTarget> {
 
 #[derive(Debug, Clone)]
 pub struct Device {
-    channel: Option<Arc<Mutex<Channel>>>,
+    channel: Option<Arc<Mutex<Box<dyn RevaultHWI + Send>>>>,
 }
 
 impl Device {
@@ -147,11 +147,11 @@ impl Device {
             SignMessage::CheckConnection => {
                 if let Some(channel) = self.channel.clone() {
                     return Command::perform(
-                        async move { channel.lock().await.ping().await },
+                        async move { channel.lock().await.is_connected().await },
                         SignMessage::Ping,
                     );
                 } else {
-                    return Command::perform(Channel::try_connect(), |res| {
+                    return Command::perform(hw::connect(), |res| {
                         SignMessage::Connected(res.map(|channel| Arc::new(Mutex::new(channel))))
                     });
                 }
@@ -171,38 +171,39 @@ impl Device {
         emergency_tx: Psbt,
         emergency_unvault_tx: Psbt,
         cancel_tx: Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), Error> {
+    ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
         if let Some(channel) = self.channel {
             channel
                 .lock()
                 .await
-                .sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_tx)
+                .sign_revocation_txs(&emergency_tx, &emergency_unvault_tx, &cancel_tx)
                 .await
         } else {
-            Err(Error::DeviceDisconnected)
+            Err(HWIError::DeviceDisconnected)
         }
     }
 
-    pub async fn sign_unvault_tx(self, unvault_tx: Psbt) -> Result<Psbt, Error> {
+    pub async fn sign_unvault_tx(self, unvault_tx: Psbt) -> Result<Psbt, HWIError> {
         if let Some(channel) = self.channel {
-            channel.lock().await.sign_unvault_tx(unvault_tx).await
+            channel.lock().await.sign_unvault_tx(&unvault_tx).await
         } else {
-            Err(Error::DeviceDisconnected)
+            Err(HWIError::DeviceDisconnected)
         }
     }
 
-    pub async fn sign_spend_tx(self, spend_tx: Psbt) -> Result<Psbt, Error> {
+    pub async fn sign_spend_tx(self, spend_tx: Psbt) -> Result<Psbt, HWIError> {
         if let Some(channel) = self.channel {
-            channel.lock().await.sign_spend_tx(spend_tx).await
+            let mut res = channel.lock().await;
+            return res.sign_tx(&spend_tx).await;
         } else {
-            Err(Error::DeviceDisconnected)
+            Err(HWIError::DeviceDisconnected)
         }
     }
 
     pub async fn secure_batch(
         self,
         deposits: &Vec<Vault>,
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, Error> {
+    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
         if let Some(channel) = self.channel {
             let utxos: Vec<(OutPoint, Amount, u32)> = deposits
                 .iter()
@@ -215,13 +216,13 @@ impl Device {
                     )
                 })
                 .collect();
-            channel.lock().await.secure_batch(utxos).await
+            channel.lock().await.create_vaults(&utxos).await
         } else {
-            Err(Error::DeviceDisconnected)
+            Err(HWIError::DeviceDisconnected)
         }
     }
 
-    pub async fn delegate_batch(self, vaults: &Vec<Vault>) -> Result<Vec<Psbt>, Error> {
+    pub async fn delegate_batch(self, vaults: &Vec<Vault>) -> Result<Vec<Psbt>, HWIError> {
         if let Some(channel) = self.channel {
             let utxos: Vec<(OutPoint, Amount, u32)> = vaults
                 .iter()
@@ -234,9 +235,9 @@ impl Device {
                     )
                 })
                 .collect();
-            channel.lock().await.delegate_batch(utxos).await
+            channel.lock().await.delegate_vaults(&utxos).await
         } else {
-            Err(Error::DeviceDisconnected)
+            Err(HWIError::DeviceDisconnected)
         }
     }
 }

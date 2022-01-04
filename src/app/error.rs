@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    HardwareError(revault_hwi::Error),
+    HardwareError(revault_hwi::HWIError),
     ConfigError(ConfigError),
     RevaultDError(RevaultDError),
     UnexpectedError(String),
@@ -49,8 +49,8 @@ impl From<RevaultDError> for Error {
     }
 }
 
-impl From<revault_hwi::Error> for Error {
-    fn from(error: revault_hwi::Error) -> Self {
+impl From<revault_hwi::HWIError> for Error {
+    fn from(error: revault_hwi::HWIError) -> Self {
         Error::HardwareError(error)
     }
 }

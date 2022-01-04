@@ -1,4 +1,5 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use revault_hwi::{HWIError, RevaultHWI};
 use std::{sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 
@@ -87,11 +88,11 @@ pub enum VaultFilterMessage {
 #[derive(Debug, Clone)]
 pub enum SignMessage {
     CheckConnection,
-    Ping(Result<(), revault_hwi::Error>),
+    Ping(Result<(), HWIError>),
     SelectSign,
-    Connected(Result<Arc<Mutex<revault_hwi::Channel>>, revault_hwi::Error>),
-    RevocationTxsSigned(Result<Box<Vec<(Psbt, Psbt, Psbt)>>, revault_hwi::Error>),
-    PsbtSigned(Result<Box<Psbt>, revault_hwi::Error>),
+    Connected(Result<Arc<Mutex<Box<dyn RevaultHWI + Send>>>, HWIError>),
+    RevocationTxsSigned(Result<Box<Vec<(Psbt, Psbt, Psbt)>>, HWIError>),
+    PsbtSigned(Result<Box<Psbt>, HWIError>),
 }
 
 #[derive(Debug, Clone)]
