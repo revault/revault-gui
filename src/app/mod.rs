@@ -5,7 +5,6 @@ pub mod message;
 pub mod state;
 
 mod error;
-mod hw;
 mod view;
 
 use iced::{Clipboard, Command, Element, Subscription};

@@ -15,7 +15,7 @@ use iced::{time, Command, Element, Subscription};
 use revault_hwi::{HWIError, RevaultHWI};
 
 use crate::{
-    app::{context::Context, hw, message::SignMessage, view::sign::SignerView},
+    app::{context::Context, message::SignMessage, view::sign::SignerView},
     daemon::{client::Client, model::Vault},
 };
 
@@ -89,7 +89,11 @@ impl<T> Signer<T> {
 }
 
 impl Signer<SpendTransactionTarget> {
-    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+    pub fn update<C: Client>(
+        &mut self,
+        ctx: &Context<C>,
+        message: SignMessage,
+    ) -> Command<SignMessage> {
         match message {
             SignMessage::SelectSign => {
                 self.processing = true;
@@ -117,7 +121,7 @@ impl Signer<SpendTransactionTarget> {
                     }
                 }
             }
-            _ => return self.device.update(message),
+            _ => return self.device.update(&ctx, message),
         };
         Command::none()
     }
@@ -137,7 +141,11 @@ impl Device {
         self.channel.is_some()
     }
 
-    pub fn update(&mut self, message: SignMessage) -> Command<SignMessage> {
+    pub fn update<C: Client>(
+        &mut self,
+        ctx: &Context<C>,
+        message: SignMessage,
+    ) -> Command<SignMessage> {
         match message {
             SignMessage::Ping(res) => {
                 if res.is_err() {
@@ -151,7 +159,8 @@ impl Device {
                         SignMessage::Ping,
                     );
                 } else {
-                    return Command::perform(hw::connect(), |res| {
+                    let connect = &ctx.hardware_wallet;
+                    return Command::perform(connect(), |res| {
                         SignMessage::Connected(res.map(|channel| Arc::new(Mutex::new(channel))))
                     });
                 }

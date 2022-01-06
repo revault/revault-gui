@@ -4,6 +4,12 @@ use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscri
 extern crate serde;
 extern crate serde_json;
 
+use revault_hwi::{
+    dummysigner::{DummySigner, DUMMYSIGNER_DEFAULT_ADDRESS},
+    specter::{Specter, SPECTER_SIMULATOR_DEFAULT_ADDRESS},
+    HWIError, RevaultHWI,
+};
+
 use revault_gui::{
     app::{self, config::ConfigError, context::Context, menu::Menu, App},
     conversion::Converter,
@@ -205,6 +211,7 @@ impl Application for GUI {
                     Menu::Home,
                     info.managers_threshold,
                     self.daemon_running,
+                    Box::new(|| Box::pin(connect_hardware_wallet())),
                 );
 
                 let (app, command) = App::new(context, config);
@@ -340,6 +347,21 @@ pub fn setup_logger(log_level: log::LevelFilter) -> Result<(), fern::InitError> 
     dispatcher.chain(std::io::stdout()).apply()?;
 
     Ok(())
+}
+
+pub async fn connect_hardware_wallet() -> Result<Box<dyn RevaultHWI + Send>, HWIError> {
+    if let Ok(device) = DummySigner::try_connect(DUMMYSIGNER_DEFAULT_ADDRESS).await {
+        return Ok(device.into());
+    }
+    if let Ok(device) = Specter::try_connect_simulator(SPECTER_SIMULATOR_DEFAULT_ADDRESS).await {
+        return Ok(device.into());
+    }
+
+    if let Ok(device) = Specter::try_connect_serial() {
+        return Ok(device.into());
+    }
+
+    Err(HWIError::DeviceDisconnected)
 }
 
 #[cfg(test)]

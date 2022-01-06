@@ -288,7 +288,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
                         Command::none()
                     }
                 }
-                Message::Sign(msg) => device.update(msg).map(Message::Sign),
+                Message::Sign(msg) => device.update(ctx, msg).map(Message::Sign),
                 _ => Command::none(),
             },
         }
@@ -542,7 +542,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                         Command::none()
                     }
                 }
-                Message::Sign(msg) => device.update(msg).map(Message::Sign),
+                Message::Sign(msg) => device.update(ctx, msg).map(Message::Sign),
                 _ => Command::none(),
             },
         }

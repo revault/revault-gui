@@ -296,7 +296,7 @@ impl SpendTransactionAction {
                     signer, processing, ..
                 } = self
                 {
-                    let cmd = signer.update(msg);
+                    let cmd = signer.update(ctx, msg);
                     if signer.signed() && !*processing {
                         *psbt = signer.target.spend_tx.clone();
                         *processing = true;
