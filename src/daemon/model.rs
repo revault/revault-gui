@@ -172,7 +172,7 @@ pub enum SpendTxStatus {
     Broadcasted,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultTransactions {
     pub vault_outpoint: String,
     pub deposit: BroadcastedTransaction,
@@ -204,7 +204,7 @@ impl VaultTransactions {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadcastedTransaction {
     /// Height of the block containing the transaction.
     pub blockheight: Option<u64>,
@@ -214,19 +214,19 @@ pub struct BroadcastedTransaction {
     pub received_at: i64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SignedTransaction {
     #[serde(rename = "hex", with = "bitcoin_transaction")]
     pub tx: Transaction,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnsignedTransaction {
     #[serde(with = "bitcoin_psbt")]
     pub psbt: PartiallySignedTransaction,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RevocationTransactions {
     #[serde(with = "bitcoin_psbt")]
     pub cancel_tx: PartiallySignedTransaction,
@@ -238,13 +238,13 @@ pub struct RevocationTransactions {
     pub emergency_unvault_tx: PartiallySignedTransaction,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnvaultTransaction {
     #[serde(with = "bitcoin_psbt")]
     pub unvault_tx: PartiallySignedTransaction,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SpendTransaction {
     #[serde(with = "bitcoin_psbt")]
     pub spend_tx: PartiallySignedTransaction,
@@ -253,7 +253,7 @@ pub struct SpendTransaction {
     pub feerate: u32,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SpendTx {
     #[serde(with = "bitcoin_psbt")]
     pub psbt: PartiallySignedTransaction,
@@ -263,8 +263,12 @@ pub struct SpendTx {
 }
 
 mod bitcoin_transaction {
-    use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
-    use serde::{self, Deserialize, Deserializer};
+    use bitcoin::{
+        consensus::encode,
+        hashes::hex::{FromHex, ToHex},
+        Transaction,
+    };
+    use serde::{self, Deserialize, Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Transaction, D::Error>
     where
@@ -274,11 +278,18 @@ mod bitcoin_transaction {
         let bytes = Vec::from_hex(&s).map_err(serde::de::Error::custom)?;
         encode::deserialize::<Transaction>(&bytes).map_err(serde::de::Error::custom)
     }
+
+    pub fn serialize<S>(tx: &Transaction, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&encode::serialize(&tx).to_hex())
+    }
 }
 
 mod bitcoin_psbt {
     use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction};
-    use serde::{self, Deserialize, Deserializer};
+    use serde::{self, Deserialize, Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<PartiallySignedTransaction, D::Error>
     where
@@ -287,6 +298,16 @@ mod bitcoin_psbt {
         let s = String::deserialize(deserializer)?;
         let bytes: Vec<u8> = base64::decode(&s).map_err(serde::de::Error::custom)?;
         encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+    }
+
+    pub fn serialize<'se, S>(
+        psbt: &PartiallySignedTransaction,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&base64::encode(&encode::serialize(&psbt)))
     }
 }
 
