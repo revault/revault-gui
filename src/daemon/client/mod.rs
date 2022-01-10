@@ -214,7 +214,7 @@ impl<C: Client> RevaultD<C> {
 
     pub fn get_history(
         &self,
-        kind: &Vec<HistoryEventKind>,
+        kind: &[HistoryEventKind],
         start: u64,
         end: u64,
         limit: u64,

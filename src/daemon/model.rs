@@ -331,6 +331,7 @@ pub struct HistoryEvent {
     pub kind: HistoryEventKind,
     pub amount: Option<u64>,
     pub fee: Option<u64>,
+    pub vaults: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -341,6 +342,10 @@ pub enum HistoryEventKind {
     Deposit,
     #[serde(rename = "spend")]
     Spend,
+}
+
+impl HistoryEventKind {
+    pub const ALL: [HistoryEventKind; 3] = [Self::Cancel, Self::Deposit, Self::Spend];
 }
 
 impl std::fmt::Display for HistoryEventKind {

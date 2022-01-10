@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use iced::{Command, Element};
 
-use super::{cmd::get_history, State};
+use super::State;
 
 use crate::{
     app::{
@@ -19,6 +19,8 @@ use crate::{
     },
 };
 
+pub const HISTORY_EVENT_PAGE_SIZE: u64 = 20;
+
 /// HistoryState displays history events.
 #[derive(Debug)]
 pub enum HistoryState {
@@ -29,6 +31,7 @@ pub enum HistoryState {
     Loaded {
         event_kind_filter: Option<HistoryEventKind>,
         events: Vec<HistoryEventState>,
+        has_next: bool,
         // Error in case of reload failure.
         warning: Option<Error>,
 
@@ -52,7 +55,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 if let Message::HistoryEvents(res) = message {
                     match res {
                         Ok(events) => {
+                            let has_next = events.len() as u64 >= HISTORY_EVENT_PAGE_SIZE;
                             *self = Self::Loaded {
+                                has_next,
                                 event_kind_filter: None,
                                 events: events
                                     .into_iter()
@@ -70,39 +75,107 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 events,
                 warning,
                 event_kind_filter,
+                has_next,
                 ..
             } => match message {
-                Message::Reload => return self.load(ctx),
+                Message::Reload => {
+                    *events = Vec::new();
+                    *event_kind_filter = None;
+                    return self.load(ctx);
+                }
                 Message::FilterHistoryEvents(filter) => {
+                    *events = Vec::new();
+                    *event_kind_filter = filter;
                     let t1 = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .unwrap()
                         .as_secs();
-                    *event_kind_filter = filter;
+                    let kind = event_kind_filter
+                        .as_ref()
+                        .map(|filter| vec![filter.clone()])
+                        .unwrap_or(vec![
+                            HistoryEventKind::Cancel,
+                            HistoryEventKind::Deposit,
+                            HistoryEventKind::Spend,
+                        ]);
+                    let revaultd = ctx.revaultd.clone();
                     return Command::perform(
-                        get_history(
-                            ctx.revaultd.clone(),
-                            event_kind_filter
-                                .as_ref()
-                                .map(|filter| vec![filter.clone()])
-                                .unwrap_or(vec![
-                                    HistoryEventKind::Deposit,
-                                    HistoryEventKind::Cancel,
-                                    HistoryEventKind::Spend,
-                                ]),
-                            0,
-                            t1,
-                            u32::MAX.into(),
-                        ),
+                        async move {
+                            revaultd
+                                .get_history(kind.as_slice(), 0, t1, u32::MAX.into())
+                                .map(|res| res.events)
+                        },
                         Message::HistoryEvents,
                     );
                 }
+                Message::Next => {
+                    if let Some(last) = events.last() {
+                        let revaultd = ctx.revaultd.clone();
+                        let last_event_date = last.event.date as u64;
+                        let kind = event_kind_filter
+                            .as_ref()
+                            .map(|filter| vec![filter.clone()])
+                            .unwrap_or(vec![
+                                HistoryEventKind::Cancel,
+                                HistoryEventKind::Deposit,
+                                HistoryEventKind::Spend,
+                            ]);
+                        return Command::perform(
+                            async move {
+                                let mut limit = HISTORY_EVENT_PAGE_SIZE;
+                                let mut events = revaultd
+                                    .get_history(kind.as_slice(), 0, last_event_date, limit)
+                                    .map(|res| res.events)?;
+
+                                // because gethistory cursor is inclusive and use blocktime
+                                // multiple events can occur in the same block.
+                                // If there is more event in the same block that the
+                                // HISTORY_EVENT_PAGE_SIZE they can not be retrieved by changing
+                                // the cursor value (blocktime) but by increasing the limit.
+                                //
+                                // 1. Check if the events retrieved have all the same blocktime
+                                let blocktime = if let Some(event) = events.first() {
+                                    event.date
+                                } else {
+                                    return Ok(events);
+                                };
+
+                                // 2. Retrieve a larger batch of event with the same cursor but
+                                //    a larger limit.
+                                while !events.iter().any(|evt| evt.date != blocktime)
+                                    && events.len() as u64 == limit
+                                {
+                                    // increments of the equivalent of one page more.
+                                    limit += HISTORY_EVENT_PAGE_SIZE;
+                                    events = revaultd
+                                        .get_history(kind.as_slice(), 0, last_event_date, limit)
+                                        .map(|res| res.events)?;
+                                }
+                                Ok(events)
+                            },
+                            Message::HistoryEvents,
+                        );
+                    }
+                }
                 Message::HistoryEvents(res) => match res {
                     Ok(evts) => {
-                        *events = evts
+                        *has_next =
+                            !evts.is_empty() && evts.len() as u64 % HISTORY_EVENT_PAGE_SIZE == 0;
+                        // gethistory cursor is inclusive and use blocktime.
+                        // multiple events can occur in the same block and
+                        // if they are included or not in the batch of events
+                        // depends of the limit set.
+                        let mut new_events: Vec<HistoryEventState> = evts
                             .into_iter()
-                            .map(|evt| HistoryEventState::new(evt))
+                            .filter_map(|evt| {
+                                if !events.iter().any(|state| state.event == evt) {
+                                    Some(HistoryEventState::new(evt))
+                                } else {
+                                    None
+                                }
+                            })
                             .collect();
+                        events.append(&mut new_events);
                     }
                     Err(e) => *warning = Some(Error::RevaultDError(e)),
                 },
@@ -120,11 +193,13 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 warning,
                 view,
                 event_kind_filter,
+                has_next,
             } => view.view(
                 ctx,
                 warning.as_ref(),
                 events.iter_mut().map(|evt| evt.view(ctx)).collect(),
                 &event_kind_filter,
+                *has_next,
             ),
         }
     }
@@ -135,18 +210,13 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        let revaultd = ctx.revaultd.clone();
         Command::perform(
-            get_history(
-                ctx.revaultd.clone(),
-                vec![
-                    HistoryEventKind::Cancel,
-                    HistoryEventKind::Deposit,
-                    HistoryEventKind::Spend,
-                ],
-                0,
-                t1,
-                u32::MAX.into(),
-            ),
+            async move {
+                revaultd
+                    .get_history(&HistoryEventKind::ALL, 0, t1, HISTORY_EVENT_PAGE_SIZE)
+                    .map(|res| res.events)
+            },
             Message::HistoryEvents,
         )
     }

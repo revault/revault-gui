@@ -15,7 +15,7 @@ use crate::app::{
     menu::Menu,
     message::{Message, SignMessage},
     state::{
-        cmd::{get_blockheight, get_history, list_vaults},
+        cmd::{get_blockheight, list_vaults},
         history::HistoryEventState,
         sign::Device,
         vault::{Vault, VaultListItem},
@@ -162,6 +162,15 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        let revaultd = ctx.revaultd.clone();
+        let history = Command::perform(
+            async move {
+                revaultd
+                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
+                    .map(|res| res.events)
+            },
+            Message::HistoryEvents,
+        );
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -172,20 +181,7 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
                 ),
                 Message::Vaults,
             ),
-            Command::perform(
-                get_history(
-                    ctx.revaultd.clone(),
-                    vec![
-                        HistoryEventKind::Cancel,
-                        HistoryEventKind::Deposit,
-                        HistoryEventKind::Spend,
-                    ],
-                    0,
-                    now,
-                    5,
-                ),
-                Message::HistoryEvents,
-            ),
+            history,
         ])
     }
 }
