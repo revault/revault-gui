@@ -3,11 +3,12 @@ use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction 
 use serialport::{available_ports, SerialPortType};
 use tokio::io::AsyncBufReadExt;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-use tokio::net::{TcpStream, ToSocketAddrs};
+pub use tokio::net::TcpStream;
+use tokio::net::ToSocketAddrs;
 use tokio_serial::SerialPortBuilderExt;
-use tokio_serial::SerialStream;
+pub use tokio_serial::SerialStream;
 
-use super::{HWIError, NoRevaultApp, HWI};
+use super::{HWIError, HWI};
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -102,12 +103,6 @@ impl HWI for Specter<TcpStream> {
     }
 }
 
-impl From<Specter<TcpStream>> for Box<dyn super::RevaultHWI + Send> {
-    fn from(s: Specter<TcpStream>) -> Box<dyn super::RevaultHWI + Send> {
-        Box::new(s)
-    }
-}
-
 const SPECTER_VID: u16 = 61525;
 const SPECTER_PID: u16 = 38914;
 
@@ -154,14 +149,6 @@ impl HWI for Specter<SerialStream> {
     }
 }
 
-impl From<Specter<SerialStream>> for Box<dyn super::RevaultHWI + Send> {
-    fn from(s: Specter<SerialStream>) -> Box<dyn super::RevaultHWI + Send> {
-        Box::new(s)
-    }
-}
-
-impl<T> NoRevaultApp for Specter<T> {}
-
 #[derive(Debug)]
 pub enum SpecterError {
     DeviceNotFound,
@@ -184,4 +171,24 @@ impl From<SpecterError> for HWIError {
             SpecterError::Device(e) => HWIError::Device(e),
         }
     }
+}
+
+#[cfg(feature = "revault")]
+mod revault {
+    use super::{SerialStream, Specter, TcpStream};
+    use crate::app::revault::{NoRevaultApp, RevaultHWI};
+
+    impl From<Specter<SerialStream>> for Box<dyn RevaultHWI + Send> {
+        fn from(s: Specter<SerialStream>) -> Box<dyn RevaultHWI + Send> {
+            Box::new(s)
+        }
+    }
+
+    impl From<Specter<TcpStream>> for Box<dyn RevaultHWI + Send> {
+        fn from(s: Specter<TcpStream>) -> Box<dyn RevaultHWI + Send> {
+            Box::new(s)
+        }
+    }
+
+    impl<T> NoRevaultApp for Specter<T> {}
 }

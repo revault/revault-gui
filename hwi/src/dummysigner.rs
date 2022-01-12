@@ -18,7 +18,7 @@ use tokio_serde::{
 use serde::{self, Deserialize, Deserializer, Serialize};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
-use super::{HWIError, RevaultHWI, HWI};
+use super::{HWIError, HWI};
 
 pub const DUMMYSIGNER_DEFAULT_ADDRESS: &str = "127.0.0.1:8080";
 
@@ -289,44 +289,55 @@ impl HWI for DummySigner {
     }
 }
 
-#[async_trait]
-impl RevaultHWI for DummySigner {
-    async fn has_revault_app(&mut self) -> bool {
-        true
+#[cfg(feature = "revault")]
+mod revault {
+    use crate::{app::revault::RevaultHWI, HWIError};
+    use async_trait::async_trait;
+    use bitcoin::{
+        blockdata::transaction::OutPoint, util::psbt::PartiallySignedTransaction as Psbt, Amount,
+    };
+
+    use super::DummySigner;
+
+    #[async_trait]
+    impl RevaultHWI for DummySigner {
+        async fn has_revault_app(&mut self) -> bool {
+            true
+        }
+
+        async fn sign_revocation_txs(
+            &mut self,
+            emergency_tx: &Psbt,
+            emergency_unvault_tx: &Psbt,
+            cancel_tx: &Psbt,
+        ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
+            self.sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_tx)
+                .await
+                .map_err(|e| e.into())
+        }
+
+        async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, HWIError> {
+            self.sign_unvault_tx(unvault_tx).await.map_err(|e| e.into())
+        }
+
+        async fn create_vaults(
+            &mut self,
+            deposits: &[(OutPoint, Amount, u32)],
+        ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
+            self.create_vaults(deposits).await.map_err(|e| e.into())
+        }
+
+        async fn delegate_vaults(
+            &mut self,
+            vaults: &[(OutPoint, Amount, u32)],
+        ) -> Result<Vec<Psbt>, HWIError> {
+            self.delegate_vaults(vaults).await.map_err(|e| e.into())
+        }
     }
 
-    async fn sign_revocation_txs(
-        &mut self,
-        emergency_tx: &Psbt,
-        emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
-        self.sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_tx)
-            .await
-            .map_err(|e| e.into())
-    }
-
-    async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, HWIError> {
-        self.sign_unvault_tx(unvault_tx).await.map_err(|e| e.into())
-    }
-
-    async fn create_vaults(
-        &mut self,
-        deposits: &[(OutPoint, Amount, u32)],
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
-        self.create_vaults(deposits).await.map_err(|e| e.into())
-    }
-
-    async fn delegate_vaults(
-        &mut self,
-        vaults: &[(OutPoint, Amount, u32)],
-    ) -> Result<Vec<Psbt>, HWIError> {
-        self.delegate_vaults(vaults).await.map_err(|e| e.into())
-    }
-}
-
-impl From<DummySigner> for Box<dyn RevaultHWI + Send> {
-    fn from(d: DummySigner) -> Box<dyn RevaultHWI + Send> {
-        Box::new(d)
+    impl From<DummySigner> for Box<dyn RevaultHWI + Send> {
+        fn from(d: DummySigner) -> Box<dyn RevaultHWI + Send> {
+            Box::new(d)
+        }
     }
 }

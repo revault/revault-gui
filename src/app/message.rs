@@ -1,5 +1,5 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use revault_hwi::{HWIError, RevaultHWI};
+use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::{sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 

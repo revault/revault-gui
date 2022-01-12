@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 
 use iced::{time, Command, Element, Subscription};
 
-use revault_hwi::{HWIError, RevaultHWI};
+use revault_hwi::{app::revault::RevaultHWI, HWIError};
 
 use crate::{
     app::{context::Context, message::SignMessage, view::sign::SignerView},
