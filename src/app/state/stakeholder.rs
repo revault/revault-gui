@@ -155,7 +155,11 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             ctx,
             None,
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
+            self.latest_events
+                .iter_mut()
+                .enumerate()
+                .map(|(i, evt)| evt.view(ctx, i))
+                .collect(),
             &self.balance,
         )
     }

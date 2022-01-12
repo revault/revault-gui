@@ -282,7 +282,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
                 .collect(),
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
+            self.latest_events
+                .iter_mut()
+                .enumerate()
+                .map(|(i, evt)| evt.view(ctx, i))
+                .collect(),
             self.active_funds,
             self.inactive_funds,
         )

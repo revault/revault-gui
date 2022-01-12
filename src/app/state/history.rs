@@ -197,7 +197,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
             } => view.view(
                 ctx,
                 warning.as_ref(),
-                events.iter_mut().map(|evt| evt.view(ctx)).collect(),
+                events
+                    .iter_mut()
+                    .enumerate()
+                    .map(|(i, evt)| evt.view(ctx, i))
+                    .collect(),
                 &event_kind_filter,
                 *has_next,
             ),
@@ -238,14 +242,15 @@ impl HistoryEventListItemState {
     pub fn new(event: HistoryEvent) -> Self {
         Self {
             event,
-            view: HistoryEventListItemView {},
+            view: HistoryEventListItemView::new(),
         }
     }
 
     pub fn view<C: Client + Send + Sync + 'static>(
         &mut self,
         ctx: &Context<C>,
+        index: usize,
     ) -> Element<Message> {
-        self.view.view(ctx, &self.event)
+        self.view.view(ctx, &self.event, index)
     }
 }

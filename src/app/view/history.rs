@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{badge, button, card, text::Text, TransparentPickListStyle};
+use revault_ui::component::{badge, button, text::Text, TransparentPickListStyle};
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
@@ -124,13 +124,22 @@ impl HistoryView {
 }
 
 #[derive(Debug)]
-pub struct HistoryEventListItemView {}
+pub struct HistoryEventListItemView {
+    select_button: iced::button::State,
+}
 
 impl HistoryEventListItemView {
+    pub fn new() -> Self {
+        Self {
+            select_button: iced::button::State::new(),
+        }
+    }
+
     pub fn view<'a, C: Client>(
         &'a mut self,
         ctx: &Context<C>,
         event: &HistoryEvent,
+        index: usize,
     ) -> Element<'a, Message> {
         let date = NaiveDateTime::from_timestamp(event.date, 0);
         let mut row = Row::new()
@@ -186,7 +195,10 @@ impl HistoryEventListItemView {
                     .align_x(Align::End),
             );
         }
-        card::white(Column::new().push(row).spacing(5)).into()
+
+        button::white_card_button(&mut self.select_button, Container::new(row))
+            .on_press(Message::SelectHistoryEvent(index))
+            .into()
     }
 }
 

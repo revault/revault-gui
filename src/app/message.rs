@@ -25,6 +25,7 @@ pub enum Message {
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),
     SelectVault(String),
+    SelectHistoryEvent(usize),
     DelegateVault(String),
     Sign(SignMessage),
     DepositsSecured(Result<Vec<String>, Error>),
