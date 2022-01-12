@@ -638,7 +638,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
             Message::SpendTx(SpendTxMessage::Sign(msg)) => {
                 if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
                     let cmd = signer
-                        .update(msg)
+                        .update(ctx, msg)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m)));
                     if signer.signed() {
                         return Command::perform(

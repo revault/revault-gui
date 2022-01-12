@@ -288,7 +288,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
                         Command::none()
                     }
                 }
-                Message::Sign(msg) => device.update(msg).map(Message::Sign),
+                Message::Sign(msg) => device.update(ctx, msg).map(Message::Sign),
                 _ => Command::none(),
             },
         }
@@ -352,7 +352,7 @@ pub async fn secure_deposits<C: Client>(
                 .map(|deposit| deposit.outpoint())
                 .collect());
         }
-        Err(revault_hwi::Error::UnimplementedMethod) => {
+        Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
         }
         Err(e) => return Err(e.into()),
@@ -542,7 +542,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                         Command::none()
                     }
                 }
-                Message::Sign(msg) => device.update(msg).map(Message::Sign),
+                Message::Sign(msg) => device.update(ctx, msg).map(Message::Sign),
                 _ => Command::none(),
             },
         }
@@ -621,7 +621,7 @@ pub async fn delegate_vaults<C: Client>(
 
             return Ok(vaults.into_iter().map(|vault| vault.outpoint()).collect());
         }
-        Err(revault_hwi::Error::UnimplementedMethod) => {
+        Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
         }
         Err(e) => return Err(e.into()),

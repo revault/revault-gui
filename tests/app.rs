@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use utils::{
     mock::{Daemon, DaemonClient},
+    no_hardware_wallet,
     sandbox::Sandbox,
 };
 
@@ -71,6 +72,7 @@ async fn test_deposit_state() {
         Menu::Vaults,
         3,
         false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
     let sandbox = sandbox.load(&ctx).await;
@@ -155,6 +157,7 @@ async fn test_emergency_state() {
         Menu::Vaults,
         3,
         false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
     let sandbox = sandbox.load(&ctx).await;
@@ -266,6 +269,7 @@ async fn test_vaults_state() {
         Menu::Vaults,
         3,
         false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
     let sandbox = sandbox.load(&ctx).await;
@@ -382,6 +386,7 @@ async fn test_history_state() {
         Menu::Vaults,
         3,
         false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
     let sandbox = sandbox.load(&ctx).await;

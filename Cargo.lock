@@ -141,6 +141,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.52"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061a7acccaa286c011ddc30970520b98fa40e00c9d644633fb26b5fc63a265e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2568,6 +2579,7 @@ dependencies = [
 name = "revault_hwi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bitcoin",
  "futures 0.3.8",
  "log",
