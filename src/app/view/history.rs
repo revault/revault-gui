@@ -124,9 +124,9 @@ impl HistoryView {
 }
 
 #[derive(Debug)]
-pub struct HistoryEventView {}
+pub struct HistoryEventListItemView {}
 
-impl HistoryEventView {
+impl HistoryEventListItemView {
     pub fn view<'a, C: Client>(
         &'a mut self,
         ctx: &Context<C>,

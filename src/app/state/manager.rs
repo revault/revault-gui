@@ -24,7 +24,7 @@ use crate::app::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
-        history::HistoryEventState,
+        history::HistoryEventListItemState,
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
     },
@@ -55,7 +55,7 @@ pub struct ManagerHomeState {
     spend_txs_item: Vec<SpendTransactionListItem>,
     selected_spend_tx: Option<SpendTransactionState>,
 
-    latest_events: Vec<HistoryEventState>,
+    latest_events: Vec<HistoryEventListItemState>,
 
     loading_vaults: bool,
 }
@@ -244,7 +244,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
             }
             Message::HistoryEvents(res) => match res {
                 Ok(events) => {
-                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                    self.latest_events = events
+                        .into_iter()
+                        .map(HistoryEventListItemState::new)
+                        .collect();
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();

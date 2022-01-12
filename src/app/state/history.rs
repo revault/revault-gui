@@ -11,7 +11,7 @@ use crate::{
         error::Error,
         message::Message,
         view::LoadingDashboard,
-        view::{HistoryEventView, HistoryView},
+        view::{HistoryEventListItemView, HistoryView},
     },
     daemon::{
         client::Client,
@@ -30,7 +30,7 @@ pub enum HistoryState {
     },
     Loaded {
         event_kind_filter: Option<HistoryEventKind>,
-        events: Vec<HistoryEventState>,
+        events: Vec<HistoryEventListItemState>,
         has_next: bool,
         // Error in case of reload failure.
         warning: Option<Error>,
@@ -61,7 +61,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                                 event_kind_filter: None,
                                 events: events
                                     .into_iter()
-                                    .map(|evt| HistoryEventState::new(evt))
+                                    .map(|evt| HistoryEventListItemState::new(evt))
                                     .collect(),
                                 warning: None,
                                 view: HistoryView::new(),
@@ -165,11 +165,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                         // multiple events can occur in the same block and
                         // if they are included or not in the batch of events
                         // depends of the limit set.
-                        let mut new_events: Vec<HistoryEventState> = evts
+                        let mut new_events: Vec<HistoryEventListItemState> = evts
                             .into_iter()
                             .filter_map(|evt| {
                                 if !events.iter().any(|state| state.event == evt) {
-                                    Some(HistoryEventState::new(evt))
+                                    Some(HistoryEventListItemState::new(evt))
                                 } else {
                                     None
                                 }
@@ -229,16 +229,16 @@ impl<C: Client + Send + Sync + 'static> From<HistoryState> for Box<dyn State<C>>
 }
 
 #[derive(Debug)]
-pub struct HistoryEventState {
+pub struct HistoryEventListItemState {
     event: HistoryEvent,
-    view: HistoryEventView,
+    view: HistoryEventListItemView,
 }
 
-impl HistoryEventState {
+impl HistoryEventListItemState {
     pub fn new(event: HistoryEvent) -> Self {
         Self {
             event,
-            view: HistoryEventView {},
+            view: HistoryEventListItemView {},
         }
     }
 

@@ -16,7 +16,7 @@ use crate::app::{
     message::{Message, SignMessage},
     state::{
         cmd::list_vaults,
-        history::HistoryEventState,
+        history::HistoryEventListItemState,
         sign::Device,
         vault::{Vault, VaultListItem},
         State,
@@ -37,7 +37,7 @@ pub struct StakeholderHomeState {
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
 
-    latest_events: Vec<HistoryEventState>,
+    latest_events: Vec<HistoryEventListItemState>,
 
     view: StakeholderHomeView,
 }
@@ -132,7 +132,10 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             }
             Message::HistoryEvents(res) => match res {
                 Ok(events) => {
-                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                    self.latest_events = events
+                        .into_iter()
+                        .map(HistoryEventListItemState::new)
+                        .collect();
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();
