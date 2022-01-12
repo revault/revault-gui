@@ -1,7 +1,11 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 pub mod app;
+
+#[cfg(feature = "dummysigner")]
 pub mod dummysigner;
+
+#[cfg(feature = "specter")]
 pub mod specter;
 
 use async_trait::async_trait;
