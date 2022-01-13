@@ -5,9 +5,10 @@ extern crate serde;
 extern crate serde_json;
 
 use revault_hwi::{
+    app::revault::RevaultHWI,
     dummysigner::{DummySigner, DUMMYSIGNER_DEFAULT_ADDRESS},
     specter::{Specter, SPECTER_SIMULATOR_DEFAULT_ADDRESS},
-    HWIError, RevaultHWI,
+    HWIError,
 };
 
 use revault_gui::{

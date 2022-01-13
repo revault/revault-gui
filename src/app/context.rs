@@ -4,7 +4,8 @@ use super::menu::Menu;
 use crate::{
     conversion::Converter, daemon::client::Client, daemon::client::RevaultD, revault::Role,
 };
-use revault_hwi::{HWIError, RevaultHWI};
+
+use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
