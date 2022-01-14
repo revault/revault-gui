@@ -35,6 +35,7 @@ pub enum Message {
     BlockHeight(Result<u64, RevaultDError>),
     ServerStatus(Result<ServersStatuses, RevaultDError>),
     HistoryEvents(Result<Vec<HistoryEvent>, RevaultDError>),
+    HistoryEvent(HistoryEventMessage),
     FilterHistoryEvents(Option<HistoryEventKind>),
     Menu(Menu),
     Next,
@@ -48,6 +49,7 @@ pub enum Message {
     SpendTx(SpendTxMessage),
     Emergency,
     EmergencyBroadcasted(Result<(), RevaultDError>),
+    Close,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +72,11 @@ pub enum SpendTxMessage {
     Broadcasted(Result<(), RevaultDError>),
     Update,
     Updated(Result<(), RevaultDError>),
+}
+
+#[derive(Debug, Clone)]
+pub enum HistoryEventMessage {
+    OnChainTransactions(Result<Vec<VaultTransactions>, RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

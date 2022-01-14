@@ -326,6 +326,7 @@ pub struct ServerStatus {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HistoryEvent {
+    pub blockheight: u32,
     pub txid: Txid,
     pub date: i64,
     pub kind: HistoryEventKind,

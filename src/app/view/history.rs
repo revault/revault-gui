@@ -1,13 +1,16 @@
 use chrono::NaiveDateTime;
 use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{badge, button, text::Text, TransparentPickListStyle};
+use revault_ui::{
+    component::{badge, button, card, separation, text::Text, TransparentPickListStyle},
+    icon,
+};
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
     daemon::{
         client::Client,
-        model::{HistoryEvent, HistoryEventKind},
+        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
     },
 };
 
@@ -209,4 +212,245 @@ fn event_badge<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
         HistoryEventKind::Cancel => badge::vault_canceled(),
         HistoryEventKind::Spend => badge::vault_spent(),
     }
+}
+
+#[derive(Debug)]
+pub struct HistoryEventView {
+    modal: layout::Modal,
+}
+
+impl HistoryEventView {
+    pub fn new() -> Self {
+        Self {
+            modal: layout::Modal::new(),
+        }
+    }
+
+    pub fn view<'a, C: Client>(
+        &'a mut self,
+        ctx: &Context<C>,
+        event: &HistoryEvent,
+        txs: &Vec<VaultTransactions>,
+        warning: Option<&Error>,
+    ) -> Element<'a, Message> {
+        if txs.is_empty() {
+            return self.modal.view(
+                ctx,
+                warning,
+                Container::new(Column::new()),
+                None,
+                Message::Close,
+            );
+        }
+
+        let content: Element<Message> = match event.kind {
+            HistoryEventKind::Deposit => deposit(ctx, event),
+            HistoryEventKind::Cancel => cancel(ctx, event),
+            HistoryEventKind::Spend => spend(ctx, event, txs),
+        };
+
+        self.modal.view(
+            ctx,
+            warning,
+            Container::new(content).padding(20).max_width(800),
+            None,
+            Message::Close,
+        )
+    }
+}
+
+fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
+    Container::new(
+        Row::new()
+            .push(
+                Container::new(
+                    Row::new()
+                        .push(Container::new(
+                            icon::calendar_icon().size(30).width(Length::Fill),
+                        ))
+                        .push(
+                            Column::new()
+                                .push(Text::new("Date:").bold())
+                                .push(Text::new(&format!(
+                                    "{}",
+                                    NaiveDateTime::from_timestamp(event.date, 0)
+                                ))),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .align_x(Align::Center)
+                .width(Length::FillPortion(1)),
+            )
+            .push(
+                Container::new(
+                    Row::new()
+                        .push(Container::new(
+                            icon::block_icon().size(30).width(Length::Fill),
+                        ))
+                        .push(
+                            Column::new()
+                                .push(Text::new("Block Height:").bold())
+                                .push(Text::new(&event.blockheight.to_string())),
+                        )
+                        .align_items(Align::Center)
+                        .spacing(20),
+                )
+                .align_x(Align::Center)
+                .width(Length::FillPortion(1)),
+            )
+            .spacing(20),
+    )
+}
+
+fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+    Column::new()
+        .push(
+            Row::new()
+                .push(event_badge(event))
+                .push(Text::new("Deposit").bold())
+                .spacing(5)
+                .align_items(Align::Center),
+        )
+        .push(
+            Container::new(
+                Text::new(&format!(
+                    "+ {} {}",
+                    ctx.converter
+                        .converts(event.amount.expect("This is a deposit event")),
+                    ctx.converter.unit,
+                ))
+                .bold()
+                .size(50),
+            )
+            .padding(30),
+        )
+        .push(card::white(
+            Column::new()
+                .push(date_and_blockheight(&event))
+                .push(separation().width(Length::Fill))
+                .push(
+                    Row::new()
+                        .push(Text::new("Outpoint:").bold().width(Length::Fill))
+                        .push(Text::new(&format!("{}", event.vaults[0])).small()),
+                )
+                .spacing(20),
+        ))
+        .align_items(Align::Center)
+        .spacing(20)
+        .into()
+}
+
+fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+    Column::new()
+        .push(
+            Row::new()
+                .push(event_badge(event))
+                .push(Text::new("Cancel").bold())
+                .spacing(5)
+                .align_items(Align::Center),
+        )
+        .push(Container::new(Text::new(&format!(
+            "Fee: {} {}",
+            ctx.converter.converts(event.fee.unwrap_or(0)),
+            ctx.converter.unit,
+        ))))
+        .push(card::white(
+            Column::new()
+                .push(date_and_blockheight(&event))
+                .push(separation().width(Length::Fill))
+                .push(
+                    Row::new()
+                        .push(Text::new("Tx ID:").bold().width(Length::Fill))
+                        .push(Text::new(&format!("{}", event.txid)).small()),
+                )
+                .push(
+                    Row::new()
+                        .push(Text::new("Vault:").bold().width(Length::Fill))
+                        .push(Text::new(&format!("{}", event.vaults[0])).small()),
+                )
+                .spacing(20),
+        ))
+        .align_items(Align::Center)
+        .spacing(20)
+        .into()
+}
+
+fn spend<'a, T: 'a, C: Client>(
+    ctx: &Context<C>,
+    event: &HistoryEvent,
+    txs: &Vec<VaultTransactions>,
+) -> Element<'a, T> {
+    let tx = &txs.first().as_ref().unwrap().spend.as_ref().unwrap().tx;
+    let mut col_recipients = Column::new()
+        .push(Text::new("Recipients:").bold())
+        .spacing(10);
+    for output in &tx.output {
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
+        let mut row = Row::new();
+        if let Some(a) = addr {
+            row = row.push(Text::new(&a.to_string()).small().width(Length::Fill))
+        } else {
+            row = row.push(
+                Text::new(&output.script_pubkey.to_string())
+                    .small()
+                    .width(Length::Fill),
+            )
+        }
+        col_recipients = col_recipients
+            .push(
+                card::simple(Container::new(
+                    row.push(
+                        Text::new(&ctx.converter.converts(output.value).to_string())
+                            .bold()
+                            .small()
+                            .width(Length::Shrink),
+                    ),
+                ))
+                .width(Length::Fill),
+            )
+            .width(Length::FillPortion(1));
+    }
+
+    Column::new()
+        .push(
+            Row::new()
+                .push(event_badge(event))
+                .push(Text::new("Spend").bold())
+                .spacing(5)
+                .align_items(Align::Center),
+        )
+        .push(
+            Column::new()
+                .push(
+                    Text::new(&format!(
+                        "- {} {}",
+                        ctx.converter.converts(event.amount.unwrap_or(0)),
+                        ctx.converter.unit,
+                    ))
+                    .bold()
+                    .size(50),
+                )
+                .push(Container::new(Text::new(&format!(
+                    "Fee: {} {}",
+                    ctx.converter.converts(event.fee.unwrap_or(0)),
+                    ctx.converter.unit,
+                ))))
+                .align_items(Align::Center),
+        )
+        .push(card::white(
+            Column::new()
+                .push(date_and_blockheight(&event))
+                .push(separation().width(Length::Fill))
+                .push(
+                    Row::new()
+                        .push(Text::new("Tx ID:").bold().width(Length::Fill))
+                        .push(Text::new(&format!("{}", event.txid)).small()),
+                )
+                .spacing(20),
+        ))
+        .push(col_recipients)
+        .align_items(Align::Center)
+        .spacing(20)
+        .into()
 }

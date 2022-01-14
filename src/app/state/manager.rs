@@ -24,7 +24,7 @@ use crate::app::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
-        history::HistoryEventListItemState,
+        history::{HistoryEventListItemState, HistoryEventState},
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
     },
@@ -56,6 +56,7 @@ pub struct ManagerHomeState {
     selected_spend_tx: Option<SpendTransactionState>,
 
     latest_events: Vec<HistoryEventListItemState>,
+    selected_event: Option<HistoryEventState>,
 
     loading_vaults: bool,
 }
@@ -74,6 +75,7 @@ impl ManagerHomeState {
             spend_txs_item: Vec::new(),
             selected_spend_tx: None,
             latest_events: Vec::new(),
+            selected_event: None,
             loading_vaults: true,
         }
     }
@@ -253,6 +255,24 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                     self.warning = Error::from(e).into();
                 }
             },
+            Message::SelectHistoryEvent(i) => {
+                if let Some(item) = self.latest_events.get(i) {
+                    let state = HistoryEventState::new(item.event.clone());
+                    let cmd = state.load(ctx);
+                    self.selected_event = Some(state);
+                    return cmd;
+                }
+            }
+            Message::HistoryEvent(msg) => {
+                if let Some(event) = &mut self.selected_event {
+                    event.update(msg)
+                }
+            }
+            Message::Close => {
+                if self.selected_event.is_some() {
+                    self.selected_event = None;
+                }
+            }
             _ => {}
         };
         Command::none()
@@ -272,6 +292,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
 
         if let Some(tx) = &mut self.selected_spend_tx {
             return tx.view(ctx);
+        }
+
+        if let Some(v) = &mut self.selected_event {
+            return v.view(ctx);
         }
 
         self.view.view(

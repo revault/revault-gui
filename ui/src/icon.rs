@@ -41,6 +41,10 @@ pub fn deposit_icon() -> Text {
     icon('\u{F123}')
 }
 
+pub fn calendar_icon() -> Text {
+    icon('\u{F1E8}')
+}
+
 pub fn turnback_icon() -> Text {
     icon('\u{F131}')
 }
