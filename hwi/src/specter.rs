@@ -38,10 +38,18 @@ impl<T: Unpin + AsyncWrite + AsyncRead> Specter<T> {
         // In order to have the full Psbt, the partial_sigs are extracted and appended
         // to the original psbt.
         let mut psbt = psbt.clone();
+        let mut has_signed = false;
         for i in 0..new_psbt.inputs.len() {
-            psbt.inputs[i]
-                .partial_sigs
-                .append(&mut new_psbt.inputs[i].partial_sigs)
+            if !new_psbt.inputs[i].partial_sigs.is_empty() {
+                has_signed = true;
+                psbt.inputs[i]
+                    .partial_sigs
+                    .append(&mut new_psbt.inputs[i].partial_sigs)
+            }
+        }
+
+        if !has_signed {
+            return Err(SpecterError::DeviceDidNotSign);
         }
 
         Ok(psbt)
@@ -152,6 +160,7 @@ impl HWI for Specter<SerialStream> {
 #[derive(Debug)]
 pub enum SpecterError {
     DeviceNotFound,
+    DeviceDidNotSign,
     Device(String),
 }
 
@@ -159,6 +168,7 @@ impl std::fmt::Display for SpecterError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::DeviceNotFound => write!(f, "Specter not found"),
+            Self::DeviceDidNotSign => write!(f, "Specter did not sign the psbt"),
             Self::Device(e) => write!(f, "Specter error: {}", e),
         }
     }
@@ -168,6 +178,7 @@ impl From<SpecterError> for HWIError {
     fn from(e: SpecterError) -> HWIError {
         match e {
             SpecterError::DeviceNotFound => HWIError::DeviceNotFound,
+            SpecterError::DeviceDidNotSign => HWIError::DeviceDidNotSign,
             SpecterError::Device(e) => HWIError::Device(e),
         }
     }

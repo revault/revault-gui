@@ -117,6 +117,18 @@ impl DummySigner {
 
         let tx: SpendTransaction =
             serde_json::from_value(res).map_err(|e| DummySignerError::Device(e.to_string()))?;
+
+        let mut has_signed = false;
+        for i in 0..tx.spend_tx.inputs.len() {
+            if spend_tx.inputs[i].partial_sigs.len() < tx.spend_tx.inputs[i].partial_sigs.len() {
+                has_signed = true;
+            }
+        }
+
+        if !has_signed {
+            return Err(DummySignerError::DeviceDidNotSign);
+        }
+
         Ok(tx.spend_tx)
     }
 
@@ -258,12 +270,14 @@ pub type Sender = SymmetricallyFramed<
 #[derive(Debug)]
 pub enum DummySignerError {
     UnimplementedMethod,
+    DeviceDidNotSign,
     Device(String),
 }
 
 impl std::fmt::Display for DummySignerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::DeviceDidNotSign => write!(f, "DummySigner did not sign psbt"),
             Self::UnimplementedMethod => write!(f, "Unimplemented method for dummysigner device"),
             Self::Device(e) => write!(f, "DummySigner error: {}", e),
         }
@@ -273,6 +287,7 @@ impl std::fmt::Display for DummySignerError {
 impl From<DummySignerError> for HWIError {
     fn from(e: DummySignerError) -> HWIError {
         match e {
+            DummySignerError::DeviceDidNotSign => HWIError::DeviceDidNotSign,
             DummySignerError::UnimplementedMethod => HWIError::UnimplementedMethod,
             DummySignerError::Device(e) => HWIError::Device(e),
         }
