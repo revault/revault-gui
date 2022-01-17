@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
-use revault_ui::component::{badge, card, text::Text, TransparentPickListStyle};
+use revault_ui::component::{badge, button, card, text::Text, TransparentPickListStyle};
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
@@ -57,6 +57,7 @@ impl std::fmt::Display for HistoryFilter {
 pub struct HistoryView {
     dashboard: layout::Dashboard,
     pick_filter: pick_list::State<HistoryFilter>,
+    next_button: iced::button::State,
 }
 
 impl HistoryView {
@@ -64,6 +65,7 @@ impl HistoryView {
         HistoryView {
             dashboard: layout::Dashboard::new(),
             pick_filter: pick_list::State::default(),
+            next_button: iced::button::State::default(),
         }
     }
 
@@ -73,6 +75,7 @@ impl HistoryView {
         warning: Option<&Error>,
         events: Vec<Element<'a, Message>>,
         event_kind_filter: &Option<HistoryEventKind>,
+        has_next: bool,
     ) -> Element<'a, Message> {
         let mut col = Column::new().push(
             Row::new()
@@ -101,6 +104,19 @@ impl HistoryView {
 
         if !events.is_empty() {
             col = col.push(Column::with_children(events).spacing(5));
+        }
+
+        if has_next {
+            col = col.push(
+                button::white_card_button(
+                    &mut self.next_button,
+                    Container::new(Text::new("See more"))
+                        .width(Length::Fill)
+                        .align_x(Align::Center),
+                )
+                .width(Length::Fill)
+                .on_press(Message::Next),
+            )
         }
 
         self.dashboard.view(ctx, warning, col.spacing(25))

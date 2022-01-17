@@ -1,7 +1,7 @@
 pub mod cmd;
 mod deposit;
 mod emergency;
-mod history;
+pub mod history;
 pub mod manager;
 mod settings;
 mod sign;

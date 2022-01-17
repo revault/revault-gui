@@ -17,7 +17,10 @@ use revault_gui::{
         context::Context,
         menu::Menu,
         message::Message,
-        state::{DepositState, EmergencyState, HistoryState, VaultsState},
+        state::{
+            history::HISTORY_EVENT_PAGE_SIZE, DepositState, EmergencyState, HistoryState,
+            VaultsState,
+        },
     },
     conversion::Converter,
     daemon::{
@@ -317,7 +320,7 @@ async fn test_vaults_state() {
 }
 
 #[tokio::test]
-async fn test_history_state() {
+async fn test_history_state_filter() {
     let daemon = Daemon::new(vec![
         (
             Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
@@ -342,6 +345,7 @@ async fn test_history_state() {
                         kind: HistoryEventKind::Spend,
                         amount: Some(1_000_000),
                         fee: Some(2000),
+                        vaults: Vec::new()
                     },
                     HistoryEvent {
                         date: 0,
@@ -352,6 +356,7 @@ async fn test_history_state() {
                         kind: HistoryEventKind::Spend,
                         amount: Some(2_000_000),
                         fee: None,
+                        vaults: Vec::new()
                     },
                 ]
             })),
@@ -368,6 +373,7 @@ async fn test_history_state() {
                     kind: HistoryEventKind::Spend,
                     amount: Some(2_000_000),
                     fee: None,
+                    vaults: Vec::new()
                 },]
             })),
         ),
@@ -418,5 +424,240 @@ async fn test_history_state() {
     {
         assert_eq!(*event_kind_filter, Some(HistoryEventKind::Deposit));
         assert_eq!(events.len(), 1);
+    }
+}
+
+#[tokio::test]
+async fn test_history_state_pagination() {
+    let mut events: Vec<HistoryEvent> = Vec::new();
+    for i in 0..25 {
+        events.push(HistoryEvent {
+            date: i,
+            txid: bitcoin::Txid::from_str(
+                "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+            )
+            .unwrap(),
+            kind: HistoryEventKind::Deposit,
+            amount: Some(1_000_000),
+            fee: None,
+            vaults: Vec::new(),
+        });
+    }
+    let daemon = Daemon::new(vec![
+        (
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
+            Ok(json!(GetInfoResponse {
+                blockheight: 0,
+                network: "testnet".to_string(),
+                sync: 1.0,
+                version: "0.1".to_string(),
+                managers_threshold: 3
+            })),
+        ),
+        (
+            // SystemTime::now() is used, so we cannot check the request correctness for the
+            // moment.
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: events[0..20].to_vec()
+            })),
+        ),
+        (
+            Some(
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(19), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+            ),
+            Ok(json!(GetHistoryResponse {
+                events: events[20..25].to_vec()
+            })),
+        ),
+        (
+            // SystemTime::now() is used, so we cannot check the request correctness for the
+            // moment.
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: events[0..20].to_vec()
+            })),
+        ),
+        (
+            Some(
+                json!({"method": "gethistory", "params": Some(&[json!(&[HistoryEventKind::Deposit]), json!(0), json!(19), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+            ),
+            Ok(json!(GetHistoryResponse {
+                events: events[20..25].to_vec()
+            })),
+        ),
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+
+    let cfg = Config::default();
+    let client = daemon.run();
+    let ctx = Context::new(
+        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        Converter::new(bitcoin::Network::Bitcoin),
+        bitcoin::Network::Bitcoin,
+        false,
+        Role::Stakeholder,
+        Menu::Vaults,
+        3,
+        false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
+    );
+
+    let sandbox = sandbox.load(&ctx).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events, has_next, ..
+    } = sandbox.state()
+    {
+        assert_eq!(events.len() as u64, HISTORY_EVENT_PAGE_SIZE);
+        assert!(has_next);
+    }
+
+    let sandbox = sandbox.update(&ctx, Message::Next).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events, has_next, ..
+    } = sandbox.state()
+    {
+        assert_eq!(events.len() as u64, 25);
+        assert!(!has_next);
+    }
+
+    let sandbox = sandbox
+        .update(
+            &ctx,
+            Message::FilterHistoryEvents(Some(HistoryEventKind::Deposit)),
+        )
+        .await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events,
+        event_kind_filter,
+        has_next,
+        ..
+    } = sandbox.state()
+    {
+        assert_eq!(*event_kind_filter, Some(HistoryEventKind::Deposit));
+        assert_eq!(events.len(), 20);
+        assert!(has_next);
+    }
+
+    let sandbox = sandbox.update(&ctx, Message::Next).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events,
+        event_kind_filter,
+        has_next,
+        ..
+    } = sandbox.state()
+    {
+        assert_eq!(*event_kind_filter, Some(HistoryEventKind::Deposit));
+        assert_eq!(events.len() as u64, 25);
+        assert!(!has_next);
+    }
+}
+
+/// Test the case in which a big batch of history events with the size superior
+/// to the HISTORY_EVENT_PAGE_SIZE happened in the same block (with the same blocktime).
+#[tokio::test]
+async fn test_history_state_pagination_batching() {
+    let mut events: Vec<HistoryEvent> = Vec::new();
+    for i in 0..65 {
+        events.push(HistoryEvent {
+            date: 1,
+            txid: bitcoin::Txid::from_str(
+                "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+            )
+            .unwrap(),
+            kind: HistoryEventKind::Deposit,
+            amount: Some(1_000_000),
+            fee: None,
+            vaults: vec![i.to_string()],
+        });
+    }
+    let daemon = Daemon::new(vec![
+        (
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
+            Ok(json!(GetInfoResponse {
+                blockheight: 0,
+                network: "testnet".to_string(),
+                sync: 1.0,
+                version: "0.1".to_string(),
+                managers_threshold: 3
+            })),
+        ),
+        (
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: events[0..20].to_vec()
+            })),
+        ),
+        (
+            Some(
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+            ),
+            Ok(json!(GetHistoryResponse {
+                events: events[20..40].to_vec()
+            })),
+        ),
+        (
+            Some(
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
+            ),
+            Ok(json!(GetHistoryResponse {
+                events: events[20..60].to_vec()
+            })),
+        ),
+        (
+            Some(
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
+            ),
+            Ok(json!(GetHistoryResponse {
+                events: events[20..65].to_vec()
+            })),
+        ),
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+
+    let cfg = Config::default();
+    let client = daemon.run();
+    let ctx = Context::new(
+        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        Converter::new(bitcoin::Network::Bitcoin),
+        bitcoin::Network::Bitcoin,
+        false,
+        Role::Stakeholder,
+        Menu::Vaults,
+        3,
+        false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
+    );
+
+    let sandbox = sandbox.load(&ctx).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events, has_next, ..
+    } = sandbox.state()
+    {
+        assert_eq!(events.len() as u64, HISTORY_EVENT_PAGE_SIZE);
+        assert!(has_next);
+    }
+
+    let sandbox = sandbox.update(&ctx, Message::Next).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events, has_next, ..
+    } = sandbox.state()
+    {
+        assert_eq!(events.len() as u64, 65);
+        assert!(!has_next);
     }
 }

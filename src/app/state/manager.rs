@@ -7,9 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use iced::{Command, Element, Subscription};
 
 use super::{
-    cmd::{
-        get_blockheight, get_history, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx,
-    },
+    cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
     vault::{Vault, VaultListItem},
     State,
 };
@@ -302,6 +300,15 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        let revaultd = ctx.revaultd.clone();
+        let history = Command::perform(
+            async move {
+                revaultd
+                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
+                    .map(|res| res.events)
+            },
+            Message::HistoryEvents,
+        );
         Command::batch(vec![
             Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
@@ -315,20 +322,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                 ),
                 Message::SpendTransactions,
             ),
-            Command::perform(
-                get_history(
-                    ctx.revaultd.clone(),
-                    vec![
-                        HistoryEventKind::Cancel,
-                        HistoryEventKind::Deposit,
-                        HistoryEventKind::Spend,
-                    ],
-                    0,
-                    now,
-                    5,
-                ),
-                Message::HistoryEvents,
-            ),
+            history,
         ])
     }
 }
