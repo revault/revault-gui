@@ -18,7 +18,7 @@ use crate::{
         error::Error,
         menu::Menu,
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
-        view::layout,
+        view::{layout, warning::warn},
     },
     daemon::{client::Client, model},
 };
@@ -855,6 +855,7 @@ impl ManagerStepSignView {
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
         let header = Column::new()
+            .push(warn(warning))
             .push(
                 Row::new()
                     .push(
@@ -887,50 +888,44 @@ impl ManagerStepSignView {
             .push(ProgressBar::spend_bar().draw(3))
             .align_items(Align::Center);
 
-        let mut col = Column::new()
-            .push(
-                Container::new(Text::new("Sign transaction").bold())
-                    .width(Length::Fill)
-                    .align_x(Align::Center)
-                    .padding(20),
-            )
-            .push(
-                Column::new()
-                    .push(
-                        scroll(
-                            &mut self.scroll,
-                            spend_tx_with_feerate_view(
-                                ctx,
-                                inputs,
-                                psbt,
-                                change_index,
-                                cpfp_index,
-                                Some(feerate),
-                            ),
-                        )
-                        .height(Length::Fill),
-                    )
-                    .push(
-                        card::white(Container::new(signer))
-                            .align_x(Align::Center)
-                            .width(Length::Fill),
-                    )
-                    .spacing(20),
-            );
-
-        if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(
-                Text::new(&error.to_string()).small(),
-            )));
-        }
-
         Container::new(
             Column::new()
                 .push(header)
                 .push(
                     Container::new(
                         Column::new()
-                            .push(col)
+                            .push(
+                                Column::new()
+                                    .push(
+                                        Container::new(Text::new("Sign transaction").bold())
+                                            .width(Length::Fill)
+                                            .align_x(Align::Center)
+                                            .padding(20),
+                                    )
+                                    .push(
+                                        Column::new()
+                                            .push(
+                                                scroll(
+                                                    &mut self.scroll,
+                                                    spend_tx_with_feerate_view(
+                                                        ctx,
+                                                        inputs,
+                                                        psbt,
+                                                        change_index,
+                                                        cpfp_index,
+                                                        Some(feerate),
+                                                    ),
+                                                )
+                                                .height(Length::Fill),
+                                            )
+                                            .push(
+                                                card::white(Container::new(signer))
+                                                    .align_x(Align::Center)
+                                                    .width(Length::Fill),
+                                            )
+                                            .spacing(20),
+                                    ),
+                            )
                             .align_items(Align::Center)
                             .max_width(1000),
                     )

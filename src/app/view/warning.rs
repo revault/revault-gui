@@ -19,7 +19,12 @@ pub struct WarningMessage(String);
 impl From<&Error> for WarningMessage {
     fn from(error: &Error) -> WarningMessage {
         match error {
-            Error::HardwareError(e) => WarningMessage(e.to_string()),
+            Error::HardwareError(e) => match e {
+                revault_hwi::HWIError::DeviceDidNotSign => {
+                    WarningMessage("Device did not sign with user key".to_string())
+                }
+                _ => WarningMessage(e.to_string()),
+            },
             Error::ConfigError(e) => match e {
                 ConfigError::NotFound => WarningMessage("Configuration file not fund".to_string()),
                 ConfigError::ReadingFile(_) => {
