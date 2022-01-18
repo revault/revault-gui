@@ -334,7 +334,7 @@ impl DefineStakeholderXpubsAsStakeholder {
             );
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         layout(
@@ -390,7 +390,7 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
         );
 
     if let Some(error) = warning {
-        content = content.push(card::alert_warning(Container::new(Text::new(&error))));
+        content = content.push(card::alert_warning(Container::new(Text::new(error))));
     }
 
     layout(
@@ -659,7 +659,7 @@ impl DefineManagerXpubsAsManager {
             );
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         layout(
@@ -785,7 +785,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .align_items(Align::Center);
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         layout(
@@ -836,7 +836,7 @@ impl DefineCpfpDescriptorView {
             .push(Column::with_children(manager_xpubs).spacing(10));
 
         if let Some(error) = warning {
-            content = content.push(card::alert_warning(Container::new(Text::new(&error))));
+            content = content.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         layout(
@@ -987,7 +987,7 @@ impl DefineEmergencyAddress {
             .spacing(10);
 
         if let Some(error) = warning {
-            col = col.push(card::alert_warning(Container::new(Text::new(&error))));
+            col = col.push(card::alert_warning(Container::new(Text::new(error))));
         }
 
         layout(

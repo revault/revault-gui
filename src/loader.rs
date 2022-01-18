@@ -74,7 +74,7 @@ impl Loader {
             }
             Err(e) => match e {
                 Error::ConfigError(ConfigError::NotFound) => {
-                    self.step = Step::Error(e.into());
+                    self.step = Step::Error(e);
                 }
                 Error::RevaultDError(RevaultDError::Transport(
                     Some(ErrorKind::ConnectionRefused),
@@ -98,7 +98,7 @@ impl Loader {
                     ]);
                 }
                 _ => {
-                    self.step = Step::Error(e.into());
+                    self.step = Step::Error(e);
                 }
             },
         }
@@ -115,7 +115,7 @@ impl Loader {
                 Command::perform(sync(revaultd, false), Message::Syncing)
             }
             Err(e) => {
-                self.step = Step::Error(e.into());
+                self.step = Step::Error(e);
                 Command::none()
             }
         }

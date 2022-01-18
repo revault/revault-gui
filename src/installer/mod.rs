@@ -102,10 +102,7 @@ impl Installer {
                 should_exit: false,
                 config,
                 current: 0,
-                steps: vec![
-                    Welcome::new(network.clone()).into(),
-                    DefineRole::new().into(),
-                ],
+                steps: vec![Welcome::new(network).into(), DefineRole::new().into()],
                 context: Context::new(network),
             },
             Command::none(),
@@ -157,12 +154,12 @@ impl Installer {
             Message::Role(role) => {
                 // reset config
                 let mut config = revaultd_config::Config::new();
-                config.bitcoind_config.network = self.context.network.clone();
+                config.bitcoind_config.network = self.context.network;
                 config.data_dir = self.config.data_dir.clone();
                 config.daemon = Some(true);
                 self.config = config;
 
-                self.update_steps(self.context.network.clone(), role);
+                self.update_steps(self.context.network, role);
                 self.next();
             }
             Message::Install => {

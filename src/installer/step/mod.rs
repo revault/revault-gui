@@ -84,8 +84,8 @@ impl Step for Welcome {
         }
     }
     fn apply(&mut self, ctx: &mut Context, config: &mut config::Config) -> bool {
-        ctx.network = self.network.clone();
-        config.bitcoind_config.network = self.network.clone();
+        ctx.network = self.network;
+        config.bitcoind_config.network = self.network;
         true
     }
     fn view(&mut self) -> Element<Message> {
