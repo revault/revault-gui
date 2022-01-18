@@ -122,7 +122,7 @@ impl Specter<SerialStream> {
                         None
                     }
                 })
-                .ok_or_else(|| SpecterError::DeviceNotFound),
+                .ok_or(SpecterError::DeviceNotFound),
             Err(e) => Err(SpecterError::Device(format!(
                 "Error listing serial ports: {}",
                 e

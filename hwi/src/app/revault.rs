@@ -61,7 +61,7 @@ impl<T: HWI + NoRevaultApp + Send> RevaultHWI for T {
     }
 
     async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, HWIError> {
-        self.sign_tx(unvault_tx).await.map_err(|e| e.into())
+        self.sign_tx(unvault_tx).await
     }
 
     async fn create_vaults(
