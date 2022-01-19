@@ -15,7 +15,7 @@ use crate::app::{
     menu::Menu,
     message::{Message, SignMessage},
     state::{
-        cmd::{get_blockheight, list_vaults},
+        cmd::list_vaults,
         history::HistoryEventState,
         sign::Device,
         vault::{Vault, VaultListItem},
@@ -172,7 +172,6 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             Message::HistoryEvents,
         );
         Command::batch(vec![
-            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
                 list_vaults(
                     ctx.revaultd.clone(),

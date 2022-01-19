@@ -25,25 +25,23 @@ impl SettingsView {
         &'a mut self,
         ctx: &Context<C>,
         warning: Option<&Error>,
-        blockheight: u64,
         config: &Config,
         server_status: Option<ServersStatuses>,
     ) -> Element<'a, Message> {
         self.dashboard.view(
             ctx,
             warning,
-            SettingsView::display_boxes(&ctx, blockheight, server_status, &config).spacing(8),
+            SettingsView::display_boxes(&ctx, server_status, &config).spacing(8),
         )
     }
 
     pub fn display_boxes<'a, C: Client>(
         ctx: &Context<C>,
-        blockheight: u64,
         server_status: Option<ServersStatuses>,
         config: &Config,
     ) -> Column<'a, Message> {
         if let Some(server_status) = server_status {
-            let boxes = SettingsBoxes::new(blockheight, server_status);
+            let boxes = SettingsBoxes::new(ctx.blockheight, server_status);
             let mut column = Column::new()
                 .push(boxes.bitcoin.display(config))
                 .push(boxes.coordinator.display(config));

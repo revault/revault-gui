@@ -203,17 +203,19 @@ impl Application for GUI {
                 let converter = Converter::new(revaultd.network());
                 let network = revaultd.network();
 
-                let context = Context::new(
+                let mut context = Context::new(
                     revaultd,
                     converter,
                     network,
                     edit_role,
                     role,
                     Menu::Home,
-                    info.managers_threshold,
                     self.daemon_running,
                     Box::new(|| Box::pin(connect_hardware_wallet())),
                 );
+
+                context.blockheight = info.blockheight;
+                context.managers_threshold = info.managers_threshold;
 
                 let (app, command) = App::new(context, config);
                 self.state = State::App(app);

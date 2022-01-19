@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use iced::{Command, Element, Subscription};
 
 use super::{
-    cmd::{get_blockheight, get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
+    cmd::{get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
     vault::{Vault, VaultListItem},
     State,
 };
@@ -45,7 +45,6 @@ pub struct ManagerHomeState {
 
     active_funds: u64,
     inactive_funds: u64,
-    blockheight: u64,
     warning: Option<Error>,
 
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
@@ -67,7 +66,6 @@ impl ManagerHomeState {
             active_funds: 0,
             inactive_funds: 0,
             view: ManagerHomeView::new(),
-            blockheight: 0,
             spendable_outpoints: HashMap::new(),
             moving_vaults: Vec::new(),
             warning: None,
@@ -244,14 +242,6 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                     return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
-            Message::BlockHeight(b) => match b {
-                Ok(height) => {
-                    self.blockheight = height;
-                }
-                Err(e) => {
-                    self.warning = Error::from(e).into();
-                }
-            },
             Message::HistoryEvents(res) => match res {
                 Ok(events) => {
                     self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
@@ -310,7 +300,6 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
             Message::HistoryEvents,
         );
         Command::batch(vec![
-            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
             Command::perform(
                 list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
                 Message::Vaults,
