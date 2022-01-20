@@ -125,7 +125,7 @@ impl DummySigner {
         deposits: &[(OutPoint, Amount, u32)],
     ) -> Result<Vec<(Psbt, Psbt, Psbt)>, DummySignerError> {
         let utxos: Vec<Utxo> = deposits
-            .into_iter()
+            .iter()
             .map(|(outpoint, amount, derivation_index)| Utxo {
                 outpoint: *outpoint,
                 amount: *amount,
@@ -156,7 +156,7 @@ impl DummySigner {
         vaults: &[(OutPoint, Amount, u32)],
     ) -> Result<Vec<Psbt>, DummySignerError> {
         let utxos: Vec<Utxo> = vaults
-            .into_iter()
+            .iter()
             .map(|(outpoint, amount, derivation_index)| Utxo {
                 outpoint: *outpoint,
                 amount: *amount,
