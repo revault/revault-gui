@@ -16,6 +16,7 @@ pub type HardwareWallet =
 /// Context is an object passing general information
 /// and service clients through the application components.
 pub struct Context<C: Client> {
+    pub blockheight: u64,
     pub revaultd: Arc<RevaultD<C>>,
     pub converter: Converter,
     pub network: Network,
@@ -36,11 +37,11 @@ impl<C: Client> Context<C> {
         role_edit: bool,
         role: Role,
         menu: Menu,
-        managers_threshold: usize,
         internal_daemon: bool,
         hardware_wallet: Box<dyn Fn() -> Pin<HardwareWallet> + Send + Sync>,
     ) -> Self {
         Self {
+            blockheight: 0,
             revaultd,
             converter,
             role,
@@ -48,7 +49,7 @@ impl<C: Client> Context<C> {
             menu,
             network,
             network_up: true,
-            managers_threshold,
+            managers_threshold: 0,
             internal_daemon,
             hardware_wallet,
         }

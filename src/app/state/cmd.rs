@@ -17,10 +17,6 @@ pub async fn get_deposit_address<C: Client>(
     revaultd.get_deposit_address().map(|res| res.address)
 }
 
-pub async fn get_blockheight<C: Client>(revaultd: Arc<RevaultD<C>>) -> Result<u64, RevaultDError> {
-    revaultd.get_info().map(|res| res.blockheight)
-}
-
 pub async fn list_vaults<C: Client>(
     revaultd: Arc<RevaultD<C>>,
     statuses: Option<&[VaultStatus]>,

@@ -7,7 +7,9 @@ pub mod state;
 mod error;
 mod view;
 
-use iced::{Clipboard, Command, Element, Subscription};
+use std::time::Duration;
+
+use iced::{time, Clipboard, Command, Element, Subscription};
 use iced_native::{window, Event};
 
 pub use config::Config;
@@ -70,6 +72,7 @@ impl<C: Client + Send + Sync + 'static> App<C> {
     pub fn subscription(&self) -> Subscription<Message> {
         Subscription::batch(vec![
             iced_native::subscription::events().map(Message::Event),
+            time::every(Duration::from_secs(30)).map(|_| Message::Tick),
             self.state.subscription(),
         ])
     }
@@ -91,6 +94,19 @@ impl<C: Client + Send + Sync + 'static> App<C> {
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
+            Message::Tick => {
+                let revaultd = self.context.revaultd.clone();
+                Command::perform(
+                    async move { revaultd.get_info().map(|res| res.blockheight) },
+                    Message::BlockHeight,
+                )
+            }
+            Message::BlockHeight(res) => {
+                if let Ok(blockheight) = res {
+                    self.context.blockheight = blockheight;
+                }
+                Command::none()
+            }
             Message::ChangeRole(role) => {
                 self.context.role = role;
                 self.state = new_state(&self.context, &self.config);

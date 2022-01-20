@@ -7,10 +7,7 @@ use super::State;
 use crate::app::config::Config;
 
 use crate::app::{
-    context::Context,
-    error::Error,
-    message::Message,
-    state::cmd::{get_blockheight, get_server_status},
+    context::Context, error::Error, message::Message, state::cmd::get_server_status,
     view::SettingsView,
 };
 
@@ -18,7 +15,6 @@ use crate::daemon::{client::Client, model::ServersStatuses};
 
 #[derive(Debug)]
 pub struct SettingsState {
-    blockheight: u64,
     config: Config,
     warning: Option<Error>,
     view: SettingsView,
@@ -28,7 +24,6 @@ pub struct SettingsState {
 impl SettingsState {
     pub fn new(config: Config) -> Self {
         SettingsState {
-            blockheight: 0,
             config,
             view: SettingsView::new(),
             warning: None,
@@ -40,17 +35,6 @@ impl SettingsState {
 impl<C: Client + Send + Sync + 'static> State<C> for SettingsState {
     fn update(&mut self, _ctx: &Context<C>, message: Message) -> Command<Message> {
         match message {
-            Message::BlockHeight(b) => {
-                match b {
-                    Ok(height) => {
-                        self.blockheight = height.into();
-                    }
-                    Err(e) => {
-                        self.warning = Error::from(e).into();
-                    }
-                };
-                Command::none()
-            }
             Message::ServerStatus(s) => {
                 match s {
                     Ok(server_status) => self.server_status = Some(server_status),
@@ -66,20 +50,16 @@ impl<C: Client + Send + Sync + 'static> State<C> for SettingsState {
         self.view.view(
             ctx,
             self.warning.as_ref(),
-            self.blockheight,
             &ctx.revaultd.config,
             self.server_status.clone(),
         )
     }
 
     fn load(&self, ctx: &Context<C>) -> Command<Message> {
-        Command::batch(vec![
-            Command::perform(get_blockheight(ctx.revaultd.clone()), Message::BlockHeight),
-            Command::perform(
-                get_server_status(ctx.revaultd.clone()),
-                Message::ServerStatus,
-            ),
-        ])
+        Command::batch(vec![Command::perform(
+            get_server_status(ctx.revaultd.clone()),
+            Message::ServerStatus,
+        )])
     }
 }
 

@@ -1,6 +1,6 @@
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::{
@@ -18,6 +18,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Reload,
+    Tick,
     StoppingDaemon(Result<(), RevaultDError>),
     Event(iced_native::Event),
     Clipboard(String),
@@ -72,7 +73,6 @@ pub enum SpendTxMessage {
 
 #[derive(Debug, Clone)]
 pub enum VaultMessage {
-    Tick(Instant),
     ListOnchainTransaction,
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
     SelectRevault,

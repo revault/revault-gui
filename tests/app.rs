@@ -73,7 +73,6 @@ async fn test_deposit_state() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
@@ -158,7 +157,6 @@ async fn test_emergency_state() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
@@ -270,7 +268,6 @@ async fn test_vaults_state() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
@@ -390,7 +387,6 @@ async fn test_history_state_filter() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
@@ -499,7 +495,6 @@ async fn test_history_state_pagination() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
@@ -634,7 +629,6 @@ async fn test_history_state_pagination_batching() {
         false,
         Role::Stakeholder,
         Menu::Vaults,
-        3,
         false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
