@@ -24,7 +24,7 @@ use crate::app::{
     error::Error,
     message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
     state::{
-        history::HistoryEventState,
+        history::{HistoryEventListItemState, HistoryEventState},
         sign::{Signer, SpendTransactionTarget},
         SpendTransactionListItem, SpendTransactionState,
     },
@@ -55,7 +55,8 @@ pub struct ManagerHomeState {
     spend_txs_item: Vec<SpendTransactionListItem>,
     selected_spend_tx: Option<SpendTransactionState>,
 
-    latest_events: Vec<HistoryEventState>,
+    latest_events: Vec<HistoryEventListItemState>,
+    selected_event: Option<HistoryEventState>,
 
     loading_vaults: bool,
 }
@@ -74,6 +75,7 @@ impl ManagerHomeState {
             spend_txs_item: Vec::new(),
             selected_spend_tx: None,
             latest_events: Vec::new(),
+            selected_event: None,
             loading_vaults: true,
         }
     }
@@ -244,12 +246,33 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
             }
             Message::HistoryEvents(res) => match res {
                 Ok(events) => {
-                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                    self.latest_events = events
+                        .into_iter()
+                        .map(HistoryEventListItemState::new)
+                        .collect();
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();
                 }
             },
+            Message::SelectHistoryEvent(i) => {
+                if let Some(item) = self.latest_events.get(i) {
+                    let state = HistoryEventState::new(item.event.clone());
+                    let cmd = state.load(ctx);
+                    self.selected_event = Some(state);
+                    return cmd;
+                }
+            }
+            Message::HistoryEvent(msg) => {
+                if let Some(event) = &mut self.selected_event {
+                    event.update(msg)
+                }
+            }
+            Message::Close => {
+                if self.selected_event.is_some() {
+                    self.selected_event = None;
+                }
+            }
             _ => {}
         };
         Command::none()
@@ -271,6 +294,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
             return tx.view(ctx);
         }
 
+        if let Some(v) = &mut self.selected_event {
+            return v.view(ctx);
+        }
+
         self.view.view(
             ctx,
             self.warning.as_ref(),
@@ -279,7 +306,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
                 .map(|tx| tx.view(ctx).map(Message::SpendTx))
                 .collect(),
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
+            self.latest_events
+                .iter_mut()
+                .enumerate()
+                .map(|(i, evt)| evt.view(ctx, i))
+                .collect(),
             self.active_funds,
             self.inactive_funds,
         )

@@ -9,13 +9,13 @@ use crate::{
     app::{
         context::Context,
         error::Error,
-        message::Message,
+        message::{HistoryEventMessage, Message},
         view::LoadingDashboard,
-        view::{HistoryEventView, HistoryView},
+        view::{HistoryEventListItemView, HistoryEventView, HistoryView},
     },
     daemon::{
         client::Client,
-        model::{HistoryEvent, HistoryEventKind},
+        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
     },
 };
 
@@ -30,7 +30,8 @@ pub enum HistoryState {
     },
     Loaded {
         event_kind_filter: Option<HistoryEventKind>,
-        events: Vec<HistoryEventState>,
+        events: Vec<HistoryEventListItemState>,
+        selected_event: Option<HistoryEventState>,
         has_next: bool,
         // Error in case of reload failure.
         warning: Option<Error>,
@@ -61,9 +62,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                                 event_kind_filter: None,
                                 events: events
                                     .into_iter()
-                                    .map(|evt| HistoryEventState::new(evt))
+                                    .map(|evt| HistoryEventListItemState::new(evt))
                                     .collect(),
                                 warning: None,
+                                selected_event: None,
                                 view: HistoryView::new(),
                             };
                         }
@@ -76,12 +78,31 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 warning,
                 event_kind_filter,
                 has_next,
+                selected_event,
                 ..
             } => match message {
                 Message::Reload => {
                     *events = Vec::new();
                     *event_kind_filter = None;
                     return self.load(ctx);
+                }
+                Message::SelectHistoryEvent(i) => {
+                    if let Some(item) = events.get(i) {
+                        let state = HistoryEventState::new(item.event.clone());
+                        let cmd = state.load(ctx);
+                        *selected_event = Some(state);
+                        return cmd;
+                    }
+                }
+                Message::HistoryEvent(msg) => {
+                    if let Some(event) = selected_event {
+                        event.update(msg)
+                    }
+                }
+                Message::Close => {
+                    if selected_event.is_some() {
+                        *selected_event = None;
+                    }
                 }
                 Message::FilterHistoryEvents(filter) => {
                     *events = Vec::new();
@@ -165,11 +186,11 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                         // multiple events can occur in the same block and
                         // if they are included or not in the batch of events
                         // depends of the limit set.
-                        let mut new_events: Vec<HistoryEventState> = evts
+                        let mut new_events: Vec<HistoryEventListItemState> = evts
                             .into_iter()
                             .filter_map(|evt| {
                                 if !events.iter().any(|state| state.event == evt) {
-                                    Some(HistoryEventState::new(evt))
+                                    Some(HistoryEventListItemState::new(evt))
                                 } else {
                                     None
                                 }
@@ -194,13 +215,24 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 view,
                 event_kind_filter,
                 has_next,
-            } => view.view(
-                ctx,
-                warning.as_ref(),
-                events.iter_mut().map(|evt| evt.view(ctx)).collect(),
-                &event_kind_filter,
-                *has_next,
-            ),
+                selected_event,
+            } => {
+                if let Some(event) = selected_event {
+                    event.view(ctx)
+                } else {
+                    view.view(
+                        ctx,
+                        warning.as_ref(),
+                        events
+                            .iter_mut()
+                            .enumerate()
+                            .map(|(i, evt)| evt.view(ctx, i))
+                            .collect(),
+                        &event_kind_filter,
+                        *has_next,
+                    )
+                }
+            }
         }
     }
 
@@ -229,8 +261,33 @@ impl<C: Client + Send + Sync + 'static> From<HistoryState> for Box<dyn State<C>>
 }
 
 #[derive(Debug)]
+pub struct HistoryEventListItemState {
+    pub event: HistoryEvent,
+    view: HistoryEventListItemView,
+}
+
+impl HistoryEventListItemState {
+    pub fn new(event: HistoryEvent) -> Self {
+        Self {
+            event,
+            view: HistoryEventListItemView::new(),
+        }
+    }
+
+    pub fn view<C: Client + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context<C>,
+        index: usize,
+    ) -> Element<Message> {
+        self.view.view(ctx, &self.event, index)
+    }
+}
+
+#[derive(Debug)]
 pub struct HistoryEventState {
     event: HistoryEvent,
+    txs: Vec<VaultTransactions>,
+    loading_fail: Option<Error>,
     view: HistoryEventView,
 }
 
@@ -238,7 +295,17 @@ impl HistoryEventState {
     pub fn new(event: HistoryEvent) -> Self {
         Self {
             event,
-            view: HistoryEventView {},
+            txs: Vec::new(),
+            loading_fail: None,
+            view: HistoryEventView::new(),
+        }
+    }
+
+    pub fn update(&mut self, message: HistoryEventMessage) {
+        let HistoryEventMessage::OnChainTransactions(res) = message;
+        match res {
+            Ok(txs) => self.txs = txs,
+            Err(e) => self.loading_fail = Some(e.into()),
         }
     }
 
@@ -246,6 +313,20 @@ impl HistoryEventState {
         &mut self,
         ctx: &Context<C>,
     ) -> Element<Message> {
-        self.view.view(ctx, &self.event)
+        self.view
+            .view(ctx, &self.event, &self.txs, self.loading_fail.as_ref())
+    }
+
+    pub fn load<C: Client + Send + Sync + 'static>(&self, ctx: &Context<C>) -> Command<Message> {
+        let revaultd = ctx.revaultd.clone();
+        let vaults = self.event.vaults.clone();
+        Command::perform(
+            async move {
+                revaultd
+                    .list_onchain_transactions(Some(vaults))
+                    .map(|res| res.onchain_transactions)
+            },
+            |msg| Message::HistoryEvent(HistoryEventMessage::OnChainTransactions(msg)),
+        )
     }
 }

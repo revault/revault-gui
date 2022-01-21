@@ -334,6 +334,7 @@ async fn test_history_state_filter() {
             Ok(json!(GetHistoryResponse {
                 events: vec![
                     HistoryEvent {
+                        blockheight: 1,
                         date: 1,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
@@ -345,6 +346,7 @@ async fn test_history_state_filter() {
                         vaults: Vec::new()
                     },
                     HistoryEvent {
+                        blockheight: 0,
                         date: 0,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
@@ -362,6 +364,7 @@ async fn test_history_state_filter() {
             None,
             Ok(json!(GetHistoryResponse {
                 events: vec![HistoryEvent {
+                    blockheight: 0,
                     date: 0,
                     txid: bitcoin::Txid::from_str(
                         "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
@@ -428,7 +431,8 @@ async fn test_history_state_pagination() {
     let mut events: Vec<HistoryEvent> = Vec::new();
     for i in 0..25 {
         events.push(HistoryEvent {
-            date: i,
+            blockheight: i,
+            date: i as i64,
             txid: bitcoin::Txid::from_str(
                 "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
             )
@@ -564,6 +568,7 @@ async fn test_history_state_pagination_batching() {
     let mut events: Vec<HistoryEvent> = Vec::new();
     for i in 0..65 {
         events.push(HistoryEvent {
+            blockheight: 1,
             date: 1,
             txid: bitcoin::Txid::from_str(
                 "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
@@ -653,5 +658,127 @@ async fn test_history_state_pagination_batching() {
     {
         assert_eq!(events.len() as u64, 65);
         assert!(!has_next);
+    }
+}
+
+#[tokio::test]
+async fn test_history_state_select_event() {
+    let oupoint = bitcoin::OutPoint {
+        txid: bitcoin::Txid::from_str(
+            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+        )
+        .unwrap(),
+        vout: 1,
+    }
+    .to_string();
+    let daemon = Daemon::new(vec![
+        (
+            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
+            Ok(json!(GetInfoResponse {
+                blockheight: 0,
+                network: "testnet".to_string(),
+                sync: 1.0,
+                version: "0.1".to_string(),
+                managers_threshold: 3
+            })),
+        ),
+        (
+            None,
+            Ok(json!(GetHistoryResponse {
+                events: vec![
+                    HistoryEvent {
+                        blockheight: 1,
+                        date: 1,
+                        txid: bitcoin::Txid::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
+                        )
+                        .unwrap(),
+                        kind: HistoryEventKind::Spend,
+                        amount: Some(1_000_000),
+                        fee: Some(2000),
+                        vaults: vec!(bitcoin::OutPoint {
+                            txid: bitcoin::Txid::from_str(
+                                "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                            )
+                            .unwrap(),
+                            vout: 0,
+                        }
+                        .to_string())
+                    },
+                    HistoryEvent {
+                        blockheight: 0,
+                        date: 0,
+                        txid: bitcoin::Txid::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
+                        )
+                        .unwrap(),
+                        kind: HistoryEventKind::Spend,
+                        amount: Some(2_000_000),
+                        fee: None,
+                        vaults: vec!(oupoint.clone())
+                    },
+                ]
+            })),
+        ),
+        (
+            Some(json!({"method": "listonchaintransactions", "params": [[oupoint.clone()]]})),
+            Ok(json!(ListOnchainTransactionsResponse {
+                onchain_transactions: vec![VaultTransactions {
+                    vault_outpoint: oupoint,
+                    deposit: BroadcastedTransaction {
+                        blockheight: Some(1),
+                        tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),
+                        received_at: 1,
+                    },
+                    unvault: None,
+                    spend: None,
+                    cancel: None,
+                    emergency: None,
+                    unvault_emergency: None,
+                }],
+            })),
+        )
+    ]);
+
+    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+
+    let cfg = Config::default();
+    let client = daemon.run();
+    let ctx = Context::new(
+        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        Converter::new(bitcoin::Network::Bitcoin),
+        bitcoin::Network::Bitcoin,
+        false,
+        Role::Stakeholder,
+        Menu::Vaults,
+        false,
+        Box::new(|| Box::pin(no_hardware_wallet())),
+    );
+
+    let sandbox = sandbox.load(&ctx).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded {
+        events,
+        event_kind_filter,
+        ..
+    } = sandbox.state()
+    {
+        assert!(event_kind_filter.is_none());
+        assert_eq!(events.len(), 2);
+    }
+
+    let sandbox = sandbox.update(&ctx, Message::SelectHistoryEvent(1)).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded { selected_event, .. } = sandbox.state() {
+        assert!(selected_event.is_some());
+    }
+
+    let sandbox = sandbox.update(&ctx, Message::Close).await;
+    assert!(matches!(sandbox.state(), HistoryState::Loaded { .. }));
+
+    if let HistoryState::Loaded { selected_event, .. } = sandbox.state() {
+        assert!(selected_event.is_none());
     }
 }

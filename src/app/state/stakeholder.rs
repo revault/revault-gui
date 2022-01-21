@@ -16,7 +16,7 @@ use crate::app::{
     message::{Message, SignMessage},
     state::{
         cmd::list_vaults,
-        history::HistoryEventState,
+        history::{HistoryEventListItemState, HistoryEventState},
         sign::Device,
         vault::{Vault, VaultListItem},
         State,
@@ -36,8 +36,9 @@ pub struct StakeholderHomeState {
 
     moving_vaults: Vec<VaultListItem<VaultListItemView>>,
     selected_vault: Option<Vault>,
+    selected_event: Option<HistoryEventState>,
 
-    latest_events: Vec<HistoryEventState>,
+    latest_events: Vec<HistoryEventListItemState>,
 
     view: StakeholderHomeView,
 }
@@ -51,6 +52,7 @@ impl StakeholderHomeState {
             moving_vaults: Vec::new(),
             latest_events: Vec::new(),
             selected_vault: None,
+            selected_event: None,
         }
     }
 
@@ -130,9 +132,30 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
                     return selected.update(ctx, msg).map(Message::Vault);
                 }
             }
+            Message::SelectHistoryEvent(i) => {
+                if let Some(item) = self.latest_events.get(i) {
+                    let state = HistoryEventState::new(item.event.clone());
+                    let cmd = state.load(ctx);
+                    self.selected_event = Some(state);
+                    return cmd;
+                }
+            }
+            Message::HistoryEvent(msg) => {
+                if let Some(event) = &mut self.selected_event {
+                    event.update(msg)
+                }
+            }
+            Message::Close => {
+                if self.selected_event.is_some() {
+                    self.selected_event = None;
+                }
+            }
             Message::HistoryEvents(res) => match res {
                 Ok(events) => {
-                    self.latest_events = events.into_iter().map(HistoryEventState::new).collect();
+                    self.latest_events = events
+                        .into_iter()
+                        .map(HistoryEventListItemState::new)
+                        .collect();
                 }
                 Err(e) => {
                     self.warning = Error::from(e).into();
@@ -148,11 +171,19 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
             return v.view(ctx);
         }
 
+        if let Some(v) = &mut self.selected_event {
+            return v.view(ctx);
+        }
+
         self.view.view(
             ctx,
             None,
             self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events.iter_mut().map(|e| e.view(ctx)).collect(),
+            self.latest_events
+                .iter_mut()
+                .enumerate()
+                .map(|(i, evt)| evt.view(ctx, i))
+                .collect(),
             &self.balance,
         )
     }
