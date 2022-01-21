@@ -16,6 +16,7 @@ pub enum HWIError {
     UnimplementedMethod,
     DeviceDisconnected,
     DeviceNotFound,
+    DeviceDidNotSign,
     Device(String),
 }
 
@@ -25,6 +26,7 @@ impl std::fmt::Display for HWIError {
             HWIError::UnimplementedMethod => write!(f, "unimplemented method"),
             HWIError::DeviceDisconnected => write!(f, "device disconnected"),
             HWIError::DeviceNotFound => write!(f, "device not found"),
+            HWIError::DeviceDidNotSign => write!(f, "device did not sign"),
             HWIError::Device(e) => write!(f, "{}", e),
         }
     }

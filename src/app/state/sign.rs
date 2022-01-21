@@ -15,7 +15,7 @@ use iced::{time, Command, Element, Subscription};
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
 
 use crate::{
-    app::{context::Context, message::SignMessage, view::sign::SignerView},
+    app::{context::Context, error::Error, message::SignMessage, view::sign::SignerView},
     daemon::{client::Client, model::Vault},
 };
 
@@ -47,8 +47,8 @@ pub struct Signer<T> {
     device: Device,
     processing: bool,
     signed: bool,
-    error: Option<HWIError>,
 
+    pub error: Option<Error>,
     pub target: T,
 
     view: SignerView,
@@ -111,13 +111,30 @@ impl Signer<SpendTransactionTarget> {
                         if tx.global.unsigned_tx.txid()
                             == self.target.spend_tx.global.unsigned_tx.txid()
                         {
+                            let user_manager_xpub =
+                                ctx.revaultd.config.manager_config.as_ref().unwrap().xpub;
+                            for input in &tx.inputs {
+                                if !input.partial_sigs.keys().any(|key| {
+                                    input
+                                        .bip32_derivation
+                                        .get(key)
+                                        .map(|(fingerprint, _)| {
+                                            user_manager_xpub.fingerprint() == *fingerprint
+                                        })
+                                        .unwrap_or(false)
+                                }) {
+                                    log::info!("Hardware wallet did not sign the spend tx");
+                                    self.error = Some(HWIError::DeviceDidNotSign.into());
+                                    return Command::none();
+                                }
+                            }
                             self.signed = true;
                             self.target.spend_tx = *tx;
                         }
                     }
                     Err(e) => {
                         log::info!("{:?}", e);
-                        self.error = Some(e);
+                        self.error = Some(e.into());
                     }
                 }
             }

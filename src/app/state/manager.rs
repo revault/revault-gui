@@ -754,7 +754,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                     self.cpfp_index,
                     self.change_index,
                     &feerate,
-                    self.warning.as_ref(),
+                    signer.error.clone().as_ref(),
                     signer
                         .view(ctx)
                         .map(|m| Message::SpendTx(SpendTxMessage::Sign(m))),
