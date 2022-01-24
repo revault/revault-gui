@@ -15,7 +15,7 @@ use crate::daemon::{client::Client, model::ServersStatuses};
 
 #[derive(Debug)]
 pub struct SettingsState {
-    config: Config,
+    _config: Config,
     warning: Option<Error>,
     view: SettingsView,
     server_status: Option<ServersStatuses>,
@@ -24,7 +24,7 @@ pub struct SettingsState {
 impl SettingsState {
     pub fn new(config: Config) -> Self {
         SettingsState {
-            config,
+            _config: config,
             view: SettingsView::new(),
             warning: None,
             server_status: None,

@@ -24,8 +24,6 @@ pub struct SpendTransactionView {
     scroll: scrollable::State,
     delete_button: iced::button::State,
     cancel_button: iced::button::State,
-    psbt_input: iced::text_input::State,
-    import_button: iced::button::State,
 }
 
 impl SpendTransactionView {
@@ -34,8 +32,6 @@ impl SpendTransactionView {
             delete_button: iced::button::State::new(),
             cancel_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
-            psbt_input: iced::text_input::State::new(),
-            import_button: iced::button::State::new(),
         }
     }
 
@@ -206,9 +202,6 @@ impl SpendTransactionView {
 
 #[derive(Debug)]
 pub struct SpendTransactionSharePsbtView {
-    share_button: iced::button::State,
-    sign_button: iced::button::State,
-    broadcast_button: iced::button::State,
     psbt_input: iced::text_input::State,
     copy_button: iced::button::State,
     confirm_button: iced::button::State,
@@ -217,9 +210,6 @@ pub struct SpendTransactionSharePsbtView {
 impl SpendTransactionSharePsbtView {
     pub fn new() -> Self {
         Self {
-            share_button: iced::button::State::new(),
-            sign_button: iced::button::State::new(),
-            broadcast_button: iced::button::State::new(),
             psbt_input: iced::text_input::State::new(),
             copy_button: iced::button::State::new(),
             confirm_button: iced::button::State::new(),
@@ -299,15 +289,11 @@ impl SpendTransactionSharePsbtView {
 }
 
 #[derive(Debug)]
-pub struct SpendTransactionSignView {
-    confirm_button: iced::button::State,
-}
+pub struct SpendTransactionSignView {}
 
 impl SpendTransactionSignView {
     pub fn new() -> Self {
-        Self {
-            confirm_button: iced::button::State::new(),
-        }
+        Self {}
     }
 
     pub fn view<'a>(

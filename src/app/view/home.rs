@@ -213,14 +213,12 @@ impl StakeholderHomeView {
 #[derive(Debug)]
 struct StakeholderOverview {
     ack_fund_button: iced::button::State,
-    delegate_fund_button: iced::button::State,
 }
 
 impl StakeholderOverview {
     pub fn new() -> Self {
         Self {
             ack_fund_button: iced::button::State::new(),
-            delegate_fund_button: iced::button::State::new(),
         }
     }
 

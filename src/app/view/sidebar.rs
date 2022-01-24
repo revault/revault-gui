@@ -25,7 +25,6 @@ pub struct Sidebar {
     home_menu_button: iced::button::State,
     history_menu_button: iced::button::State,
     vaults_menu_button: iced::button::State,
-    network_menu_button: iced::button::State,
     spend_menu_button: iced::button::State,
     settings_menu_button: iced::button::State,
 }
@@ -40,7 +39,6 @@ impl Sidebar {
             history_menu_button: iced::button::State::new(),
             emergency_menu_button: iced::button::State::new(),
             vaults_menu_button: iced::button::State::new(),
-            network_menu_button: iced::button::State::new(),
             spend_menu_button: iced::button::State::new(),
             settings_menu_button: iced::button::State::new(),
             pick_role: pick_list::State::default(),

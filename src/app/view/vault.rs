@@ -478,14 +478,12 @@ fn vault_ack_pending<'a, C: Client>(
 #[derive(Debug, Clone)]
 pub struct DelegateVaultListItemView {
     select_button: iced::button::State,
-    delegate_button: iced::button::State,
 }
 
 impl DelegateVaultListItemView {
     pub fn new() -> Self {
         DelegateVaultListItemView {
             select_button: iced::button::State::new(),
-            delegate_button: iced::button::State::new(),
         }
     }
 

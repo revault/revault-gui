@@ -356,7 +356,6 @@ pub struct ManagerSelectInputsView {
     back_button: iced::button::State,
     cancel_button: iced::button::State,
     next_button: iced::button::State,
-    new_output_button: iced::button::State,
 }
 
 impl ManagerSelectInputsView {
@@ -366,7 +365,6 @@ impl ManagerSelectInputsView {
             back_button: iced::button::State::new(),
             next_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
-            new_output_button: iced::button::State::new(),
         }
     }
 
@@ -528,7 +526,6 @@ pub fn manager_send_input_view<'a, C: Client>(
 
 #[derive(Debug)]
 pub struct ManagerSelectFeeView {
-    scroll: scrollable::State,
     cancel_button: iced::button::State,
     back_button: iced::button::State,
     generate_button: iced::button::State,
@@ -540,7 +537,6 @@ impl ManagerSelectFeeView {
         ManagerSelectFeeView {
             cancel_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
-            scroll: scrollable::State::new(),
             generate_button: iced::button::State::new(),
             feerate_input: iced::text_input::State::new(),
         }
@@ -828,7 +824,6 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
 #[derive(Debug)]
 pub struct ManagerStepSignView {
     scroll: scrollable::State,
-    modal: layout::Modal,
     cancel_button: iced::button::State,
     back_button: iced::button::State,
 }
@@ -837,7 +832,6 @@ impl ManagerStepSignView {
     pub fn new() -> Self {
         ManagerStepSignView {
             scroll: scrollable::State::new(),
-            modal: layout::Modal::new(),
             cancel_button: iced::button::State::new(),
             back_button: iced::button::State::new(),
         }
@@ -947,7 +941,6 @@ pub struct ManagerSpendTransactionCreatedView {
     scroll: scrollable::State,
     cancel_button: iced::button::State,
     next_button: iced::button::State,
-    back_button: iced::button::State,
 }
 
 impl ManagerSpendTransactionCreatedView {
@@ -955,7 +948,6 @@ impl ManagerSpendTransactionCreatedView {
         ManagerSpendTransactionCreatedView {
             cancel_button: iced::button::State::new(),
             next_button: iced::button::State::new(),
-            back_button: iced::button::State::new(),
             scroll: scrollable::State::new(),
         }
     }
