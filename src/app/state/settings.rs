@@ -50,7 +50,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SettingsState {
         self.view.view(
             ctx,
             self.warning.as_ref(),
-            &ctx.revaultd.config,
+            &ctx.config.daemon,
             self.server_status.clone(),
         )
     }

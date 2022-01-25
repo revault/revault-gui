@@ -12,7 +12,13 @@ use revault_hwi::{
 };
 
 use revault_gui::{
-    app::{self, config::ConfigError, context::Context, menu::Menu, App},
+    app::{
+        self,
+        config::ConfigError,
+        context::{ConfigContext, Context},
+        menu::Menu,
+        App,
+    },
     conversion::Converter,
     daemon::{self, config::default_datadir},
     installer::{self, Installer},
@@ -189,25 +195,23 @@ impl Application for GUI {
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
             if let State::Loader(loader) = &mut self.state {
-                let config = loader.gui_config.clone();
-                let role = if revaultd.config.stakeholder_config.is_some() {
+                let config = ConfigContext {
+                    gui: loader.gui_config.clone(),
+                    daemon: loader.daemon_config.clone().unwrap(),
+                };
+
+                let role = if config.daemon.stakeholder_config.is_some() {
                     Role::Stakeholder
                 } else {
                     Role::Manager
                 };
 
-                // The user is both a manager and a stakholder, then role can be modified.
-                let edit_role = revaultd.config.stakeholder_config.is_some()
-                    && revaultd.config.manager_config.is_some();
-
-                let converter = Converter::new(revaultd.network());
-                let network = revaultd.network();
+                let converter = Converter::new(config.daemon.bitcoind_config.network);
 
                 let mut context = Context::new(
+                    config,
                     revaultd,
                     converter,
-                    network,
-                    edit_role,
                     role,
                     Menu::Home,
                     self.daemon_running,
@@ -217,7 +221,7 @@ impl Application for GUI {
                 context.blockheight = info.blockheight;
                 context.managers_threshold = info.managers_threshold;
 
-                let (app, command) = App::new(context, config);
+                let (app, command) = App::new(context);
                 self.state = State::App(app);
                 return command.map(Message::Run);
             }

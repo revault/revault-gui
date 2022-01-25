@@ -21,6 +21,7 @@ type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
 
 pub struct Loader {
     pub gui_config: GUIConfig,
+    pub daemon_config: Option<Config>,
     pub daemon_started: bool,
 
     should_exit: bool,
@@ -52,14 +53,30 @@ pub enum Message {
 impl Loader {
     pub fn new(gui_config: GUIConfig) -> (Self, Command<Message>) {
         let revaultd_config_path = gui_config.revaultd_config_path.clone();
+        let daemon_config = match Config::from_file(&revaultd_config_path) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                return (
+                    Loader {
+                        daemon_config: None,
+                        gui_config,
+                        step: Step::Error(e.into()),
+                        should_exit: false,
+                        daemon_started: false,
+                    },
+                    Command::none(),
+                )
+            }
+        };
         (
             Loader {
+                daemon_config: Some(daemon_config.clone()),
                 gui_config,
                 step: Step::Connecting,
                 should_exit: false,
                 daemon_started: false,
             },
-            Command::perform(connect(revaultd_config_path), Message::Loaded),
+            Command::perform(connect(daemon_config), Message::Loaded),
         )
     }
 
@@ -92,7 +109,7 @@ impl Loader {
                             },
                         ),
                         Command::perform(
-                            try_connect(self.gui_config.revaultd_config_path.clone()),
+                            try_connect(self.daemon_config.clone().unwrap()),
                             Message::Connected,
                         ),
                     ]);
@@ -223,8 +240,7 @@ async fn synced(
     (info, revaultd)
 }
 
-async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
-    let cfg = Config::from_file(&revaultd_config_path)?;
+async fn connect(cfg: Config) -> Result<Arc<RevaultD>, Error> {
     let socket_path = cfg.socket_path().map_err(|e| {
         RevaultDError::Transport(
             Some(ErrorKind::NotFound),
@@ -233,7 +249,7 @@ async fn connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> 
     })?;
 
     let client = client::jsonrpc::JsonRPCClient::new(socket_path);
-    let revaultd = RevaultD::new(&cfg, client)?;
+    let revaultd = RevaultD::new(client)?;
 
     Ok(Arc::new(revaultd))
 }
@@ -245,9 +261,7 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, R
     revaultd.get_info()
 }
 
-async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
-    let cfg = Config::from_file(&revaultd_config_path)?;
-
+async fn try_connect(cfg: Config) -> Result<Arc<RevaultD>, Error> {
     fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
         let socket_path = cfg.socket_path().map_err(|e| {
@@ -258,7 +272,7 @@ async fn try_connect(revaultd_config_path: PathBuf) -> Result<Arc<RevaultD>, Err
         })?;
 
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);
-        RevaultD::new(cfg, client).map(Arc::new).map_err(|e| {
+        RevaultD::new(client).map(Arc::new).map_err(|e| {
             log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
             e.into()
         })

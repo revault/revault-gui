@@ -386,7 +386,7 @@ fn spend<'a, T: 'a, C: Client>(
         .push(Text::new("Recipients:").bold())
         .spacing(10);
     for output in &tx.output {
-        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network());
         let mut row = Row::new();
         if let Some(a) = addr {
             row = row.push(Text::new(&a.to_string()).small().width(Length::Fill))

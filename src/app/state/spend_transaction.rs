@@ -51,13 +51,13 @@ impl SpendTransactionState {
             change_index: None,
             action: SpendTransactionAction::new(
                 ctx.managers_threshold,
-                &ctx.revaultd
-                    .config
+                &ctx.config
+                    .daemon
                     .manager_config
                     .as_ref()
                     .expect("User is a manager")
                     .xpub,
-                &ctx.revaultd.config.managers_xpubs(),
+                &ctx.config.daemon.managers_xpubs(),
                 &psbt,
             ),
             psbt,
@@ -281,13 +281,13 @@ impl SpendTransactionAction {
             SpendTxMessage::UnselectDelete => {
                 *self = Self::new(
                     ctx.managers_threshold,
-                    &ctx.revaultd
-                        .config
+                    &ctx.config
+                        .daemon
                         .manager_config
                         .as_ref()
                         .expect("User is a manager")
                         .xpub,
-                    &ctx.revaultd.config.managers_xpubs(),
+                    &ctx.config.daemon.managers_xpubs(),
                     psbt,
                 );
             }
@@ -324,13 +324,13 @@ impl SpendTransactionAction {
                             *psbt = signer.target.spend_tx.clone();
                             *self = Self::new(
                                 ctx.managers_threshold,
-                                &ctx.revaultd
-                                    .config
+                                &ctx.config
+                                    .daemon
                                     .manager_config
                                     .as_ref()
                                     .expect("User is a manager")
                                     .xpub,
-                                &ctx.revaultd.config.managers_xpubs(),
+                                &ctx.config.daemon.managers_xpubs(),
                                 psbt,
                             );
                         }
@@ -395,8 +395,8 @@ impl SpendTransactionAction {
                         if p.global.unsigned_tx.txid() != psbt.global.unsigned_tx.txid() {
                             psbt_input.valid = false;
                         } else if is_unknown_sig(
-                            &ctx.revaultd
-                                .config
+                            &ctx.config
+                                .daemon
                                 .managers_xpubs()
                                 .into_iter()
                                 .map(|xpub| xpub.master_fingerprint())
@@ -449,8 +449,8 @@ impl SpendTransactionAction {
                                         .bip32_derivation
                                         .get(key)
                                         .map(|(fingerprint, _)| {
-                                            ctx.revaultd
-                                                .config
+                                            ctx.config
+                                                .daemon
                                                 .manager_config
                                                 .as_ref()
                                                 .expect("User is a manager")
@@ -464,8 +464,8 @@ impl SpendTransactionAction {
                                         processing: false,
                                         warning: None,
                                         signer: Signer::new(SpendTransactionTarget::new(
-                                            &ctx.revaultd
-                                                .config
+                                            &ctx.config
+                                                .daemon
                                                 .managers_xpubs()
                                                 .iter()
                                                 .map(|xpub| xpub.master_fingerprint())

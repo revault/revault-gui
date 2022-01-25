@@ -1,6 +1,7 @@
 mod utils;
 
 use serde_json::json;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -14,7 +15,8 @@ use bitcoin::hashes::hex::FromHex;
 
 use revault_gui::{
     app::{
-        context::Context,
+        config::Config as GUIConfig,
+        context::{ConfigContext, Context},
         menu::Menu,
         message::Message,
         state::{
@@ -64,13 +66,14 @@ async fn test_deposit_state() {
 
     let sandbox: Sandbox<DaemonClient, DepositState> = Sandbox::new(DepositState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -148,13 +151,14 @@ async fn test_emergency_state() {
 
     let sandbox: Sandbox<DaemonClient, EmergencyState> = Sandbox::new(EmergencyState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -259,13 +263,14 @@ async fn test_vaults_state() {
 
     let sandbox: Sandbox<DaemonClient, VaultsState> = Sandbox::new(VaultsState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -381,13 +386,14 @@ async fn test_history_state_filter() {
 
     let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -464,7 +470,7 @@ async fn test_history_state_pagination() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(19), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..25].to_vec()
@@ -480,7 +486,7 @@ async fn test_history_state_pagination() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&[HistoryEventKind::Deposit]), json!(0), json!(19), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&[HistoryEventKind::Deposit]), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..25].to_vec()
@@ -490,13 +496,14 @@ async fn test_history_state_pagination() {
 
     let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -625,13 +632,14 @@ async fn test_history_state_pagination_batching() {
 
     let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,
@@ -742,13 +750,14 @@ async fn test_history_state_select_event() {
 
     let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
 
-    let cfg = Config::default();
     let client = daemon.run();
     let ctx = Context::new(
-        Arc::new(RevaultD::new(&cfg, client).unwrap()),
+        ConfigContext {
+            daemon: Config::default(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client).unwrap()),
         Converter::new(bitcoin::Network::Bitcoin),
-        bitcoin::Network::Bitcoin,
-        false,
         Role::Stakeholder,
         Menu::Vaults,
         false,

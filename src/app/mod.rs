@@ -26,21 +26,17 @@ use crate::{app::context::Context, daemon::client::Client, revault::Role};
 
 pub struct App<C: Client + Send + Sync + 'static> {
     should_exit: bool,
-    config: Config,
     state: Box<dyn State<C>>,
     context: Context<C>,
 }
 
 #[allow(unreachable_patterns)]
-pub fn new_state<C: Client + Send + Sync + 'static>(
-    context: &Context<C>,
-    config: &Config,
-) -> Box<dyn State<C>> {
+pub fn new_state<C: Client + Send + Sync + 'static>(context: &Context<C>) -> Box<dyn State<C>> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
         (_, Menu::Vaults) => VaultsState::new().into(),
-        (_, Menu::Settings) => SettingsState::new(config.clone()).into(),
+        (_, Menu::Settings) => SettingsState::new(context.config.gui.clone()).into(),
         (Role::Stakeholder, Menu::Home) => StakeholderHomeState::new().into(),
         (Role::Stakeholder, Menu::CreateVaults) => StakeholderCreateVaultsState::new().into(),
         (Role::Stakeholder, Menu::DelegateFunds) => StakeholderDelegateVaultsState::new().into(),
@@ -55,13 +51,12 @@ pub fn new_state<C: Client + Send + Sync + 'static>(
 }
 
 impl<C: Client + Send + Sync + 'static> App<C> {
-    pub fn new(context: Context<C>, config: Config) -> (App<C>, Command<Message>) {
-        let state = new_state(&context, &config);
+    pub fn new(context: Context<C>) -> (App<C>, Command<Message>) {
+        let state = new_state(&context);
         let cmd = state.load(&context);
         (
             Self {
                 should_exit: false,
-                config,
                 state,
                 context,
             },
@@ -109,12 +104,12 @@ impl<C: Client + Send + Sync + 'static> App<C> {
             }
             Message::ChangeRole(role) => {
                 self.context.role = role;
-                self.state = new_state(&self.context, &self.config);
+                self.state = new_state(&self.context);
                 self.state.load(&self.context)
             }
             Message::Menu(menu) => {
                 self.context.menu = menu;
-                self.state = new_state(&self.context, &self.config);
+                self.state = new_state(&self.context);
                 self.state.load(&self.context)
             }
             Message::Clipboard(text) => {
