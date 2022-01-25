@@ -1,6 +1,5 @@
 use std::convert::From;
 use std::io::ErrorKind;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::{Column, Command, Container, Element, Length, Subscription};
@@ -13,7 +12,7 @@ use crate::{
     daemon::{
         client::{self, GetInfoResponse, RevaultDError},
         config::{Config, ConfigError},
-        start_daemon, DaemonError,
+        embedded::{start_daemon, DaemonError},
     },
 };
 
