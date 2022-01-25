@@ -35,92 +35,75 @@ use crate::app::{
             ManagerSendWelcomeView, ManagerSpendTransactionCreatedView, ManagerStepSignView,
         },
         vault::VaultListItemView,
-        ManagerHomeView,
+        LoadingDashboard, ManagerHomeView,
     },
 };
 
 #[derive(Debug)]
-pub struct ManagerHomeState {
-    view: ManagerHomeView,
+pub enum ManagerHomeState {
+    Loading {
+        fail: Option<Error>,
+        view: LoadingDashboard,
+    },
+    /// ManagerHomeState is considered as loaded once the vaults are loaded,
+    /// then after update_vaults, spend_tx and history events are loaded.
+    Loaded {
+        view: ManagerHomeView,
 
-    active_funds: u64,
-    inactive_funds: u64,
-    warning: Option<Error>,
+        active_funds: u64,
+        inactive_funds: u64,
+        warning: Option<Error>,
 
-    moving_vaults: Vec<VaultListItem<VaultListItemView>>,
-    spendable_outpoints: HashMap<String, u64>,
-    selected_vault: Option<Vault>,
+        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        spendable_outpoints: HashMap<String, u64>,
+        selected_vault: Option<Vault>,
 
-    spend_txs: Vec<model::SpendTx>,
-    spend_txs_item: Vec<SpendTransactionListItem>,
-    selected_spend_tx: Option<SpendTransactionState>,
+        spend_txs: Vec<model::SpendTx>,
+        spend_txs_item: Vec<SpendTransactionListItem>,
+        selected_spend_tx: Option<SpendTransactionState>,
 
-    latest_events: Vec<HistoryEventListItemState>,
-    selected_event: Option<HistoryEventState>,
-
-    loading_vaults: bool,
+        latest_events: Vec<HistoryEventListItemState>,
+        selected_event: Option<HistoryEventState>,
+    },
 }
 
 impl ManagerHomeState {
     pub fn new() -> Self {
-        ManagerHomeState {
-            active_funds: 0,
-            inactive_funds: 0,
-            view: ManagerHomeView::new(),
-            spendable_outpoints: HashMap::new(),
-            moving_vaults: Vec::new(),
-            warning: None,
-            selected_vault: None,
-            spend_txs: Vec::new(),
-            spend_txs_item: Vec::new(),
-            selected_spend_tx: None,
-            latest_events: Vec::new(),
-            selected_event: None,
-            loading_vaults: true,
+        ManagerHomeState::Loading {
+            view: LoadingDashboard::new(),
+            fail: None,
         }
     }
 
     pub fn update_spend_txs(&mut self, txs: Vec<model::SpendTx>) {
-        self.spend_txs = if self.loading_vaults {
-            // Don't filter the txs if we still don't have the vaults!
-            txs
-        } else {
-            // Displaying only the txs that spend non-spent vaults. This way
-            // we're hiding to the user spend transactions that can't be spent
-            // anymore, as one of the inputs got spent.
-            // FIXME: this might be a bug? I absolutely don't remember why I introduced
-            // this check in the first place
-            txs.into_iter()
+        if let Self::Loaded {
+            spend_txs,
+            spend_txs_item,
+            spendable_outpoints,
+            ..
+        } = self
+        {
+            *spend_txs = txs
+                .into_iter()
                 .filter(|tx| {
                     tx.deposit_outpoints
                         .iter()
-                        .all(|outpoint| self.spendable_outpoints.get(outpoint).is_some())
+                        .all(|outpoint| spendable_outpoints.get(outpoint).is_some())
                 })
-                .collect()
-        };
-
-        self.spend_txs_item = if self.loading_vaults {
-            // Let's avoid displaying txs if I don't have the vaults
-            vec![]
-        } else {
-            self.spend_txs
+                .collect();
+            *spend_txs_item = spend_txs
                 .clone()
                 .into_iter()
                 .map(|s| {
                     (
-                        if self.loading_vaults {
-                            0
-                        } else {
-                            // Amounts of the vaults being spent
-                            s.deposit_outpoints.iter().fold(0, |acc, x| {
-                                acc + *self.spendable_outpoints.get(x).expect("Must be spendable")
-                            })
-                        },
+                        s.deposit_outpoints.iter().fold(0, |acc, x| {
+                            acc + *spendable_outpoints.get(x).expect("Must be spendable")
+                        }),
                         s,
                     )
                 })
                 .map(|(vaults_amount, s)| SpendTransactionListItem::new(s, vaults_amount))
-                .collect()
+                .collect();
         };
     }
 
@@ -129,28 +112,34 @@ impl ManagerHomeState {
         ctx: &Context<C>,
         psbt: Psbt,
     ) -> Command<Message> {
-        if let Some(selected) = &self.selected_spend_tx {
-            if selected.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid() {
-                self.selected_spend_tx = None;
-                return Command::none();
-            }
-        }
-
-        if self
-            .spend_txs
-            .iter()
-            .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
+        if let Self::Loaded {
+            spend_txs,
+            selected_spend_tx,
+            ..
+        } = self
         {
-            let selected_spend_tx = SpendTransactionState::new(ctx, psbt);
-            let cmd = selected_spend_tx.load(ctx);
-            self.selected_spend_tx = Some(selected_spend_tx);
-            return cmd;
-        };
+            if let Some(selected) = selected_spend_tx {
+                if selected.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid() {
+                    *selected_spend_tx = None;
+                    return Command::none();
+                }
+            }
+
+            if spend_txs
+                .iter()
+                .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
+            {
+                let spend_tx = SpendTransactionState::new(ctx, psbt);
+                let cmd = spend_tx.load(ctx);
+                *selected_spend_tx = Some(spend_tx);
+                return cmd;
+            };
+        }
         Command::none()
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        let (active_funds, inactive_funds) =
+        let (act_funds, inact_funds) =
             vaults.iter().fold((0, 0), |acc, vault| match vault.status {
                 VaultStatus::Active => (acc.0 + vault.amount, acc.1),
                 VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
@@ -158,10 +147,8 @@ impl ManagerHomeState {
                 }
                 _ => (acc.0, acc.1),
             });
-        self.active_funds = active_funds;
-        self.inactive_funds = inactive_funds;
 
-        self.spendable_outpoints = vaults
+        let spendable_vlts = vaults
             .iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Active {
@@ -172,7 +159,7 @@ impl ManagerHomeState {
             })
             .collect();
 
-        self.moving_vaults = vaults
+        let moving_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Canceling
@@ -187,10 +174,36 @@ impl ManagerHomeState {
             })
             .collect();
 
-        self.loading_vaults = false;
-
-        // The spendable outpoints changed, let's update the spend txs
-        self.update_spend_txs(self.spend_txs.clone());
+        match self {
+            Self::Loading { .. } => {
+                *self = Self::Loaded {
+                    warning: None,
+                    active_funds: act_funds,
+                    inactive_funds: inact_funds,
+                    spendable_outpoints: spendable_vlts,
+                    moving_vaults: moving_vlts,
+                    latest_events: Vec::new(),
+                    spend_txs: Vec::new(),
+                    spend_txs_item: Vec::new(),
+                    selected_vault: None,
+                    selected_event: None,
+                    selected_spend_tx: None,
+                    view: ManagerHomeView::new(),
+                }
+            }
+            Self::Loaded {
+                active_funds,
+                inactive_funds,
+                spendable_outpoints,
+                moving_vaults,
+                ..
+            } => {
+                *active_funds = act_funds;
+                *inactive_funds = inact_funds;
+                *spendable_outpoints = spendable_vlts;
+                *moving_vaults = moving_vlts;
+            }
+        }
     }
 
     pub fn on_vault_select<C: Client + Send + Sync + 'static>(
@@ -198,152 +211,219 @@ impl ManagerHomeState {
         ctx: &Context<C>,
         outpoint: String,
     ) -> Command<Message> {
-        if let Some(selected) = &self.selected_vault {
-            if selected.vault.outpoint() == outpoint {
-                self.selected_vault = None;
-                return self.load(ctx);
-            }
-        }
-
-        if let Some(selected) = self
-            .moving_vaults
-            .iter()
-            .find(|vlt| vlt.vault.outpoint() == outpoint)
+        if let Self::Loaded {
+            selected_vault,
+            moving_vaults,
+            ..
+        } = self
         {
-            let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(ctx.revaultd.clone());
-            self.selected_vault = Some(selected_vault);
-            return cmd.map(Message::Vault);
-        };
-        Command::none()
-    }
-}
+            if let Some(selected) = selected_vault {
+                if selected.vault.outpoint() == outpoint {
+                    *selected_vault = None;
+                    return self.load(ctx);
+                }
+            }
 
-impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
-        match message {
-            Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                return self.on_spend_tx_select(ctx, psbt);
+            if let Some(selected) = moving_vaults
+                .iter()
+                .find(|vlt| vlt.vault.outpoint() == outpoint)
+            {
+                let vault = Vault::new(selected.vault.clone());
+                let cmd = vault.load(ctx.revaultd.clone());
+                *selected_vault = Some(vault);
+                return cmd.map(Message::Vault);
             }
-            Message::SpendTx(msg) => {
-                if let Some(tx) = &mut self.selected_spend_tx {
-                    return tx.update(ctx, Message::SpendTx(msg));
-                }
-            }
-            Message::SpendTransactions(res) => match res {
-                Ok(txs) => self.update_spend_txs(txs),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            Message::Vaults(res) => match res {
-                Ok(vaults) => self.update_vaults(vaults),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
-            Message::Vault(msg) => {
-                if let Some(selected) = &mut self.selected_vault {
-                    return selected.update(ctx, msg).map(Message::Vault);
-                }
-            }
-            Message::HistoryEvents(res) => match res {
-                Ok(events) => {
-                    self.latest_events = events
-                        .into_iter()
-                        .map(HistoryEventListItemState::new)
-                        .collect();
-                }
-                Err(e) => {
-                    self.warning = Error::from(e).into();
-                }
-            },
-            Message::SelectHistoryEvent(i) => {
-                if let Some(item) = self.latest_events.get(i) {
-                    let state = HistoryEventState::new(item.event.clone());
-                    let cmd = state.load(ctx);
-                    self.selected_event = Some(state);
-                    return cmd;
-                }
-            }
-            Message::HistoryEvent(msg) => {
-                if let Some(event) = &mut self.selected_event {
-                    event.update(msg)
-                }
-            }
-            Message::Close => {
-                if self.selected_event.is_some() {
-                    self.selected_event = None;
-                }
-            }
-            _ => {}
         };
         Command::none()
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        if let Some(v) = &self.selected_spend_tx {
-            return v.sub();
-        }
-        Subscription::none()
-    }
-
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
-        if let Some(v) = &mut self.selected_vault {
-            return v.view(ctx);
-        }
-
-        if let Some(tx) = &mut self.selected_spend_tx {
-            return tx.view(ctx);
-        }
-
-        if let Some(v) = &mut self.selected_event {
-            return v.view(ctx);
-        }
-
-        self.view.view(
-            ctx,
-            self.warning.as_ref(),
-            self.spend_txs_item
-                .iter_mut()
-                .map(|tx| tx.view(ctx).map(Message::SpendTx))
-                .collect(),
-            self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events
-                .iter_mut()
-                .enumerate()
-                .map(|(i, evt)| evt.view(ctx, i))
-                .collect(),
-            self.active_funds,
-            self.inactive_funds,
-        )
-    }
-
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load_history<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
         let revaultd = ctx.revaultd.clone();
-        let history = Command::perform(
+        Command::perform(
             async move {
                 revaultd
                     .get_history(&HistoryEventKind::ALL, 0, now, 5)
                     .map(|res| res.events)
             },
             Message::HistoryEvents,
-        );
-        Command::batch(vec![
-            Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
-                Message::Vaults,
+        )
+    }
+
+    fn load_spend_txs<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+        Command::perform(
+            list_spend_txs(
+                ctx.revaultd.clone(),
+                Some(&[model::SpendTxStatus::NonFinal]),
             ),
-            Command::perform(
-                list_spend_txs(
-                    ctx.revaultd.clone(),
-                    Some(&[model::SpendTxStatus::NonFinal]),
-                ),
-                Message::SpendTransactions,
-            ),
-            history,
-        ])
+            Message::SpendTransactions,
+        )
+    }
+
+    fn load_vaults<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+        Command::perform(
+            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            Message::Vaults,
+        )
+    }
+}
+
+impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+        match self {
+            Self::Loading { fail, .. } => {
+                if let Message::Vaults(res) = message {
+                    match res {
+                        Ok(vaults) => {
+                            self.update_vaults(vaults);
+                            return Command::batch(vec![
+                                Self::load_history(ctx),
+                                Self::load_spend_txs(ctx),
+                            ]);
+                        }
+                        Err(e) => *fail = Some(e.into()),
+                    }
+                }
+            }
+            Self::Loaded {
+                warning,
+                selected_vault,
+                selected_event,
+                selected_spend_tx,
+                latest_events,
+                ..
+            } => match message {
+                Message::Reload => {
+                    return self.load(ctx);
+                }
+                Message::SpendTx(SpendTxMessage::Select(psbt)) => {
+                    return self.on_spend_tx_select(ctx, psbt);
+                }
+                Message::SpendTx(msg) => {
+                    if let Some(tx) = selected_spend_tx {
+                        return tx.update(ctx, Message::SpendTx(msg));
+                    }
+                }
+                Message::SpendTransactions(res) => match res {
+                    Ok(txs) => self.update_spend_txs(txs),
+                    Err(e) => *warning = Error::from(e).into(),
+                },
+                Message::Vaults(res) => match res {
+                    Ok(vaults) => {
+                        self.update_vaults(vaults);
+                        return Command::batch(vec![
+                            Self::load_history(ctx),
+                            Self::load_spend_txs(ctx),
+                        ]);
+                    }
+                    Err(e) => *warning = Error::from(e).into(),
+                },
+                Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
+                Message::Vault(msg) => {
+                    if let Some(selected) = selected_vault {
+                        return selected.update(ctx, msg).map(Message::Vault);
+                    }
+                }
+                Message::HistoryEvents(res) => match res {
+                    Ok(events) => {
+                        *latest_events = events
+                            .into_iter()
+                            .map(HistoryEventListItemState::new)
+                            .collect();
+                    }
+                    Err(e) => {
+                        *warning = Error::from(e).into();
+                    }
+                },
+                Message::SelectHistoryEvent(i) => {
+                    if let Some(item) = latest_events.get(i) {
+                        let state = HistoryEventState::new(item.event.clone());
+                        let cmd = state.load(ctx);
+                        *selected_event = Some(state);
+                        return cmd;
+                    }
+                }
+                Message::HistoryEvent(msg) => {
+                    if let Some(event) = selected_event {
+                        event.update(msg)
+                    }
+                }
+                Message::Close => {
+                    if selected_event.is_some() {
+                        *selected_event = None;
+                    }
+                }
+                _ => {}
+            },
+        };
+        Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if let Self::Loaded {
+            selected_spend_tx, ..
+        } = self
+        {
+            if let Some(v) = selected_spend_tx {
+                return v.sub();
+            }
+        }
+        Subscription::none()
+    }
+
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+        match self {
+            Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
+            Self::Loaded {
+                warning,
+                selected_vault,
+                selected_spend_tx,
+                selected_event,
+                spend_txs_item,
+                moving_vaults,
+                latest_events,
+                active_funds,
+                inactive_funds,
+                view,
+                ..
+            } => {
+                if let Some(v) = selected_vault {
+                    return v.view(ctx);
+                }
+
+                if let Some(tx) = selected_spend_tx {
+                    return tx.view(ctx);
+                }
+
+                if let Some(v) = selected_event {
+                    return v.view(ctx);
+                }
+
+                view.view(
+                    ctx,
+                    warning.as_ref(),
+                    spend_txs_item
+                        .iter_mut()
+                        .map(|tx| tx.view(ctx).map(Message::SpendTx))
+                        .collect(),
+                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    latest_events
+                        .iter_mut()
+                        .enumerate()
+                        .map(|(i, evt)| evt.view(ctx, i))
+                        .collect(),
+                    *active_funds,
+                    *inactive_funds,
+                )
+            }
+        }
+    }
+
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+        Self::load_vaults(ctx)
     }
 }
 

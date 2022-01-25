@@ -23,42 +23,59 @@ use crate::app::{
     },
     view::{
         vault::{DelegateVaultListItemView, VaultListItemView},
-        LoadingModal, StakeholderCreateVaultsView, StakeholderDelegateVaultsView,
+        LoadingDashboard, LoadingModal, StakeholderCreateVaultsView, StakeholderDelegateVaultsView,
         StakeholderHomeView, StakeholderSelecteVaultsToDelegateView,
     },
 };
 
 #[derive(Debug)]
-pub struct StakeholderHomeState {
-    warning: Option<Error>,
+pub enum StakeholderHomeState {
+    Loading {
+        fail: Option<Error>,
+        view: LoadingDashboard,
+    },
+    /// ManagerHomeState is considered as loaded once the vaults are loaded,
+    /// then after update_vaults, spend_tx and history events are loaded.
+    Loaded {
+        warning: Option<Error>,
 
-    balance: HashMap<VaultStatus, (u64, u64)>,
+        balance: HashMap<VaultStatus, (u64, u64)>,
 
-    moving_vaults: Vec<VaultListItem<VaultListItemView>>,
-    selected_vault: Option<Vault>,
-    selected_event: Option<HistoryEventState>,
+        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        selected_vault: Option<Vault>,
 
-    latest_events: Vec<HistoryEventListItemState>,
+        latest_events: Vec<HistoryEventListItemState>,
+        selected_event: Option<HistoryEventState>,
 
-    view: StakeholderHomeView,
+        view: StakeholderHomeView,
+    },
 }
 
 impl StakeholderHomeState {
     pub fn new() -> Self {
-        StakeholderHomeState {
-            warning: None,
-            view: StakeholderHomeView::new(),
-            balance: HashMap::new(),
-            moving_vaults: Vec::new(),
-            latest_events: Vec::new(),
-            selected_vault: None,
-            selected_event: None,
+        StakeholderHomeState::Loading {
+            view: LoadingDashboard::new(),
+            fail: None,
         }
     }
 
-    fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        self.calculate_balance(&vaults);
-        self.moving_vaults = vaults
+    pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
+        let mut total_balance = HashMap::new();
+        for vault in &vaults {
+            if vault.status == VaultStatus::Unconfirmed
+                || VaultStatus::MOVING.contains(&vault.status)
+            {
+                continue;
+            }
+            if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
+                *number += 1;
+                *amount += vault.amount;
+            } else {
+                total_balance.insert(vault.status.clone(), (1, vault.amount));
+            }
+        }
+
+        let moving_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Canceling
@@ -72,147 +89,178 @@ impl StakeholderHomeState {
                 }
             })
             .collect();
-    }
 
-    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        outpoint: String,
-    ) -> Command<Message> {
-        if let Some(selected) = &self.selected_vault {
-            if selected.vault.outpoint() == outpoint {
-                self.selected_vault = None;
-                return self.load(ctx);
+        match self {
+            Self::Loading { .. } => {
+                *self = Self::Loaded {
+                    balance: total_balance,
+                    warning: None,
+                    moving_vaults: moving_vlts,
+                    selected_vault: None,
+                    selected_event: None,
+                    latest_events: Vec::new(),
+                    view: StakeholderHomeView::new(),
+                };
+            }
+            Self::Loaded {
+                balance,
+                moving_vaults,
+                ..
+            } => {
+                *balance = total_balance;
+                *moving_vaults = moving_vlts;
             }
         }
-
-        if let Some(selected) = self
-            .moving_vaults
-            .iter()
-            .find(|vlt| vlt.vault.outpoint() == outpoint)
-        {
-            let selected_vault = Vault::new(selected.vault.clone());
-            let cmd = selected_vault.load(ctx.revaultd.clone());
-            self.selected_vault = Some(selected_vault);
-            return cmd.map(Message::Vault);
-        };
-        Command::none()
     }
-
-    fn calculate_balance(&mut self, vaults: &[model::Vault]) {
-        let mut balance = HashMap::new();
-        for vault in vaults {
-            if vault.status == VaultStatus::Unconfirmed
-                || VaultStatus::MOVING.contains(&vault.status)
-            {
-                continue;
-            }
-            if let Some((number, amount)) = balance.get_mut(&vault.status) {
-                *number += 1;
-                *amount += vault.amount;
-            } else {
-                balance.insert(vault.status.clone(), (1, vault.amount));
-            }
-        }
-
-        self.balance = balance;
-    }
-}
-
-impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
-        match message {
-            Message::Vaults(res) => match res {
-                Ok(vaults) => self.update_vaults(vaults),
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
-            Message::Vault(msg) => {
-                if let Some(selected) = &mut self.selected_vault {
-                    return selected.update(ctx, msg).map(Message::Vault);
-                }
-            }
-            Message::SelectHistoryEvent(i) => {
-                if let Some(item) = self.latest_events.get(i) {
-                    let state = HistoryEventState::new(item.event.clone());
-                    let cmd = state.load(ctx);
-                    self.selected_event = Some(state);
-                    return cmd;
-                }
-            }
-            Message::HistoryEvent(msg) => {
-                if let Some(event) = &mut self.selected_event {
-                    event.update(msg)
-                }
-            }
-            Message::Close => {
-                if self.selected_event.is_some() {
-                    self.selected_event = None;
-                }
-            }
-            Message::HistoryEvents(res) => match res {
-                Ok(events) => {
-                    self.latest_events = events
-                        .into_iter()
-                        .map(HistoryEventListItemState::new)
-                        .collect();
-                }
-                Err(e) => {
-                    self.warning = Error::from(e).into();
-                }
-            },
-            _ => {}
-        }
-        Command::none()
-    }
-
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
-        if let Some(v) = &mut self.selected_vault {
-            return v.view(ctx);
-        }
-
-        if let Some(v) = &mut self.selected_event {
-            return v.view(ctx);
-        }
-
-        self.view.view(
-            ctx,
-            None,
-            self.moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
-            self.latest_events
-                .iter_mut()
-                .enumerate()
-                .map(|(i, evt)| evt.view(ctx, i))
-                .collect(),
-            &self.balance,
-        )
-    }
-
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load_history<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
         let revaultd = ctx.revaultd.clone();
-        let history = Command::perform(
+        Command::perform(
             async move {
                 revaultd
                     .get_history(&HistoryEventKind::ALL, 0, now, 5)
                     .map(|res| res.events)
             },
             Message::HistoryEvents,
-        );
-        Command::batch(vec![
-            Command::perform(
-                list_vaults(
-                    ctx.revaultd.clone(),
-                    Some(&VaultStatus::DEPOSIT_AND_CURRENT),
-                    None,
-                ),
-                Message::Vaults,
-            ),
-            history,
-        ])
+        )
+    }
+
+    fn load_vaults<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+        Command::perform(
+            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            Message::Vaults,
+        )
+    }
+}
+
+impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
+    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+        match self {
+            Self::Loading { fail, .. } => {
+                if let Message::Vaults(res) = message {
+                    match res {
+                        Ok(vaults) => {
+                            self.update_vaults(vaults);
+                            return Self::load_history(ctx);
+                        }
+                        Err(e) => *fail = Some(e.into()),
+                    }
+                }
+            }
+            Self::Loaded {
+                warning,
+                latest_events,
+                selected_vault,
+                selected_event,
+                moving_vaults,
+                ..
+            } => match message {
+                Message::Reload => return self.load(ctx),
+                Message::Vaults(res) => match res {
+                    Ok(vaults) => {
+                        self.update_vaults(vaults);
+                        return Self::load_history(ctx);
+                    }
+                    Err(e) => *warning = Error::from(e).into(),
+                },
+                Message::SelectVault(outpoint) => {
+                    if let Some(selected) = selected_vault {
+                        if selected.vault.outpoint() == outpoint {
+                            *selected_vault = None;
+                            return self.load(ctx);
+                        }
+                    }
+
+                    if let Some(selected) = moving_vaults
+                        .iter()
+                        .find(|vlt| vlt.vault.outpoint() == outpoint)
+                    {
+                        let vault = Vault::new(selected.vault.clone());
+                        let cmd = vault.load(ctx.revaultd.clone());
+                        *selected_vault = Some(vault);
+                        return cmd.map(Message::Vault);
+                    };
+                }
+                Message::Vault(msg) => {
+                    if let Some(selected) = selected_vault {
+                        return selected.update(ctx, msg).map(Message::Vault);
+                    }
+                }
+                Message::SelectHistoryEvent(i) => {
+                    if let Some(item) = latest_events.get(i) {
+                        let state = HistoryEventState::new(item.event.clone());
+                        let cmd = state.load(ctx);
+                        *selected_event = Some(state);
+                        return cmd;
+                    }
+                }
+                Message::HistoryEvent(msg) => {
+                    if let Some(event) = selected_event {
+                        event.update(msg)
+                    }
+                }
+                Message::Close => {
+                    if selected_event.is_some() {
+                        *selected_event = None;
+                    }
+                }
+                Message::HistoryEvents(res) => match res {
+                    Ok(events) => {
+                        *latest_events = events
+                            .into_iter()
+                            .map(HistoryEventListItemState::new)
+                            .collect();
+                    }
+                    Err(e) => {
+                        *warning = Some(Error::from(e));
+                    }
+                },
+                _ => {}
+            },
+        };
+        Command::none()
+    }
+
+    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+        match self {
+            Self::Loading { view, fail } => view.view(ctx, fail.as_ref()),
+            Self::Loaded {
+                selected_vault,
+                selected_event,
+                moving_vaults,
+                latest_events,
+                balance,
+                view,
+                warning,
+            } => {
+                if let Some(v) = selected_vault {
+                    return v.view(ctx);
+                }
+
+                if let Some(v) = selected_event {
+                    return v.view(ctx);
+                }
+
+                view.view(
+                    ctx,
+                    warning.as_ref(),
+                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    latest_events
+                        .iter_mut()
+                        .enumerate()
+                        .map(|(i, evt)| evt.view(ctx, i))
+                        .collect(),
+                    &balance,
+                )
+            }
+        }
+    }
+
+    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+        Self::load_vaults(ctx)
     }
 }
 

@@ -67,7 +67,8 @@ impl Sidebar {
                 &mut self.home_menu_button,
                 button::button_content(Some(home_icon()), "Home"),
             )
-            .on_press(Message::Menu(Menu::Home))
+            // Home supports reload
+            .on_press(Message::Reload)
         } else {
             button::transparent(
                 &mut self.home_menu_button,
