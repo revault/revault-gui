@@ -1,17 +1,18 @@
 use std::convert::From;
 use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::{Column, Command, Container, Element, Length, Subscription};
 use iced_native::{window, Event};
 
 use revault_ui::component::{image::revault_colored_logo, text::Text};
+use revaultd::common::config::{Config, ConfigError};
 
 use crate::{
-    app::config::Config as GUIConfig,
+    app::config::{default_datadir, Config as GUIConfig},
     daemon::{
         client::{self, GetInfoResponse, RevaultDError},
-        config::{Config, ConfigError},
         embedded::{start_daemon, DaemonError},
     },
 };
@@ -52,7 +53,7 @@ pub enum Message {
 impl Loader {
     pub fn new(gui_config: GUIConfig) -> (Self, Command<Message>) {
         let revaultd_config_path = gui_config.revaultd_config_path.clone();
-        let daemon_config = match Config::from_file(&revaultd_config_path) {
+        let daemon_config = match Config::from_file(Some(revaultd_config_path)) {
             Ok(cfg) => cfg,
             Err(e) => {
                 return (
@@ -67,15 +68,20 @@ impl Loader {
                 )
             }
         };
+        let path = socket_path(
+            &daemon_config.data_dir,
+            daemon_config.bitcoind_config.network,
+        )
+        .unwrap();
         (
             Loader {
-                daemon_config: Some(daemon_config.clone()),
+                daemon_config: Some(daemon_config),
                 gui_config,
                 step: Step::Connecting,
                 should_exit: false,
                 daemon_started: false,
             },
-            Command::perform(connect(daemon_config), Message::Loaded),
+            Command::perform(connect(path), Message::Loaded),
         )
     }
 
@@ -89,7 +95,7 @@ impl Loader {
                 return Command::perform(sync(revaultd, false), Message::Syncing);
             }
             Err(e) => match e {
-                Error::ConfigError(ConfigError::NotFound) => {
+                Error::ConfigError(_) => {
                     self.step = Step::Error(e);
                 }
                 Error::RevaultDError(RevaultDError::Transport(
@@ -108,7 +114,13 @@ impl Loader {
                             },
                         ),
                         Command::perform(
-                            try_connect(self.daemon_config.clone().unwrap()),
+                            try_connect(
+                                socket_path(
+                                    &self.daemon_config.as_ref().unwrap().data_dir,
+                                    self.daemon_config.as_ref().unwrap().bitcoind_config.network,
+                                )
+                                .unwrap(),
+                            ),
                             Message::Connected,
                         ),
                     ]);
@@ -239,14 +251,7 @@ async fn synced(
     (info, revaultd)
 }
 
-async fn connect(cfg: Config) -> Result<Arc<RevaultD>, Error> {
-    let socket_path = cfg.socket_path().map_err(|e| {
-        RevaultDError::Transport(
-            Some(ErrorKind::NotFound),
-            format!("Failed to find revaultd socket path: {}", e.to_string()),
-        )
-    })?;
-
+async fn connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     let client = client::jsonrpc::JsonRPCClient::new(socket_path);
     let revaultd = RevaultD::new(client)?;
 
@@ -260,16 +265,9 @@ async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, R
     revaultd.get_info()
 }
 
-async fn try_connect(cfg: Config) -> Result<Arc<RevaultD>, Error> {
-    fn try_connect_to_revault(cfg: &Config, i: i32) -> Result<Arc<RevaultD>, Error> {
+async fn try_connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
+    fn try_connect_to_revault(socket_path: &PathBuf, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
-        let socket_path = cfg.socket_path().map_err(|e| {
-            RevaultDError::Transport(
-                Some(ErrorKind::NotFound),
-                format!("Failed to find revaultd socket path: {}", e.to_string()),
-            )
-        })?;
-
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);
         RevaultD::new(client).map(Arc::new).map_err(|e| {
             log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
@@ -277,12 +275,12 @@ async fn try_connect(cfg: Config) -> Result<Arc<RevaultD>, Error> {
         })
     }
 
-    let client = try_connect_to_revault(&cfg, 5)
-        .or_else(|_| try_connect_to_revault(&cfg, 4))
-        .or_else(|_| try_connect_to_revault(&cfg, 3))
-        .or_else(|_| try_connect_to_revault(&cfg, 2))
-        .or_else(|_| try_connect_to_revault(&cfg, 1))
-        .or_else(|_| try_connect_to_revault(&cfg, 0))?;
+    let client = try_connect_to_revault(&socket_path, 5)
+        .or_else(|_| try_connect_to_revault(&socket_path, 4))
+        .or_else(|_| try_connect_to_revault(&socket_path, 3))
+        .or_else(|_| try_connect_to_revault(&socket_path, 2))
+        .or_else(|_| try_connect_to_revault(&socket_path, 1))
+        .or_else(|_| try_connect_to_revault(&socket_path, 0))?;
 
     Ok(client)
 }
@@ -324,4 +322,20 @@ impl From<DaemonError> for Error {
     fn from(error: DaemonError) -> Self {
         Error::DaemonError(error)
     }
+}
+
+/// default revaultd socket path is .revault/bitcoin/revaultd_rpc
+fn socket_path(
+    datadir: &Option<PathBuf>,
+    network: bitcoin::Network,
+) -> Result<PathBuf, ConfigError> {
+    let mut path = if let Some(ref datadir) = datadir {
+        datadir.clone()
+    } else {
+        default_datadir()
+            .map_err(|_| ConfigError("Could not locate the default datadir.".to_owned()))?
+    };
+    path.push(network.to_string());
+    path.push("revaultd_rpc");
+    Ok(path)
 }

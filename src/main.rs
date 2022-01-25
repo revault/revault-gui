@@ -11,16 +11,18 @@ use revault_hwi::{
     HWIError,
 };
 
+use revaultd::common::config::Config as DaemonConfig;
+
 use revault_gui::{
     app::{
         self,
-        config::ConfigError,
+        config::{default_datadir, ConfigError},
         context::{ConfigContext, Context},
         menu::Menu,
         App,
     },
     conversion::Converter,
-    daemon::{self, config::default_datadir},
+    daemon,
     installer::{self, Installer},
     loader::{self, Loader},
     revault::Role,
@@ -195,9 +197,12 @@ impl Application for GUI {
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
             if let State::Loader(loader) = &mut self.state {
+                let daemon_config =
+                    DaemonConfig::from_file(Some(loader.gui_config.revaultd_config_path.clone()))
+                        .unwrap();
                 let config = ConfigContext {
                     gui: loader.gui_config.clone(),
-                    daemon: loader.daemon_config.clone().unwrap(),
+                    daemon: daemon_config,
                 };
 
                 let role = if config.daemon.stakeholder_config.is_some() {

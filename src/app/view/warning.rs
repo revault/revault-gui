@@ -9,7 +9,6 @@ use crate::{
     daemon::{
         client::error::{ApiErrorCode, RpcErrorCode},
         client::RevaultDError,
-        config::ConfigError,
     },
 };
 
@@ -25,13 +24,15 @@ impl From<&Error> for WarningMessage {
                 }
                 _ => WarningMessage(e.to_string()),
             },
-            Error::ConfigError(e) => match e {
-                ConfigError::NotFound => WarningMessage("Configuration file not fund".to_string()),
-                ConfigError::ReadingFile(_) => {
-                    WarningMessage("Failed to read configuration file".to_string())
-                }
-                ConfigError::Unexpected(_) => WarningMessage("Unknown error".to_string()),
-            },
+            Error::ConfigError(e) => WarningMessage(e.to_owned()),
+            // TODO: change when ConfigError is enum again.
+            // Error::ConfigError(e) => match e {
+            //     ConfigError::NotFound => WarningMessage("Configuration file not fund".to_string()),
+            //     ConfigError::ReadingFile(_) => {
+            //         WarningMessage("Failed to read configuration file".to_string())
+            //     }
+            //     ConfigError::Unexpected(_) => WarningMessage("Unknown error".to_string()),
+            // },
             Error::RevaultDError(e) => match e {
                 RevaultDError::Rpc(code, _) => {
                     if *code == ApiErrorCode::COORDINATOR_SIG_STORE_ERROR as i32 {

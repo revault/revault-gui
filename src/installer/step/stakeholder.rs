@@ -10,16 +10,14 @@ use revaultd::revault_tx::{
 
 use revault_ui::component::form;
 
-use crate::{
-    daemon::config,
-    installer::{
-        message::{self, Message},
-        step::{
-            common::{CosignerKey, ParticipantXpub, RequiredXpub},
-            Context, Step,
-        },
-        view,
+use crate::installer::{
+    config,
+    message::{self, Message},
+    step::{
+        common::{CosignerKey, ParticipantXpub, RequiredXpub},
+        Context, Step,
     },
+    view,
 };
 
 pub struct DefineStakeholderXpubs {

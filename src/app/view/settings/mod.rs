@@ -1,8 +1,10 @@
 use iced::{Column, Element};
 
+use revaultd::common::config::Config;
+
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::{client::Client, config::Config, model::ServersStatuses},
+    daemon::{client::Client, model::ServersStatuses},
     revault::Role,
 };
 

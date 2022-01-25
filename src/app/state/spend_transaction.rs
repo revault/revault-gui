@@ -57,7 +57,7 @@ impl SpendTransactionState {
                     .as_ref()
                     .expect("User is a manager")
                     .xpub,
-                &ctx.config.daemon.managers_xpubs(),
+                &ctx.managers_xpubs(),
                 &psbt,
             ),
             psbt,
@@ -287,7 +287,7 @@ impl SpendTransactionAction {
                         .as_ref()
                         .expect("User is a manager")
                         .xpub,
-                    &ctx.config.daemon.managers_xpubs(),
+                    &ctx.managers_xpubs(),
                     psbt,
                 );
             }
@@ -330,7 +330,7 @@ impl SpendTransactionAction {
                                     .as_ref()
                                     .expect("User is a manager")
                                     .xpub,
-                                &ctx.config.daemon.managers_xpubs(),
+                                &ctx.managers_xpubs(),
                                 psbt,
                             );
                         }
@@ -395,9 +395,7 @@ impl SpendTransactionAction {
                         if p.global.unsigned_tx.txid() != psbt.global.unsigned_tx.txid() {
                             psbt_input.valid = false;
                         } else if is_unknown_sig(
-                            &ctx.config
-                                .daemon
-                                .managers_xpubs()
+                            &ctx.managers_xpubs()
                                 .into_iter()
                                 .map(|xpub| xpub.master_fingerprint())
                                 .collect(),
@@ -464,9 +462,7 @@ impl SpendTransactionAction {
                                         processing: false,
                                         warning: None,
                                         signer: Signer::new(SpendTransactionTarget::new(
-                                            &ctx.config
-                                                .daemon
-                                                .managers_xpubs()
+                                            &ctx.managers_xpubs()
                                                 .iter()
                                                 .map(|xpub| xpub.master_fingerprint())
                                                 .collect(),

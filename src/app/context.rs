@@ -1,11 +1,10 @@
 use super::menu::Menu;
 use crate::{
-    app::config,
-    conversion::Converter,
-    daemon::client::RevaultD,
-    daemon::{self, client::Client},
+    app::config, conversion::Converter, daemon::client::Client, daemon::client::RevaultD,
     revault::Role,
 };
+use revaultd::common::config::Config as DaemonConfig;
+use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::future::Future;
@@ -60,9 +59,38 @@ impl<C: Client> Context<C> {
     pub fn network(&self) -> bitcoin::Network {
         self.config.daemon.bitcoind_config.network
     }
+
+    pub fn stakeholders_xpubs(&self) -> Vec<DescriptorPublicKey> {
+        self.config.daemon.scripts_config.deposit_descriptor.xpubs()
+    }
+
+    pub fn managers_xpubs(&self) -> Vec<DescriptorPublicKey> {
+        // The managers' xpubs are all the xpubs from the Unvault descriptor except the
+        // Stakehodlers' ones and the Cosigning Servers' ones.
+        let stk_xpubs = self.stakeholders_xpubs();
+        self.config
+            .daemon
+            .scripts_config
+            .unvault_descriptor
+            .xpubs()
+            .into_iter()
+            .filter_map(|xpub| {
+                match xpub {
+                    DescriptorPublicKey::SinglePub(_) => None, // Cosig
+                    DescriptorPublicKey::XPub(_) => {
+                        if stk_xpubs.contains(&xpub) {
+                            None // Stakeholder
+                        } else {
+                            Some(xpub) // Manager
+                        }
+                    }
+                }
+            })
+            .collect()
+    }
 }
 
 pub struct ConfigContext {
-    pub daemon: daemon::config::Config,
+    pub daemon: DaemonConfig,
     pub gui: config::Config,
 }

@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use utils::{
+    fixtures::random_daemon_config,
     mock::{Daemon, DaemonClient},
     no_hardware_wallet,
     sandbox::Sandbox,
@@ -30,7 +31,6 @@ use revault_gui::{
             GetHistoryResponse, GetInfoResponse, ListOnchainTransactionsResponse,
             ListVaultsResponse, Request, RevaultD,
         },
-        config::Config,
         model::{
             BroadcastedTransaction, DepositAddress, HistoryEvent, HistoryEventKind, Vault,
             VaultStatus, VaultTransactions,
@@ -69,7 +69,7 @@ async fn test_deposit_state() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -154,7 +154,7 @@ async fn test_emergency_state() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -266,7 +266,7 @@ async fn test_vaults_state() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -389,7 +389,7 @@ async fn test_history_state_filter() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -499,7 +499,7 @@ async fn test_history_state_pagination() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -584,7 +584,7 @@ async fn test_history_state_pagination_batching() {
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
             fee: None,
-            vaults: vec![i.to_string()],
+            vaults: vec![(i as u8).to_string()],
         });
     }
     let daemon = Daemon::new(vec![
@@ -606,7 +606,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..40].to_vec()
@@ -614,7 +614,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..60].to_vec()
@@ -622,7 +622,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0), json!(1), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..65].to_vec()
@@ -635,7 +635,7 @@ async fn test_history_state_pagination_batching() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
@@ -753,7 +753,7 @@ async fn test_history_state_select_event() {
     let client = daemon.run();
     let ctx = Context::new(
         ConfigContext {
-            daemon: Config::default(),
+            daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
         Arc::new(RevaultD::new(client).unwrap()),
