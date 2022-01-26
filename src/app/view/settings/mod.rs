@@ -1,6 +1,6 @@
 use iced::{Column, Element};
 
-use revaultd::common::config::Config;
+use revaultd::config::Config;
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},

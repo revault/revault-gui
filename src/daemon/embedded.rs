@@ -1,14 +1,8 @@
 use std::path::PathBuf;
-use std::thread::{Builder, JoinHandle};
 
-use log::{debug, info};
+use log::debug;
 
-use revaultd::{
-    common::config::Config,
-    daemon::{daemon_main, RevaultD},
-    revault_net::sodiumoxide,
-    revault_tx::bitcoin::hashes::hex::ToHex,
-};
+use revaultd::{config::Config, revault_net::sodiumoxide, DaemonHandle};
 
 #[derive(Debug)]
 pub enum DaemonError {
@@ -26,7 +20,7 @@ impl std::fmt::Display for DaemonError {
 }
 
 // RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
+pub async fn start_daemon(config_path: PathBuf) -> Result<EmbeddedDaemon, DaemonError> {
     debug!("starting revaultd daemon");
 
     sodiumoxide::init().map_err(|_| DaemonError::StartError("sodiumoxide::init".to_string()))?;
@@ -34,50 +28,17 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
     let config = Config::from_file(Some(config_path))
         .map_err(|e| DaemonError::StartError(format!("Error parsing config: {}", e)))?;
 
-    let revaultd = RevaultD::from_config(config)
+    let handle = DaemonHandle::start(config)
         .map_err(|e| DaemonError::StartError(format!("Error creating global state: {}", e)))?;
+    Ok(EmbeddedDaemon { handle })
+}
 
-    info!(
-        "Using Noise static public key: '{}'",
-        revaultd.noise_pubkey().0.to_hex()
-    );
-    debug!(
-        "Coordinator static public key: '{}'",
-        revaultd.coordinator_noisekey.0.to_hex()
-    );
+pub struct EmbeddedDaemon {
+    handle: DaemonHandle,
+}
 
-    let handle: JoinHandle<_> = Builder::new()
-        .spawn(|| {
-            std::panic::set_hook(Box::new(move |panic_info| {
-                let file = panic_info
-                    .location()
-                    .map(|l| l.file())
-                    .unwrap_or_else(|| "'unknown'");
-                let line = panic_info
-                    .location()
-                    .map(|l| l.line().to_string())
-                    .unwrap_or_else(|| "'unknown'".to_string());
-
-                let bt = backtrace::Backtrace::new();
-                if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-                    log::error!(
-                        "panic occurred at line {} of file {}: {:?}\n{:?}",
-                        line,
-                        file,
-                        s,
-                        bt
-                    );
-                } else {
-                    log::error!("panic occurred at line {} of file {}\n{:?}", line, file, bt);
-                }
-            }));
-
-            daemon_main(revaultd);
-        })
-        .map_err(|e| DaemonError::StartError(format!("{}", e)))?;
-
-    handle
-        .join()
-        .map_err(|e| DaemonError::PanicError(format!("{:?}", e)))?;
-    Ok(())
+impl std::fmt::Debug for EmbeddedDaemon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DaemonHandle").finish()
+    }
 }

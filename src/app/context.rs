@@ -3,7 +3,7 @@ use crate::{
     app::config, conversion::Converter, daemon::client::Client, daemon::client::RevaultD,
     revault::Role,
 };
-use revaultd::common::config::Config as DaemonConfig;
+use revaultd::config::Config as DaemonConfig;
 use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};

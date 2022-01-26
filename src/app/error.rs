@@ -1,5 +1,5 @@
 use crate::daemon::client::RevaultDError;
-use revaultd::common::config::ConfigError;
+use revaultd::config::ConfigError;
 use std::convert::From;
 use std::io::ErrorKind;
 

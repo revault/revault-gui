@@ -11,7 +11,7 @@ use revault_hwi::{
     HWIError,
 };
 
-use revaultd::common::config::Config as DaemonConfig;
+use revaultd::config::Config as DaemonConfig;
 
 use revault_gui::{
     app::{

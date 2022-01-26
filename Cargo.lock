@@ -912,12 +912,6 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
 name = "futures"
-version = "0.1.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a471a38ef8ed83cd6e40aa59c1ffe17db6855c18e3604d9c4ed8c08ebc28678"
-
-[[package]]
-name = "futures"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b3b0c040a1fe6529d30b3c5944b280c7f0dcb2930d2c3062bca967b602583d0"
@@ -1378,7 +1372,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89fdde2cb9c5807d23f40230297122e480428c660ad7d0373e625cd0725afa1"
 dependencies = [
- "futures 0.3.8",
+ "futures",
  "log",
  "tokio",
  "wasm-bindgen-futures",
@@ -1446,7 +1440,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82aca9978311350fab02132bc0f5c66cd89d3165e16eae22d42ab0acec529ae9"
 dependencies = [
  "bytemuck",
- "futures 0.3.8",
+ "futures",
  "glyph_brush",
  "guillotiere",
  "iced_graphics",
@@ -1575,31 +1569,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
-]
-
-[[package]]
-name = "jsonrpc-core"
-version = "15.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0745a6379e3edc893c84ec203589790774e4247420033e71a76d3ab4687991fa"
-dependencies = [
- "futures 0.1.31",
- "log",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
-name = "jsonrpc-derive"
-version = "15.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99a847f9ec7bb52149b2786a17c9cb260d6effc6b8eeb8c16b343a487a7563a3"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2572,7 +2541,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
- "uds_windows 0.1.5",
+ "uds_windows",
 ]
 
 [[package]]
@@ -2581,7 +2550,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bitcoin",
- "futures 0.3.8",
+ "futures",
  "log",
  "serde",
  "serde_json",
@@ -2595,8 +2564,7 @@ dependencies = [
 [[package]]
 name = "revault_net"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82b575bcdb8edf9f5b45c051a8273c17472283a82bdcaea4b95a779dc63ccd0f"
+source = "git+https://github.com/revault/revault_net#7b985bc729bb9c6a0e48f6361ce93f448bfd4283"
 dependencies = [
  "bitcoin",
  "log",
@@ -2610,8 +2578,7 @@ dependencies = [
 [[package]]
 name = "revault_tx"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59ba676f3936696e931380bce36e567e16aab4f433cfe0e39830dcbe527669ec"
+source = "git+https://github.com/revault/revault_tx#c7e3e29ed37c06196ea241015cfe92c28d1957bf"
 dependencies = [
  "base64",
  "bitcoinconsensus",
@@ -2628,9 +2595,8 @@ dependencies = [
 
 [[package]]
 name = "revaultd"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882acd8b0e2ad43755de5581b652611d4d35e8106d865ba7a337b35e8970cbd5"
+version = "0.3.1"
+source = "git+https://github.com/revault/revaultd?branch=master#843e513e13c8fe4f6d90fa735e7c92f51315f1b4"
 dependencies = [
  "backtrace",
  "base64",
@@ -2638,18 +2604,14 @@ dependencies = [
  "dirs",
  "fern",
  "jsonrpc",
- "jsonrpc-core",
- "jsonrpc-derive",
  "libc",
  "log",
- "mio 0.7.13",
  "revault_net",
  "revault_tx",
  "rusqlite",
  "serde",
  "serde_json",
  "toml",
- "uds_windows 1.0.1",
 ]
 
 [[package]]
@@ -3201,7 +3163,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c75b04fbb029a3f77272b3356453c97c5dbdebcf28aa248a34fd80a442f2dda1"
 dependencies = [
  "cfg-if 1.0.0",
- "futures 0.3.8",
+ "futures",
  "log",
  "mio-serial",
  "tokio",
@@ -3301,16 +3263,6 @@ dependencies = [
  "tempdir",
  "winapi 0.2.8",
  "ws2_32-sys",
-]
-
-[[package]]
-name = "uds_windows"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "486992108df0fe0160680af1941fe856c521be931d5a5ecccefe0de86dc47e4a"
-dependencies = [
- "tempdir",
- "winapi 0.3.9",
 ]
 
 [[package]]

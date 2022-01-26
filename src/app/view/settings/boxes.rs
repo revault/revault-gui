@@ -5,7 +5,7 @@ use revault_ui::{
     component::{badge, card, separation, text::Text},
     icon::dot_icon,
 };
-use revaultd::{common::config::Config, revault_tx::bitcoin::hashes::hex::ToHex};
+use revaultd::{config::Config, revault_tx::bitcoin::hashes::hex::ToHex};
 
 use crate::app::message::Message;
 
@@ -268,7 +268,7 @@ impl SettingsBox for CoordinatorBox {
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
-            ("Host", config.coordinator_host.clone()),
+            ("Host", config.coordinator_host.to_string()),
             ("Noise key", config.coordinator_noise_key.0.to_hex()),
             (
                 "Poll interval",

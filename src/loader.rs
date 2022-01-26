@@ -7,13 +7,13 @@ use iced::{Column, Command, Container, Element, Length, Subscription};
 use iced_native::{window, Event};
 
 use revault_ui::component::{image::revault_colored_logo, text::Text};
-use revaultd::common::config::{Config, ConfigError};
+use revaultd::config::{Config, ConfigError};
 
 use crate::{
     app::config::{default_datadir, Config as GUIConfig},
     daemon::{
         client::{self, GetInfoResponse, RevaultDError},
-        embedded::{start_daemon, DaemonError},
+        embedded::{start_daemon, DaemonError, EmbeddedDaemon},
     },
 };
 
@@ -47,6 +47,7 @@ pub enum Message {
     Loaded(Result<Arc<RevaultD>, Error>),
     StoppingDaemon(Result<(), RevaultDError>),
     DaemonStopped,
+    DaemonStarted(EmbeddedDaemon),
     Failure(DaemonError),
 }
 
@@ -109,7 +110,7 @@ impl Loader {
                         Command::perform(
                             start_daemon(self.gui_config.revaultd_config_path.clone()),
                             |res| match res {
-                                Ok(()) => Message::DaemonStopped,
+                                Ok(daemon) => Message::DaemonStarted(daemon),
                                 Err(e) => Message::Failure(e),
                             },
                         ),
@@ -332,8 +333,7 @@ fn socket_path(
     let mut path = if let Some(ref datadir) = datadir {
         datadir.clone()
     } else {
-        default_datadir()
-            .map_err(|_| ConfigError("Could not locate the default datadir.".to_owned()))?
+        default_datadir().map_err(|_| ConfigError::DatadirNotFound)?
     };
     path.push(network.to_string());
     path.push("revaultd_rpc");
