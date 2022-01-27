@@ -22,7 +22,6 @@ use revault_gui::{
         App,
     },
     conversion::Converter,
-    daemon,
     installer::{self, Installer},
     loader::{self, Loader},
     revault::Role,

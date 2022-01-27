@@ -1,8 +1,6 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, OutPoint, Transaction, Txid};
 use serde::{Deserialize, Serialize};
 
-/// getinfo
-
 /// getinfo response
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetInfoResponse {
@@ -12,8 +10,6 @@ pub struct GetInfoResponse {
     pub version: String,
     pub managers_threshold: usize,
 }
-
-/// list_vaults
 
 /// listvaults response
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -26,10 +22,6 @@ pub struct ListVaultsResponse {
 pub struct GetHistoryResponse {
     pub events: Vec<HistoryEvent>,
 }
-
-/// list_transactions
-
-
 
 /// listtransactions response
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -5,12 +5,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use utils::{
-    fixtures::random_daemon_config,
-    mock::{Daemon, DaemonClient},
-    no_hardware_wallet,
-    sandbox::Sandbox,
-};
+use utils::{fixtures::random_daemon_config, mock::Daemon, no_hardware_wallet, sandbox::Sandbox};
 
 use bitcoin::hashes::hex::FromHex;
 

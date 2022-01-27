@@ -5,7 +5,7 @@ pub mod model;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 
-use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
 use model::*;
 
