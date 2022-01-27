@@ -8,7 +8,7 @@ use crate::{
     app::error::Error,
     daemon::{
         client::error::{ApiErrorCode, RpcErrorCode},
-        client::RevaultDError,
+        RevaultDError,
     },
 };
 

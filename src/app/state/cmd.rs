@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::daemon::{
-    client::{Client, RevaultD, RevaultDError},
+    client::{Client, RevaultD},
     model::{
         RevocationTransactions, ServersStatuses, SpendTransaction, SpendTx, SpendTxStatus,
         UnvaultTransaction, Vault, VaultStatus, VaultTransactions,
     },
+    RevaultDError,
 };
 
 /// retrieves a bitcoin address for deposit.

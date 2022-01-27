@@ -1,4 +1,4 @@
-use revault_gui::daemon::client::{Client, RevaultDError};
+use revault_gui::daemon::{client::Client, RevaultDError};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{json, Value};
 use std::fmt::Debug;

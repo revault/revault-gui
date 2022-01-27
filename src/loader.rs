@@ -12,8 +12,9 @@ use revaultd::config::{Config, ConfigError};
 use crate::{
     app::config::{default_datadir, Config as GUIConfig},
     daemon::{
-        client::{self, GetInfoResponse, RevaultDError},
+        client::{self, GetInfoResponse},
         embedded::{start_daemon, DaemonError, EmbeddedDaemon},
+        RevaultDError,
     },
 };
 

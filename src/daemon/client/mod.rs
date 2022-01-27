@@ -6,35 +6,11 @@ use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt}
 use log::{debug, error, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
 
 pub mod error;
 pub mod jsonrpc;
 
-use super::model::*;
-
-#[derive(Debug, Clone)]
-pub enum RevaultDError {
-    /// Something was wrong with the request.
-    Rpc(i32, String),
-    /// Something was wrong with the communication.
-    Transport(Option<ErrorKind>, String),
-    /// Something unexpected happened.
-    Unexpected(String),
-    /// No response.
-    NoAnswer,
-}
-
-impl std::fmt::Display for RevaultDError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Rpc(code, e) => write!(f, "Revaultd error rpc call: [{:?}] {}", code, e),
-            Self::NoAnswer => write!(f, "Revaultd returned no answer"),
-            Self::Transport(kind, e) => write!(f, "Revaultd transport error: [{:?}] {}", kind, e),
-            Self::Unexpected(e) => write!(f, "Revaultd unexpected error: {}", e),
-        }
-    }
-}
+use super::{model::*, RevaultDError};
 
 pub trait Client {
     type Error: Into<RevaultDError> + Debug;

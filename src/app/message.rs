@@ -6,11 +6,11 @@ use tokio::sync::Mutex;
 use crate::{
     app::{error::Error, menu::Menu},
     daemon::{
-        client::RevaultDError,
         model::{
             HistoryEvent, HistoryEventKind, ServersStatuses, SpendTransaction, SpendTx, Vault,
             VaultStatus, VaultTransactions,
         },
+        RevaultDError,
     },
     revault::Role,
 };
