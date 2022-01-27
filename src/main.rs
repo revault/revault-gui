@@ -82,7 +82,7 @@ pub struct GUI {
 enum State {
     Installer(Installer),
     Loader(Loader),
-    App(App<daemon::client::jsonrpc::JsonRPCClient>),
+    App(App),
 }
 
 #[derive(Debug)]

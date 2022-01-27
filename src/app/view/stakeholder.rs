@@ -13,10 +13,7 @@ use crate::{
         message::{Message, SignMessage},
         view::layout,
     },
-    daemon::{
-        client::Client,
-        model::{Vault, VaultStatus},
-    },
+    daemon::model::{Vault, VaultStatus},
 };
 
 #[derive(Debug)]
@@ -33,9 +30,9 @@ impl StakeholderCreateVaultsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         deposits: &Vec<Vault>,
         processing: bool,
         hw_connected: bool,
@@ -135,9 +132,9 @@ impl StakeholderDelegateVaultsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         deposits: &Vec<Vault>,
         processing: bool,
         hw_connected: bool,
@@ -240,9 +237,9 @@ impl StakeholderSelecteVaultsToDelegateView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         active_balance: &u64,
         activating_balance: &u64,
         selected: (usize, u64),

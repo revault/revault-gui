@@ -1,6 +1,48 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, OutPoint, Transaction, Txid};
 use serde::{Deserialize, Serialize};
 
+/// getinfo
+
+/// getinfo response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetInfoResponse {
+    pub blockheight: u64,
+    pub network: String,
+    pub sync: f64,
+    pub version: String,
+    pub managers_threshold: usize,
+}
+
+/// list_vaults
+
+/// listvaults response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListVaultsResponse {
+    pub vaults: Vec<Vault>,
+}
+
+/// gethistory response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetHistoryResponse {
+    pub events: Vec<HistoryEvent>,
+}
+
+/// list_transactions
+
+
+
+/// listtransactions response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListOnchainTransactionsResponse {
+    pub onchain_transactions: Vec<VaultTransactions>,
+}
+
+/// list_spend_txs
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListSpendTransactionsResponse {
+    pub spend_txs: Vec<SpendTx>,
+}
+
 /// getdepositaddress response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepositAddress {

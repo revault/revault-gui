@@ -4,14 +4,11 @@ use revault_ui::{
     icon,
 };
 
-use crate::{
-    app::{
-        context::Context,
-        error::Error,
-        message::Message,
-        view::{sidebar::Sidebar, warning::warn},
-    },
-    daemon::client::Client,
+use crate::app::{
+    context::Context,
+    error::Error,
+    message::Message,
+    view::{sidebar::Sidebar, warning::warn},
 };
 
 use iced::{
@@ -32,9 +29,9 @@ impl Dashboard {
         }
     }
 
-    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+    pub fn view<'a, T: Into<Element<'a, Message>>>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         content: T,
     ) -> Element<'a, Message> {
@@ -98,9 +95,9 @@ impl Modal {
         }
     }
 
-    pub fn view<'a, C: Client, T: Into<Element<'a, Message>>>(
+    pub fn view<'a, T: Into<Element<'a, Message>>>(
         &'a mut self,
-        _ctx: &Context<C>,
+        _ctx: &Context,
         warning: Option<&Error>,
         content: T,
         tooltip: Option<&str>,

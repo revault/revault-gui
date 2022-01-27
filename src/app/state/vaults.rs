@@ -8,7 +8,7 @@ use super::{
     State,
 };
 
-use crate::daemon::{client::Client, model, model::VaultStatus};
+use crate::daemon::{model, model::VaultStatus};
 
 use crate::app::{
     context::Context,
@@ -73,11 +73,7 @@ impl VaultsState {
         }
     }
 
-    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        outpoint: String,
-    ) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
             vaults,
@@ -102,8 +98,8 @@ impl VaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for VaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Reload => return self.load(ctx),
             Message::Vaults(res) => match res {
@@ -136,7 +132,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -160,7 +156,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
             Self::Loading { .. } => Command::batch(vec![Command::perform(
                 list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
@@ -177,8 +173,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<VaultsState> for Box<dyn State<C>> {
-    fn from(s: VaultsState) -> Box<dyn State<C>> {
+impl From<VaultsState> for Box<dyn State> {
+    fn from(s: VaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

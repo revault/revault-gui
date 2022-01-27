@@ -20,7 +20,7 @@ use crate::{
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
         view::{layout, warning::warn},
     },
-    daemon::{client::Client, model},
+    daemon::model,
 };
 
 #[derive(Debug)]
@@ -39,9 +39,9 @@ impl ManagerImportTransactionView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         psbt_input: &form::Value<String>,
         psbt_imported: Option<&Psbt>,
         warning: Option<&Error>,
@@ -116,7 +116,7 @@ impl ManagerSendWelcomeView {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<'_, Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<'_, Message> {
         self.modal.view(
             ctx,
             None,
@@ -368,9 +368,9 @@ impl ManagerSelectInputsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: Vec<Element<'a, Message>>,
         input_amount: u64,
         output_amount: u64,
@@ -496,8 +496,8 @@ impl ManagerSelectInputsView {
     }
 }
 
-pub fn manager_send_input_view<'a, C: Client>(
-    ctx: &Context<C>,
+pub fn manager_send_input_view<'a>(
+    ctx: &Context,
     outpoint: &str,
     amount: &u64,
     selected: bool,
@@ -663,8 +663,8 @@ impl ManagerSelectFeeView {
     }
 }
 
-pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+pub fn spend_tx_with_feerate_view<'a, T: 'a>(
+    ctx: &Context,
     inputs: &[model::Vault],
     psbt: &Psbt,
     change_index: Option<usize>,
@@ -837,9 +837,9 @@ impl ManagerStepSignView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,
@@ -952,9 +952,9 @@ impl ManagerSpendTransactionCreatedView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,

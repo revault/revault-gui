@@ -12,9 +12,10 @@ use revaultd::config::{Config, ConfigError};
 use crate::{
     app::config::{default_datadir, Config as GUIConfig},
     daemon::{
-        client::{self, GetInfoResponse},
+        client,
         embedded::{start_daemon, DaemonError, EmbeddedDaemon},
-        RevaultDError,
+        model::GetInfoResponse,
+        Daemon, RevaultDError,
     },
 };
 
@@ -288,7 +289,7 @@ async fn try_connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
 }
 
 async fn stop_daemon(client: Arc<RevaultD>) -> Result<(), RevaultDError> {
-    client.stop()
+    Ok(())
 }
 
 #[derive(Debug)]

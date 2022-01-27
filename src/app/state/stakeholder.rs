@@ -5,8 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use iced::{Command, Element, Subscription};
 
 use crate::daemon::{
-    client::{Client, RevaultD},
     model::{self, HistoryEventKind, VaultStatus},
+    Daemon,
 };
 
 use crate::app::{
@@ -112,7 +112,7 @@ impl StakeholderHomeState {
             }
         }
     }
-    fn load_history<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+    fn load_history(ctx: &Context) -> Command<Message> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -128,7 +128,7 @@ impl StakeholderHomeState {
         )
     }
 
-    fn load_vaults<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+    fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
             list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
             Message::Vaults,
@@ -136,8 +136,8 @@ impl StakeholderHomeState {
     }
 }
 
-impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderHomeState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -224,7 +224,7 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { view, fail } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -259,13 +259,13 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Self::load_vaults(ctx)
     }
 }
 
-impl<C: Client + Sync + Send + 'static> From<StakeholderHomeState> for Box<dyn State<C>> {
-    fn from(s: StakeholderHomeState) -> Box<dyn State<C>> {
+impl From<StakeholderHomeState> for Box<dyn State> {
+    fn from(s: StakeholderHomeState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -294,8 +294,8 @@ impl StakeholderCreateVaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderCreateVaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -375,7 +375,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
         }
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
             Self::Loaded {
@@ -395,7 +395,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
             Message::Vaults,
@@ -403,8 +403,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
     }
 }
 
-pub async fn secure_deposits<C: Client>(
-    revaultd: Arc<RevaultD<C>>,
+pub async fn secure_deposits(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     deposits: Vec<model::Vault>,
 ) -> Result<Vec<String>, Error> {
@@ -453,8 +453,8 @@ pub async fn secure_deposits<C: Client>(
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<StakeholderCreateVaultsState> for Box<dyn State<C>> {
-    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State<C>> {
+impl From<StakeholderCreateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -474,7 +474,7 @@ impl DelegateVaultListItem {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(ctx, &self.vault, self.selected)
     }
 }
@@ -509,8 +509,8 @@ impl StakeholderDelegateVaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderDelegateVaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -629,7 +629,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
         }
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
             Self::SelectVaults {
@@ -666,7 +666,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(
                 ctx.revaultd.clone(),
@@ -682,8 +682,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
     }
 }
 
-pub async fn delegate_vaults<C: Client>(
-    revaultd: Arc<RevaultD<C>>,
+pub async fn delegate_vaults(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     vaults: Vec<model::Vault>,
 ) -> Result<Vec<String>, Error> {
@@ -714,8 +714,8 @@ pub async fn delegate_vaults<C: Client>(
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<StakeholderDelegateVaultsState> for Box<dyn State<C>> {
-    fn from(s: StakeholderDelegateVaultsState) -> Box<dyn State<C>> {
+impl From<StakeholderDelegateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderDelegateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

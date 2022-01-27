@@ -8,10 +8,7 @@ use revault_ui::{
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::{
-        client::Client,
-        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
-    },
+    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,9 +69,9 @@ impl HistoryView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         events: Vec<Element<'a, Message>>,
         event_kind_filter: &Option<HistoryEventKind>,
@@ -138,9 +135,9 @@ impl HistoryEventListItemView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         event: &HistoryEvent,
         index: usize,
     ) -> Element<'a, Message> {
@@ -226,9 +223,9 @@ impl HistoryEventView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         event: &HistoryEvent,
         txs: &Vec<VaultTransactions>,
         warning: Option<&Error>,
@@ -303,7 +300,7 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
     )
 }
 
-fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -341,7 +338,7 @@ fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Elem
         .into()
 }
 
-fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -376,8 +373,8 @@ fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Eleme
         .into()
 }
 
-fn spend<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn spend<'a, T: 'a>(
+    ctx: &Context,
     event: &HistoryEvent,
     txs: &Vec<VaultTransactions>,
 ) -> Element<'a, T> {

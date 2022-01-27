@@ -10,8 +10,8 @@ use crate::{
         view::vault::{RevaultVaultView, VaultModal, VaultOnChainTransactionsPanel, VaultView},
     },
     daemon::{
-        client::{Client, RevaultD},
         model::{self, VaultStatus, VaultTransactions},
+        Daemon,
     },
 };
 
@@ -29,7 +29,7 @@ impl<T: VaultView> VaultListItem<T> {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(ctx, &self.vault)
     }
 }
@@ -54,11 +54,7 @@ impl Vault {
         }
     }
 
-    pub fn update<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        message: VaultMessage,
-    ) -> Command<VaultMessage> {
+    pub fn update(&mut self, ctx: &Context, message: VaultMessage) -> Command<VaultMessage> {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
@@ -82,7 +78,7 @@ impl Vault {
         Command::none()
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(
             ctx,
             &self.vault,
@@ -92,10 +88,7 @@ impl Vault {
         )
     }
 
-    pub fn load<C: Client + Sync + Send + 'static>(
-        &self,
-        revaultd: Arc<RevaultD<C>>,
-    ) -> Command<VaultMessage> {
+    pub fn load(&self, revaultd: Arc<dyn Daemon + Send + Sync>) -> Command<VaultMessage> {
         Command::perform(
             get_onchain_txs(revaultd, self.vault.outpoint()),
             VaultMessage::OnChainTransactions,
@@ -149,9 +142,9 @@ impl VaultSection {
         }
     }
 
-    fn update<C: Client + Send + Sync + 'static>(
+    fn update(
         &mut self,
-        revaultd: Arc<RevaultD<C>>,
+        revaultd: Arc<dyn Daemon + Send + Sync>,
         vault: &mut model::Vault,
         message: VaultMessage,
     ) -> Command<VaultMessage> {
@@ -195,7 +188,7 @@ impl VaultSection {
         Command::none()
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &model::Vault) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context, vault: &model::Vault) -> Element<Message> {
         match self {
             Self::Unloaded => iced::Container::new(iced::Column::new()).into(),
             Self::OnchainTransactions { txs, view } => view.view(ctx, &vault, &txs),

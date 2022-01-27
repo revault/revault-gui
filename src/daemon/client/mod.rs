@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub mod error;
 pub mod jsonrpc;
 
-use super::{model::*, RevaultDError};
+use super::{model::*, Daemon, RevaultDError};
 
 pub trait Client {
     type Error: Into<RevaultDError> + Debug;
@@ -51,17 +51,19 @@ impl<C: Client> RevaultD<C> {
             e.into()
         })
     }
+}
 
+impl<C: Client> Daemon for RevaultD<C> {
     /// get a new deposit address.
-    pub fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
+    fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
         self.call("getdepositaddress", Option::<Request>::None)
     }
 
-    pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
+    fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
         self.call("getinfo", Option::<Request>::None)
     }
 
-    pub fn list_vaults(
+    fn list_vaults(
         &self,
         statuses: Option<&[VaultStatus]>,
         outpoints: Option<&Vec<String>>,
@@ -73,7 +75,7 @@ impl<C: Client> RevaultD<C> {
         self.call("listvaults", Some(args))
     }
 
-    pub fn list_onchain_transactions(
+    fn list_onchain_transactions(
         &self,
         outpoints: Option<Vec<String>>,
     ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
@@ -86,14 +88,11 @@ impl<C: Client> RevaultD<C> {
         }
     }
 
-    pub fn get_revocation_txs(
-        &self,
-        outpoint: &str,
-    ) -> Result<RevocationTransactions, RevaultDError> {
+    fn get_revocation_txs(&self, outpoint: &str) -> Result<RevocationTransactions, RevaultDError> {
         self.call("getrevocationtxs", Some(vec![outpoint]))
     }
 
-    pub fn set_revocation_txs(
+    fn set_revocation_txs(
         &self,
         outpoint: &str,
         emergency_tx: &Psbt,
@@ -110,18 +109,18 @@ impl<C: Client> RevaultD<C> {
         Ok(())
     }
 
-    pub fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
+    fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
         self.call("getunvaulttx", Some(vec![outpoint]))
     }
 
-    pub fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+    fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
         let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
         let _res: serde_json::value::Value =
             self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
         Ok(())
     }
 
-    pub fn get_spend_tx(
+    fn get_spend_tx(
         &self,
         inputs: &[String],
         outputs: &HashMap<String, u64>,
@@ -137,49 +136,49 @@ impl<C: Client> RevaultD<C> {
         })
     }
 
-    pub fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
+    fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
         let spend_tx = base64::encode(&consensus::serialize(psbt));
         let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
         Ok(())
     }
 
-    pub fn list_spend_txs(
+    fn list_spend_txs(
         &self,
         statuses: Option<&[SpendTxStatus]>,
     ) -> Result<ListSpendTransactionsResponse, RevaultDError> {
         self.call("listspendtxs", Some(vec![statuses]))
     }
 
-    pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+    fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
         Ok(())
     }
 
-    pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+    fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
         Ok(())
     }
 
-    pub fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
+    fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
         Ok(())
     }
 
-    pub fn emergency(&self) -> Result<(), RevaultDError> {
+    fn emergency(&self) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
         Ok(())
     }
 
-    pub fn stop(&self) -> Result<(), RevaultDError> {
+    fn stop(&self) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("stop", Option::<Request>::None)?;
         Ok(())
     }
 
-    pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
+    fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
         self.call("getserverstatus", Option::<Request>::None)
     }
 
-    pub fn get_history(
+    fn get_history(
         &self,
         kind: &[HistoryEventKind],
         start: u64,
@@ -196,46 +195,6 @@ impl<C: Client> RevaultD<C> {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Request {}
 
-/// getinfo
-
-/// getinfo response
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GetInfoResponse {
-    pub blockheight: u64,
-    pub network: String,
-    pub sync: f64,
-    pub version: String,
-    pub managers_threshold: usize,
-}
-
-/// list_vaults
-
-/// listvaults response
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ListVaultsResponse {
-    pub vaults: Vec<Vault>,
-}
-
-/// gethistory response
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GetHistoryResponse {
-    pub events: Vec<HistoryEvent>,
-}
-
-/// list_transactions
-
 /// listtransactions request
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListTransactionsRequest(Vec<String>);
-
-/// listtransactions response
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ListOnchainTransactionsResponse {
-    pub onchain_transactions: Vec<VaultTransactions>,
-}
-
-/// list_spend_txs
-#[derive(Debug, Clone, Deserialize)]
-pub struct ListSpendTransactionsResponse {
-    pub spend_txs: Vec<SpendTx>,
-}

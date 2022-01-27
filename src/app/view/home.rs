@@ -12,7 +12,7 @@ use revault_ui::{
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
-    daemon::{client::Client, model::VaultStatus},
+    daemon::model::VaultStatus,
 };
 
 #[derive(Debug)]
@@ -29,9 +29,9 @@ impl ManagerHomeView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
@@ -90,8 +90,8 @@ impl ManagerHomeView {
     }
 }
 
-fn manager_overview<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn manager_overview<'a, T: 'a>(
+    ctx: &Context,
     active_funds: u64,
     inactive_funds: u64,
 ) -> Container<'a, T> {
@@ -147,9 +147,9 @@ impl StakeholderHomeView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         moving_vaults: Vec<Element<'a, Message>>,
         latest_events: Vec<Element<'a, Message>>,
@@ -222,9 +222,9 @@ impl StakeholderOverview {
         }
     }
 
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         overview: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<Message> {
         let (nb_total_vaults, total_amount) =
@@ -335,8 +335,8 @@ impl StakeholderOverview {
     }
 }
 
-fn active_funds_overview_card<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn active_funds_overview_card<'a, T: 'a>(
+    ctx: &Context,
     active: Option<&(u64, u64)>,
     activating: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
@@ -426,8 +426,8 @@ fn active_funds_overview_card<'a, T: 'a, C: Client>(
     card::white(Container::new(col.spacing(20)))
 }
 
-fn secured_funds_overview_card<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn secured_funds_overview_card<'a, T: 'a>(
+    ctx: &Context,
     secure: Option<&(u64, u64)>,
     securing: Option<&(u64, u64)>,
 ) -> Container<'a, T> {

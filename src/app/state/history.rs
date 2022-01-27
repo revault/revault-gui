@@ -13,10 +13,7 @@ use crate::{
         view::LoadingDashboard,
         view::{HistoryEventListItemView, HistoryEventView, HistoryView},
     },
-    daemon::{
-        client::Client,
-        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
-    },
+    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions},
 };
 
 pub const HISTORY_EVENT_PAGE_SIZE: u64 = 20;
@@ -49,8 +46,8 @@ impl HistoryState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for HistoryState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::HistoryEvents(res) = message {
@@ -206,7 +203,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -237,7 +234,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
     }
 
     // We retrieve the full history
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         let t1 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -254,8 +251,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<HistoryState> for Box<dyn State<C>> {
-    fn from(s: HistoryState) -> Box<dyn State<C>> {
+impl From<HistoryState> for Box<dyn State> {
+    fn from(s: HistoryState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -274,11 +271,7 @@ impl HistoryEventListItemState {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        index: usize,
-    ) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context, index: usize) -> Element<Message> {
         self.view.view(ctx, &self.event, index)
     }
 }
@@ -309,15 +302,12 @@ impl HistoryEventState {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-    ) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view
             .view(ctx, &self.event, &self.txs, self.loading_fail.as_ref())
     }
 
-    pub fn load<C: Client + Send + Sync + 'static>(&self, ctx: &Context<C>) -> Command<Message> {
+    pub fn load(&self, ctx: &Context) -> Command<Message> {
         let revaultd = ctx.revaultd.clone();
         let vaults = self.event.vaults.clone();
         Command::perform(

@@ -11,10 +11,7 @@ use crate::app::{
 };
 
 use crate::{
-    daemon::{
-        client::Client,
-        model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
-    },
+    daemon::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
     revault::Role,
 };
 
@@ -32,9 +29,9 @@ impl VaultModal {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vlt: &Vault,
         warning: Option<&Error>,
         panel_title: &str,
@@ -63,8 +60,8 @@ impl VaultModal {
     }
 }
 
-fn vault<'a, C: Client>(
-    ctx: &Context<C>,
+fn vault<'a>(
+    ctx: &Context,
     copy_button: &'a mut iced::button::State,
     vlt: &Vault,
 ) -> Container<'a, Message> {
@@ -131,9 +128,9 @@ impl VaultOnChainTransactionsPanel {
             action_button: iced::button::State::new(),
         }
     }
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vault: &Vault,
         txs: &VaultTransactions,
     ) -> Element<Message> {
@@ -207,8 +204,8 @@ impl VaultOnChainTransactionsPanel {
     }
 }
 
-fn transaction<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn transaction<'a, T: 'a>(
+    ctx: &Context,
     title: &str,
     transaction: &BroadcastedTransaction,
 ) -> Container<'a, T> {
@@ -252,8 +249,8 @@ fn transaction<'a, T: 'a, C: Client>(
     )
 }
 
-fn input_and_outputs<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn input_and_outputs<'a, T: 'a>(
+    ctx: &Context,
     broadcasted: &BroadcastedTransaction,
 ) -> Container<'a, T> {
     let mut col_input = Column::new().push(Text::new("Inputs").bold()).spacing(10);
@@ -315,7 +312,7 @@ fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
 
 pub trait VaultView {
     fn new() -> Self;
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> Element<Message>;
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> Element<Message>;
 }
 
 #[derive(Debug, Clone)]
@@ -330,7 +327,7 @@ impl VaultView for VaultListItemView {
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         button::white_card_button(
             &mut self.state,
             Container::new(
@@ -384,7 +381,7 @@ impl VaultView for SecureVaultListItemView {
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         if vault.status == VaultStatus::Funded || vault.status == VaultStatus::Unconfirmed {
             vault_ack_pending(&mut self.select_button, ctx, vault)
         } else {
@@ -393,7 +390,7 @@ impl VaultView for SecureVaultListItemView {
     }
 }
 
-fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> Element<'a, T> {
+fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T> {
     card::white(Container::new(
         Row::new()
             .push(
@@ -428,9 +425,9 @@ fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> 
     .into()
 }
 
-fn vault_ack_pending<'a, C: Client>(
+fn vault_ack_pending<'a>(
     state: &'a mut iced::button::State,
-    ctx: &Context<C>,
+    ctx: &Context,
     deposit: &Vault,
 ) -> Element<'a, Message> {
     Container::new(
@@ -487,12 +484,7 @@ impl DelegateVaultListItemView {
         }
     }
 
-    pub fn view<C: Client>(
-        &mut self,
-        ctx: &Context<C>,
-        vault: &Vault,
-        selected: bool,
-    ) -> iced::Element<Message> {
+    pub fn view(&mut self, ctx: &Context, vault: &Vault, selected: bool) -> iced::Element<Message> {
         Container::new(
             button::white_card_button(
                 &mut self.select_button,
@@ -577,9 +569,9 @@ impl RevaultVaultView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        _ctx: &Context<C>,
+        _ctx: &Context,
         _vault: &Vault,
         processing: &bool,
         success: &bool,

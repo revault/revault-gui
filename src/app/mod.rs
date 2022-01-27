@@ -22,16 +22,16 @@ use state::{
     VaultsState,
 };
 
-use crate::{app::context::Context, daemon::client::Client, revault::Role};
+use crate::{app::context::Context, revault::Role};
 
-pub struct App<C: Client + Send + Sync + 'static> {
+pub struct App {
     should_exit: bool,
-    state: Box<dyn State<C>>,
-    context: Context<C>,
+    state: Box<dyn State>,
+    context: Context,
 }
 
 #[allow(unreachable_patterns)]
-pub fn new_state<C: Client + Send + Sync + 'static>(context: &Context<C>) -> Box<dyn State<C>> {
+pub fn new_state(context: &Context) -> Box<dyn State> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
@@ -50,8 +50,8 @@ pub fn new_state<C: Client + Send + Sync + 'static>(context: &Context<C>) -> Box
     }
 }
 
-impl<C: Client + Send + Sync + 'static> App<C> {
-    pub fn new(context: Context<C>) -> (App<C>, Command<Message>) {
+impl App {
+    pub fn new(context: Context) -> (App, Command<Message>) {
         let state = new_state(&context);
         let cmd = state.load(&context);
         (

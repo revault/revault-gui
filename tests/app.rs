@@ -27,13 +27,11 @@ use revault_gui::{
     },
     conversion::Converter,
     daemon::{
-        client::{
-            GetHistoryResponse, GetInfoResponse, ListOnchainTransactionsResponse,
-            ListVaultsResponse, Request, RevaultD,
-        },
+        client::{Request, RevaultD},
         model::{
-            BroadcastedTransaction, DepositAddress, HistoryEvent, HistoryEventKind, Vault,
-            VaultStatus, VaultTransactions,
+            BroadcastedTransaction, DepositAddress, GetHistoryResponse, GetInfoResponse,
+            HistoryEvent, HistoryEventKind, ListOnchainTransactionsResponse, ListVaultsResponse,
+            Vault, VaultStatus, VaultTransactions,
         },
     },
     revault::Role,
@@ -64,7 +62,7 @@ async fn test_deposit_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, DepositState> = Sandbox::new(DepositState::new());
+    let sandbox: Sandbox<DepositState> = Sandbox::new(DepositState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -149,7 +147,7 @@ async fn test_emergency_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, EmergencyState> = Sandbox::new(EmergencyState::new());
+    let sandbox: Sandbox<EmergencyState> = Sandbox::new(EmergencyState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -261,7 +259,7 @@ async fn test_vaults_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, VaultsState> = Sandbox::new(VaultsState::new());
+    let sandbox: Sandbox<VaultsState> = Sandbox::new(VaultsState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -384,7 +382,7 @@ async fn test_history_state_filter() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -494,7 +492,7 @@ async fn test_history_state_pagination() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -630,7 +628,7 @@ async fn test_history_state_pagination_batching() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -748,7 +746,7 @@ async fn test_history_state_select_event() {
         )
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(

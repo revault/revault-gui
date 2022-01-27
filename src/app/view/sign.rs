@@ -5,10 +5,7 @@ use revault_ui::{
     icon,
 };
 
-use crate::{
-    app::{context::Context, message::SignMessage},
-    daemon::client::Client,
-};
+use crate::app::{context::Context, message::SignMessage};
 
 #[derive(Debug)]
 pub struct SignerView {
@@ -22,9 +19,9 @@ impl SignerView {
         }
     }
 
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        _ctx: &Context<C>,
+        _ctx: &Context,
         connected: bool,
         processing: bool,
         signed: bool,

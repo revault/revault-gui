@@ -26,7 +26,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    daemon::{client::Client, model},
+    daemon::model,
 };
 
 #[derive(Debug)]
@@ -45,7 +45,7 @@ pub struct SpendTransactionState {
 }
 
 impl SpendTransactionState {
-    pub fn new<C: Client + Send + Sync + 'static>(ctx: &Context<C>, psbt: Psbt) -> Self {
+    pub fn new(ctx: &Context, psbt: Psbt) -> Self {
         Self {
             cpfp_index: 0,
             change_index: None,
@@ -80,8 +80,8 @@ impl SpendTransactionState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for SpendTransactionState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
@@ -134,7 +134,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
         self.sub()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
         self.view.view(
             ctx,
@@ -148,7 +148,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
         )
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::perform(list_spend_txs(ctx.revaultd.clone(), None), |res| {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res))
         })
@@ -236,9 +236,9 @@ impl SpendTransactionAction {
             view: SpendTransactionSharePsbtView::new(),
         }
     }
-    fn update<C: Client + Send + Sync + 'static>(
+    fn update(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         psbt: &mut Psbt,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
@@ -485,11 +485,7 @@ impl SpendTransactionAction {
         Command::none()
     }
 
-    fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        psbt: &Psbt,
-    ) -> Element<Message> {
+    fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
             Self::Sign {
                 signer,
@@ -581,10 +577,7 @@ impl SpendTransactionListItem {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-    ) -> Element<SpendTxMessage> {
+    pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
         self.view.view(ctx, &self.tx, self.spend_amount, self.fees)
     }
 }

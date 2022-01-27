@@ -9,7 +9,7 @@ use crate::{
         message::{Message, VaultFilterMessage},
         view::layout,
     },
-    daemon::{client::Client, model::VaultStatus},
+    daemon::model::VaultStatus,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,9 +71,9 @@ impl VaultsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         vaults: Vec<Element<'a, Message>>,
         vault_status_filter: &[VaultStatus],
