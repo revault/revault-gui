@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 
 use crate::daemon::{
-    model::{self, HistoryEventKind, VaultStatus},
+    model::{self, HistoryEventKind, VaultStatus, CURRENT_VAULT_STATUSES, MOVING_VAULT_STATUSES},
     Daemon,
 };
 
@@ -63,15 +64,15 @@ impl StakeholderHomeState {
         let mut total_balance = HashMap::new();
         for vault in &vaults {
             if vault.status == VaultStatus::Unconfirmed
-                || VaultStatus::MOVING.contains(&vault.status)
+                || MOVING_VAULT_STATUSES.contains(&vault.status)
             {
                 continue;
             }
             if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
                 *number += 1;
-                *amount += vault.amount;
+                *amount += vault.amount.as_sat();
             } else {
-                total_balance.insert(vault.status.clone(), (1, vault.amount));
+                total_balance.insert(vault.status.clone(), (1, vault.amount.as_sat()));
             }
         }
 
@@ -130,7 +131,7 @@ impl StakeholderHomeState {
 
     fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
-            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
             Message::Vaults,
         )
     }
@@ -407,7 +408,7 @@ pub async fn secure_deposits(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     deposits: Vec<model::Vault>,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<OutPoint>, Error> {
     match device.clone().secure_batch(&deposits).await {
         Ok(revocation_txs) => {
             for (i, (emergency_tx, emergency_unvault_tx, cancel_tx)) in
@@ -519,9 +520,9 @@ impl State for StakeholderDelegateVaultsState {
                             let (active_balance, activating_balance) =
                                 vaults.iter().fold((0, 0), |acc, vault| {
                                     if vault.status == VaultStatus::Active {
-                                        (acc.0 + vault.amount, acc.1)
+                                        (acc.0 + vault.amount.as_sat(), acc.1)
                                     } else if vault.status == VaultStatus::Activating {
-                                        (acc.0, acc.1 + vault.amount)
+                                        (acc.0, acc.1 + vault.amount.as_sat())
                                     } else {
                                         acc
                                     }
@@ -645,7 +646,7 @@ impl State for StakeholderDelegateVaultsState {
                     .iter()
                     .filter(|v| v.selected)
                     .fold((0, 0), |(count, total), v| {
-                        (count + 1, total + v.vault.amount)
+                        (count + 1, total + v.vault.amount.as_sat())
                     }),
                 vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             ),
@@ -686,7 +687,7 @@ pub async fn delegate_vaults(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     vaults: Vec<model::Vault>,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<OutPoint>, Error> {
     match device.clone().delegate_batch(&vaults).await {
         Ok(revocation_txs) => {
             for (i, unvault_tx) in revocation_txs.into_iter().enumerate() {

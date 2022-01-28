@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
@@ -88,7 +88,9 @@ impl SpendTransactionView {
             .map(|i| psbt.global.unsigned_tx.output[i].value)
             .unwrap_or(0);
 
-        let vaults_amount = spent_vaults.iter().fold(0, |acc, v| acc + v.amount);
+        let vaults_amount = spent_vaults
+            .iter()
+            .fold(0, |acc, v| acc + v.amount.as_sat());
         let fees = if vaults_amount == 0 {
             // Vaults are still loading
             0
@@ -152,7 +154,9 @@ impl SpendTransactionView {
                                                 .push(
                                                     Text::new(&format!(
                                                         "{}",
-                                                        ctx.converter.converts(spend_amount),
+                                                        ctx.converter.converts(Amount::from_sat(
+                                                            spend_amount
+                                                        )),
                                                     ))
                                                     .bold(),
                                                 )
@@ -167,7 +171,8 @@ impl SpendTransactionView {
                                                 .push(
                                                     Text::new(&format!(
                                                         "Fees: {}",
-                                                        ctx.converter.converts(fees),
+                                                        ctx.converter
+                                                            .converts(Amount::from_sat(fees)),
                                                     ))
                                                     .small(),
                                                 )
@@ -522,7 +527,8 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "{}",
-                                                ctx.converter.converts(spend_amount),
+                                                ctx.converter
+                                                    .converts(Amount::from_sat(spend_amount)),
                                             ))
                                             .bold(),
                                         )
@@ -536,7 +542,7 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "Fees: {}",
-                                                ctx.converter.converts(fees),
+                                                ctx.converter.converts(Amount::from_sat(fees)),
                                             ))
                                             .small(),
                                         )

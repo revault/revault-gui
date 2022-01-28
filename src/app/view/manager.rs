@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
     scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Space,
@@ -420,7 +420,8 @@ impl ManagerSelectInputsView {
                 &mut self.next_button,
                 Container::new(Text::new(&format!(
                     "Missing {} {}",
-                    &ctx.converter.converts(output_amount - input_amount),
+                    &ctx.converter
+                        .converts(Amount::from_sat(output_amount - input_amount)),
                     ctx.converter.unit
                 )))
                 .width(Length::Units(200))
@@ -449,7 +450,7 @@ impl ManagerSelectInputsView {
                             Container::new(
                                 Text::new(&format!(
                                     "Select coins worth at least {} {}",
-                                    &ctx.converter.converts(output_amount),
+                                    &ctx.converter.converts(Amount::from_sat(output_amount)),
                                     ctx.converter.unit
                                 ))
                                 .bold(),
@@ -508,7 +509,13 @@ pub fn manager_send_input_view<'a>(
         .push(
             Container::new(
                 Row::new()
-                    .push(Text::new(&format!("{}", ctx.converter.converts(*amount))).bold())
+                    .push(
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(*amount))
+                        ))
+                        .bold(),
+                    )
                     .push(Text::new(&ctx.converter.unit.to_string()).small())
                     .align_items(Align::Center),
             )
@@ -684,7 +691,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
         .spacing(10);
 
     for input in inputs {
-        total_fees += input.amount;
+        total_fees += input.amount.as_sat();
         col_input = col_input.push(card::simple(Container::new(
             Row::new()
                 .push(
@@ -746,9 +753,12 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 .push(Container::new(Text::new(&addr.to_string()).small()).width(Length::Fill))
                 .push(
                     Container::new(
-                        Text::new(&format!("{}", ctx.converter.converts(output.value)))
-                            .bold()
-                            .small(),
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(output.value))
+                        ))
+                        .bold()
+                        .small(),
                     )
                     .width(Length::Shrink),
                 )
@@ -783,7 +793,8 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                                 Container::new(
                                     Text::new(&format!(
                                         "{}",
-                                        ctx.converter.converts(change_output.value)
+                                        ctx.converter
+                                            .converts(Amount::from_sat(change_output.value))
                                     ))
                                     .bold()
                                     .small(),
@@ -807,7 +818,13 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 column_fee.push(
                     Row::new()
                         .push(Text::new("Total fees: "))
-                        .push(Text::new(&format!("{}", ctx.converter.converts(total_fees))).bold())
+                        .push(
+                            Text::new(&format!(
+                                "{}",
+                                ctx.converter.converts(Amount::from_sat(total_fees))
+                            ))
+                            .bold(),
+                        )
                         .push(Text::new(&format!(" {}", ctx.converter.unit))),
                 ),
             )

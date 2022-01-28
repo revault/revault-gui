@@ -9,7 +9,9 @@ use crate::{
         message::{Message, VaultFilterMessage},
         view::layout,
     },
-    daemon::model::VaultStatus,
+    daemon::model::{
+        VaultStatus, CURRENT_VAULT_STATUSES, MOVED_VAULT_STATUSES, MOVING_VAULT_STATUSES,
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,9 +29,9 @@ impl VaultsFilter {
     ];
 
     pub fn new(statuses: &[VaultStatus]) -> VaultsFilter {
-        if statuses == VaultStatus::MOVING {
+        if statuses == MOVING_VAULT_STATUSES {
             VaultsFilter::Moving
-        } else if statuses == VaultStatus::MOVED {
+        } else if statuses == MOVED_VAULT_STATUSES {
             VaultsFilter::Moved
         } else {
             VaultsFilter::Current
@@ -38,9 +40,9 @@ impl VaultsFilter {
 
     pub fn statuses(&self) -> &'static [VaultStatus] {
         match self {
-            Self::Current => &VaultStatus::CURRENT,
-            Self::Moving => &VaultStatus::MOVING,
-            Self::Moved => &VaultStatus::MOVED,
+            Self::Current => &CURRENT_VAULT_STATUSES,
+            Self::Moving => &MOVING_VAULT_STATUSES,
+            Self::Moved => &MOVED_VAULT_STATUSES,
         }
     }
 }

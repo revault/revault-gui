@@ -3,7 +3,9 @@ use bitcoin::util::{
     psbt::PartiallySignedTransaction as Psbt,
 };
 use std::convert::From;
+use std::str::FromStr;
 
+use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 use revault_ui::component::form;
 use revaultd::revault_tx::miniscript::DescriptorPublicKey;
@@ -35,7 +37,7 @@ pub struct SpendTransactionState {
     cpfp_index: usize,
     change_index: Option<usize>,
 
-    deposit_outpoints: Vec<String>,
+    deposit_outpoints: Vec<OutPoint>,
     deposits: Vec<model::Vault>,
     warning: Option<Error>,
 
@@ -102,7 +104,11 @@ impl State for SpendTransactionState {
                     for tx in txs {
                         if tx.psbt.global.unsigned_tx.txid() == self.psbt.global.unsigned_tx.txid()
                         {
-                            self.deposit_outpoints = tx.deposit_outpoints;
+                            self.deposit_outpoints = tx
+                                .deposit_outpoints
+                                .iter()
+                                .map(|s| OutPoint::from_str(s).unwrap())
+                                .collect();
                             self.psbt = tx.psbt;
                             self.cpfp_index = tx.cpfp_index;
                             self.change_index = tx.change_index;

@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use iced::{Align, Column, Container, Element, Length, Row};
 
 use revault_ui::{
@@ -50,7 +51,7 @@ impl EmergencyView {
                                 .push(
                                     Text::new(&format!(
                                         " {} ",
-                                        ctx.converter.converts(funds_amount)
+                                        ctx.converter.converts(Amount::from_sat(funds_amount))
                                     ))
                                     .bold(),
                                 )
@@ -118,7 +119,7 @@ impl EmergencyTriggeredView {
                                     .push(
                                         Text::new(&format!(
                                             " {} ",
-                                            ctx.converter.converts(funds_amount)
+                                            ctx.converter.converts(Amount::from_sat(funds_amount))
                                         ))
                                         .bold(),
                                     )

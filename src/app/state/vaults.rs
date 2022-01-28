@@ -1,5 +1,6 @@
 use std::convert::From;
 
+use bitcoin::OutPoint;
 use iced::{Command, Element};
 
 use super::{
@@ -8,7 +9,10 @@ use super::{
     State,
 };
 
-use crate::daemon::{model, model::VaultStatus};
+use crate::daemon::{
+    model,
+    model::{VaultStatus, CURRENT_VAULT_STATUSES},
+};
 
 use crate::app::{
     context::Context,
@@ -47,7 +51,7 @@ impl VaultsState {
                 let vaults = vlts.into_iter().map(VaultListItem::new).collect();
                 *self = Self::Loaded {
                     view: VaultsView::new(),
-                    vault_status_filter: &VaultStatus::CURRENT,
+                    vault_status_filter: &CURRENT_VAULT_STATUSES,
                     vaults,
                     selected_vault: None,
                     warning: None,
@@ -73,7 +77,7 @@ impl VaultsState {
         }
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: OutPoint) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
             vaults,
@@ -159,7 +163,7 @@ impl State for VaultsState {
     fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
             Self::Loading { .. } => Command::batch(vec![Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+                list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
                 Message::Vaults,
             )]),
             Self::Loaded {

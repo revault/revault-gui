@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use chrono::NaiveDateTime;
 use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
@@ -160,7 +161,11 @@ impl HistoryEventListItemView {
         if let Some(fee) = event.fee {
             row = row.push(
                 Container::new(
-                    Text::new(&format!("fee: -{}", ctx.converter.converts(fee))).small(),
+                    Text::new(&format!(
+                        "fee: -{}",
+                        ctx.converter.converts(Amount::from_sat(fee))
+                    ))
+                    .small(),
                 )
                 .width(Length::FillPortion(1))
                 .align_x(Align::End),
@@ -182,7 +187,7 @@ impl HistoryEventListItemView {
                 Container::new(Text::new(&format!(
                     "{}{} {}",
                     sign,
-                    ctx.converter.converts(amount),
+                    ctx.converter.converts(Amount::from_sat(amount)),
                     ctx.converter.unit,
                 )))
                 .width(Length::FillPortion(1))
@@ -313,8 +318,9 @@ fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
             Container::new(
                 Text::new(&format!(
                     "+ {} {}",
-                    ctx.converter
-                        .converts(event.amount.expect("This is a deposit event")),
+                    ctx.converter.converts(Amount::from_sat(
+                        event.amount.expect("This is a deposit event")
+                    )),
                     ctx.converter.unit,
                 ))
                 .bold()
@@ -349,7 +355,8 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
         )
         .push(Container::new(Text::new(&format!(
             "Fee: {} {}",
-            ctx.converter.converts(event.fee.unwrap_or(0)),
+            ctx.converter
+                .converts(Amount::from_sat(event.fee.unwrap_or(0))),
             ctx.converter.unit,
         ))))
         .push(card::white(
@@ -398,10 +405,14 @@ fn spend<'a, T: 'a>(
             .push(
                 card::simple(Container::new(
                     row.push(
-                        Text::new(&ctx.converter.converts(output.value).to_string())
-                            .bold()
-                            .small()
-                            .width(Length::Shrink),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(output.value))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small()
+                        .width(Length::Shrink),
                     ),
                 ))
                 .width(Length::Fill),
@@ -422,7 +433,8 @@ fn spend<'a, T: 'a>(
                 .push(
                     Text::new(&format!(
                         "- {} {}",
-                        ctx.converter.converts(event.amount.unwrap_or(0)),
+                        ctx.converter
+                            .converts(Amount::from_sat(event.amount.unwrap_or(0))),
                         ctx.converter.unit,
                     ))
                     .bold()
@@ -430,7 +442,8 @@ fn spend<'a, T: 'a>(
                 )
                 .push(Container::new(Text::new(&format!(
                     "Fee: {} {}",
-                    ctx.converter.converts(event.fee.unwrap_or(0)),
+                    ctx.converter
+                        .converts(Amount::from_sat(event.fee.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
                 .align_items(Align::Center),

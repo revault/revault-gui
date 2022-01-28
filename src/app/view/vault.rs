@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use iced::{Align, Column, Container, Element, Length, Row};
 
+use bitcoin::Amount;
 use revault_ui::component::{badge, button, card, separation, text::Text};
 
 use crate::app::{
@@ -277,9 +278,13 @@ fn input_and_outputs<'a, T: 'a>(
             .push(
                 card::simple(Container::new(
                     col.push(
-                        Text::new(&ctx.converter.converts(output.value).to_string())
-                            .bold()
-                            .small(),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(output.value))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small(),
                     ),
                 ))
                 .width(Length::Fill),
@@ -338,7 +343,9 @@ impl VaultView for VaultListItemView {
                                 .push(vault_badge(&vault))
                                 .push(
                                     Column::new()
-                                        .push(Text::new(&vault.outpoint()).bold().small())
+                                        .push(
+                                            Text::new(&vault.outpoint().to_string()).bold().small(),
+                                        )
                                         .push(Text::new(&format!("{}", &vault.status,)).small()),
                                 )
                                 .spacing(20),
@@ -398,8 +405,13 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
                     Row::new()
                         .push(badge::shield_success())
                         .push(
-                            Container::new(Text::new(&deposit.address).small().bold().success())
-                                .align_y(Align::Center),
+                            Container::new(
+                                Text::new(&deposit.address.to_string())
+                                    .small()
+                                    .bold()
+                                    .success(),
+                            )
+                            .align_y(Align::Center),
                         )
                         .spacing(20)
                         .align_items(Align::Center),
@@ -440,8 +452,10 @@ fn vault_ack_pending<'a>(
                             Row::new()
                                 .push(badge::shield_notif())
                                 .push(
-                                    Container::new(Text::new(&deposit.address).small().bold())
-                                        .align_y(Align::Center),
+                                    Container::new(
+                                        Text::new(&deposit.address.to_string()).small().bold(),
+                                    )
+                                    .align_y(Align::Center),
                                 )
                                 .spacing(20)
                                 .align_items(Align::Center),
@@ -500,9 +514,12 @@ impl DelegateVaultListItemView {
                                     })
                                     .push(
                                         Container::new(if selected {
-                                            Text::new(&vault.outpoint()).small().bold().success()
+                                            Text::new(&vault.outpoint().to_string())
+                                                .small()
+                                                .bold()
+                                                .success()
                                         } else {
-                                            Text::new(&vault.outpoint()).small().bold()
+                                            Text::new(&vault.outpoint().to_string()).small().bold()
                                         })
                                         .align_y(Align::Center),
                                     )

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use utils::{fixtures::random_daemon_config, mock::Daemon, no_hardware_wallet, sandbox::Sandbox};
 
-use bitcoin::hashes::hex::FromHex;
+use bitcoin::{hashes::hex::FromHex, util::bip32, Address, Amount};
 
 use revault_gui::{
     app::{
@@ -34,10 +34,8 @@ use revault_gui::{
 
 #[tokio::test]
 async fn test_deposit_state() {
-    let addr = bitcoin::Address::from_str(
-        "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj",
-    )
-    .unwrap();
+    let addr = Address::from_str("tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj")
+        .unwrap();
     let daemon = Daemon::new(vec![
         (
             Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
@@ -99,39 +97,55 @@ async fn test_emergency_state() {
         ),
         (
             Some(json!({"method": "listvaults", "params": Some(&[[
-                VaultStatus::Secured,
-                VaultStatus::Active,
-                VaultStatus::Activating,
-                VaultStatus::Unvaulting,
-                VaultStatus::Unvaulted,
-                VaultStatus::EmergencyVaulting,
-                VaultStatus::EmergencyVaulted,
-                VaultStatus::UnvaultEmergencyVaulting,
-                VaultStatus::UnvaultEmergencyVaulted,
+                VaultStatus::Secured.to_string(),
+                VaultStatus::Active.to_string(),
+                VaultStatus::Activating.to_string(),
+                VaultStatus::Unvaulting.to_string(),
+                VaultStatus::Unvaulted.to_string(),
+                VaultStatus::EmergencyVaulting.to_string(),
+                VaultStatus::EmergencyVaulted.to_string(),
+                VaultStatus::UnvaultEmergencyVaulting.to_string(),
+                VaultStatus::UnvaultEmergencyVaulted.to_string(),
             ]])})),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
                     Vault {
-                        address: "".to_string(),
-                        amount: 500,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(500),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     },
                     Vault {
-                        address: "".to_string(),
-                        amount: 700,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(700),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     }
                 ]
             })),
@@ -190,40 +204,56 @@ async fn test_vaults_state() {
         ),
         (
             Some(json!({"method": "listvaults", "params": Some(&[[
-                VaultStatus::Securing,
-                VaultStatus::Secured,
-                VaultStatus::Activating,
-                VaultStatus::Active,
-                VaultStatus::Unvaulting,
-                VaultStatus::Unvaulted,
-                VaultStatus::Canceling,
-                VaultStatus::EmergencyVaulting,
-                VaultStatus::UnvaultEmergencyVaulting,
-                VaultStatus::Spending,
+                VaultStatus::Securing.to_string(),
+                VaultStatus::Secured.to_string(),
+                VaultStatus::Activating.to_string(),
+                VaultStatus::Active.to_string(),
+                VaultStatus::Unvaulting.to_string(),
+                VaultStatus::Unvaulted.to_string(),
+                VaultStatus::Canceling.to_string(),
+                VaultStatus::EmergencyVaulting.to_string(),
+                VaultStatus::UnvaultEmergencyVaulting.to_string(),
+                VaultStatus::Spending.to_string(),
             ]])})),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
                     Vault {
-                        address: "".to_string(),
-                        amount: 500,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(500),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 0,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     },
                     Vault {
-                        address: "".to_string(),
-                        amount: 700,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(700),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     }
                 ]
             })),
@@ -286,16 +316,13 @@ async fn test_vaults_state() {
     let sandbox = sandbox
         .update(
             &ctx,
-            Message::SelectVault(
-                bitcoin::OutPoint {
-                    txid: bitcoin::Txid::from_str(
-                        "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
-                    )
-                    .unwrap(),
-                    vout: 1,
-                }
-                .to_string(),
-            ),
+            Message::SelectVault(bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: 1,
+            }),
         )
         .await;
     assert!(matches!(sandbox.state(), VaultsState::Loaded { .. }));

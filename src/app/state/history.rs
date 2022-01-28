@@ -1,6 +1,8 @@
 use std::convert::From;
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::OutPoint;
 use iced::{Command, Element};
 
 use super::State;
@@ -309,7 +311,12 @@ impl HistoryEventState {
 
     pub fn load(&self, ctx: &Context) -> Command<Message> {
         let revaultd = ctx.revaultd.clone();
-        let vaults = self.event.vaults.clone();
+        let vaults = self
+            .event
+            .vaults
+            .iter()
+            .map(|v| OutPoint::from_str(v).unwrap())
+            .collect();
         Command::perform(
             async move {
                 revaultd

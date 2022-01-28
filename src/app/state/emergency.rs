@@ -64,7 +64,7 @@ impl State for EmergencyState {
                                 vaults_number: vaults.len(),
                                 funds_amount: vaults
                                     .into_iter()
-                                    .fold(0, |acc, vault| acc + vault.amount),
+                                    .fold(0, |acc, vault| acc + vault.amount.as_sat()),
                             };
                         } else {
                             *self = Self::Loaded {
@@ -72,7 +72,7 @@ impl State for EmergencyState {
                                 vaults_number: vaults.len(),
                                 funds_amount: vaults
                                     .into_iter()
-                                    .fold(0, |acc, vault| acc + vault.amount),
+                                    .fold(0, |acc, vault| acc + vault.amount.as_sat()),
                                 warning: None,
                                 processing: false,
                             };
@@ -88,7 +88,9 @@ impl State for EmergencyState {
                 } => match res {
                     Ok(vaults) => {
                         *vaults_number = vaults.len();
-                        *funds_amount = vaults.into_iter().fold(0, |acc, vault| acc + vault.amount);
+                        *funds_amount = vaults
+                            .into_iter()
+                            .fold(0, |acc, vault| acc + vault.amount.as_sat());
                         *warning = None;
                     }
                     Err(e) => *warning = Error::from(e).into(),

@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -24,12 +24,12 @@ pub enum Message {
     Clipboard(String),
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    SelectVault(String),
+    SelectVault(OutPoint),
     SelectHistoryEvent(usize),
-    DelegateVault(String),
+    DelegateVault(OutPoint),
     Sign(SignMessage),
-    DepositsSecured(Result<Vec<String>, Error>),
-    VaultsDelegated(Result<Vec<String>, Error>),
+    DepositsSecured(Result<Vec<OutPoint>, Error>),
+    VaultsDelegated(Result<Vec<OutPoint>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
     BlockHeight(Result<u64, RevaultDError>),

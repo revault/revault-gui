@@ -2,7 +2,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
+use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use log::{debug, error, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -66,10 +66,16 @@ impl<C: Client> Daemon for RevaultD<C> {
     fn list_vaults(
         &self,
         statuses: Option<&[VaultStatus]>,
-        outpoints: Option<&Vec<String>>,
+        outpoints: Option<&Vec<OutPoint>>,
     ) -> Result<ListVaultsResponse, RevaultDError> {
-        let mut args = vec![json!(statuses.unwrap_or(&[]))];
+        let statuses: Vec<String> = statuses
+            .unwrap_or(&[])
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let mut args = vec![json!(statuses)];
         if let Some(outpoints) = outpoints {
+            let outpoints: Vec<String> = outpoints.iter().map(|o| o.to_string()).collect();
             args.push(json!(outpoints));
         }
         self.call("listvaults", Some(args))
@@ -77,24 +83,30 @@ impl<C: Client> Daemon for RevaultD<C> {
 
     fn list_onchain_transactions(
         &self,
-        outpoints: Option<Vec<String>>,
+        outpoints: Option<Vec<OutPoint>>,
     ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
         match outpoints {
-            Some(list) => self.call(
-                "listonchaintransactions",
-                Some(vec![ListTransactionsRequest(list)]),
-            ),
+            Some(list) => {
+                let outpoints: Vec<String> = list.iter().map(|o| o.to_string()).collect();
+                self.call(
+                    "listonchaintransactions",
+                    Some(vec![ListTransactionsRequest(outpoints)]),
+                )
+            }
             None => self.call("listonchaintransactions", Option::<Request>::None),
         }
     }
 
-    fn get_revocation_txs(&self, outpoint: &str) -> Result<RevocationTransactions, RevaultDError> {
-        self.call("getrevocationtxs", Some(vec![outpoint]))
+    fn get_revocation_txs(
+        &self,
+        outpoint: &OutPoint,
+    ) -> Result<RevocationTransactions, RevaultDError> {
+        self.call("getrevocationtxs", Some(vec![outpoint.to_string()]))
     }
 
     fn set_revocation_txs(
         &self,
-        outpoint: &str,
+        outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
         cancel_tx: &Psbt,
@@ -104,25 +116,30 @@ impl<C: Client> Daemon for RevaultD<C> {
         let cancel = base64::encode(&consensus::serialize(cancel_tx));
         let _res: serde_json::value::Value = self.call(
             "revocationtxs",
-            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+            Some(vec![
+                outpoint.to_string(),
+                cancel,
+                emergency,
+                emergency_unvault,
+            ]),
         )?;
         Ok(())
     }
 
-    fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
-        self.call("getunvaulttx", Some(vec![outpoint]))
+    fn get_unvault_tx(&self, outpoint: &OutPoint) -> Result<UnvaultTransaction, RevaultDError> {
+        self.call("getunvaulttx", Some(vec![outpoint.to_string()]))
     }
 
-    fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+    fn set_unvault_tx(&self, outpoint: &OutPoint, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
         let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
         let _res: serde_json::value::Value =
-            self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
+            self.call("unvaulttx", Some(vec![outpoint.to_string(), unvault_tx]))?;
         Ok(())
     }
 
     fn get_spend_tx(
         &self,
-        inputs: &[String],
+        inputs: &[OutPoint],
         outputs: &HashMap<String, u64>,
         feerate: &u32,
     ) -> Result<SpendTransaction, RevaultDError> {
@@ -159,8 +176,9 @@ impl<C: Client> Daemon for RevaultD<C> {
         Ok(())
     }
 
-    fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
+    fn revault(&self, outpoint: &OutPoint) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value =
+            self.call("revault", Some(vec![outpoint.to_string()]))?;
         Ok(())
     }
 

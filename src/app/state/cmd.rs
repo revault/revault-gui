@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ pub async fn get_deposit_address(
 pub async fn list_vaults(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     statuses: Option<&[VaultStatus]>,
-    outpoints: Option<Vec<String>>,
+    outpoints: Option<Vec<OutPoint>>,
 ) -> Result<Vec<Vault>, RevaultDError> {
     revaultd
         .list_vaults(statuses, outpoints.as_ref())
@@ -29,7 +29,7 @@ pub async fn list_vaults(
 
 pub async fn get_onchain_txs(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
 ) -> Result<VaultTransactions, RevaultDError> {
     let list = revaultd.list_onchain_transactions(Some(vec![outpoint]))?;
     if list.onchain_transactions.is_empty() {
@@ -43,14 +43,14 @@ pub async fn get_onchain_txs(
 
 pub async fn get_revocation_txs(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
 ) -> Result<RevocationTransactions, RevaultDError> {
     revaultd.get_revocation_txs(&outpoint)
 }
 
 pub async fn set_revocation_txs(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
     emergency_tx: Psbt,
     emergency_unvault_tx: Psbt,
     cancel_tx: Psbt,
@@ -60,14 +60,14 @@ pub async fn set_revocation_txs(
 
 pub async fn get_unvault_tx(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
 ) -> Result<UnvaultTransaction, RevaultDError> {
     revaultd.get_unvault_tx(&outpoint)
 }
 
 pub async fn set_unvault_tx(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
     unvault_tx: Psbt,
 ) -> Result<(), RevaultDError> {
     revaultd.set_unvault_tx(&outpoint, &unvault_tx)
@@ -75,7 +75,7 @@ pub async fn set_unvault_tx(
 
 pub async fn get_spend_tx(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    inputs: Vec<String>,
+    inputs: Vec<OutPoint>,
     outputs: HashMap<String, u64>,
     feerate: u32,
 ) -> Result<SpendTransaction, RevaultDError> {
@@ -112,7 +112,7 @@ pub async fn broadcast_spend_tx(
 
 pub async fn revault(
     revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: String,
+    outpoint: OutPoint,
 ) -> Result<(), RevaultDError> {
     revaultd.revault(&outpoint)
 }

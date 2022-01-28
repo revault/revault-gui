@@ -1,5 +1,7 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction, OutPoint, Transaction, Txid};
+use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction, Txid};
 use serde::{Deserialize, Serialize};
+
+pub use revaultd::commands::{ListVaultsEntry, VaultStatus};
 
 /// getinfo response
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -41,160 +43,59 @@ pub struct DepositAddress {
     pub address: bitcoin::Address,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Vault {
-    /// Address of the vault deposit
-    pub address: String,
-    /// Amount of the vault in satoshis
-    pub amount: u64,
-    /// derivation_index is the index used to create scriptPubKey of the deposit address
-    pub derivation_index: u32,
-    /// Status of the vault
-    pub status: VaultStatus,
-    /// Deposit txid of the vault deposit transaction
-    pub txid: Txid,
-    /// Deposit vout of the vault deposit transaction
-    pub vout: u32,
-}
+pub type Vault = ListVaultsEntry;
 
-impl Vault {
-    // Todo: return OutPoint
-    pub fn outpoint(&self) -> String {
-        OutPoint::new(self.txid, self.vout).to_string()
-    }
-}
+pub const DEPOSIT_AND_CURRENT_VAULT_STATUSES: [VaultStatus; 11] = [
+    VaultStatus::Funded,
+    VaultStatus::Securing,
+    VaultStatus::Secured,
+    VaultStatus::Activating,
+    VaultStatus::Active,
+    VaultStatus::Unvaulting,
+    VaultStatus::Unvaulted,
+    VaultStatus::Canceling,
+    VaultStatus::EmergencyVaulting,
+    VaultStatus::UnvaultEmergencyVaulting,
+    VaultStatus::Spending,
+];
 
-/// The status of a [Vault], depends both on the block chain and the set of pre-signed
-/// transactions
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum VaultStatus {
-    /// The deposit transaction is less than 6 blocks deep in the chain.
-    #[serde(rename = "unconfirmed")]
-    Unconfirmed,
-    /// The deposit transaction is confirmed
-    #[serde(rename = "funded")]
-    Funded,
-    /// The emergency transaction is signed by us
-    #[serde(rename = "securing")]
-    Securing,
-    /// The emergency transaction is fully signed
-    #[serde(rename = "secured")]
-    Secured,
-    /// The unvault transaction is signed by the stakeholder.
-    #[serde(rename = "activating")]
-    Activating,
-    /// The unvault transaction is signed (implies that the second emergency and the
-    /// cancel transaction are signed).
-    #[serde(rename = "active")]
-    Active,
-    /// The unvault transaction has been broadcast
-    #[serde(rename = "unvaulting")]
-    Unvaulting,
-    /// The unvault transaction is confirmed
-    #[serde(rename = "unvaulted")]
-    Unvaulted,
-    /// The cancel transaction has been broadcast
-    #[serde(rename = "canceling")]
-    Canceling,
-    /// The cancel transaction is confirmed
-    #[serde(rename = "canceled")]
-    Canceled,
-    /// One of the emergency transactions has been broadcast
-    #[serde(rename = "emergencyvaulting")]
-    EmergencyVaulting,
-    /// One of the emergency transactions is confirmed
-    #[serde(rename = "emergencyvaulted")]
-    EmergencyVaulted,
-    /// The unvault emergency transactions has been broadcast
-    #[serde(rename = "unvaultemergencyvaulting")]
-    UnvaultEmergencyVaulting,
-    /// The unvault emergency transactions is confirmed
-    #[serde(rename = "unvaultemergencyvaulted")]
-    UnvaultEmergencyVaulted,
-    /// The spend transaction has been broadcast
-    #[serde(rename = "spending")]
-    Spending,
-    /// The spend transaction is confirmed
-    #[serde(rename = "spent")]
-    Spent,
-}
+pub const CURRENT_VAULT_STATUSES: [VaultStatus; 10] = [
+    VaultStatus::Securing,
+    VaultStatus::Secured,
+    VaultStatus::Activating,
+    VaultStatus::Active,
+    VaultStatus::Unvaulting,
+    VaultStatus::Unvaulted,
+    VaultStatus::Canceling,
+    VaultStatus::EmergencyVaulting,
+    VaultStatus::UnvaultEmergencyVaulting,
+    VaultStatus::Spending,
+];
 
-impl std::fmt::Display for VaultStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Unconfirmed => write!(f, "Deposit unconfirmed"),
-            Self::Funded => write!(f, "Deposit funded"),
-            Self::Securing => write!(f, "Securing"),
-            Self::Secured => write!(f, "Secured"),
-            Self::Activating => write!(f, "Activating"),
-            Self::Active => write!(f, "Active"),
-            Self::Unvaulting => write!(f, "Unvaulting"),
-            Self::Unvaulted => write!(f, "Unvaulted"),
-            Self::Canceling => write!(f, "Canceling"),
-            Self::Canceled => write!(f, "Canceled"),
-            Self::EmergencyVaulting => write!(f, "Emergency vaulting"),
-            Self::EmergencyVaulted => write!(f, "Emergency vaulted"),
-            Self::UnvaultEmergencyVaulting => write!(f, "Unvault Emergency vaulting"),
-            Self::UnvaultEmergencyVaulted => write!(f, "Unvault Emergency vaulted"),
-            Self::Spending => write!(f, "Spending"),
-            Self::Spent => write!(f, "Spent"),
-        }
-    }
-}
+pub const ACTIVE_VAULT_STATUSES: [VaultStatus; 1] = [VaultStatus::Active];
 
-impl VaultStatus {
-    pub const DEPOSIT_AND_CURRENT: [VaultStatus; 11] = [
-        Self::Funded,
-        Self::Securing,
-        Self::Secured,
-        Self::Activating,
-        Self::Active,
-        Self::Unvaulting,
-        Self::Unvaulted,
-        Self::Canceling,
-        Self::EmergencyVaulting,
-        Self::UnvaultEmergencyVaulting,
-        Self::Spending,
-    ];
+pub const INACTIVE_VAULT_STATUSES: [VaultStatus; 4] = [
+    VaultStatus::Funded,
+    VaultStatus::Securing,
+    VaultStatus::Secured,
+    VaultStatus::Activating,
+];
 
-    pub const CURRENT: [VaultStatus; 10] = [
-        Self::Securing,
-        Self::Secured,
-        Self::Activating,
-        Self::Active,
-        Self::Unvaulting,
-        Self::Unvaulted,
-        Self::Canceling,
-        Self::EmergencyVaulting,
-        Self::UnvaultEmergencyVaulting,
-        Self::Spending,
-    ];
+pub const MOVING_VAULT_STATUSES: [VaultStatus; 6] = [
+    VaultStatus::Unvaulting,
+    VaultStatus::Unvaulted,
+    VaultStatus::Canceling,
+    VaultStatus::EmergencyVaulting,
+    VaultStatus::UnvaultEmergencyVaulting,
+    VaultStatus::Spending,
+];
 
-    pub const ACTIVE: [VaultStatus; 1] = [Self::Active];
-
-    pub const INACTIVE: [VaultStatus; 4] = [
-        Self::Funded,
-        Self::Securing,
-        Self::Secured,
-        Self::Activating,
-    ];
-
-    pub const MOVING: [VaultStatus; 6] = [
-        Self::Unvaulting,
-        Self::Unvaulted,
-        Self::Canceling,
-        Self::EmergencyVaulting,
-        Self::UnvaultEmergencyVaulting,
-        Self::Spending,
-    ];
-
-    pub const MOVED: [VaultStatus; 4] = [
-        Self::Canceled,
-        Self::EmergencyVaulted,
-        Self::UnvaultEmergencyVaulted,
-        Self::Spent,
-    ];
-}
+pub const MOVED_VAULT_STATUSES: [VaultStatus; 4] = [
+    VaultStatus::Canceled,
+    VaultStatus::EmergencyVaulted,
+    VaultStatus::UnvaultEmergencyVaulted,
+    VaultStatus::Spent,
+];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SpendTxStatus {

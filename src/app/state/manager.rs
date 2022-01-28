@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use std::collections::HashMap;
 use std::convert::From;
 use std::str::FromStr;
@@ -12,7 +12,7 @@ use super::{
     State,
 };
 
-use crate::daemon::model::{self, HistoryEventKind, VaultStatus};
+use crate::daemon::model::{self, HistoryEventKind, VaultStatus, CURRENT_VAULT_STATUSES};
 
 use revault_ui::component::form;
 
@@ -134,9 +134,9 @@ impl ManagerHomeState {
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         let (act_funds, inact_funds) =
             vaults.iter().fold((0, 0), |acc, vault| match vault.status {
-                VaultStatus::Active => (acc.0 + vault.amount, acc.1),
+                VaultStatus::Active => (acc.0 + vault.amount.as_sat(), acc.1),
                 VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
-                    (acc.0, acc.1 + vault.amount)
+                    (acc.0, acc.1 + vault.amount.as_sat())
                 }
                 _ => (acc.0, acc.1),
             });
@@ -145,7 +145,7 @@ impl ManagerHomeState {
             .iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Active {
-                    Some((vlt.outpoint(), vlt.amount))
+                    Some((vlt.outpoint().to_string(), vlt.amount.as_sat()))
                 } else {
                     None
                 }
@@ -199,7 +199,7 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: String) -> Command<Message> {
+    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: OutPoint) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
             moving_vaults,
@@ -254,7 +254,7 @@ impl ManagerHomeState {
 
     fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
-            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
             Message::Vaults,
         )
     }
@@ -615,7 +615,7 @@ impl ManagerCreateSendTransactionState {
         let mut input_amount = 0;
         for input in &self.vaults {
             if input.selected {
-                input_amount += input.vault.amount;
+                input_amount += input.vault.amount.as_sat();
             }
         }
         input_amount
@@ -989,8 +989,8 @@ impl ManagerSendInput {
     pub fn view(&mut self, ctx: &Context) -> Element<InputMessage> {
         manager_send_input_view(
             ctx,
-            &self.vault.outpoint(),
-            &self.vault.amount,
+            &self.vault.outpoint().to_string(),
+            &self.vault.amount.as_sat(),
             self.selected,
         )
     }

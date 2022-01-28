@@ -5,7 +5,7 @@ pub mod model;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 
 use model::*;
 
@@ -40,31 +40,34 @@ pub trait Daemon {
     fn list_vaults(
         &self,
         statuses: Option<&[VaultStatus]>,
-        outpoints: Option<&Vec<String>>,
+        outpoints: Option<&Vec<OutPoint>>,
     ) -> Result<ListVaultsResponse, RevaultDError>;
 
     fn list_onchain_transactions(
         &self,
-        outpoints: Option<Vec<String>>,
+        outpoints: Option<Vec<OutPoint>>,
     ) -> Result<ListOnchainTransactionsResponse, RevaultDError>;
 
-    fn get_revocation_txs(&self, outpoint: &str) -> Result<RevocationTransactions, RevaultDError>;
+    fn get_revocation_txs(
+        &self,
+        outpoint: &OutPoint,
+    ) -> Result<RevocationTransactions, RevaultDError>;
 
     fn set_revocation_txs(
         &self,
-        outpoint: &str,
+        outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
         cancel_tx: &Psbt,
     ) -> Result<(), RevaultDError>;
 
-    fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError>;
+    fn get_unvault_tx(&self, outpoint: &OutPoint) -> Result<UnvaultTransaction, RevaultDError>;
 
-    fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError>;
+    fn set_unvault_tx(&self, outpoint: &OutPoint, unvault_tx: &Psbt) -> Result<(), RevaultDError>;
 
     fn get_spend_tx(
         &self,
-        inputs: &[String],
+        inputs: &[OutPoint],
         outputs: &HashMap<String, u64>,
         feerate: &u32,
     ) -> Result<SpendTransaction, RevaultDError>;
@@ -80,7 +83,7 @@ pub trait Daemon {
 
     fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError>;
 
-    fn revault(&self, outpoint: &str) -> Result<(), RevaultDError>;
+    fn revault(&self, outpoint: &OutPoint) -> Result<(), RevaultDError>;
 
     fn emergency(&self) -> Result<(), RevaultDError>;
 

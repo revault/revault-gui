@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use bitcoin::{
     blockdata::transaction::OutPoint,
@@ -227,10 +227,9 @@ impl Device {
                 .iter()
                 .map(|deposit| {
                     (
-                        OutPoint::from_str(&deposit.outpoint())
-                            .expect("OutPoint has the good format"),
-                        Amount::from_sat(deposit.amount),
-                        deposit.derivation_index,
+                        deposit.outpoint(),
+                        deposit.amount,
+                        deposit.derivation_index.into(),
                     )
                 })
                 .collect();
@@ -246,10 +245,9 @@ impl Device {
                 .iter()
                 .map(|vault| {
                     (
-                        OutPoint::from_str(&vault.outpoint())
-                            .expect("OutPoint has the good format"),
-                        Amount::from_sat(vault.amount),
-                        vault.derivation_index,
+                        vault.outpoint(),
+                        vault.amount,
+                        vault.derivation_index.into(),
                     )
                 })
                 .collect();
