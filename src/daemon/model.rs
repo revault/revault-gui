@@ -1,8 +1,10 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction, Txid};
+use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
 use serde::{Deserialize, Serialize};
 
 use revaultd::commands::ListVaultsEntry;
-pub use revaultd::commands::{GetInfoResult, ServerStatus, ServersStatuses, VaultStatus};
+pub use revaultd::commands::{
+    GetInfoResult, HistoryEvent, HistoryEventKind, ServerStatus, ServersStatuses, VaultStatus,
+};
 
 /// listvaults response
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -237,37 +239,8 @@ mod bitcoin_psbt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct HistoryEvent {
-    pub blockheight: u32,
-    pub txid: Txid,
-    pub date: i64,
-    pub kind: HistoryEventKind,
-    pub amount: Option<u64>,
-    pub fee: Option<u64>,
-    pub vaults: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum HistoryEventKind {
-    #[serde(rename = "cancel")]
-    Cancel,
-    #[serde(rename = "deposit")]
-    Deposit,
-    #[serde(rename = "spend")]
-    Spend,
-}
-
-impl HistoryEventKind {
-    pub const ALL: [HistoryEventKind; 3] = [Self::Cancel, Self::Deposit, Self::Spend];
-}
-
-impl std::fmt::Display for HistoryEventKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Cancel => write!(f, "Cancel"),
-            Self::Deposit => write!(f, "Deposit"),
-            Self::Spend => write!(f, "Spend"),
-        }
-    }
-}
+pub const ALL_HISTORY_EVENTS: [HistoryEventKind; 3] = [
+    HistoryEventKind::Cancel,
+    HistoryEventKind::Deposit,
+    HistoryEventKind::Spend,
+];

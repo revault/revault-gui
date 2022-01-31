@@ -26,7 +26,7 @@ use revault_gui::{
         model::{
             BroadcastedTransaction, DepositAddress, GetHistoryResponse, HistoryEvent,
             HistoryEventKind, ListOnchainTransactionsResponse, ListVaultsResponse, Vault,
-            VaultStatus, VaultTransactions,
+            VaultStatus, VaultTransactions, ALL_HISTORY_EVENTS,
         },
     },
     revault::Role,
@@ -416,7 +416,7 @@ async fn test_history_state_pagination() {
     for i in 0..25 {
         events.push(HistoryEvent {
             blockheight: i,
-            date: i as i64,
+            date: i as u32,
             txid: bitcoin::Txid::from_str(
                 "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
             )
@@ -424,7 +424,13 @@ async fn test_history_state_pagination() {
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
             fee: None,
-            vaults: Vec::new(),
+            vaults: vec![bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: i,
+            }],
         });
     }
     let daemon = Daemon::new(vec![
@@ -438,7 +444,7 @@ async fn test_history_state_pagination() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..25].to_vec()
@@ -552,7 +558,13 @@ async fn test_history_state_pagination_batching() {
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
             fee: None,
-            vaults: vec![(i as u8).to_string()],
+            vaults: vec![bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: i,
+            }],
         });
     }
     let daemon = Daemon::new(vec![
@@ -564,7 +576,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..40].to_vec()
@@ -572,7 +584,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..60].to_vec()
@@ -580,7 +592,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..65].to_vec()
@@ -635,8 +647,7 @@ async fn test_history_state_select_event() {
         )
         .unwrap(),
         vout: 1,
-    }
-    .to_string();
+    };
     let daemon = Daemon::new(vec![
         (
             None,
@@ -658,8 +669,7 @@ async fn test_history_state_select_event() {
                             )
                             .unwrap(),
                             vout: 0,
-                        }
-                        .to_string())
+                        })
                     },
                     HistoryEvent {
                         blockheight: 0,
@@ -680,7 +690,7 @@ async fn test_history_state_select_event() {
             Some(json!({"method": "listonchaintransactions", "params": [[oupoint.clone()]]})),
             Ok(json!(ListOnchainTransactionsResponse {
                 onchain_transactions: vec![VaultTransactions {
-                    vault_outpoint: oupoint,
+                    vault_outpoint: oupoint.to_string(),
                     deposit: BroadcastedTransaction {
                         blockheight: Some(1),
                         tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),

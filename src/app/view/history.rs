@@ -142,7 +142,7 @@ impl HistoryEventListItemView {
         event: &HistoryEvent,
         index: usize,
     ) -> Element<'a, Message> {
-        let date = NaiveDateTime::from_timestamp(event.date, 0);
+        let date = NaiveDateTime::from_timestamp(event.date.into(), 0);
         let mut row = Row::new()
             .push(event_badge(event))
             .push(
@@ -275,7 +275,7 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
                                 .push(Text::new("Date:").bold())
                                 .push(Text::new(&format!(
                                     "{}",
-                                    NaiveDateTime::from_timestamp(event.date, 0)
+                                    NaiveDateTime::from_timestamp(event.date.into(), 0)
                                 ))),
                         )
                         .align_items(Align::Center)

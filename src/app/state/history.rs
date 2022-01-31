@@ -1,8 +1,6 @@
 use std::convert::From;
-use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::OutPoint;
 use iced::{Command, Element};
 
 use super::State;
@@ -15,7 +13,7 @@ use crate::{
         view::LoadingDashboard,
         view::{HistoryEventListItemView, HistoryEventView, HistoryView},
     },
-    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions},
+    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions, ALL_HISTORY_EVENTS},
 };
 
 pub const HISTORY_EVENT_PAGE_SIZE: u64 = 20;
@@ -188,7 +186,9 @@ impl State for HistoryState {
                         let mut new_events: Vec<HistoryEventListItemState> = evts
                             .into_iter()
                             .filter_map(|evt| {
-                                if !events.iter().any(|state| state.event == evt) {
+                                if !events.iter().any(|state| {
+                                    state.event.txid == evt.txid && state.event.vaults == evt.vaults
+                                }) {
                                     Some(HistoryEventListItemState::new(evt))
                                 } else {
                                     None
@@ -245,7 +245,7 @@ impl State for HistoryState {
         Command::perform(
             async move {
                 revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, t1, HISTORY_EVENT_PAGE_SIZE)
+                    .get_history(&ALL_HISTORY_EVENTS, 0, t1, HISTORY_EVENT_PAGE_SIZE)
                     .map(|res| res.events)
             },
             Message::HistoryEvents,
@@ -311,12 +311,7 @@ impl HistoryEventState {
 
     pub fn load(&self, ctx: &Context) -> Command<Message> {
         let revaultd = ctx.revaultd.clone();
-        let vaults = self
-            .event
-            .vaults
-            .iter()
-            .map(|v| OutPoint::from_str(v).unwrap())
-            .collect();
+        let vaults = self.event.vaults.clone();
         Command::perform(
             async move {
                 revaultd

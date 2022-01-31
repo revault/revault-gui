@@ -6,7 +6,7 @@ use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 
 use crate::daemon::{
-    model::{self, HistoryEventKind, VaultStatus, CURRENT_VAULT_STATUSES, MOVING_VAULT_STATUSES},
+    model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES, MOVING_VAULT_STATUSES},
     Daemon,
 };
 
@@ -122,7 +122,7 @@ impl StakeholderHomeState {
         Command::perform(
             async move {
                 revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
+                    .get_history(&ALL_HISTORY_EVENTS, 0, now, 5)
                     .map(|res| res.events)
             },
             Message::HistoryEvents,

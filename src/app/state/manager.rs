@@ -12,7 +12,7 @@ use super::{
     State,
 };
 
-use crate::daemon::model::{self, HistoryEventKind, VaultStatus, CURRENT_VAULT_STATUSES};
+use crate::daemon::model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES};
 
 use revault_ui::component::form;
 
@@ -235,7 +235,7 @@ impl ManagerHomeState {
         Command::perform(
             async move {
                 revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
+                    .get_history(&ALL_HISTORY_EVENTS, 0, now, 5)
                     .map(|res| res.events)
             },
             Message::HistoryEvents,
