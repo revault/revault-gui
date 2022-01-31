@@ -82,7 +82,7 @@ pub struct SettingsBoxes {
 }
 
 impl SettingsBoxes {
-    pub fn new(bitcoin_blockheight: u64, server_status: ServersStatuses) -> Self {
+    pub fn new(bitcoin_blockheight: i32, server_status: ServersStatuses) -> Self {
         let mut cosigners: Vec<_> = server_status
             .cosigners
             .iter()
@@ -170,7 +170,7 @@ impl SettingsBox for AdvancedBox {
 
 #[derive(Debug, Clone, Default)]
 pub struct BitcoinCoreBox {
-    blockheight: u64,
+    blockheight: i32,
 }
 
 impl SettingsBox for BitcoinCoreBox {

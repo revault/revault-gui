@@ -24,9 +24,9 @@ use revault_gui::{
     daemon::{
         client::{Request, RevaultD},
         model::{
-            BroadcastedTransaction, DepositAddress, GetHistoryResponse, GetInfoResponse,
-            HistoryEvent, HistoryEventKind, ListOnchainTransactionsResponse, ListVaultsResponse,
-            Vault, VaultStatus, VaultTransactions,
+            BroadcastedTransaction, DepositAddress, GetHistoryResponse, HistoryEvent,
+            HistoryEventKind, ListOnchainTransactionsResponse, ListVaultsResponse, Vault,
+            VaultStatus, VaultTransactions,
         },
     },
     revault::Role,
@@ -36,24 +36,12 @@ use revault_gui::{
 async fn test_deposit_state() {
     let addr = Address::from_str("tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj")
         .unwrap();
-    let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
-            Some(json!({"method": "getdepositaddress", "params": Option::<Request>::None})),
-            Ok(json!(DepositAddress {
-                address: addr.clone()
-            })),
-        ),
-    ]);
+    let daemon = Daemon::new(vec![(
+        Some(json!({"method": "getdepositaddress", "params": Option::<Request>::None})),
+        Ok(json!(DepositAddress {
+            address: addr.clone()
+        })),
+    )]);
 
     let sandbox: Sandbox<DepositState> = Sandbox::new(DepositState::new());
 
@@ -63,7 +51,7 @@ async fn test_deposit_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -85,16 +73,6 @@ async fn test_deposit_state() {
 #[tokio::test]
 async fn test_emergency_state() {
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             Some(json!({"method": "listvaults", "params": Some(&[[
                 VaultStatus::Secured.to_string(),
@@ -164,7 +142,7 @@ async fn test_emergency_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -192,16 +170,6 @@ async fn test_emergency_state() {
 #[tokio::test]
 async fn test_vaults_state() {
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             Some(json!({"method": "listvaults", "params": Some(&[[
                 VaultStatus::Securing.to_string(),
@@ -292,7 +260,7 @@ async fn test_vaults_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -344,16 +312,6 @@ async fn test_vaults_state() {
 #[tokio::test]
 async fn test_history_state_filter() {
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             None,
             Ok(json!(GetHistoryResponse {
@@ -412,7 +370,7 @@ async fn test_history_state_filter() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -471,16 +429,6 @@ async fn test_history_state_pagination() {
     }
     let daemon = Daemon::new(vec![
         (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
             // SystemTime::now() is used, so we cannot check the request correctness for the
             // moment.
             None,
@@ -522,7 +470,7 @@ async fn test_history_state_pagination() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -609,16 +557,6 @@ async fn test_history_state_pagination_batching() {
     }
     let daemon = Daemon::new(vec![
         (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
             None,
             Ok(json!(GetHistoryResponse {
                 events: events[0..20].to_vec()
@@ -658,7 +596,7 @@ async fn test_history_state_pagination_batching() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
@@ -700,16 +638,6 @@ async fn test_history_state_select_event() {
     }
     .to_string();
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             None,
             Ok(json!(GetHistoryResponse {
@@ -776,7 +704,7 @@ async fn test_history_state_select_event() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,

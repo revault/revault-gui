@@ -35,7 +35,7 @@ impl std::fmt::Display for RevaultDError {
 pub trait Daemon {
     fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError>;
 
-    fn get_info(&self) -> Result<GetInfoResponse, RevaultDError>;
+    fn get_info(&self) -> Result<GetInfoResult, RevaultDError>;
 
     fn list_vaults(
         &self,

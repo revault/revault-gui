@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
-use log::{debug, error, info};
+use log::{error, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -27,16 +27,8 @@ pub struct RevaultD<C: Client> {
 }
 
 impl<C: Client> RevaultD<C> {
-    pub fn new(client: C) -> Result<RevaultD<C>, RevaultDError> {
-        let revaultd = RevaultD { client };
-
-        debug!("Connecting to revaultd");
-
-        revaultd.get_info()?;
-
-        info!("Connected to revaultd");
-
-        Ok(revaultd)
+    pub fn new(client: C) -> RevaultD<C> {
+        RevaultD { client }
     }
 
     /// Generic call function for RPC calls.
@@ -59,7 +51,7 @@ impl<C: Client> Daemon for RevaultD<C> {
         self.call("getdepositaddress", Option::<Request>::None)
     }
 
-    fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
+    fn get_info(&self) -> Result<GetInfoResult, RevaultDError> {
         self.call("getinfo", Option::<Request>::None)
     }
 

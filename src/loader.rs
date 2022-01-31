@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use iced::{Column, Command, Container, Element, Length, Subscription};
 use iced_native::{window, Event};
+use log::{debug, info};
 
 use revault_ui::component::{image::revault_colored_logo, text::Text};
 use revaultd::config::{Config, ConfigError};
@@ -14,7 +15,7 @@ use crate::{
     daemon::{
         client,
         embedded::{start_daemon, DaemonError, EmbeddedDaemon},
-        model::GetInfoResponse,
+        model::GetInfoResult,
         Daemon, RevaultDError,
     },
 };
@@ -43,8 +44,8 @@ enum Step {
 #[derive(Debug)]
 pub enum Message {
     Event(iced_native::Event),
-    Syncing(Result<GetInfoResponse, RevaultDError>),
-    Synced(GetInfoResponse, Arc<RevaultD>),
+    Syncing(Result<GetInfoResult, RevaultDError>),
+    Synced(GetInfoResult, Arc<RevaultD>),
     Connected(Result<Arc<RevaultD>, Error>),
     Loaded(Result<Arc<RevaultD>, Error>),
     StoppingDaemon(Result<(), RevaultDError>),
@@ -153,7 +154,7 @@ impl Loader {
     }
 
     #[allow(unused_variables, unused_assignments)]
-    fn on_sync(&mut self, res: Result<GetInfoResponse, RevaultDError>) -> Command<Message> {
+    fn on_sync(&mut self, res: Result<GetInfoResult, RevaultDError>) -> Command<Message> {
         match &mut self.step {
             Step::Syncing {
                 revaultd_client,
@@ -247,21 +248,22 @@ pub fn cover<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Element<'a, T> {
         .into()
 }
 
-async fn synced(
-    info: GetInfoResponse,
-    revaultd: Arc<RevaultD>,
-) -> (GetInfoResponse, Arc<RevaultD>) {
+async fn synced(info: GetInfoResult, revaultd: Arc<RevaultD>) -> (GetInfoResult, Arc<RevaultD>) {
     (info, revaultd)
 }
 
 async fn connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     let client = client::jsonrpc::JsonRPCClient::new(socket_path);
-    let revaultd = RevaultD::new(client)?;
+    let revaultd = RevaultD::new(client);
+
+    debug!("Connecting to revaultd");
+    revaultd.get_info()?;
+    info!("Connected to revaultd");
 
     Ok(Arc::new(revaultd))
 }
 
-async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResponse, RevaultDError> {
+async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResult, RevaultDError> {
     if sleep {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
@@ -272,10 +274,13 @@ async fn try_connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     fn try_connect_to_revault(socket_path: &PathBuf, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);
-        RevaultD::new(client).map(Arc::new).map_err(|e| {
+        let revaultd = RevaultD::new(client);
+        if let Err(e) = revaultd.get_info() {
             log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
-            e.into()
-        })
+            return Err(e.into());
+        };
+
+        Ok(Arc::new(revaultd))
     }
 
     let client = try_connect_to_revault(&socket_path, 5)

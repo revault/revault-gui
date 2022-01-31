@@ -1,17 +1,8 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction, Txid};
 use serde::{Deserialize, Serialize};
 
-pub use revaultd::commands::{ListVaultsEntry, VaultStatus};
-
-/// getinfo response
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GetInfoResponse {
-    pub blockheight: u64,
-    pub network: String,
-    pub sync: f64,
-    pub version: String,
-    pub managers_threshold: usize,
-}
+use revaultd::commands::ListVaultsEntry;
+pub use revaultd::commands::{GetInfoResult, VaultStatus};
 
 /// listvaults response
 #[derive(Debug, Clone, Deserialize, Serialize)]

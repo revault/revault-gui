@@ -15,7 +15,7 @@ pub type HardwareWallet =
 /// and service clients through the application components.
 pub struct Context {
     pub config: ConfigContext,
-    pub blockheight: u64,
+    pub blockheight: i32,
     pub revaultd: Arc<dyn Daemon + Sync + Send>,
     pub converter: Converter,
     pub menu: Menu,

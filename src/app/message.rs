@@ -32,7 +32,7 @@ pub enum Message {
     VaultsDelegated(Result<Vec<OutPoint>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
-    BlockHeight(Result<u64, RevaultDError>),
+    BlockHeight(Result<i32, RevaultDError>),
     ServerStatus(Result<ServersStatuses, RevaultDError>),
     HistoryEvents(Result<Vec<HistoryEvent>, RevaultDError>),
     HistoryEvent(HistoryEventMessage),
