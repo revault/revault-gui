@@ -249,10 +249,7 @@ impl SpendTransactionAction {
                 if let Self::Delete { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        delete_spend_tx(
-                            ctx.revaultd.clone(),
-                            psbt.global.unsigned_tx.txid().to_string(),
-                        ),
+                        delete_spend_tx(ctx.revaultd.clone(), psbt.global.unsigned_tx.txid()),
                         SpendTxMessage::Deleted,
                     );
                 }
@@ -345,10 +342,7 @@ impl SpendTransactionAction {
                 if let Self::Broadcast { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        broadcast_spend_tx(
-                            ctx.revaultd.clone(),
-                            psbt.global.unsigned_tx.txid().to_string(),
-                        ),
+                        broadcast_spend_tx(ctx.revaultd.clone(), psbt.global.unsigned_tx.txid()),
                         SpendTxMessage::Broadcasted,
                     );
                 }

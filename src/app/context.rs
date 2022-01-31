@@ -21,7 +21,6 @@ pub struct Context {
     pub menu: Menu,
     pub role: Role,
     pub managers_threshold: usize,
-    pub internal_daemon: bool,
     pub hardware_wallet: Box<dyn Fn() -> Pin<HardwareWallet> + Send + Sync>,
 }
 
@@ -32,7 +31,6 @@ impl Context {
         converter: Converter,
         role: Role,
         menu: Menu,
-        internal_daemon: bool,
         hardware_wallet: Box<dyn Fn() -> Pin<HardwareWallet> + Send + Sync>,
     ) -> Self {
         Self {
@@ -43,7 +41,6 @@ impl Context {
             role,
             menu,
             managers_threshold: 0,
-            internal_daemon,
             hardware_wallet,
         }
     }

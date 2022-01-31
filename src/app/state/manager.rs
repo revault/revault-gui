@@ -1,9 +1,10 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::From;
+use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use iced::{Command, Element, Subscription};
 
 use super::{
@@ -229,17 +230,15 @@ impl ManagerHomeState {
     }
 
     fn load_history(ctx: &Context) -> Command<Message> {
-        let now = SystemTime::now()
+        let now: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_secs()
+            .try_into()
+            .unwrap();
         let revaultd = ctx.revaultd.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .get_history(&ALL_HISTORY_EVENTS, 0, now, 5)
-                    .map(|res| res.events)
-            },
+            async move { revaultd.get_history(&ALL_HISTORY_EVENTS, 0, now, 5) },
             Message::HistoryEvents,
         )
     }
@@ -581,8 +580,8 @@ pub struct ManagerCreateSendTransactionState {
 
     vaults: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
-    feerate: Option<u32>,
-    psbt: Option<(Psbt, u32)>,
+    feerate: Option<u64>,
+    psbt: Option<(Psbt, u64)>,
     cpfp_index: usize,
     change_index: Option<usize>,
     processing: bool,
@@ -665,8 +664,8 @@ impl State for ManagerCreateSendTransactionState {
             Message::SpendTransaction(res) => {
                 self.processing = false;
                 match res {
-                    Ok(tx) => {
-                        self.psbt = Some((tx.spend_tx, tx.feerate));
+                    Ok(spend) => {
+                        self.psbt = Some(spend);
                     }
                     Err(e) => self.warning = Some(Error::RevaultDError(e)),
                 }
@@ -681,10 +680,15 @@ impl State for ManagerCreateSendTransactionState {
                     .map(|input| input.outpoint())
                     .collect();
 
-                let outputs: HashMap<String, u64> = self
+                let outputs: BTreeMap<bitcoin::Address, u64> = self
                     .outputs
                     .iter()
-                    .map(|output| (output.address.value.clone(), output.amount().unwrap()))
+                    .map(|output| {
+                        (
+                            bitcoin::Address::from_str(&output.address.value).unwrap(),
+                            output.amount().unwrap(),
+                        )
+                    })
                     .collect();
 
                 return Command::perform(
@@ -693,7 +697,7 @@ impl State for ManagerCreateSendTransactionState {
                 );
             }
             Message::SpendTx(SpendTxMessage::FeerateEdited(feerate)) => {
-                if let Ok(f) = feerate.parse::<u32>() {
+                if let Ok(f) = feerate.parse::<u64>() {
                     self.feerate = Some(f);
                     self.valid_feerate = true;
                 } else if feerate.is_empty() {

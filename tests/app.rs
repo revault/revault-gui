@@ -22,11 +22,13 @@ use revault_gui::{
     },
     conversion::Converter,
     daemon::{
-        client::{Request, RevaultD},
+        client::{
+            DepositAddress, GetHistoryResponse, ListOnchainTransactionsResponse,
+            ListVaultsResponse, Request, RevaultD,
+        },
         model::{
-            DepositAddress, GetHistoryResponse, HistoryEvent, HistoryEventKind,
-            ListOnchainTransactionsResponse, ListVaultsResponse, Vault, VaultStatus,
-            VaultTransactions, WalletTransaction, ALL_HISTORY_EVENTS,
+            HistoryEvent, HistoryEventKind, Vault, VaultStatus, VaultTransactions,
+            WalletTransaction, ALL_HISTORY_EVENTS,
         },
     },
     revault::Role,

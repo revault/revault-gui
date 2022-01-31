@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -116,17 +117,15 @@ impl StakeholderHomeState {
         }
     }
     fn load_history(ctx: &Context) -> Command<Message> {
-        let now = SystemTime::now()
+        let now: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_secs()
+            .try_into()
+            .unwrap();
         let revaultd = ctx.revaultd.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .get_history(&ALL_HISTORY_EVENTS, 0, now, 5)
-                    .map(|res| res.events)
-            },
+            async move { revaultd.get_history(&ALL_HISTORY_EVENTS, 0, now, 5) },
             Message::HistoryEvents,
         )
     }
@@ -708,7 +707,7 @@ pub async fn delegate_vaults(
     if let Some(vault) = vaults.into_iter().nth(0) {
         let outpoint = vault.outpoint();
         let res = revaultd.get_unvault_tx(&outpoint)?;
-        let unvault_tx = device.sign_unvault_tx(res.unvault_tx).await?;
+        let unvault_tx = device.sign_unvault_tx(res).await?;
         revaultd.set_unvault_tx(&outpoint, &unvault_tx)?;
 
         Ok(vec![outpoint])

@@ -7,6 +7,7 @@ pub mod state;
 mod error;
 mod view;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use iced::{time, Clipboard, Command, Element, Subscription};
@@ -76,17 +77,6 @@ impl App {
         self.should_exit
     }
 
-    pub fn stop(&mut self) -> Command<Message> {
-        self.should_exit = true;
-        if self.context.internal_daemon {
-            return Command::perform(
-                state::cmd::stop(self.context.revaultd.clone()),
-                Message::StoppingDaemon,
-            );
-        }
-        Command::none()
-    }
-
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::Tick => {
@@ -116,7 +106,20 @@ impl App {
                 clipboard.write(text);
                 Command::none()
             }
-            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
+            Message::Event(Event::Window(window::Event::CloseRequested)) => {
+                log::info!("Close requested");
+                if !self.context.revaultd.is_external() {
+                    log::info!("Stopping internal daemon...");
+                    if let Some(d) = Arc::get_mut(&mut self.context.revaultd) {
+                        d.stop().expect("Daemon is internal");
+                        log::info!("Internal daemon stopped");
+                        self.should_exit = true;
+                    }
+                } else {
+                    self.should_exit = true;
+                }
+                Command::none()
+            }
             _ => self.state.update(&self.context, message),
         }
     }

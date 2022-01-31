@@ -551,7 +551,7 @@ impl ManagerSelectFeeView {
 
     pub fn view<'a>(
         &'a mut self,
-        feerate: Option<u32>,
+        feerate: Option<u64>,
         valid_feerate: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
@@ -676,7 +676,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     psbt: &Psbt,
     change_index: Option<usize>,
     cpfp_index: usize,
-    feerate: Option<&u32>,
+    feerate: Option<&u64>,
 ) -> Container<'a, T> {
     let mut total_fees = 0;
     let mut col_input = Column::new()
@@ -861,7 +861,7 @@ impl ManagerStepSignView {
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
-        feerate: &u32,
+        feerate: &u64,
         warning: Option<&Error>,
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
@@ -976,7 +976,7 @@ impl ManagerSpendTransactionCreatedView {
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
-        feerate: &u32,
+        feerate: &u64,
     ) -> Element<'a, Message> {
         Container::new(
             Column::new()

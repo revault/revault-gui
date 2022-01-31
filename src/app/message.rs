@@ -7,8 +7,8 @@ use crate::{
     app::{error::Error, menu::Menu},
     daemon::{
         model::{
-            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTransaction, SpendTx, Vault,
-            VaultStatus, VaultTransactions,
+            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, Vault, VaultStatus,
+            VaultTransactions,
         },
         RevaultDError,
     },
@@ -19,7 +19,6 @@ use crate::{
 pub enum Message {
     Reload,
     Tick,
-    StoppingDaemon(Result<(), RevaultDError>),
     Event(iced_native::Event),
     Clipboard(String),
     ChangeRole(Role),
@@ -44,7 +43,7 @@ pub enum Message {
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
-    SpendTransaction(Result<SpendTransaction, RevaultDError>),
+    SpendTransaction(Result<(Psbt, u64), RevaultDError>),
     SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
     SpendTx(SpendTxMessage),
     Emergency,
