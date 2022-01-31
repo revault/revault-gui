@@ -15,6 +15,7 @@ use super::{
 use crate::daemon::model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES};
 
 use revault_ui::component::form;
+use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use crate::app::{
     context::Context,
@@ -85,7 +86,7 @@ impl ManagerHomeState {
                 .filter(|tx| {
                     tx.deposit_outpoints
                         .iter()
-                        .all(|outpoint| spendable_outpoints.get(outpoint).is_some())
+                        .all(|outpoint| spendable_outpoints.get(&outpoint.to_string()).is_some())
                 })
                 .collect();
             *spend_txs_item = spend_txs
@@ -94,7 +95,9 @@ impl ManagerHomeState {
                 .map(|s| {
                     (
                         s.deposit_outpoints.iter().fold(0, |acc, x| {
-                            acc + *spendable_outpoints.get(x).expect("Must be spendable")
+                            acc + *spendable_outpoints
+                                .get(&x.to_string())
+                                .expect("Must be spendable")
                         }),
                         s,
                     )
@@ -118,10 +121,9 @@ impl ManagerHomeState {
                 }
             }
 
-            if spend_txs
-                .iter()
-                .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
-            {
+            if spend_txs.iter().any(|item| {
+                item.psbt.psbt().global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid()
+            }) {
                 let spend_tx = SpendTransactionState::new(ctx, psbt);
                 let cmd = spend_tx.load(ctx);
                 *selected_spend_tx = Some(spend_tx);

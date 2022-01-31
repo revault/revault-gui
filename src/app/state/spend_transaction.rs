@@ -3,12 +3,11 @@ use bitcoin::util::{
     psbt::PartiallySignedTransaction as Psbt,
 };
 use std::convert::From;
-use std::str::FromStr;
 
 use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 use revault_ui::component::form;
-use revaultd::revault_tx::miniscript::DescriptorPublicKey;
+use revaultd::revault_tx::{miniscript::DescriptorPublicKey, transactions::RevaultTransaction};
 
 use crate::{
     app::{
@@ -102,14 +101,11 @@ impl State for SpendTransactionState {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res)) => match res {
                 Ok(txs) => {
                     for tx in txs {
-                        if tx.psbt.global.unsigned_tx.txid() == self.psbt.global.unsigned_tx.txid()
+                        if tx.psbt.psbt().global.unsigned_tx.txid()
+                            == self.psbt.global.unsigned_tx.txid()
                         {
-                            self.deposit_outpoints = tx
-                                .deposit_outpoints
-                                .iter()
-                                .map(|s| OutPoint::from_str(s).unwrap())
-                                .collect();
-                            self.psbt = tx.psbt;
+                            self.deposit_outpoints = tx.deposit_outpoints;
+                            self.psbt = tx.psbt.psbt().clone();
                             self.cpfp_index = tx.cpfp_index;
                             self.change_index = tx.change_index;
                             return Command::perform(
@@ -556,6 +552,7 @@ impl SpendTransactionListItem {
     pub fn new(tx: model::SpendTx, vaults_amount: u64) -> Self {
         let spend_amount = tx
             .psbt
+            .psbt()
             .global
             .unsigned_tx
             .output
@@ -564,7 +561,7 @@ impl SpendTransactionListItem {
             .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
             .fold(0, |acc, (_, output)| acc + output.value);
         let change_amount = if let Some(i) = tx.change_index {
-            tx.psbt.global.unsigned_tx.output[i].value
+            tx.psbt.psbt().global.unsigned_tx.output[i].value
         } else {
             0
         };

@@ -5,6 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 
+use revaultd::revault_tx::transactions::RevaultTransaction;
+
 use crate::daemon::{
     model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES, MOVING_VAULT_STATUSES},
     Daemon,
@@ -440,9 +442,9 @@ pub async fn secure_deposits(
 
         let (emergency_tx, emergency_unvault_tx, cancel_tx) = device
             .sign_revocation_txs(
-                revocation_txs.emergency_tx.clone(),
-                revocation_txs.emergency_unvault_tx.clone(),
-                revocation_txs.cancel_tx.clone(),
+                revocation_txs.emergency_tx.into_psbt(),
+                revocation_txs.emergency_unvault_tx.into_psbt(),
+                revocation_txs.cancel_tx.into_psbt(),
             )
             .await?;
 

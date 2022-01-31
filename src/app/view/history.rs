@@ -9,7 +9,7 @@ use revault_ui::{
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions},
+    daemon::model::{transaction_from_hex, HistoryEvent, HistoryEventKind, VaultTransactions},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -385,7 +385,7 @@ fn spend<'a, T: 'a>(
     event: &HistoryEvent,
     txs: &Vec<VaultTransactions>,
 ) -> Element<'a, T> {
-    let tx = &txs.first().as_ref().unwrap().spend.as_ref().unwrap().tx;
+    let tx = transaction_from_hex(&txs.first().as_ref().unwrap().spend.as_ref().unwrap().hex);
     let mut col_recipients = Column::new()
         .push(Text::new("Recipients:").bold())
         .spacing(10);

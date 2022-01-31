@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use utils::{fixtures::random_daemon_config, mock::Daemon, no_hardware_wallet, sandbox::Sandbox};
 
-use bitcoin::{hashes::hex::FromHex, util::bip32, Address, Amount};
+use bitcoin::{util::bip32, Address, Amount, OutPoint};
 
 use revault_gui::{
     app::{
@@ -24,9 +24,9 @@ use revault_gui::{
     daemon::{
         client::{Request, RevaultD},
         model::{
-            BroadcastedTransaction, DepositAddress, GetHistoryResponse, HistoryEvent,
-            HistoryEventKind, ListOnchainTransactionsResponse, ListVaultsResponse, Vault,
-            VaultStatus, VaultTransactions, ALL_HISTORY_EVENTS,
+            DepositAddress, GetHistoryResponse, HistoryEvent, HistoryEventKind,
+            ListOnchainTransactionsResponse, ListVaultsResponse, Vault, VaultStatus,
+            VaultTransactions, WalletTransaction, ALL_HISTORY_EVENTS,
         },
     },
     revault::Role,
@@ -234,13 +234,14 @@ async fn test_vaults_state() {
             ),
             Ok(json!(ListOnchainTransactionsResponse {
                 onchain_transactions: vec![VaultTransactions {
-                    vault_outpoint:
+                    vault_outpoint: OutPoint::from_str(
                         "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:1"
-                            .to_string(),
-                    deposit: BroadcastedTransaction {
+                            ).unwrap(),
+                    deposit: WalletTransaction {
                         blockheight: Some(1),
-                        tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),
-                        received_at: 1,
+                        hex: "0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000".to_string(),
+                        received_time: 1,
+                        blocktime: Some(1)
                     },
                     unvault: None,
                     spend: None,
@@ -690,11 +691,12 @@ async fn test_history_state_select_event() {
             Some(json!({"method": "listonchaintransactions", "params": [[oupoint.clone()]]})),
             Ok(json!(ListOnchainTransactionsResponse {
                 onchain_transactions: vec![VaultTransactions {
-                    vault_outpoint: oupoint.to_string(),
-                    deposit: BroadcastedTransaction {
+                    vault_outpoint: oupoint,
+                    deposit: WalletTransaction {
                         blockheight: Some(1),
-                        tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),
-                        received_at: 1,
+                        hex: "0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000".to_string(),
+                        received_time: 1,
+                        blocktime: Some(1),
                     },
                     unvault: None,
                     spend: None,

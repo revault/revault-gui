@@ -12,7 +12,9 @@ use crate::app::{
 };
 
 use crate::{
-    daemon::model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
+    daemon::model::{
+        transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
+    },
     revault::Role,
 };
 
@@ -208,8 +210,9 @@ impl VaultOnChainTransactionsPanel {
 fn transaction<'a, T: 'a>(
     ctx: &Context,
     title: &str,
-    transaction: &BroadcastedTransaction,
+    transaction: &WalletTransaction,
 ) -> Container<'a, T> {
+    let tx = transaction_from_hex(&transaction.hex);
     Container::new(
         Column::new()
             .push(separation().width(Length::Fill))
@@ -219,16 +222,14 @@ fn transaction<'a, T: 'a>(
                         Row::new()
                             .push(Container::new(Text::new(title).bold()).width(Length::Fill))
                             .push(
-                                Container::new(
-                                    Text::new(&transaction.tx.txid().to_string()).bold().small(),
-                                )
-                                .width(Length::Shrink),
+                                Container::new(Text::new(&tx.txid().to_string()).bold().small())
+                                    .width(Length::Shrink),
                             ),
                     )
                     .push(
                         Text::new(&format!(
                             "Received at {}",
-                            NaiveDateTime::from_timestamp(transaction.received_at, 0)
+                            NaiveDateTime::from_timestamp(transaction.received_time.into(), 0)
                         ))
                         .small(),
                     )
@@ -252,10 +253,11 @@ fn transaction<'a, T: 'a>(
 
 fn input_and_outputs<'a, T: 'a>(
     ctx: &Context,
-    broadcasted: &BroadcastedTransaction,
+    broadcasted: &WalletTransaction,
 ) -> Container<'a, T> {
     let mut col_input = Column::new().push(Text::new("Inputs").bold()).spacing(10);
-    for input in &broadcasted.tx.input {
+    let tx = transaction_from_hex(&broadcasted.hex);
+    for input in &tx.input {
         col_input = col_input
             .push(
                 card::simple(Container::new(
@@ -266,7 +268,7 @@ fn input_and_outputs<'a, T: 'a>(
             .width(Length::FillPortion(1));
     }
     let mut col_output = Column::new().push(Text::new("Outputs").bold()).spacing(10);
-    for output in &broadcasted.tx.output {
+    for output in &tx.output {
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network());
         let mut col = Column::new();
         if let Some(a) = addr {

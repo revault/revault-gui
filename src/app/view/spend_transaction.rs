@@ -2,6 +2,8 @@ use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
 
+use revaultd::revault_tx::transactions::RevaultTransaction;
+
 use revault_ui::{
     color,
     component::{badge, button, card, form, scroll, text::Text, ContainerBackgroundStyle},
@@ -485,20 +487,21 @@ impl SpendTransactionListItemView {
         spend_amount: u64,
         fees: u64,
     ) -> Element<SpendTxMessage> {
+        let psbt = tx.psbt.psbt();
         let mut col = Column::new().push(
             Text::new(&format!(
                 "txid: {}",
-                tx.psbt.global.unsigned_tx.txid().to_string()
+                psbt.global.unsigned_tx.txid().to_string()
             ))
             .small()
             .bold(),
         );
-        if tx.psbt.inputs.len() > 0 {
+        if psbt.inputs.len() > 0 {
             col = col.push(
                 Row::new()
                     .push(Text::new(&format!(
                         "{} / {}",
-                        tx.psbt.inputs[0].partial_sigs.len(),
+                        tx.psbt.psbt().inputs[0].partial_sigs.len(),
                         ctx.managers_threshold
                     )))
                     .push(icon::key_icon())
@@ -559,7 +562,7 @@ impl SpendTransactionListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(SpendTxMessage::Select(tx.psbt.clone()))
+        .on_press(SpendTxMessage::Select(tx.psbt.psbt().clone()))
         .width(Length::Fill)
         .into()
     }

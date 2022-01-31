@@ -1,9 +1,13 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction};
+use bitcoin::{
+    consensus::encode, hashes::hex::FromHex, util::psbt::PartiallySignedTransaction, Transaction,
+};
 use serde::{Deserialize, Serialize};
 
 use revaultd::commands::ListVaultsEntry;
 pub use revaultd::commands::{
-    GetInfoResult, HistoryEvent, HistoryEventKind, ServerStatus, ServersStatuses, VaultStatus,
+    GetInfoResult, HistoryEvent, HistoryEventKind, ListOnchainTxEntry, ListSpendEntry,
+    ListSpendStatus, RevocationTransactions, ServerStatus, ServersStatuses, VaultStatus,
+    WalletTransaction,
 };
 
 /// listvaults response
@@ -90,80 +94,13 @@ pub const MOVED_VAULT_STATUSES: [VaultStatus; 4] = [
     VaultStatus::Spent,
 ];
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SpendTxStatus {
-    #[serde(rename = "non_final")]
-    NonFinal,
-    #[serde(rename = "pending")]
-    Pending,
-    #[serde(rename = "broadcasted")]
-    Broadcasted,
-}
+pub type SpendTxStatus = ListSpendStatus;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultTransactions {
-    pub vault_outpoint: String,
-    pub deposit: BroadcastedTransaction,
-    pub unvault: Option<BroadcastedTransaction>,
-    pub spend: Option<BroadcastedTransaction>,
-    pub cancel: Option<BroadcastedTransaction>,
-    pub emergency: Option<BroadcastedTransaction>,
-    pub unvault_emergency: Option<BroadcastedTransaction>,
-}
+pub type VaultTransactions = ListOnchainTxEntry;
 
-impl VaultTransactions {
-    pub fn last_broadcasted_tx(&self) -> &BroadcastedTransaction {
-        if let Some(tx) = &self.spend {
-            return tx;
-        }
-        if let Some(tx) = &self.cancel {
-            return tx;
-        }
-        if let Some(tx) = &self.unvault_emergency {
-            return tx;
-        }
-        if let Some(tx) = &self.emergency {
-            return tx;
-        }
-        if let Some(tx) = &self.unvault {
-            return tx;
-        }
-        &self.deposit
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct BroadcastedTransaction {
-    /// Height of the block containing the transaction.
-    pub blockheight: Option<u64>,
-    #[serde(rename = "hex", with = "bitcoin_transaction")]
-    pub tx: Transaction,
-    /// reception time as Unix Epoch timestamp
-    pub received_at: i64,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct SignedTransaction {
-    #[serde(rename = "hex", with = "bitcoin_transaction")]
-    pub tx: Transaction,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UnsignedTransaction {
-    #[serde(with = "bitcoin_psbt")]
-    pub psbt: PartiallySignedTransaction,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct RevocationTransactions {
-    #[serde(with = "bitcoin_psbt")]
-    pub cancel_tx: PartiallySignedTransaction,
-
-    #[serde(with = "bitcoin_psbt")]
-    pub emergency_tx: PartiallySignedTransaction,
-
-    #[serde(with = "bitcoin_psbt")]
-    pub emergency_unvault_tx: PartiallySignedTransaction,
+pub fn transaction_from_hex(hex: &str) -> Transaction {
+    let bytes = Vec::from_hex(&hex).unwrap();
+    encode::deserialize::<Transaction>(&bytes).unwrap()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -181,39 +118,7 @@ pub struct SpendTransaction {
     pub feerate: u32,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct SpendTx {
-    #[serde(with = "bitcoin_psbt")]
-    pub psbt: PartiallySignedTransaction,
-    pub deposit_outpoints: Vec<String>,
-    pub change_index: Option<usize>,
-    pub cpfp_index: usize,
-}
-
-mod bitcoin_transaction {
-    use bitcoin::{
-        consensus::encode,
-        hashes::hex::{FromHex, ToHex},
-        Transaction,
-    };
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Transaction, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let bytes = Vec::from_hex(&s).map_err(serde::de::Error::custom)?;
-        encode::deserialize::<Transaction>(&bytes).map_err(serde::de::Error::custom)
-    }
-
-    pub fn serialize<S>(tx: &Transaction, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&encode::serialize(&tx).to_hex())
-    }
-}
+pub type SpendTx = ListSpendEntry;
 
 mod bitcoin_psbt {
     use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction};
