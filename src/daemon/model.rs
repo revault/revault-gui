@@ -2,7 +2,7 @@ use bitcoin::{util::psbt::PartiallySignedTransaction, Transaction, Txid};
 use serde::{Deserialize, Serialize};
 
 use revaultd::commands::ListVaultsEntry;
-pub use revaultd::commands::{GetInfoResult, VaultStatus};
+pub use revaultd::commands::{GetInfoResult, ServerStatus, ServersStatuses, VaultStatus};
 
 /// listvaults response
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -235,19 +235,6 @@ mod bitcoin_psbt {
     {
         serializer.serialize_str(&base64::encode(&encode::serialize(&psbt)))
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ServersStatuses {
-    pub coordinator: ServerStatus,
-    pub cosigners: Vec<ServerStatus>,
-    pub watchtowers: Vec<ServerStatus>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ServerStatus {
-    pub host: String,
-    pub reachable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
