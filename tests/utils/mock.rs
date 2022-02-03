@@ -8,6 +8,7 @@ use std::sync::{
 };
 use std::thread;
 
+#[derive(Debug)]
 pub struct DaemonClient {
     transport: Mutex<(Sender<Value>, Receiver<Result<Value, RevaultDError>>)>,
 }

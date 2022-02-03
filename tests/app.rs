@@ -57,7 +57,6 @@ async fn test_deposit_state() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -148,7 +147,6 @@ async fn test_emergency_state() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -267,7 +265,6 @@ async fn test_vaults_state() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -377,7 +374,6 @@ async fn test_history_state_filter() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -483,7 +479,6 @@ async fn test_history_state_pagination() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -615,7 +610,6 @@ async fn test_history_state_pagination_batching() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -722,7 +716,6 @@ async fn test_history_state_select_event() {
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
