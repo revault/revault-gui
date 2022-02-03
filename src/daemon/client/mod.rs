@@ -45,7 +45,7 @@ impl<C: Client> RevaultD<C> {
     }
 }
 
-impl<C: Client> Daemon for RevaultD<C> {
+impl<C: Client + Debug> Daemon for RevaultD<C> {
     fn is_external(&self) -> bool {
         true
     }

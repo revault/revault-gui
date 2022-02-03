@@ -54,6 +54,9 @@ impl From<&Error> for WarningMessage {
                     }
                 }
                 RevaultDError::Unexpected(_) => WarningMessage("Unknown error".to_string()),
+                RevaultDError::Start(_) => {
+                    WarningMessage("Revault daemon failed to start".to_string())
+                }
                 RevaultDError::NoAnswer | RevaultDError::Transport(..) => {
                     WarningMessage("Communication with Revault daemon failed".to_string())
                 }

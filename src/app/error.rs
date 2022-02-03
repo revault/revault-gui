@@ -30,6 +30,9 @@ impl std::fmt::Display for Error {
                         write!(f, "{}", e)
                     }
                 }
+                RevaultDError::Start(e) => {
+                    write!(f, "Failed to start daemon: {}", e)
+                }
                 RevaultDError::Rpc(code, e) => {
                     write!(f, "[{:?}] {}", code, e)
                 }

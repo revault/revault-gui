@@ -21,8 +21,9 @@ pub async fn start_daemon(config_path: PathBuf) -> Result<EmbeddedDaemon, Revaul
 
     sodiumoxide::init().map_err(|_| RevaultDError::Start("sodiumoxide::init".to_string()))?;
 
-    let config = Config::from_file(Some(config_path))
+    let mut config = Config::from_file(Some(config_path))
         .map_err(|e| RevaultDError::Start(format!("Error parsing config: {}", e)))?;
+    config.daemon = Some(false);
 
     let mut daemon = EmbeddedDaemon::new();
     daemon.start(config)?;

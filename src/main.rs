@@ -160,11 +160,12 @@ impl Application for GUI {
         clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
         if matches!(message, Message::CtrlC) {
-            return match &mut self.state {
-                State::Installer(v) => v.stop().map(Message::Install),
-                State::Loader(v) => v.stop().map(Message::Load),
-                State::App(v) => v.stop().map(Message::Run),
+            match &mut self.state {
+                State::Installer(v) => v.stop(),
+                State::Loader(v) => v.stop(),
+                State::App(v) => v.stop(),
             };
+            return Command::none();
         }
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
@@ -182,16 +183,6 @@ impl Application for GUI {
         if let Message::Load(loader::Message::Failure(e)) = &message {
             log::info!("daemon panic {}", e);
             self.daemon_running = false;
-        }
-
-        if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
-            log::info!("stopping daemon {:?}", res);
-            return Command::none();
-        }
-
-        if let Message::Run(app::Message::StoppingDaemon(res)) = message {
-            log::info!("stopping daemon {:?}", res);
-            return Command::none();
         }
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
@@ -218,7 +209,6 @@ impl Application for GUI {
                     converter,
                     role,
                     Menu::Home,
-                    self.daemon_running,
                     Box::new(|| Box::pin(connect_hardware_wallet())),
                 );
 

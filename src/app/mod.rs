@@ -77,6 +77,20 @@ impl App {
         self.should_exit
     }
 
+    pub fn stop(&mut self) {
+        log::info!("Close requested");
+        if !self.context.revaultd.is_external() {
+            log::info!("Stopping internal daemon...");
+            if let Some(d) = Arc::get_mut(&mut self.context.revaultd) {
+                d.stop().expect("Daemon is internal");
+                log::info!("Internal daemon stopped");
+                self.should_exit = true;
+            }
+        } else {
+            self.should_exit = true;
+        }
+    }
+
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::Tick => {
@@ -107,17 +121,7 @@ impl App {
                 Command::none()
             }
             Message::Event(Event::Window(window::Event::CloseRequested)) => {
-                log::info!("Close requested");
-                if !self.context.revaultd.is_external() {
-                    log::info!("Stopping internal daemon...");
-                    if let Some(d) = Arc::get_mut(&mut self.context.revaultd) {
-                        d.stop().expect("Daemon is internal");
-                        log::info!("Internal daemon stopped");
-                        self.should_exit = true;
-                    }
-                } else {
-                    self.should_exit = true;
-                }
+                self.stop();
                 Command::none()
             }
             _ => self.state.update(&self.context, message),

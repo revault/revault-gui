@@ -14,7 +14,7 @@ use crate::{
     app::config::{default_datadir, Config as GUIConfig},
     daemon::{
         client,
-        embedded::{start_daemon, DaemonError, EmbeddedDaemon},
+        embedded::{start_daemon, EmbeddedDaemon},
         model::GetInfoResult,
         Daemon, RevaultDError,
     },
@@ -35,7 +35,7 @@ enum Step {
     Connecting,
     StartingDaemon,
     Syncing {
-        revaultd_client: Arc<RevaultD>,
+        daemon: Arc<dyn Daemon + Sync + Send>,
         progress: f64,
     },
     Error(Error),
@@ -45,13 +45,12 @@ enum Step {
 pub enum Message {
     Event(iced_native::Event),
     Syncing(Result<GetInfoResult, RevaultDError>),
-    Synced(GetInfoResult, Arc<RevaultD>),
-    Connected(Result<Arc<RevaultD>, Error>),
-    Loaded(Result<Arc<RevaultD>, Error>),
-    StoppingDaemon(Result<(), RevaultDError>),
+    Synced(GetInfoResult, Arc<dyn Daemon + Sync + Send>),
+    Connected(Result<Arc<dyn Daemon + Sync + Send>, Error>),
+    Loaded(Result<Arc<dyn Daemon + Sync + Send>, Error>),
     DaemonStopped,
     DaemonStarted(EmbeddedDaemon),
-    Failure(DaemonError),
+    Failure(RevaultDError),
 }
 
 impl Loader {
@@ -89,11 +88,11 @@ impl Loader {
         )
     }
 
-    fn on_load(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
+    fn on_load(&mut self, res: Result<Arc<dyn Daemon + Send + Sync>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
                 self.step = Step::Syncing {
-                    revaultd_client: revaultd.clone(),
+                    daemon: revaultd.clone(),
                     progress: 0.0,
                 };
                 return Command::perform(sync(revaultd, false), Message::Syncing);
@@ -137,11 +136,14 @@ impl Loader {
         Command::none()
     }
 
-    fn on_connect(&mut self, res: Result<Arc<RevaultD>, Error>) -> Command<Message> {
+    fn on_connect(
+        &mut self,
+        res: Result<Arc<dyn Daemon + Send + Sync>, Error>,
+    ) -> Command<Message> {
         match res {
             Ok(revaultd) => {
                 self.step = Step::Syncing {
-                    revaultd_client: revaultd.clone(),
+                    daemon: revaultd.clone(),
                     progress: 0.0,
                 };
                 Command::perform(sync(revaultd, false), Message::Syncing)
@@ -153,22 +155,18 @@ impl Loader {
         }
     }
 
-    #[allow(unused_variables, unused_assignments)]
     fn on_sync(&mut self, res: Result<GetInfoResult, RevaultDError>) -> Command<Message> {
         match &mut self.step {
-            Step::Syncing {
-                revaultd_client,
-                mut progress,
-            } => {
+            Step::Syncing { daemon, progress } => {
                 match res {
                     Ok(info) => {
                         if (info.sync - 1.0_f64).abs() < f64::EPSILON {
-                            return Command::perform(
-                                synced(info, revaultd_client.clone()),
-                                |res| Message::Synced(res.0, res.1),
-                            );
+                            let daemon = daemon.clone();
+                            return Command::perform(async move { (info, daemon) }, |res| {
+                                Message::Synced(res.0, res.1)
+                            });
                         } else {
-                            progress = info.sync
+                            *progress = info.sync
                         }
                     }
                     Err(e) => {
@@ -176,26 +174,28 @@ impl Loader {
                         return Command::none();
                     }
                 };
-                Command::perform(sync(revaultd_client.clone(), true), Message::Syncing)
+                Command::perform(sync(daemon.clone(), true), Message::Syncing)
             }
             _ => Command::none(),
         }
     }
 
-    pub fn stop(&mut self) -> Command<Message> {
-        self.should_exit = true;
-        if self.daemon_started {
-            if let Step::Syncing {
-                revaultd_client, ..
-            } = &self.step
-            {
-                return Command::perform(
-                    stop_daemon(revaultd_client.clone()),
-                    Message::StoppingDaemon,
-                );
+    pub fn stop(&mut self) {
+        log::info!("Close requested");
+        if let Step::Syncing { daemon, .. } = &mut self.step {
+            if !daemon.is_external() {
+                log::info!("Stopping internal daemon...");
+                if let Some(d) = Arc::get_mut(daemon) {
+                    d.stop().expect("Daemon is internal");
+                    log::info!("Internal daemon stopped");
+                    self.should_exit = true;
+                }
+            } else {
+                self.should_exit = true;
             }
+        } else {
+            self.should_exit = true;
         }
-        Command::none()
     }
 
     pub fn update(&mut self, message: Message) -> Command<Message> {
@@ -207,7 +207,10 @@ impl Loader {
                 self.daemon_started = false;
                 Command::none()
             }
-            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
+            Message::Event(Event::Window(window::Event::CloseRequested)) => {
+                self.stop();
+                Command::none()
+            }
             _ => Command::none(),
         }
     }
@@ -248,11 +251,7 @@ pub fn cover<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Element<'a, T> {
         .into()
 }
 
-async fn synced(info: GetInfoResult, revaultd: Arc<RevaultD>) -> (GetInfoResult, Arc<RevaultD>) {
-    (info, revaultd)
-}
-
-async fn connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
+async fn connect(socket_path: PathBuf) -> Result<Arc<dyn Daemon + Sync + Send>, Error> {
     let client = client::jsonrpc::JsonRPCClient::new(socket_path);
     let revaultd = RevaultD::new(client);
 
@@ -263,14 +262,17 @@ async fn connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     Ok(Arc::new(revaultd))
 }
 
-async fn sync(revaultd: Arc<RevaultD>, sleep: bool) -> Result<GetInfoResult, RevaultDError> {
+async fn sync(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
+    sleep: bool,
+) -> Result<GetInfoResult, RevaultDError> {
     if sleep {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
     revaultd.get_info()
 }
 
-async fn try_connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
+async fn try_connect(socket_path: PathBuf) -> Result<Arc<dyn Daemon + Send + Sync>, Error> {
     fn try_connect_to_revault(socket_path: &PathBuf, i: i32) -> Result<Arc<RevaultD>, Error> {
         std::thread::sleep(std::time::Duration::from_secs(3));
         let client = client::jsonrpc::JsonRPCClient::new(socket_path);
@@ -293,15 +295,10 @@ async fn try_connect(socket_path: PathBuf) -> Result<Arc<RevaultD>, Error> {
     Ok(client)
 }
 
-async fn stop_daemon(client: Arc<RevaultD>) -> Result<(), RevaultDError> {
-    Ok(())
-}
-
 #[derive(Debug)]
 pub enum Error {
     ConfigError(ConfigError),
     RevaultDError(RevaultDError),
-    DaemonError(DaemonError),
 }
 
 impl std::fmt::Display for Error {
@@ -309,7 +306,6 @@ impl std::fmt::Display for Error {
         match self {
             Self::ConfigError(e) => write!(f, "Config error: {}", e),
             Self::RevaultDError(e) => write!(f, "RevaultD error: {}", e),
-            Self::DaemonError(e) => write!(f, "daemon error: {}", e),
         }
     }
 }
@@ -323,12 +319,6 @@ impl From<ConfigError> for Error {
 impl From<RevaultDError> for Error {
     fn from(error: RevaultDError) -> Self {
         Error::RevaultDError(error)
-    }
-}
-
-impl From<DaemonError> for Error {
-    fn from(error: DaemonError) -> Self {
-        Error::DaemonError(error)
     }
 }
 
