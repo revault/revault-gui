@@ -8,16 +8,14 @@ use iced_native::{window, Event};
 use log::{debug, info};
 
 use revault_ui::component::{image::revault_colored_logo, text::Text};
-use revaultd::config::{Config, ConfigError};
+use revaultd::{
+    config::{Config, ConfigError},
+    revault_net::sodiumoxide,
+};
 
 use crate::{
     app::config::{default_datadir, Config as GUIConfig},
-    daemon::{
-        client,
-        embedded::{start_daemon, EmbeddedDaemon},
-        model::GetInfoResult,
-        Daemon, RevaultDError,
-    },
+    daemon::{client, embedded::EmbeddedDaemon, model::GetInfoResult, Daemon, RevaultDError},
 };
 
 type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
@@ -46,9 +44,8 @@ pub enum Message {
     Event(iced_native::Event),
     Syncing(Result<GetInfoResult, RevaultDError>),
     Synced(GetInfoResult, Arc<dyn Daemon + Sync + Send>),
-    Connected(Result<Arc<dyn Daemon + Sync + Send>, Error>),
+    Started(Result<Arc<dyn Daemon + Sync + Send>, Error>),
     Loaded(Result<Arc<dyn Daemon + Sync + Send>, Error>),
-    DaemonStopped,
     DaemonStarted(EmbeddedDaemon),
     Failure(RevaultDError),
 }
@@ -108,26 +105,12 @@ impl Loader {
                 | Error::RevaultDError(RevaultDError::Transport(Some(ErrorKind::NotFound), _)) => {
                     self.step = Step::StartingDaemon;
                     self.daemon_started = true;
-                    return Command::batch(vec![
-                        Command::perform(
-                            start_daemon(self.gui_config.revaultd_config_path.clone()),
-                            |res| match res {
-                                Ok(daemon) => Message::DaemonStarted(daemon),
-                                Err(e) => Message::Failure(e),
-                            },
-                        ),
-                        Command::perform(
-                            try_connect(
-                                socket_path(
-                                    &self.daemon_config.as_ref().unwrap().data_dir,
-                                    self.daemon_config.as_ref().unwrap().bitcoind_config.network,
-                                )
-                                .unwrap(),
-                            ),
-                            Message::Connected,
-                        ),
-                    ]);
+                    return Command::perform(
+                        start_daemon(self.gui_config.revaultd_config_path.clone()),
+                        Message::Started,
+                    );
                 }
+
                 _ => {
                     self.step = Step::Error(e);
                 }
@@ -136,10 +119,7 @@ impl Loader {
         Command::none()
     }
 
-    fn on_connect(
-        &mut self,
-        res: Result<Arc<dyn Daemon + Send + Sync>, Error>,
-    ) -> Command<Message> {
+    fn on_start(&mut self, res: Result<Arc<dyn Daemon + Send + Sync>, Error>) -> Command<Message> {
         match res {
             Ok(revaultd) => {
                 self.step = Step::Syncing {
@@ -200,7 +180,7 @@ impl Loader {
 
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::Connected(res) => self.on_connect(res),
+            Message::Started(res) => self.on_start(res),
             Message::Loaded(res) => self.on_load(res),
             Message::Syncing(res) => self.on_sync(res),
             Message::Failure(_) => {
@@ -262,6 +242,22 @@ async fn connect(socket_path: PathBuf) -> Result<Arc<dyn Daemon + Sync + Send>, 
     Ok(Arc::new(revaultd))
 }
 
+// RevaultD can start only if a config path is given.
+pub async fn start_daemon(config_path: PathBuf) -> Result<Arc<dyn Daemon + Sync + Send>, Error> {
+    debug!("starting revaultd daemon");
+
+    sodiumoxide::init().map_err(|_| RevaultDError::Start("sodiumoxide::init".to_string()))?;
+
+    let mut config = Config::from_file(Some(config_path))
+        .map_err(|e| RevaultDError::Start(format!("Error parsing config: {}", e)))?;
+    config.daemon = Some(false);
+
+    let mut daemon = EmbeddedDaemon::new();
+    daemon.start(config)?;
+
+    Ok(Arc::new(daemon))
+}
+
 async fn sync(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     sleep: bool,
@@ -270,29 +266,6 @@ async fn sync(
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
     revaultd.get_info()
-}
-
-async fn try_connect(socket_path: PathBuf) -> Result<Arc<dyn Daemon + Send + Sync>, Error> {
-    fn try_connect_to_revault(socket_path: &PathBuf, i: i32) -> Result<Arc<RevaultD>, Error> {
-        std::thread::sleep(std::time::Duration::from_secs(3));
-        let client = client::jsonrpc::JsonRPCClient::new(socket_path);
-        let revaultd = RevaultD::new(client);
-        if let Err(e) = revaultd.get_info() {
-            log::warn!("Failed to connect to revaultd ({} more try): {}", i, e);
-            return Err(e.into());
-        };
-
-        Ok(Arc::new(revaultd))
-    }
-
-    let client = try_connect_to_revault(&socket_path, 5)
-        .or_else(|_| try_connect_to_revault(&socket_path, 4))
-        .or_else(|_| try_connect_to_revault(&socket_path, 3))
-        .or_else(|_| try_connect_to_revault(&socket_path, 2))
-        .or_else(|_| try_connect_to_revault(&socket_path, 1))
-        .or_else(|_| try_connect_to_revault(&socket_path, 0))?;
-
-    Ok(client)
 }
 
 #[derive(Debug)]

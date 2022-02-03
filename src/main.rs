@@ -74,7 +74,6 @@ fn log_level_from_config(config: &app::Config) -> Result<log::LevelFilter, Box<d
 }
 
 pub struct GUI {
-    daemon_running: bool,
     state: State,
 }
 
@@ -90,16 +89,6 @@ pub enum Message {
     Install(installer::Message),
     Load(loader::Message),
     Run(app::Message),
-}
-
-impl GUI {
-    fn exit_requested(&self) -> bool {
-        match &self.state {
-            State::Installer(v) => v.should_exit(),
-            State::Loader(v) => v.should_exit(),
-            State::App(v) => v.should_exit(),
-        }
-    }
 }
 
 async fn ctrl_c() -> Result<(), ()> {
@@ -130,7 +119,6 @@ impl Application for GUI {
                 (
                     Self {
                         state: State::Installer(install),
-                        daemon_running: false,
                     },
                     Command::batch(vec![
                         command.map(Message::Install),
@@ -143,7 +131,6 @@ impl Application for GUI {
                 (
                     Self {
                         state: State::Loader(loader),
-                        daemon_running: false,
                     },
                     Command::batch(vec![
                         command.map(Message::Load),
@@ -172,17 +159,6 @@ impl Application for GUI {
             let (loader, command) = Loader::new(cfg);
             self.state = State::Loader(loader);
             return command.map(Message::Load);
-        }
-
-        if let Message::Load(loader::Message::DaemonStopped) = message {
-            log::info!("daemon stopped");
-            self.daemon_running = false;
-            return Command::none();
-        }
-
-        if let Message::Load(loader::Message::Failure(e)) = &message {
-            log::info!("daemon panic {}", e);
-            self.daemon_running = false;
         }
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
@@ -226,20 +202,18 @@ impl Application for GUI {
             (State::Installer(i), Message::Install(msg)) => {
                 i.update(msg, clipboard).map(Message::Install)
             }
-            (State::Loader(loader), Message::Load(msg)) => {
-                let cmd = loader.update(msg).map(Message::Load);
-                if loader.daemon_started {
-                    self.daemon_running = true;
-                }
-                cmd
-            }
+            (State::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
             (State::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
             _ => Command::none(),
         }
     }
 
     fn should_exit(&self) -> bool {
-        self.exit_requested() && !self.daemon_running
+        match &self.state {
+            State::Installer(v) => v.should_exit(),
+            State::Loader(v) => v.should_exit(),
+            State::App(v) => v.should_exit(),
+        }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
