@@ -1,4 +1,4 @@
-use iced::{Column, Container, Element, Length};
+use iced::{Alignment, Column, Container, Element, Length};
 
 use revault_ui::{
     component::{button, card, text::Text},
@@ -29,14 +29,14 @@ impl SignerView {
         if signed {
             return card::success(Container::new(
                 Column::new()
-                    .align_items(iced::Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20)
                     .push(Text::from(icon::done_icon()).size(20).success())
                     .push(Text::new("Signed").success()),
             ))
             .padding(50)
             .width(Length::Fill)
-            .align_x(iced::Align::Center)
+            .center_x()
             .into();
         }
         if connected {
@@ -49,26 +49,26 @@ impl SignerView {
             }
             card::white(Container::new(
                 Column::new()
-                    .align_items(iced::Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20)
                     .push(icon::connected_device_icon().size(20))
                     .push(sign_button),
             ))
             .padding(50)
             .width(Length::Fill)
-            .align_x(iced::Align::Center)
+            .center_x()
             .into()
         } else {
             card::white(Container::new(
                 Column::new()
-                    .align_items(iced::Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20)
                     .push(icon::connect_device_icon().size(20))
                     .push(Text::new("Connect hardware wallet")),
             ))
             .padding(50)
             .width(Length::Fill)
-            .align_x(iced::Align::Center)
+            .center_x()
             .into()
         }
     }

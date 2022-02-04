@@ -1,6 +1,6 @@
 use bitcoin::Amount;
 use chrono::NaiveDateTime;
-use iced::{pick_list, Align, Column, Container, Element, Length, Row};
+use iced::{alignment, pick_list, Alignment, Column, Container, Element, Length, Row};
 
 use revault_ui::{
     component::{badge, button, card, separation, text::Text, TransparentPickListStyle},
@@ -100,7 +100,7 @@ impl HistoryView {
                     .width(Length::Units(200))
                     .style(TransparentPickListStyle),
                 )
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         );
 
         if !events.is_empty() {
@@ -113,7 +113,7 @@ impl HistoryView {
                     &mut self.next_button,
                     Container::new(Text::new("See more"))
                         .width(Length::Fill)
-                        .align_x(Align::Center),
+                        .center_x(),
                 )
                 .width(Length::Fill)
                 .on_press(Message::Next),
@@ -154,12 +154,12 @@ impl HistoryEventListItemView {
                                 .bold(),
                         )
                         .push(Text::new(&format!("{}", date)).small())
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .spacing(10),
                 )
                 .width(Length::FillPortion(2)),
             )
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         if let Some(fee) = event.fee {
             row = row.push(
@@ -171,13 +171,13 @@ impl HistoryEventListItemView {
                     .small(),
                 )
                 .width(Length::FillPortion(1))
-                .align_x(Align::End),
+                .align_x(alignment::Horizontal::Right),
             );
         } else {
             row = row.push(
                 Container::new(Column::new())
                     .width(Length::FillPortion(1))
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
             );
         }
 
@@ -200,16 +200,16 @@ impl HistoryEventListItemView {
                         )
                         .push(Text::new(&format!("{}", ctx.converter.unit)).small())
                         .spacing(5)
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
-                .align_x(Align::End)
+                .align_x(alignment::Horizontal::Right)
                 .width(Length::FillPortion(1)),
             );
         } else {
             row = row.push(
                 Container::new(Column::new())
                     .width(Length::FillPortion(1))
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
             );
         }
 
@@ -290,10 +290,10 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
                                     NaiveDateTime::from_timestamp(event.date.into(), 0)
                                 ))),
                         )
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .spacing(20),
                 )
-                .align_x(Align::Center)
+                .center_x()
                 .width(Length::FillPortion(1)),
             )
             .push(
@@ -307,10 +307,10 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
                                 .push(Text::new("Block Height:").bold())
                                 .push(Text::new(&event.blockheight.to_string())),
                         )
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .spacing(20),
                 )
-                .align_x(Align::Center)
+                .center_x()
                 .width(Length::FillPortion(1)),
             )
             .spacing(20),
@@ -324,7 +324,7 @@ fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 .push(event_badge(event))
                 .push(Text::new("Deposit").bold())
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )
         .push(
             Container::new(
@@ -351,7 +351,7 @@ fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 )
                 .spacing(20),
         ))
-        .align_items(Align::Center)
+        .align_items(Alignment::Center)
         .spacing(20)
         .into()
 }
@@ -363,7 +363,7 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 .push(event_badge(event))
                 .push(Text::new("Cancel").bold())
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )
         .push(Container::new(Text::new(&format!(
             "Fee: {} {}",
@@ -387,7 +387,7 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 )
                 .spacing(20),
         ))
-        .align_items(Align::Center)
+        .align_items(Alignment::Center)
         .spacing(20)
         .into()
 }
@@ -438,7 +438,7 @@ fn spend<'a, T: 'a>(
                 .push(event_badge(event))
                 .push(Text::new("Spend").bold())
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )
         .push(
             Column::new()
@@ -458,7 +458,7 @@ fn spend<'a, T: 'a>(
                         .converts(Amount::from_sat(event.fee.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )
         .push(card::white(
             Column::new()
@@ -472,7 +472,7 @@ fn spend<'a, T: 'a>(
                 .spacing(20),
         ))
         .push(col_recipients)
-        .align_items(Align::Center)
+        .align_items(Alignment::Center)
         .spacing(20)
         .into()
 }

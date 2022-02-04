@@ -1,4 +1,4 @@
-use iced::{Align, Column, Container, Element, Length, QRCode, Row};
+use iced::{Alignment, Column, Container, Element, Length, QRCode, Row};
 
 use revault_ui::component::{button, card, text::Text};
 
@@ -34,7 +34,7 @@ impl DepositView {
         address: &bitcoin::Address,
     ) -> Element<'a, Message> {
         let mut col = Column::new()
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .spacing(20)
             .push(Text::new("Please, use this deposit address:").bold());
 
@@ -50,7 +50,7 @@ impl DepositView {
                     button::clipboard(&mut self.copy_button, Message::Clipboard(addr))
                         .width(Length::Shrink),
                 )
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         ));
 
         self.dashboard.view(ctx, warning, card::white(col))

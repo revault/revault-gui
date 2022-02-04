@@ -1,7 +1,8 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
-    scrollable, tooltip, Align, Checkbox, Column, Container, Element, Length, Row, Tooltip,
+    alignment::Horizontal, scrollable, tooltip, Alignment, Checkbox, Column, Container, Element,
+    Length, Row, Tooltip,
 };
 
 use revaultd::revault_tx::transactions::RevaultTransaction;
@@ -62,7 +63,7 @@ impl SpendTransactionView {
                         button::button_content(Some(icon::trash_icon()), "Delete")
                             .padding(5)
                             .width(Length::Units(100))
-                            .align_x(Align::Center),
+                            .align_x(Horizontal::Center),
                     )
                     .on_press(Message::SpendTx(SpendTxMessage::SelectDelete)),
                 )
@@ -107,7 +108,7 @@ impl SpendTransactionView {
                             )
                             .width(Length::Shrink),
                         )
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                     )
                     .push(
                         Column::new()
@@ -116,7 +117,7 @@ impl SpendTransactionView {
                                     .push(badge::pending_spent_tx())
                                     .push(Text::new("Spend").bold())
                                     .spacing(5)
-                                    .align_items(Align::Center),
+                                    .align_items(Alignment::Center),
                             )
                             .push(
                                 Column::new()
@@ -134,7 +135,7 @@ impl SpendTransactionView {
                                         ctx.converter.converts(Amount::from_sat(fees)),
                                         ctx.converter.unit,
                                     ))))
-                                    .align_items(Align::Center),
+                                    .align_items(Alignment::Center),
                             )
                             .push(card::white(
                                 Column::new()
@@ -163,10 +164,10 @@ impl SpendTransactionView {
                                                                         .len(),
                                                                 ))),
                                                         )
-                                                        .align_items(Align::Center)
+                                                        .align_items(Alignment::Center)
                                                         .spacing(20),
                                                 )
-                                                .align_x(Align::Center)
+                                                .align_x(Horizontal::Center)
                                                 .width(Length::FillPortion(1)),
                                             )
                                             .push(
@@ -181,7 +182,7 @@ impl SpendTransactionView {
                                                             .success(),
                                                         ))
                                                         .push(Text::new("You signed").success())
-                                                        .align_items(Align::Center)
+                                                        .align_items(Alignment::Center)
                                                         .spacing(20)
                                                 } else {
                                                     Row::new()
@@ -191,13 +192,13 @@ impl SpendTransactionView {
                                                                 .width(Length::Fill),
                                                         )))
                                                         .push(Text::new("You did not sign"))
-                                                        .align_items(Align::Center)
+                                                        .align_items(Alignment::Center)
                                                         .spacing(20)
                                                 })
-                                                .align_x(Align::Center)
+                                                .align_x(Horizontal::Center)
                                                 .width(Length::FillPortion(1)),
                                             )
-                                            .align_items(Align::Center)
+                                            .align_items(Alignment::Center)
                                             .spacing(20),
                                     ))
                                     .push(separation().width(Length::Fill))
@@ -225,9 +226,9 @@ impl SpendTransactionView {
                             ))
                             .spacing(20)
                             .max_width(800)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             ),
         ))
         .style(ContainerBackgroundStyle)
@@ -383,7 +384,7 @@ impl SpendTransactionDeleteView {
                                 &mut self.unconfirm_button,
                                 button::button_content(None, "No")
                                     .width(Length::Units(100))
-                                    .align_x(Align::Center),
+                                    .align_x(Horizontal::Center),
                             )
                             .on_press(Message::SpendTx(SpendTxMessage::UnselectDelete)),
                         )
@@ -391,7 +392,7 @@ impl SpendTransactionDeleteView {
                             button::primary(
                                 &mut self.confirm_button,
                                 button::button_content(None, "Delete transaction")
-                                    .align_x(Align::Center),
+                                    .align_x(Horizontal::Center),
                             )
                             .on_press(Message::SpendTx(SpendTxMessage::Delete)),
                         )
@@ -401,10 +402,10 @@ impl SpendTransactionDeleteView {
 
         Container::new(
             card::white(Container::new(
-                col_action.align_items(Align::Center).spacing(20),
+                col_action.align_items(Alignment::Center).spacing(20),
             ))
             .width(Length::Fill)
-            .align_x(Align::Center)
+            .align_x(Horizontal::Center)
             .padding(20),
         )
         .width(Length::Fill)
@@ -450,7 +451,7 @@ impl SpendTransactionBroadcastView {
                 card::success(Text::new("Transaction is broadcasted"))
                     .padding(20)
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .align_x(Horizontal::Center),
             );
         } else {
             col_action = col_action
@@ -486,10 +487,10 @@ impl SpendTransactionBroadcastView {
         }
 
         card::white(Container::new(
-            col_action.align_items(Align::Center).spacing(20),
+            col_action.align_items(Alignment::Center).spacing(20),
         ))
         .width(Length::Fill)
-        .align_x(Align::Center)
+        .align_x(Horizontal::Center)
         .padding(20)
         .into()
     }
@@ -533,7 +534,7 @@ impl SpendTransactionListItemView {
                     )))
                     .push(icon::key_icon())
                     .spacing(5)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
         }
         button::white_card_button(
@@ -565,7 +566,7 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(" {}", ctx.converter.unit)).small(),
                                         )
-                                        .align_items(Align::Center),
+                                        .align_items(Alignment::Center),
                                 )
                                 .push(
                                     Row::new()
@@ -579,14 +580,14 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(" {}", ctx.converter.unit)).small(),
                                         )
-                                        .align_items(Align::Center),
+                                        .align_items(Alignment::Center),
                                 )
-                                .align_items(Align::End),
+                                .align_items(Alignment::End),
                         )
                         .width(Length::Shrink),
                     )
                     .spacing(20)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             ),
         )
         .on_press(SpendTxMessage::Select(tx.psbt.psbt().clone()))

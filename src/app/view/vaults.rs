@@ -1,4 +1,4 @@
-use iced::{pick_list, Align, Column, Container, Element, Length, Row};
+use iced::{pick_list, Alignment, Column, Container, Element, Length, Row};
 
 use revault_ui::component::{text::Text, TransparentPickListStyle};
 
@@ -105,7 +105,7 @@ impl VaultsView {
                         .width(Length::Units(200))
                         .style(TransparentPickListStyle),
                     )
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .push(Column::with_children(vaults).spacing(5));
 

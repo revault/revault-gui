@@ -12,7 +12,7 @@ use crate::app::{
 };
 
 use iced::{
-    container, scrollable, tooltip, Align, Column, Container, Element, Length, Row, Tooltip,
+    container, scrollable, tooltip, Alignment, Column, Container, Element, Length, Row, Tooltip,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -66,7 +66,7 @@ pub fn main_section<'a, T: 'a>(menu: Container<'a, T>) -> Container<'a, T> {
     Container::new(menu.max_width(1500))
         .padding(20)
         .style(MainSectionStyle)
-        .align_x(iced::Align::Center)
+        .center_x()
         .width(Length::Fill)
         .height(Length::Fill)
 }
@@ -134,7 +134,7 @@ impl Modal {
                                 )
                                 .width(Length::Shrink),
                             )
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                             .padding(20),
                     )
                     .spacing(20),
@@ -142,7 +142,7 @@ impl Modal {
             .push(
                 Container::new(Container::new(content).max_width(1500))
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .center_x(),
             )
             .spacing(50);
 

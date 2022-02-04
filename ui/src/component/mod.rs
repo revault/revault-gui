@@ -7,7 +7,7 @@ pub mod text;
 
 use super::{color, font, icon};
 
-use iced::{container, scrollable, Column, Container, Length, Row, Scrollable};
+use iced::{container, scrollable, Alignment, Column, Container, Length, Row, Scrollable};
 
 use image::revault_colored_logo;
 use text::Text;
@@ -289,7 +289,7 @@ impl ProgressBar {
                 Ordering::Greater => row = row.push(self.progress_circle_todo(step)),
             }
         }
-        Container::new(row.align_items(iced::Align::Center))
+        Container::new(row.align_items(Alignment::Center))
     }
 
     fn progress_circle_todo<'a, T: 'a + Clone>(&self, step: &'static str) -> Container<'a, T> {
@@ -298,7 +298,7 @@ impl ProgressBar {
                 .push(icon::todo_icon().color(color::DARK_GREY))
                 .push(Text::new(step).small().color(color::DARK_GREY))
                 .spacing(10)
-                .align_items(iced::Align::Center),
+                .align_items(Alignment::Center),
         )
     }
 
@@ -308,7 +308,7 @@ impl ProgressBar {
                 .push(icon::todo_icon().color(color::DARK_GREY))
                 .push(Text::new(step).small().color(color::DARK_GREY))
                 .spacing(10)
-                .align_items(iced::Align::Center),
+                .align_items(Alignment::Center),
         )
     }
 
@@ -318,7 +318,7 @@ impl ProgressBar {
                 .push(icon::done_icon())
                 .push(Text::new(step).small())
                 .spacing(10)
-                .align_items(iced::Align::Center),
+                .align_items(Alignment::Center),
         )
     }
 }
