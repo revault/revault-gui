@@ -22,7 +22,7 @@ type RevaultD = client::RevaultD<client::jsonrpc::JsonRPCClient>;
 
 pub struct Loader {
     pub gui_config: GUIConfig,
-    pub daemon_config: Option<Config>,
+    pub daemon_config: Config,
     pub daemon_started: bool,
 
     should_exit: bool,
@@ -51,23 +51,7 @@ pub enum Message {
 }
 
 impl Loader {
-    pub fn new(gui_config: GUIConfig) -> (Self, Command<Message>) {
-        let revaultd_config_path = gui_config.revaultd_config_path.clone();
-        let daemon_config = match Config::from_file(Some(revaultd_config_path)) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                return (
-                    Loader {
-                        daemon_config: None,
-                        gui_config,
-                        step: Step::Error(e.into()),
-                        should_exit: false,
-                        daemon_started: false,
-                    },
-                    Command::none(),
-                )
-            }
-        };
+    pub fn new(gui_config: GUIConfig, daemon_config: Config) -> (Self, Command<Message>) {
         let path = socket_path(
             &daemon_config.data_dir,
             daemon_config.bitcoind_config.network,
@@ -75,7 +59,7 @@ impl Loader {
         .unwrap();
         (
             Loader {
-                daemon_config: Some(daemon_config),
+                daemon_config,
                 gui_config,
                 step: Step::Connecting,
                 should_exit: false,

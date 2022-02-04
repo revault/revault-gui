@@ -127,7 +127,9 @@ impl Application for GUI {
                 )
             }
             Config::Run(cfg) => {
-                let (loader, command) = Loader::new(cfg);
+                let daemon_cfg =
+                    DaemonConfig::from_file(Some(cfg.revaultd_config_path.clone())).unwrap();
+                let (loader, command) = Loader::new(cfg, daemon_cfg);
                 (
                     Self {
                         state: State::Loader(loader),
@@ -156,19 +158,18 @@ impl Application for GUI {
         }
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
-            let (loader, command) = Loader::new(cfg);
+            let daemon_cfg =
+                DaemonConfig::from_file(Some(cfg.revaultd_config_path.clone())).unwrap();
+            let (loader, command) = Loader::new(cfg, daemon_cfg);
             self.state = State::Loader(loader);
             return command.map(Message::Load);
         }
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
             if let State::Loader(loader) = &mut self.state {
-                let daemon_config =
-                    DaemonConfig::from_file(Some(loader.gui_config.revaultd_config_path.clone()))
-                        .unwrap();
                 let config = ConfigContext {
                     gui: loader.gui_config.clone(),
-                    daemon: daemon_config,
+                    daemon: loader.daemon_config.clone(),
                 };
 
                 let role = if config.daemon.stakeholder_config.is_some() {
