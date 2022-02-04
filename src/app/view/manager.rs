@@ -740,7 +740,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
             continue;
         }
 
-        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network).unwrap();
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network()).unwrap();
         col_output = col_output.push(card::simple(Container::new(
             Row::new()
                 .push(Container::new(Text::new(&addr.to_string()).small()).width(Length::Fill))
@@ -768,7 +768,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
     let right_column = if let Some(index) = change_index {
         let change_output = &psbt.global.unsigned_tx.output[index];
         let addr =
-            bitcoin::Address::from_script(&change_output.script_pubkey, ctx.network).unwrap();
+            bitcoin::Address::from_script(&change_output.script_pubkey, ctx.network()).unwrap();
         Column::new()
             .push(
                 Column::new()

@@ -754,9 +754,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                     if let Some((psbt, _)) = &self.psbt {
                         self.step = ManagerSendStep::Sign {
                             signer: Signer::new(SpendTransactionTarget::new(
-                                &ctx.revaultd
-                                    .config
-                                    .managers_xpubs()
+                                &ctx.managers_xpubs()
                                     .iter()
                                     .map(|xpub| xpub.master_fingerprint())
                                     .collect(),

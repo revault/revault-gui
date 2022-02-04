@@ -1,11 +1,13 @@
-use crate::daemon::{client::RevaultDError, config::ConfigError};
+use crate::daemon::client::RevaultDError;
+use revaultd::common::config::ConfigError;
 use std::convert::From;
 use std::io::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub enum Error {
     HardwareError(revault_hwi::HWIError),
-    ConfigError(ConfigError),
+    // TODO: add Clone to ConfigError
+    ConfigError(String),
     RevaultDError(RevaultDError),
     UnexpectedError(String),
 }
@@ -39,7 +41,7 @@ impl std::fmt::Display for Error {
 
 impl From<ConfigError> for Error {
     fn from(error: ConfigError) -> Self {
-        Error::ConfigError(error)
+        Error::ConfigError(error.to_string())
     }
 }
 

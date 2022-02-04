@@ -46,7 +46,7 @@ impl Sidebar {
     }
 
     pub fn view<C: Client>(&mut self, context: &Context<C>) -> Container<Message> {
-        let role = if context.role_edit {
+        let role = if context.role_editable() {
             Container::new(
                 pick_list::PickList::new(
                     &mut self.pick_role,

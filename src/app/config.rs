@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::daemon::config::default_datadir;
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Path to revaultd configuration file.
@@ -73,3 +71,31 @@ impl std::fmt::Display for ConfigError {
 }
 
 impl std::error::Error for ConfigError {}
+
+// From github.com/revault/revaultd:
+// Get the absolute path to the revault configuration folder.
+///
+/// This a "revault" directory in the XDG standard configuration directory for all OSes but
+/// Linux-based ones, for which it's `~/.revault`.
+/// Rationale: we want to have the database, RPC socket, etc.. in the same folder as the
+/// configuration file but for Linux the XDG specify a data directory (`~/.local/share/`) different
+/// from the configuration one (`~/.config/`).
+pub fn default_datadir() -> Result<PathBuf, ()> {
+    #[cfg(target_os = "linux")]
+    let configs_dir = dirs::home_dir();
+
+    #[cfg(not(target_os = "linux"))]
+    let configs_dir = dirs::config_dir();
+
+    if let Some(mut path) = configs_dir {
+        #[cfg(target_os = "linux")]
+        path.push(".revault");
+
+        #[cfg(not(target_os = "linux"))]
+        path.push("Revault");
+
+        return Ok(path);
+    }
+
+    Err(())
+}

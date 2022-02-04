@@ -5,10 +5,11 @@ use revault_ui::{
     component::{badge, card, separation, text::Text},
     icon::dot_icon,
 };
+use revaultd::{common::config::Config, revault_tx::bitcoin::hashes::hex::ToHex};
 
 use crate::app::message::Message;
 
-use crate::daemon::{config::Config, model::ServersStatuses};
+use crate::daemon::model::ServersStatuses;
 
 pub trait SettingsBox {
     fn title(&self) -> &'static str;
@@ -153,13 +154,7 @@ impl SettingsBox for AdvancedBox {
                     .map(|d| d.to_string())
                     .unwrap_or_else(|| "Not set".to_string()),
             ),
-            (
-                "Log level",
-                config
-                    .log_level
-                    .clone()
-                    .unwrap_or_else(|| "Not set".to_string()),
-            ),
+            ("Log level", config.log_level.to_string()),
         ];
         let mut column = Column::new();
         for (k, v) in rows {
@@ -232,10 +227,7 @@ impl SettingsBox for BitcoinCoreBox {
             ("Socket address", config.addr.to_string()),
             (
                 "Poll interval",
-                config
-                    .poll_interval_secs
-                    .map(|p| format!("{} seconds", p))
-                    .unwrap_or_else(|| "Not set".to_string()),
+                format!("{} seconds", config.poll_interval_secs.as_secs()),
             ),
         ];
 
@@ -277,13 +269,10 @@ impl SettingsBox for CoordinatorBox {
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
             ("Host", config.coordinator_host.clone()),
-            ("Noise key", config.coordinator_noise_key.clone()),
+            ("Noise key", config.coordinator_noise_key.0.to_hex()),
             (
                 "Poll interval",
-                config
-                    .coordinator_poll_seconds
-                    .map(|p| format!("{} seconds", p))
-                    .unwrap_or_else(|| "Not set".to_string()),
+                format!("{} seconds", config.coordinator_poll_seconds.as_secs()),
             ),
         ];
         let mut column = Column::new();
@@ -328,11 +317,11 @@ impl SettingsBox for CosignerBox {
             .unwrap()
             .cosigners
             .iter()
-            .find(|c| c.host == self.host)
+            .find(|c| c.host.to_string() == self.host)
             .unwrap();
         let rows = vec![
-            ("Host", cosigner_config.host.clone()),
-            ("Noise key", cosigner_config.noise_key.clone()),
+            ("Host", cosigner_config.host.to_string()),
+            ("Noise key", cosigner_config.noise_key.0.to_hex()),
             // TODO maybe having the bitcoin public key here?
         ];
         let mut column = Column::new();
@@ -377,11 +366,11 @@ impl SettingsBox for WatchtowerBox {
             .unwrap()
             .watchtowers
             .iter()
-            .find(|c| c.host == self.host)
+            .find(|c| c.host.to_string() == self.host)
             .unwrap();
         let rows = vec![
-            ("Host", watchtower_config.host.clone()),
-            ("Noise key", watchtower_config.noise_key.clone()),
+            ("Host", watchtower_config.host.to_string()),
+            ("Noise key", watchtower_config.noise_key.0.to_hex()),
         ];
         let mut column = Column::new();
         for (k, v) in rows {

@@ -13,13 +13,11 @@ use revaultd::revault_tx::{miniscript::DescriptorPublicKey, scripts::CpfpDescrip
 
 use revault_ui::component::form;
 
-use crate::{
-    daemon::config,
-    installer::{
-        message::{self, Message},
-        step::common::RequiredXpub,
-        view,
-    },
+use crate::installer::{
+    config,
+    message::{self, Message},
+    step::common::RequiredXpub,
+    view,
 };
 
 pub trait Step {
@@ -543,7 +541,7 @@ impl From<Final> for Box<dyn Step> {
 #[cfg(test)]
 mod tests {
     use super::{DefineCpfpDescriptor as DefineCpfpDescriptorStep, *};
-    use crate::daemon::config::Config;
+    use crate::installer::config::Config;
     use crate::installer::message::{DefineCpfpDescriptor, ParticipantXpub, *};
 
     const STAKEHOLDERS_XPUBS: [&str; 4] = [

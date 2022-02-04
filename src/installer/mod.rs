@@ -1,3 +1,4 @@
+mod config;
 mod message;
 mod step;
 mod view;
@@ -9,7 +10,7 @@ use bitcoin::hashes::hex::FromHex;
 use std::io::Write;
 use std::path::PathBuf;
 
-use crate::{app::config as gui_config, daemon::config as revaultd_config, revault::Role};
+use crate::{app::config as gui_config, installer::config::Config as DaemonConfig, revault::Role};
 
 pub use message::Message;
 use step::{
@@ -24,7 +25,7 @@ pub struct Installer {
 
     /// Context is data passed through each step.
     context: Context,
-    config: revaultd_config::Config,
+    config: DaemonConfig,
 }
 
 impl Installer {
@@ -94,7 +95,7 @@ impl Installer {
         destination_path: PathBuf,
         network: bitcoin::Network,
     ) -> (Installer, Command<Message>) {
-        let mut config = revaultd_config::Config::new();
+        let mut config = DaemonConfig::new();
         config.data_dir = Some(destination_path);
         config.daemon = Some(true);
         (
@@ -153,7 +154,7 @@ impl Installer {
             }
             Message::Role(role) => {
                 // reset config
-                let mut config = revaultd_config::Config::new();
+                let mut config = DaemonConfig::new();
                 config.bitcoind_config.network = self.context.network;
                 config.data_dir = self.config.data_dir.clone();
                 config.daemon = Some(true);
@@ -190,7 +191,7 @@ fn append_network_suffix(name: &str, network: &bitcoin::Network) -> String {
     }
 }
 
-pub async fn install(ctx: Context, mut cfg: revaultd_config::Config) -> Result<PathBuf, Error> {
+pub async fn install(ctx: Context, mut cfg: DaemonConfig) -> Result<PathBuf, Error> {
     let datadir_path = cfg.data_dir.clone().unwrap();
     std::fs::create_dir_all(&datadir_path)
         .map_err(|e| Error::CannotCreateDatadir(e.to_string()))?;
@@ -203,7 +204,7 @@ pub async fn install(ctx: Context, mut cfg: revaultd_config::Config) -> Result<P
     // create revaultd configuration file
     let mut revaultd_config_path = datadir_path.clone();
     revaultd_config_path.push(append_network_suffix(
-        revaultd_config::DEFAULT_FILE_NAME,
+        crate::installer::config::DEFAULT_FILE_NAME,
         &cfg.bitcoind_config.network,
     ));
     let mut revaultd_config_file = std::fs::File::create(&revaultd_config_path)

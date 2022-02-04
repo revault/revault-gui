@@ -11,10 +11,18 @@ use revault_hwi::{
     HWIError,
 };
 
+use revaultd::common::config::Config as DaemonConfig;
+
 use revault_gui::{
-    app::{self, config::ConfigError, context::Context, menu::Menu, App},
+    app::{
+        self,
+        config::{default_datadir, ConfigError},
+        context::{ConfigContext, Context},
+        menu::Menu,
+        App,
+    },
     conversion::Converter,
-    daemon::{self, config::default_datadir},
+    daemon,
     installer::{self, Installer},
     loader::{self, Loader},
     revault::Role,
@@ -189,25 +197,26 @@ impl Application for GUI {
 
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
             if let State::Loader(loader) = &mut self.state {
-                let config = loader.gui_config.clone();
-                let role = if revaultd.config.stakeholder_config.is_some() {
+                let daemon_config =
+                    DaemonConfig::from_file(Some(loader.gui_config.revaultd_config_path.clone()))
+                        .unwrap();
+                let config = ConfigContext {
+                    gui: loader.gui_config.clone(),
+                    daemon: daemon_config,
+                };
+
+                let role = if config.daemon.stakeholder_config.is_some() {
                     Role::Stakeholder
                 } else {
                     Role::Manager
                 };
 
-                // The user is both a manager and a stakholder, then role can be modified.
-                let edit_role = revaultd.config.stakeholder_config.is_some()
-                    && revaultd.config.manager_config.is_some();
-
-                let converter = Converter::new(revaultd.network());
-                let network = revaultd.network();
+                let converter = Converter::new(config.daemon.bitcoind_config.network);
 
                 let mut context = Context::new(
+                    config,
                     revaultd,
                     converter,
-                    network,
-                    edit_role,
                     role,
                     Menu::Home,
                     self.daemon_running,
@@ -217,7 +226,7 @@ impl Application for GUI {
                 context.blockheight = info.blockheight;
                 context.managers_threshold = info.managers_threshold;
 
-                let (app, command) = App::new(context, config);
+                let (app, command) = App::new(context);
                 self.state = State::App(app);
                 return command.map(Message::Run);
             }

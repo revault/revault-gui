@@ -112,7 +112,7 @@ impl Signer<SpendTransactionTarget> {
                             == self.target.spend_tx.global.unsigned_tx.txid()
                         {
                             let user_manager_xpub =
-                                ctx.revaultd.config.manager_config.as_ref().unwrap().xpub;
+                                ctx.config.daemon.manager_config.as_ref().unwrap().xpub;
                             for input in &tx.inputs {
                                 if !input.partial_sigs.keys().any(|key| {
                                     input

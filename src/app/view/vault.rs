@@ -269,7 +269,7 @@ fn input_and_outputs<'a, T: 'a, C: Client>(
     }
     let mut col_output = Column::new().push(Text::new("Outputs").bold()).spacing(10);
     for output in &broadcasted.tx.output {
-        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network);
+        let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network());
         let mut col = Column::new();
         if let Some(a) = addr {
             col = col.push(Text::new(&a.to_string()).small())

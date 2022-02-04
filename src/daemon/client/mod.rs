@@ -11,7 +11,6 @@ use std::io::ErrorKind;
 pub mod error;
 pub mod jsonrpc;
 
-use super::config::Config;
 use super::model::*;
 
 #[derive(Debug, Clone)]
@@ -49,15 +48,11 @@ pub trait Client {
 #[derive(Debug, Clone)]
 pub struct RevaultD<C: Client> {
     client: C,
-    pub config: Config,
 }
 
 impl<C: Client> RevaultD<C> {
-    pub fn new(config: &Config, client: C) -> Result<RevaultD<C>, RevaultDError> {
-        let revaultd = RevaultD {
-            client,
-            config: config.to_owned(),
-        };
+    pub fn new(client: C) -> Result<RevaultD<C>, RevaultDError> {
+        let revaultd = RevaultD { client };
 
         debug!("Connecting to revaultd");
 
@@ -66,10 +61,6 @@ impl<C: Client> RevaultD<C> {
         info!("Connected to revaultd");
 
         Ok(revaultd)
-    }
-
-    pub fn network(&self) -> bitcoin::Network {
-        self.config.bitcoind_config.network
     }
 
     /// Generic call function for RPC calls.
