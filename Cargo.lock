@@ -117,17 +117,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-recursion"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "394b41acee32ce53306b9abfa8ad4df10b73b3c003e5c5da4720cca722010878"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2373,7 +2362,6 @@ dependencies = [
 name = "revault-gui"
 version = "0.3.0"
 dependencies = [
- "async-recursion",
  "backtrace",
  "bitcoin",
  "chrono",
