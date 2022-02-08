@@ -107,7 +107,7 @@ pub async fn broadcast_spend_tx(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     txid: Txid,
 ) -> Result<(), RevaultDError> {
-    revaultd.broadcast_spend_tx(&txid)
+    revaultd.broadcast_spend_tx(&txid, false)
 }
 
 pub async fn revault(
