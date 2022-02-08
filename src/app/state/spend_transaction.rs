@@ -168,6 +168,7 @@ pub enum SpendTransactionAction {
         view: SpendTransactionSignView,
     },
     Broadcast {
+        with_priority: bool,
         processing: bool,
         success: bool,
         warning: Option<Error>,
@@ -191,6 +192,7 @@ impl SpendTransactionAction {
         if let Some(input) = psbt.inputs.first() {
             if input.partial_sigs.len() >= managers_threshold {
                 return Self::Broadcast {
+                    with_priority: false,
                     processing: false,
                     success: false,
                     warning: None,
@@ -333,11 +335,19 @@ impl SpendTransactionAction {
                     }
                 }
             }
+            SpendTxMessage::WithPriority(priority) => {
+                if let Self::Broadcast { with_priority, .. } = self {
+                    *with_priority = priority;
+                }
+            }
             SpendTxMessage::Broadcast => {
-                if let Self::Broadcast { processing, .. } = self {
-                    *processing = true;
+                if let Self::Broadcast { with_priority, .. } = self {
                     return Command::perform(
-                        broadcast_spend_tx(ctx.revaultd.clone(), psbt.global.unsigned_tx.txid()),
+                        broadcast_spend_tx(
+                            ctx.revaultd.clone(),
+                            psbt.global.unsigned_tx.txid(),
+                            *with_priority,
+                        ),
                         SpendTxMessage::Broadcasted,
                     );
                 }
@@ -428,6 +438,7 @@ impl SpendTransactionAction {
                             if let Some(input) = psbt.inputs.first() {
                                 if input.partial_sigs.len() == ctx.managers_threshold {
                                     *self = Self::Broadcast {
+                                        with_priority: false,
                                         processing: false,
                                         success: false,
                                         warning: None,
@@ -498,11 +509,12 @@ impl SpendTransactionAction {
                 ..
             } => view.view(&psbt_input, &processing, &success, psbt, warning.as_ref()),
             Self::Broadcast {
+                with_priority,
                 view,
                 processing,
                 success,
                 warning,
-            } => view.view(&processing, &success, warning.as_ref()),
+            } => view.view(*processing, *success, *with_priority, warning.as_ref()),
             Self::Delete {
                 view,
                 processing,

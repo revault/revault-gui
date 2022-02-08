@@ -1,6 +1,6 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row};
+use iced::{scrollable, Align, Column, Container, Element, Length, Row, Toggler};
 
 use revaultd::revault_tx::transactions::RevaultTransaction;
 
@@ -405,8 +405,9 @@ impl SpendTransactionBroadcastView {
 
     pub fn view(
         &mut self,
-        processing: &bool,
-        success: &bool,
+        processing: bool,
+        success: bool,
+        with_priority: bool,
         warning: Option<&Error>,
     ) -> Element<Message> {
         let mut col_action = Column::new();
@@ -416,14 +417,14 @@ impl SpendTransactionBroadcastView {
             )));
         }
 
-        if *processing {
+        if processing {
             col_action = col_action
                 .push(Text::new("Transaction is fully signed"))
                 .push(button::important(
                     &mut self.confirm_button,
                     button::button_content(None, "Broadcasting"),
                 ));
-        } else if *success {
+        } else if success {
             col_action = col_action.push(
                 card::success(Text::new("Transaction is broadcasted"))
                     .padding(20)
@@ -433,6 +434,11 @@ impl SpendTransactionBroadcastView {
         } else {
             col_action = col_action
                 .push(Text::new("Transaction is fully signed"))
+                .push(Toggler::new(
+                    with_priority,
+                    String::from("with priority"),
+                    |priority| Message::SpendTx(SpendTxMessage::WithPriority(priority)),
+                ))
                 .push(
                     button::important(
                         &mut self.confirm_button,
