@@ -10,7 +10,7 @@ use crate::{
         view::vault::{RevaultVaultView, VaultModal, VaultOnChainTransactionsPanel, VaultView},
     },
     daemon::{
-        model::{self, VaultStatus, VaultTransactions},
+        model::{self, outpoint, VaultStatus, VaultTransactions},
         Daemon,
     },
 };
@@ -58,7 +58,7 @@ impl Vault {
         match message {
             VaultMessage::ListOnchainTransaction => {
                 return Command::perform(
-                    get_onchain_txs(ctx.revaultd.clone(), self.vault.outpoint()),
+                    get_onchain_txs(ctx.revaultd.clone(), outpoint(&self.vault)),
                     VaultMessage::OnChainTransactions,
                 );
             }
@@ -90,7 +90,7 @@ impl Vault {
 
     pub fn load(&self, revaultd: Arc<dyn Daemon + Send + Sync>) -> Command<VaultMessage> {
         Command::perform(
-            get_onchain_txs(revaultd, self.vault.outpoint()),
+            get_onchain_txs(revaultd, outpoint(&self.vault)),
             VaultMessage::OnChainTransactions,
         )
     }
@@ -159,7 +159,7 @@ impl VaultSection {
                     *processing = true;
                     *warning = None;
                     return Command::perform(
-                        revault(revaultd.clone(), vault.outpoint()),
+                        revault(revaultd.clone(), outpoint(vault)),
                         VaultMessage::Revaulted,
                     );
                 }

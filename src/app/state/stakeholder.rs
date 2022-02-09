@@ -9,7 +9,10 @@ use iced::{Command, Element, Subscription};
 use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use crate::daemon::{
-    model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES, MOVING_VAULT_STATUSES},
+    model::{
+        self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
+        MOVING_VAULT_STATUSES,
+    },
     Daemon,
 };
 
@@ -168,9 +171,9 @@ impl State for StakeholderHomeState {
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
-                Message::SelectVault(outpoint) => {
+                Message::SelectVault(selected_outpoint) => {
                     if let Some(selected) = selected_vault {
-                        if selected.vault.outpoint() == outpoint {
+                        if outpoint(&selected.vault) == selected_outpoint {
                             *selected_vault = None;
                             return self.load(ctx);
                         }
@@ -178,7 +181,7 @@ impl State for StakeholderHomeState {
 
                     if let Some(selected) = moving_vaults
                         .iter()
-                        .find(|vlt| vlt.vault.outpoint() == outpoint)
+                        .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
                     {
                         let vault = Vault::new(selected.vault.clone());
                         let cmd = vault.load(ctx.revaultd.clone());
@@ -327,7 +330,7 @@ impl State for StakeholderCreateVaultsState {
                     Ok(secured_deposits_outpoints) => {
                         let mut deposits_to_secure = Vec::new();
                         for deposit in deposits.iter_mut() {
-                            if secured_deposits_outpoints.contains(&deposit.outpoint()) {
+                            if secured_deposits_outpoints.contains(&outpoint(deposit)) {
                                 deposit.status = VaultStatus::Securing;
                             } else if deposit.status != VaultStatus::Securing
                                 && deposit.status != VaultStatus::Secured
@@ -416,17 +419,14 @@ pub async fn secure_deposits(
                 revocation_txs.into_iter().enumerate()
             {
                 revaultd.set_revocation_txs(
-                    &deposits[i].outpoint(),
+                    &outpoint(&deposits[i]),
                     &emergency_tx,
                     &emergency_unvault_tx,
                     &cancel_tx,
                 )?;
             }
 
-            return Ok(deposits
-                .into_iter()
-                .map(|deposit| deposit.outpoint())
-                .collect());
+            return Ok(deposits.iter().map(outpoint).collect());
         }
         Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
@@ -436,7 +436,7 @@ pub async fn secure_deposits(
 
     // Batching is not supported, so we secure only the first one.
     if let Some(deposit) = deposits.into_iter().nth(0) {
-        let outpoint = deposit.outpoint();
+        let outpoint = outpoint(&deposit);
         let revocation_txs = revaultd.get_revocation_txs(&outpoint)?;
 
         let (emergency_tx, emergency_unvault_tx, cancel_tx) = device
@@ -546,9 +546,9 @@ impl State for StakeholderDelegateVaultsState {
                 Command::none()
             }
             Self::SelectVaults { vaults, .. } => match message {
-                Message::SelectVault(outpoint) => {
+                Message::SelectVault(selected_outpoint) => {
                     for vlt in vaults.iter_mut() {
-                        if vlt.vault.outpoint() == outpoint {
+                        if outpoint(&vlt.vault) == selected_outpoint {
                             vlt.selected = !vlt.selected
                         }
                     }
@@ -581,7 +581,7 @@ impl State for StakeholderDelegateVaultsState {
                     Ok(activated_vaults_outpoints) => {
                         let mut vaults_to_delegate = Vec::new();
                         for vault in vaults.iter_mut() {
-                            if activated_vaults_outpoints.contains(&vault.outpoint()) {
+                            if activated_vaults_outpoints.contains(&outpoint(vault)) {
                                 vault.status = VaultStatus::Activating;
                             } else if vault.status != VaultStatus::Activating
                                 && vault.status != VaultStatus::Active
@@ -692,10 +692,10 @@ pub async fn delegate_vaults(
     match device.clone().delegate_batch(&vaults).await {
         Ok(revocation_txs) => {
             for (i, unvault_tx) in revocation_txs.into_iter().enumerate() {
-                revaultd.set_unvault_tx(&vaults[i].outpoint(), &unvault_tx)?;
+                revaultd.set_unvault_tx(&outpoint(&vaults[i]), &unvault_tx)?;
             }
 
-            return Ok(vaults.into_iter().map(|vault| vault.outpoint()).collect());
+            return Ok(vaults.iter().map(outpoint).collect());
         }
         Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
@@ -705,7 +705,7 @@ pub async fn delegate_vaults(
 
     // Batching is not supported, so we secure only the first one.
     if let Some(vault) = vaults.into_iter().nth(0) {
-        let outpoint = vault.outpoint();
+        let outpoint = outpoint(&vault);
         let res = revaultd.get_unvault_tx(&outpoint)?;
         let unvault_tx = device.sign_unvault_tx(res).await?;
         revaultd.set_unvault_tx(&outpoint, &unvault_tx)?;

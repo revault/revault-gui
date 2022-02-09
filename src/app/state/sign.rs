@@ -16,7 +16,7 @@ use revault_hwi::{app::revault::RevaultHWI, HWIError};
 
 use crate::{
     app::{context::Context, error::Error, message::SignMessage, view::sign::SignerView},
-    daemon::model::Vault,
+    daemon::model::{outpoint, Vault},
 };
 
 #[derive(Debug)]
@@ -227,7 +227,7 @@ impl Device {
                 .iter()
                 .map(|deposit| {
                     (
-                        deposit.outpoint(),
+                        outpoint(deposit),
                         deposit.amount,
                         deposit.derivation_index.into(),
                     )
@@ -243,13 +243,7 @@ impl Device {
         if let Some(channel) = self.channel {
             let utxos: Vec<(OutPoint, Amount, u32)> = vaults
                 .iter()
-                .map(|vault| {
-                    (
-                        vault.outpoint(),
-                        vault.amount,
-                        vault.derivation_index.into(),
-                    )
-                })
+                .map(|vault| (outpoint(vault), vault.amount, vault.derivation_index.into()))
                 .collect();
             channel.lock().await.delegate_vaults(&utxos).await
         } else {

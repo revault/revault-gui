@@ -13,7 +13,7 @@ use crate::app::{
 
 use crate::{
     daemon::model::{
-        transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
+        outpoint, transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
     },
     revault::Role,
 };
@@ -58,7 +58,7 @@ impl VaultModal {
             .width(Length::Fill)
             .align_x(Align::Center),
             None,
-            Message::SelectVault(vlt.outpoint()),
+            Message::SelectVault(outpoint(vlt)),
         )
     }
 }
@@ -346,7 +346,7 @@ impl VaultView for VaultListItemView {
                                 .push(
                                     Column::new()
                                         .push(
-                                            Text::new(&vault.outpoint().to_string()).bold().small(),
+                                            Text::new(&outpoint(vault).to_string()).bold().small(),
                                         )
                                         .push(Text::new(&format!("{}", &vault.status,)).small()),
                                 )
@@ -372,7 +372,7 @@ impl VaultView for VaultListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::SelectVault(vault.outpoint()))
+        .on_press(Message::SelectVault(outpoint(vault)))
         .width(Length::Fill)
         .into()
     }
@@ -483,7 +483,7 @@ fn vault_ack_pending<'a>(
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::SelectVault(deposit.outpoint())),
+        .on_press(Message::SelectVault(outpoint(deposit))),
     )
     .into()
 }
@@ -516,12 +516,12 @@ impl DelegateVaultListItemView {
                                     })
                                     .push(
                                         Container::new(if selected {
-                                            Text::new(&vault.outpoint().to_string())
+                                            Text::new(&outpoint(vault).to_string())
                                                 .small()
                                                 .bold()
                                                 .success()
                                         } else {
-                                            Text::new(&vault.outpoint().to_string()).small().bold()
+                                            Text::new(&outpoint(vault).to_string()).small().bold()
                                         })
                                         .align_y(Align::Center),
                                     )
@@ -565,7 +565,7 @@ impl DelegateVaultListItemView {
                         .align_items(Align::Center),
                 ),
             )
-            .on_press(Message::SelectVault(vault.outpoint())),
+            .on_press(Message::SelectVault(outpoint(vault))),
         )
         .into()
     }

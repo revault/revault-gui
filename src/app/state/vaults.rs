@@ -11,7 +11,7 @@ use super::{
 
 use crate::daemon::{
     model,
-    model::{VaultStatus, CURRENT_VAULT_STATUSES},
+    model::{outpoint, VaultStatus, CURRENT_VAULT_STATUSES},
 };
 
 use crate::app::{
@@ -77,7 +77,11 @@ impl VaultsState {
         }
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: OutPoint) -> Command<Message> {
+    pub fn on_vault_select(
+        &mut self,
+        ctx: &Context,
+        selected_outpoint: OutPoint,
+    ) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
             vaults,
@@ -85,13 +89,16 @@ impl VaultsState {
         } = self
         {
             if let Some(selected) = selected_vault {
-                if selected.vault.outpoint() == outpoint {
+                if outpoint(&selected.vault) == selected_outpoint {
                     *selected_vault = None;
                     return Command::none();
                 }
             }
 
-            if let Some(selected) = vaults.iter().find(|vlt| vlt.vault.outpoint() == outpoint) {
+            if let Some(selected) = vaults
+                .iter()
+                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
+            {
                 let vault = Vault::new(selected.vault.clone());
                 let cmd = vault.load(ctx.revaultd.clone());
                 *selected_vault = Some(vault);

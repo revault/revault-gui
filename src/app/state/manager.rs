@@ -13,7 +13,9 @@ use super::{
     State,
 };
 
-use crate::daemon::model::{self, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES};
+use crate::daemon::model::{
+    self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
+};
 
 use revault_ui::component::form;
 use revaultd::revault_tx::transactions::RevaultTransaction;
@@ -148,7 +150,7 @@ impl ManagerHomeState {
             .iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Active {
-                    Some((vlt.outpoint().to_string(), vlt.amount.as_sat()))
+                    Some((outpoint(vlt).to_string(), vlt.amount.as_sat()))
                 } else {
                     None
                 }
@@ -202,7 +204,11 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn on_vault_select(&mut self, ctx: &Context, outpoint: OutPoint) -> Command<Message> {
+    pub fn on_vault_select(
+        &mut self,
+        ctx: &Context,
+        selected_outpoint: OutPoint,
+    ) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
             moving_vaults,
@@ -210,7 +216,7 @@ impl ManagerHomeState {
         } = self
         {
             if let Some(selected) = selected_vault {
-                if selected.vault.outpoint() == outpoint {
+                if outpoint(&selected.vault) == selected_outpoint {
                     *selected_vault = None;
                     return self.load(ctx);
                 }
@@ -218,7 +224,7 @@ impl ManagerHomeState {
 
             if let Some(selected) = moving_vaults
                 .iter()
-                .find(|vlt| vlt.vault.outpoint() == outpoint)
+                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
             {
                 let vault = Vault::new(selected.vault.clone());
                 let cmd = vault.load(ctx.revaultd.clone());
@@ -674,11 +680,7 @@ impl State for ManagerCreateSendTransactionState {
             Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
                 self.warning = None;
-                let inputs = self
-                    .selected_inputs()
-                    .into_iter()
-                    .map(|input| input.outpoint())
-                    .collect();
+                let inputs = self.selected_inputs().iter().map(outpoint).collect();
 
                 let outputs: BTreeMap<bitcoin::Address, u64> = self
                     .outputs
@@ -995,7 +997,7 @@ impl ManagerSendInput {
     pub fn view(&mut self, ctx: &Context) -> Element<InputMessage> {
         manager_send_input_view(
             ctx,
-            &self.vault.outpoint().to_string(),
+            &outpoint(&self.vault).to_string(),
             &self.vault.amount.as_sat(),
             self.selected,
         )

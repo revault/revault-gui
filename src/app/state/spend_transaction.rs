@@ -27,7 +27,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    daemon::model,
+    daemon::model::{self, outpoint},
 };
 
 #[derive(Debug)]
@@ -86,15 +86,10 @@ impl State for SpendTransactionState {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
-                    self.deposits = Vec::new();
-                    // we keep the order of the deposit_outpoints.
-                    for deposit in vaults.into_iter() {
-                        for outpoint in &self.deposit_outpoints {
-                            if deposit.outpoint() == *outpoint {
-                                self.deposits.push(deposit.clone());
-                            }
-                        }
-                    }
+                    self.deposits = vaults
+                        .into_iter()
+                        .filter(|vlt| self.deposit_outpoints.contains(&outpoint(vlt)))
+                        .collect();
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },

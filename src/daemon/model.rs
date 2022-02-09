@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode, hashes::hex::FromHex, Transaction};
+use bitcoin::{consensus::encode, hashes::hex::FromHex, OutPoint, Transaction};
 
 use revaultd::commands::ListVaultsEntry;
 pub use revaultd::commands::{
@@ -8,6 +8,10 @@ pub use revaultd::commands::{
 };
 
 pub type Vault = ListVaultsEntry;
+
+pub fn outpoint(vault: &Vault) -> OutPoint {
+    OutPoint::new(vault.txid, vault.vout)
+}
 
 pub const DEPOSIT_AND_CURRENT_VAULT_STATUSES: [VaultStatus; 11] = [
     VaultStatus::Funded,
