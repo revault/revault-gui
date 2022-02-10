@@ -829,9 +829,9 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 ),
             )
             .push(
-                Row::new()
-                    .push(col_input.width(Length::FillPortion(1)))
-                    .push(right_column.width(Length::FillPortion(1)))
+                Column::new()
+                    .push(col_input.width(Length::Fill))
+                    .push(right_column.width(Length::Fill))
                     .spacing(20),
             )
             .spacing(20),

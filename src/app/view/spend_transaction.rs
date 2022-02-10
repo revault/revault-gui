@@ -1,12 +1,17 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
-use iced::{scrollable, Align, Column, Container, Element, Length, Row, Toggler};
+use iced::{
+    scrollable, tooltip, Align, Checkbox, Column, Container, Element, Length, Row, Tooltip,
+};
 
 use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use revault_ui::{
     color,
-    component::{badge, button, card, form, scroll, text::Text, ContainerBackgroundStyle},
+    component::{
+        badge, button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle,
+        TooltipStyle,
+    },
     icon,
 };
 
@@ -47,19 +52,8 @@ impl SpendTransactionView {
         action: Element<'a, Message>,
         warning: Option<&Error>,
         show_delete_button: bool,
+        user_signed: bool,
     ) -> Element<'a, Message> {
-        let col = Column::new()
-            .push(spend_tx_with_feerate_view(
-                ctx,
-                spent_vaults,
-                psbt,
-                change_index,
-                cpfp_index,
-                None,
-            ))
-            .push(action)
-            .spacing(20);
-
         let row = if show_delete_button {
             Row::new().push(
                 Container::new(
@@ -100,28 +94,6 @@ impl SpendTransactionView {
             vaults_amount - spend_amount - change_amount
         };
 
-        let mut col_header = Column::new().push(
-            Text::new(&format!(
-                "txid: {}",
-                psbt.global.unsigned_tx.txid().to_string()
-            ))
-            .small()
-            .bold(),
-        );
-        if psbt.inputs.len() > 0 {
-            col_header = col_header.push(
-                Row::new()
-                    .push(Text::new(&format!(
-                        "Total number of signatures: {} / {}",
-                        psbt.inputs[0].partial_sigs.len(),
-                        ctx.managers_threshold,
-                    )))
-                    .push(icon::key_icon())
-                    .align_items(Align::Center)
-                    .spacing(5),
-            )
-        }
-
         Container::new(scroll(
             &mut self.scroll,
             Container::new(
@@ -137,66 +109,125 @@ impl SpendTransactionView {
                         )
                         .align_items(Align::Center),
                     )
-                    .push(card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Container::new(
-                                    Row::new()
-                                        .push(badge::pending_spent_tx())
-                                        .push(col_header)
-                                        .spacing(20),
-                                )
-                                .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    Column::new()
-                                        .push(
-                                            Row::new()
-                                                .push(
-                                                    Text::new(&format!(
-                                                        "{}",
-                                                        ctx.converter.converts(Amount::from_sat(
-                                                            spend_amount
-                                                        )),
-                                                    ))
-                                                    .bold(),
-                                                )
-                                                .push(
-                                                    Text::new(&format!(" {}", ctx.converter.unit))
-                                                        .small(),
-                                                )
-                                                .align_items(Align::Center),
-                                        )
-                                        .push(
-                                            Row::new()
-                                                .push(
-                                                    Text::new(&format!(
-                                                        "Fees: {}",
-                                                        ctx.converter
-                                                            .converts(Amount::from_sat(fees)),
-                                                    ))
-                                                    .small(),
-                                                )
-                                                .push(
-                                                    Text::new(&format!(" {}", ctx.converter.unit))
-                                                        .small(),
-                                                )
-                                                .align_items(Align::Center),
-                                        )
-                                        .align_items(Align::End),
-                                )
-                                .width(Length::Shrink),
-                            )
-                            .spacing(20)
-                            .align_items(Align::Center),
-                    )))
                     .push(
-                        Container::new(col)
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
+                        Column::new()
+                            .push(
+                                Row::new()
+                                    .push(badge::pending_spent_tx())
+                                    .push(Text::new("Spend").bold())
+                                    .spacing(5)
+                                    .align_items(Align::Center),
+                            )
+                            .push(
+                                Column::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "- {} {}",
+                                            ctx.converter.converts(Amount::from_sat(spend_amount)),
+                                            ctx.converter.unit,
+                                        ))
+                                        .bold()
+                                        .size(50),
+                                    )
+                                    .push(Container::new(Text::new(&format!(
+                                        "Fee: {} {}",
+                                        ctx.converter.converts(Amount::from_sat(fees)),
+                                        ctx.converter.unit,
+                                    ))))
+                                    .align_items(Align::Center),
+                            )
+                            .push(card::white(
+                                Column::new()
+                                    .push(Container::new(
+                                        Row::new()
+                                            .push(
+                                                Container::new(
+                                                    Row::new()
+                                                        .push(Container::new(
+                                                            icon::key_icon()
+                                                                .size(30)
+                                                                .width(Length::Fill),
+                                                        ))
+                                                        .push(
+                                                            Column::new()
+                                                                .push(
+                                                                    Text::new(
+                                                                        "Number of signatures:",
+                                                                    )
+                                                                    .bold(),
+                                                                )
+                                                                .push(Text::new(&format!(
+                                                                    "{}",
+                                                                    psbt.inputs[0]
+                                                                        .partial_sigs
+                                                                        .len(),
+                                                                ))),
+                                                        )
+                                                        .align_items(Align::Center)
+                                                        .spacing(20),
+                                                )
+                                                .align_x(Align::Center)
+                                                .width(Length::FillPortion(1)),
+                                            )
+                                            .push(
+                                                Container::new(if user_signed {
+                                                    Row::new()
+                                                        .push(Container::new(
+                                                            Text::from(
+                                                                icon::done_icon()
+                                                                    .size(30)
+                                                                    .width(Length::Fill),
+                                                            )
+                                                            .success(),
+                                                        ))
+                                                        .push(Text::new("You signed").success())
+                                                        .align_items(Align::Center)
+                                                        .spacing(20)
+                                                } else {
+                                                    Row::new()
+                                                        .push(Container::new(Text::from(
+                                                            icon::cross_icon()
+                                                                .size(30)
+                                                                .width(Length::Fill),
+                                                        )))
+                                                        .push(Text::new("You did not sign"))
+                                                        .align_items(Align::Center)
+                                                        .spacing(20)
+                                                })
+                                                .align_x(Align::Center)
+                                                .width(Length::FillPortion(1)),
+                                            )
+                                            .align_items(Align::Center)
+                                            .spacing(20),
+                                    ))
+                                    .push(separation().width(Length::Fill))
+                                    .push(
+                                        Row::new()
+                                            .push(Text::new("Tx ID:").bold().width(Length::Fill))
+                                            .push(
+                                                Text::new(&format!(
+                                                    "{}",
+                                                    psbt.global.unsigned_tx.txid()
+                                                ))
+                                                .small(),
+                                            ),
+                                    )
+                                    .spacing(20),
+                            ))
+                            .push(action)
+                            .push(spend_tx_with_feerate_view(
+                                ctx,
+                                spent_vaults,
+                                psbt,
+                                change_index,
+                                cpfp_index,
+                                None,
+                            ))
+                            .spacing(20)
+                            .max_width(800)
+                            .align_items(Align::Center),
                     )
-                    .spacing(20),
+                    .align_items(Align::Center),
             ),
         ))
         .style(ContainerBackgroundStyle)
@@ -262,16 +293,6 @@ impl SpendTransactionSharePsbtView {
         }
         Container::new(
             Column::new()
-                .push(
-                    card::success(
-                        Row::new()
-                            .push(Text::from(icon::done_icon()).size(20).success())
-                            .push(Text::new("You signed").success())
-                            .spacing(20),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                )
                 .push(card::white(Container::new(
                     col_action
                         .push(Text::new("Enter PSBT:"))
@@ -434,42 +455,42 @@ impl SpendTransactionBroadcastView {
         } else {
             col_action = col_action
                 .push(Text::new("Transaction is fully signed"))
-                .push(Toggler::new(
-                    with_priority,
-                    String::from("with priority"),
-                    |priority| Message::SpendTx(SpendTxMessage::WithPriority(priority)),
-                ))
+                .push(
+                    Row::new()
+                        .push(Checkbox::new(
+                            with_priority,
+                            String::from("Set high priority"),
+                            |priority| Message::SpendTx(SpendTxMessage::WithPriority(priority)),
+                        ))
+                        .push(
+                            Tooltip::new(
+                                icon::tooltip_icon().size(15),
+                                "try to feebump the transactions in the background if it does not confirm.",
+                                tooltip::Position::Right,
+                            )
+                            .gap(5)
+                            .size(20)
+                            .padding(10)
+                            .style(TooltipStyle),
+                        )
+                        .spacing(5),
+                )
                 .push(
                     button::important(
                         &mut self.confirm_button,
                         button::button_content(None, "Broadcast"),
                     )
+                    .width(Length::Units(200))
                     .on_press(Message::SpendTx(SpendTxMessage::Broadcast)),
                 );
         }
 
-        Container::new(
-            Column::new()
-                .push(
-                    card::success(
-                        Row::new()
-                            .push(Text::from(icon::done_icon()).size(20).success())
-                            .push(Text::new("You signed").success())
-                            .spacing(20),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                )
-                .push(
-                    card::white(Container::new(
-                        col_action.align_items(Align::Center).spacing(20),
-                    ))
-                    .width(Length::Fill)
-                    .align_x(Align::Center)
-                    .padding(20),
-                )
-                .spacing(20),
-        )
+        card::white(Container::new(
+            col_action.align_items(Align::Center).spacing(20),
+        ))
+        .width(Length::Fill)
+        .align_x(Align::Center)
+        .padding(20)
         .into()
     }
 }

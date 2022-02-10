@@ -1,12 +1,15 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+
 use super::menu::Menu;
 use crate::{app::config, conversion::Converter, daemon::Daemon, revault::Role};
 use revaultd::config::Config as DaemonConfig;
 use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
 
 pub type HardwareWallet =
     Box<dyn Future<Output = Result<Box<dyn RevaultHWI + Send>, HWIError>> + Send + Sync>;
@@ -81,6 +84,34 @@ impl Context {
                 }
             })
             .collect()
+    }
+
+    pub fn user_signed(&self, psbt: &Psbt) -> bool {
+        let man_fp = &self
+            .config
+            .daemon
+            .manager_config
+            .as_ref()
+            .map(|key| key.xpub.fingerprint());
+        let stk_fp = &self
+            .config
+            .daemon
+            .stakeholder_config
+            .as_ref()
+            .map(|key| key.xpub.fingerprint());
+        if let Some(input) = psbt.inputs.first() {
+            input.partial_sigs.keys().any(|key| {
+                input
+                    .bip32_derivation
+                    .get(key)
+                    .map(|(fingerprint, _)| {
+                        Some(*fingerprint) == *man_fp || Some(*fingerprint) == *stk_fp
+                    })
+                    .unwrap_or(false)
+            })
+        } else {
+            false
+        }
     }
 }
 
