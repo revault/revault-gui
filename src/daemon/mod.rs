@@ -40,7 +40,7 @@ impl std::fmt::Display for RevaultDError {
 
 impl From<CommandError> for RevaultDError {
     fn from(error: CommandError) -> Self {
-        RevaultDError::Rpc(0, error.to_string())
+        RevaultDError::Rpc(error.code() as i32, error.to_string())
     }
 }
 
