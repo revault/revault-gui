@@ -109,6 +109,14 @@ pub fn shield_check_icon() -> Text {
     icon('\u{F52F}')
 }
 
+pub fn toggle_off() -> Text {
+    icon('\u{F5D5}')
+}
+
+pub fn toggle_on() -> Text {
+    icon('\u{F5D6}')
+}
+
 pub fn person_check_icon() -> Text {
     icon('\u{F4D6}')
 }

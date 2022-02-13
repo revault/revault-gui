@@ -1,9 +1,10 @@
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use std::sync::Arc;
 
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use tokio::sync::Mutex;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
+use revault_ui::chart::FlowChartMessage;
 use revaultd::config::Config as DaemonConfig;
 
 use crate::{
@@ -104,6 +105,8 @@ pub enum SpendTxMessage {
 #[derive(Debug, Clone)]
 pub enum HistoryEventMessage {
     OnChainTransactions(Result<Vec<VaultTransactions>, RevaultDError>),
+    ToggleFlowChart(bool),
+    FlowChart(FlowChartMessage),
 }
 
 #[derive(Debug, Clone)]

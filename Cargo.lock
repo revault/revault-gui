@@ -2372,6 +2372,7 @@ dependencies = [
 name = "revault_ui"
 version = "0.1.0"
 dependencies = [
+ "bitcoin",
  "iced",
 ]
 

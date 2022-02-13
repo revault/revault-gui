@@ -1,9 +1,12 @@
 use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::Txid;
 use iced::{Command, Element};
 
 use super::State;
+
+use revault_ui::chart::{FlowChart, FlowChartMessage};
 
 use crate::{
     app::{
@@ -13,7 +16,10 @@ use crate::{
         view::LoadingDashboard,
         view::{HistoryEventListItemView, HistoryEventView, HistoryView},
     },
-    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions, ALL_HISTORY_EVENTS},
+    daemon::model::{
+        HistoryEvent, HistoryEventKind, HistoryEventTransaction, TransactionKind,
+        ALL_HISTORY_EVENTS,
+    },
 };
 
 pub const HISTORY_EVENT_PAGE_SIZE: u64 = 20;
@@ -93,7 +99,7 @@ impl State for HistoryState {
                 }
                 Message::HistoryEvent(msg) => {
                     if let Some(event) = selected_event {
-                        event.update(msg)
+                        event.update(ctx, msg)
                     }
                 }
                 Message::Close => {
@@ -283,7 +289,9 @@ impl HistoryEventListItemState {
 #[derive(Debug)]
 pub struct HistoryEventState {
     event: HistoryEvent,
-    txs: Vec<VaultTransactions>,
+    txs: Vec<HistoryEventTransaction>,
+    selected_tx: Option<Txid>,
+    flowchart: Option<FlowChart>,
     loading_fail: Option<Error>,
     view: HistoryEventView,
 }
@@ -293,22 +301,99 @@ impl HistoryEventState {
         Self {
             event,
             txs: Vec::new(),
+            flowchart: None,
+            selected_tx: None,
             loading_fail: None,
             view: HistoryEventView::new(),
         }
     }
 
-    pub fn update(&mut self, message: HistoryEventMessage) {
-        let HistoryEventMessage::OnChainTransactions(res) = message;
-        match res {
-            Ok(txs) => self.txs = txs,
-            Err(e) => self.loading_fail = Some(e.into()),
+    pub fn update(&mut self, ctx: &Context, message: HistoryEventMessage) {
+        match message {
+            HistoryEventMessage::ToggleFlowChart(toggle) => {
+                if toggle {
+                    self.flowchart = Some(FlowChart::new(
+                        ctx.network(),
+                        self.txs
+                            .iter()
+                            .map(|event_tx| event_tx.tx.clone())
+                            .collect(),
+                    ));
+                } else {
+                    self.flowchart = None;
+                }
+            }
+            HistoryEventMessage::FlowChart(FlowChartMessage::TxSelected(txid)) => {
+                if self.selected_tx.is_none() {
+                    self.selected_tx = txid;
+                } else {
+                    self.selected_tx = None;
+                }
+            }
+            HistoryEventMessage::OnChainTransactions(res) => match res {
+                Ok(vault_txs) => {
+                    let mut list: Vec<HistoryEventTransaction> = Vec::new();
+                    for txs in vault_txs {
+                        list.push(HistoryEventTransaction::new(
+                            &txs.deposit,
+                            TransactionKind::Deposit,
+                        ));
+
+                        if let Some(unvault) = txs.unvault {
+                            list.push(HistoryEventTransaction::new(
+                                &unvault,
+                                TransactionKind::Unvault,
+                            ));
+                        }
+                        if let Some(cancel) = txs.cancel {
+                            list.push(HistoryEventTransaction::new(
+                                &cancel,
+                                TransactionKind::Cancel,
+                            ));
+                        }
+                        if let Some(spend) = txs.spend {
+                            list.push(HistoryEventTransaction::new(&spend, TransactionKind::Spend));
+                        }
+                        if let Some(unvault_emergency) = txs.unvault_emergency {
+                            list.push(HistoryEventTransaction::new(
+                                &unvault_emergency,
+                                TransactionKind::UnvaultEmergency,
+                            ));
+                        }
+                        if let Some(emergency) = txs.emergency {
+                            list.push(HistoryEventTransaction::new(
+                                &emergency,
+                                TransactionKind::Emergency,
+                            ));
+                        }
+                    }
+
+                    list.sort_by(|a, b| a.blockheight.cmp(&b.blockheight));
+                    self.txs = list;
+                }
+                Err(e) => self.loading_fail = Some(e.into()),
+            },
         }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view
-            .view(ctx, &self.event, &self.txs, self.loading_fail.as_ref())
+        let selected = if let Some(txid) = self.selected_tx {
+            self.txs.iter().find(|vault_tx| vault_tx.tx.txid() == txid)
+        } else {
+            None
+        };
+        self.view.view(
+            ctx,
+            &self.event,
+            &self.txs,
+            selected,
+            self.flowchart.as_mut().map(|chart| {
+                chart
+                    .view()
+                    .map(|msg| Message::HistoryEvent(HistoryEventMessage::FlowChart(msg)))
+            }),
+            self.loading_fail.as_ref(),
+        )
     }
 
     pub fn load(&self, ctx: &Context) -> Command<Message> {
