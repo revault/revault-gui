@@ -2,10 +2,7 @@ use iced::{Align, Column, Container, Element, Length, QRCode, Row};
 
 use revault_ui::component::{button, card, text::Text};
 
-use crate::{
-    app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::client::Client,
-};
+use crate::app::{context::Context, error::Error, message::Message, view::layout};
 
 /// DepositView is the view rendering the deposit panel.
 /// this view is used by the Deposit State.
@@ -30,9 +27,9 @@ impl DepositView {
         self.qr_code = iced::qr_code::State::new(address.to_string()).ok();
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         address: &bitcoin::Address,
     ) -> Element<'a, Message> {

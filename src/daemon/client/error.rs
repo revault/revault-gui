@@ -22,29 +22,6 @@ use std::{error, fmt};
 
 use serde::{Deserialize, Serialize};
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
-pub enum ApiErrorCode {
-    /// Internal error
-    INTERNAL_ERROR = 11000,
-    /// An error internal to revault_net, generally a transport error
-    TRANSPORT_ERROR = 12000,
-    /// The Coordinator told us they could not store our signature
-    COORDINATOR_SIG_STORE_ERROR = 13100,
-    /// The Coordinator told us they could not store our Spend transaction
-    COORDINATOR_SPEND_STORE_ERROR = 13101,
-    /// The Cosigning Server returned null to our request!
-    COSIGNER_ALREADY_SIGN_ERROR = 13201,
-    /// The Cosigning Server tried to fool us!
-    COSIGNER_INSANE_ERROR = 13202,
-    /// Bitcoind error
-    BITCOIND_ERROR = 14000,
-    /// Resource not found
-    RESOURCE_NOT_FOUND_ERROR = 15000,
-    /// Vault status was invalid
-    INVALID_STATUS_ERROR = 15001,
-}
-
 #[allow(dead_code)]
 #[derive(Debug)]
 #[allow(non_camel_case_types)]

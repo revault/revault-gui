@@ -5,7 +5,7 @@ use revault_ui::{
     component::{badge, card, separation, text::Text},
     icon::dot_icon,
 };
-use revaultd::{common::config::Config, revault_tx::bitcoin::hashes::hex::ToHex};
+use revaultd::{config::Config, revault_tx::bitcoin::hashes::hex::ToHex};
 
 use crate::app::message::Message;
 
@@ -82,7 +82,7 @@ pub struct SettingsBoxes {
 }
 
 impl SettingsBoxes {
-    pub fn new(bitcoin_blockheight: u64, server_status: ServersStatuses) -> Self {
+    pub fn new(bitcoin_blockheight: i32, server_status: ServersStatuses) -> Self {
         let mut cosigners: Vec<_> = server_status
             .cosigners
             .iter()
@@ -170,7 +170,7 @@ impl SettingsBox for AdvancedBox {
 
 #[derive(Debug, Clone, Default)]
 pub struct BitcoinCoreBox {
-    blockheight: u64,
+    blockheight: i32,
 }
 
 impl SettingsBox for BitcoinCoreBox {
@@ -268,7 +268,7 @@ impl SettingsBox for CoordinatorBox {
 
     fn body<'a>(&self, config: &Config) -> Column<'a, Message> {
         let rows = vec![
-            ("Host", config.coordinator_host.clone()),
+            ("Host", config.coordinator_host.to_string()),
             ("Noise key", config.coordinator_noise_key.0.to_hex()),
             (
                 "Poll interval",

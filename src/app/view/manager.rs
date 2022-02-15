@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
     scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Space,
@@ -20,7 +20,7 @@ use crate::{
         message::{InputMessage, Message, RecipientMessage, SpendTxMessage},
         view::{layout, warning::warn},
     },
-    daemon::{client::Client, model},
+    daemon::model,
 };
 
 #[derive(Debug)]
@@ -39,9 +39,9 @@ impl ManagerImportTransactionView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         psbt_input: &form::Value<String>,
         psbt_imported: Option<&Psbt>,
         warning: Option<&Error>,
@@ -116,7 +116,7 @@ impl ManagerSendWelcomeView {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<'_, Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<'_, Message> {
         self.modal.view(
             ctx,
             None,
@@ -368,9 +368,9 @@ impl ManagerSelectInputsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: Vec<Element<'a, Message>>,
         input_amount: u64,
         output_amount: u64,
@@ -420,7 +420,8 @@ impl ManagerSelectInputsView {
                 &mut self.next_button,
                 Container::new(Text::new(&format!(
                     "Missing {} {}",
-                    &ctx.converter.converts(output_amount - input_amount),
+                    &ctx.converter
+                        .converts(Amount::from_sat(output_amount - input_amount)),
                     ctx.converter.unit
                 )))
                 .width(Length::Units(200))
@@ -449,7 +450,7 @@ impl ManagerSelectInputsView {
                             Container::new(
                                 Text::new(&format!(
                                     "Select coins worth at least {} {}",
-                                    &ctx.converter.converts(output_amount),
+                                    &ctx.converter.converts(Amount::from_sat(output_amount)),
                                     ctx.converter.unit
                                 ))
                                 .bold(),
@@ -496,8 +497,8 @@ impl ManagerSelectInputsView {
     }
 }
 
-pub fn manager_send_input_view<'a, C: Client>(
-    ctx: &Context<C>,
+pub fn manager_send_input_view<'a>(
+    ctx: &Context,
     outpoint: &str,
     amount: &u64,
     selected: bool,
@@ -508,7 +509,13 @@ pub fn manager_send_input_view<'a, C: Client>(
         .push(
             Container::new(
                 Row::new()
-                    .push(Text::new(&format!("{}", ctx.converter.converts(*amount))).bold())
+                    .push(
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(*amount))
+                        ))
+                        .bold(),
+                    )
                     .push(Text::new(&ctx.converter.unit.to_string()).small())
                     .align_items(Align::Center),
             )
@@ -544,7 +551,7 @@ impl ManagerSelectFeeView {
 
     pub fn view<'a>(
         &'a mut self,
-        feerate: Option<u32>,
+        feerate: Option<u64>,
         valid_feerate: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
@@ -663,13 +670,13 @@ impl ManagerSelectFeeView {
     }
 }
 
-pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+pub fn spend_tx_with_feerate_view<'a, T: 'a>(
+    ctx: &Context,
     inputs: &[model::Vault],
     psbt: &Psbt,
     change_index: Option<usize>,
     cpfp_index: usize,
-    feerate: Option<&u32>,
+    feerate: Option<&u64>,
 ) -> Container<'a, T> {
     let mut total_fees = 0;
     let mut col_input = Column::new()
@@ -684,7 +691,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
         .spacing(10);
 
     for input in inputs {
-        total_fees += input.amount;
+        total_fees += input.amount.as_sat();
         col_input = col_input.push(card::simple(Container::new(
             Row::new()
                 .push(
@@ -746,9 +753,12 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
                 .push(Container::new(Text::new(&addr.to_string()).small()).width(Length::Fill))
                 .push(
                     Container::new(
-                        Text::new(&format!("{}", ctx.converter.converts(output.value)))
-                            .bold()
-                            .small(),
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(output.value))
+                        ))
+                        .bold()
+                        .small(),
                     )
                     .width(Length::Shrink),
                 )
@@ -783,7 +793,8 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
                                 Container::new(
                                     Text::new(&format!(
                                         "{}",
-                                        ctx.converter.converts(change_output.value)
+                                        ctx.converter
+                                            .converts(Amount::from_sat(change_output.value))
                                     ))
                                     .bold()
                                     .small(),
@@ -807,7 +818,13 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a, C: Client>(
                 column_fee.push(
                     Row::new()
                         .push(Text::new("Total fees: "))
-                        .push(Text::new(&format!("{}", ctx.converter.converts(total_fees))).bold())
+                        .push(
+                            Text::new(&format!(
+                                "{}",
+                                ctx.converter.converts(Amount::from_sat(total_fees))
+                            ))
+                            .bold(),
+                        )
                         .push(Text::new(&format!(" {}", ctx.converter.unit))),
                 ),
             )
@@ -837,14 +854,14 @@ impl ManagerStepSignView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
-        feerate: &u32,
+        feerate: &u64,
         warning: Option<&Error>,
         signer: Element<'a, Message>,
     ) -> Element<'a, Message> {
@@ -952,14 +969,14 @@ impl ManagerSpendTransactionCreatedView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         inputs: &[model::Vault],
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
-        feerate: &u32,
+        feerate: &u64,
     ) -> Element<'a, Message> {
         Container::new(
             Column::new()

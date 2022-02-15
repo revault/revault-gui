@@ -1,40 +1,16 @@
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 
-use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt};
-use log::{debug, error, info};
+use bitcoin::{base64, consensus, util::psbt::PartiallySignedTransaction as Psbt, OutPoint, Txid};
+use log::{error, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
 
 pub mod error;
 pub mod jsonrpc;
 
-use super::model::*;
-
-#[derive(Debug, Clone)]
-pub enum RevaultDError {
-    /// Something was wrong with the request.
-    Rpc(i32, String),
-    /// Something was wrong with the communication.
-    Transport(Option<ErrorKind>, String),
-    /// Something unexpected happened.
-    Unexpected(String),
-    /// No response.
-    NoAnswer,
-}
-
-impl std::fmt::Display for RevaultDError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Rpc(code, e) => write!(f, "Revaultd error rpc call: [{:?}] {}", code, e),
-            Self::NoAnswer => write!(f, "Revaultd returned no answer"),
-            Self::Transport(kind, e) => write!(f, "Revaultd transport error: [{:?}] {}", kind, e),
-            Self::Unexpected(e) => write!(f, "Revaultd unexpected error: {}", e),
-        }
-    }
-}
+use super::{model::*, Daemon, RevaultDError};
 
 pub trait Client {
     type Error: Into<RevaultDError> + Debug;
@@ -51,16 +27,8 @@ pub struct RevaultD<C: Client> {
 }
 
 impl<C: Client> RevaultD<C> {
-    pub fn new(client: C) -> Result<RevaultD<C>, RevaultDError> {
-        let revaultd = RevaultD { client };
-
-        debug!("Connecting to revaultd");
-
-        revaultd.get_info()?;
-
-        info!("Connected to revaultd");
-
-        Ok(revaultd)
+    pub fn new(client: C) -> RevaultD<C> {
+        RevaultD { client }
     }
 
     /// Generic call function for RPC calls.
@@ -75,51 +43,65 @@ impl<C: Client> RevaultD<C> {
             e.into()
         })
     }
+}
 
-    /// get a new deposit address.
-    pub fn get_deposit_address(&self) -> Result<DepositAddress, RevaultDError> {
-        self.call("getdepositaddress", Option::<Request>::None)
+impl<C: Client + Debug> Daemon for RevaultD<C> {
+    fn is_external(&self) -> bool {
+        true
     }
 
-    pub fn get_info(&self) -> Result<GetInfoResponse, RevaultDError> {
+    /// get a new deposit address.
+    fn get_deposit_address(&self) -> Result<bitcoin::Address, RevaultDError> {
+        let deposit_address: DepositAddress =
+            self.call("getdepositaddress", Option::<Request>::None)?;
+        Ok(deposit_address.address)
+    }
+
+    fn get_info(&self) -> Result<GetInfoResult, RevaultDError> {
         self.call("getinfo", Option::<Request>::None)
     }
 
-    pub fn list_vaults(
+    fn list_vaults(
         &self,
         statuses: Option<&[VaultStatus]>,
-        outpoints: Option<&Vec<String>>,
-    ) -> Result<ListVaultsResponse, RevaultDError> {
-        let mut args = vec![json!(statuses.unwrap_or(&[]))];
+        outpoints: Option<&[OutPoint]>,
+    ) -> Result<Vec<Vault>, RevaultDError> {
+        let statuses: Vec<String> = statuses
+            .unwrap_or(&[])
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let mut args = vec![json!(statuses)];
         if let Some(outpoints) = outpoints {
+            let outpoints: Vec<String> = outpoints.iter().map(|o| o.to_string()).collect();
             args.push(json!(outpoints));
         }
-        self.call("listvaults", Some(args))
+        let response: ListVaultsResponse = self.call("listvaults", Some(args))?;
+        Ok(response.vaults)
     }
 
-    pub fn list_onchain_transactions(
+    fn list_onchain_transactions(
         &self,
-        outpoints: Option<Vec<String>>,
-    ) -> Result<ListOnchainTransactionsResponse, RevaultDError> {
-        match outpoints {
-            Some(list) => self.call(
-                "listonchaintransactions",
-                Some(vec![ListTransactionsRequest(list)]),
-            ),
-            None => self.call("listonchaintransactions", Option::<Request>::None),
-        }
+        outpoints: &[OutPoint],
+    ) -> Result<Vec<VaultTransactions>, RevaultDError> {
+        let outpoints: Vec<String> = outpoints.iter().map(|o| o.to_string()).collect();
+        let response: ListOnchainTransactionsResponse = self.call(
+            "listonchaintransactions",
+            Some(vec![ListTransactionsRequest(outpoints)]),
+        )?;
+        Ok(response.onchain_transactions)
     }
 
-    pub fn get_revocation_txs(
+    fn get_revocation_txs(
         &self,
-        outpoint: &str,
+        outpoint: &OutPoint,
     ) -> Result<RevocationTransactions, RevaultDError> {
-        self.call("getrevocationtxs", Some(vec![outpoint]))
+        self.call("getrevocationtxs", Some(vec![outpoint.to_string()]))
     }
 
-    pub fn set_revocation_txs(
+    fn set_revocation_txs(
         &self,
-        outpoint: &str,
+        outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
         cancel_tx: &Psbt,
@@ -129,110 +111,108 @@ impl<C: Client> RevaultD<C> {
         let cancel = base64::encode(&consensus::serialize(cancel_tx));
         let _res: serde_json::value::Value = self.call(
             "revocationtxs",
-            Some(vec![outpoint, &cancel, &emergency, &emergency_unvault]),
+            Some(vec![
+                outpoint.to_string(),
+                cancel,
+                emergency,
+                emergency_unvault,
+            ]),
         )?;
         Ok(())
     }
 
-    pub fn get_unvault_tx(&self, outpoint: &str) -> Result<UnvaultTransaction, RevaultDError> {
-        self.call("getunvaulttx", Some(vec![outpoint]))
+    fn get_unvault_tx(&self, outpoint: &OutPoint) -> Result<Psbt, RevaultDError> {
+        let resp: UnvaultTransaction =
+            self.call("getunvaulttx", Some(vec![outpoint.to_string()]))?;
+        Ok(resp.unvault_tx)
     }
 
-    pub fn set_unvault_tx(&self, outpoint: &str, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+    fn set_unvault_tx(&self, outpoint: &OutPoint, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
         let unvault_tx = base64::encode(&consensus::serialize(unvault_tx));
         let _res: serde_json::value::Value =
-            self.call("unvaulttx", Some(vec![outpoint, &unvault_tx]))?;
+            self.call("unvaulttx", Some(vec![outpoint.to_string(), unvault_tx]))?;
         Ok(())
     }
 
-    pub fn get_spend_tx(
+    fn get_spend_tx(
         &self,
-        inputs: &[String],
-        outputs: &HashMap<String, u64>,
-        feerate: &u32,
-    ) -> Result<SpendTransaction, RevaultDError> {
-        self.call(
+        inputs: &[OutPoint],
+        outputs: &BTreeMap<bitcoin::Address, u64>,
+        feerate: u64,
+    ) -> Result<Psbt, RevaultDError> {
+        let resp: SpendTransaction = self.call(
             "getspendtx",
             Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
-        )
-        .map(|mut res: SpendTransaction| {
-            res.feerate = *feerate;
-            res
-        })
+        )?;
+        Ok(resp.spend_tx)
     }
 
-    pub fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
+    fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
         let spend_tx = base64::encode(&consensus::serialize(psbt));
         let _res: serde_json::value::Value = self.call("updatespendtx", Some(vec![spend_tx]))?;
         Ok(())
     }
 
-    pub fn list_spend_txs(
+    fn list_spend_txs(
         &self,
         statuses: Option<&[SpendTxStatus]>,
-    ) -> Result<ListSpendTransactionsResponse, RevaultDError> {
-        self.call("listspendtxs", Some(vec![statuses]))
+    ) -> Result<Vec<SpendTx>, RevaultDError> {
+        let resp: ListSpendTransactionsResponse =
+            self.call("listspendtxs", Some(vec![statuses]))?;
+        Ok(resp.spend_txs)
     }
 
-    pub fn delete_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+    fn delete_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("delspendtx", Some(vec![txid]))?;
         Ok(())
     }
 
-    pub fn broadcast_spend_tx(&self, txid: &str) -> Result<(), RevaultDError> {
+    fn broadcast_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
         Ok(())
     }
 
-    pub fn revault(&self, outpoint: &str) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("revault", Some(vec![outpoint]))?;
+    fn revault(&self, outpoint: &OutPoint) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value =
+            self.call("revault", Some(vec![outpoint.to_string()]))?;
         Ok(())
     }
 
-    pub fn emergency(&self) -> Result<(), RevaultDError> {
+    fn emergency(&self) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("emergency", Option::<Request>::None)?;
         Ok(())
     }
 
-    pub fn stop(&self) -> Result<(), RevaultDError> {
+    fn stop(&mut self) -> Result<(), RevaultDError> {
         let _res: serde_json::value::Value = self.call("stop", Option::<Request>::None)?;
         Ok(())
     }
 
-    pub fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
+    fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
         self.call("getserverstatus", Option::<Request>::None)
     }
 
-    pub fn get_history(
+    fn get_history(
         &self,
         kind: &[HistoryEventKind],
-        start: u64,
-        end: u64,
+        start: u32,
+        end: u32,
         limit: u64,
-    ) -> Result<GetHistoryResponse, RevaultDError> {
-        self.call(
+    ) -> Result<Vec<HistoryEvent>, RevaultDError> {
+        let resp: GetHistoryResponse = self.call(
             "gethistory",
             Some(vec![json!(kind), json!(start), json!(end), json!(limit)]),
-        )
+        )?;
+        Ok(resp.events)
     }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Request {}
 
-/// getinfo
-
-/// getinfo response
+/// listtransactions request
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GetInfoResponse {
-    pub blockheight: u64,
-    pub network: String,
-    pub sync: f64,
-    pub version: String,
-    pub managers_threshold: usize,
-}
-
-/// list_vaults
+pub struct ListTransactionsRequest(Vec<String>);
 
 /// listvaults response
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -246,12 +226,6 @@ pub struct GetHistoryResponse {
     pub events: Vec<HistoryEvent>,
 }
 
-/// list_transactions
-
-/// listtransactions request
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ListTransactionsRequest(Vec<String>);
-
 /// listtransactions response
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListOnchainTransactionsResponse {
@@ -262,4 +236,46 @@ pub struct ListOnchainTransactionsResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListSpendTransactionsResponse {
     pub spend_txs: Vec<SpendTx>,
+}
+
+/// getdepositaddress response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DepositAddress {
+    pub address: bitcoin::Address,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UnvaultTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub unvault_tx: Psbt,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SpendTransaction {
+    #[serde(with = "bitcoin_psbt")]
+    pub spend_tx: Psbt,
+}
+
+mod bitcoin_psbt {
+    use bitcoin::{base64, consensus::encode, util::psbt::PartiallySignedTransaction};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PartiallySignedTransaction, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let bytes: Vec<u8> = base64::decode(&s).map_err(serde::de::Error::custom)?;
+        encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+    }
+
+    pub fn serialize<'se, S>(
+        psbt: &PartiallySignedTransaction,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&base64::encode(&encode::serialize(&psbt)))
+    }
 }

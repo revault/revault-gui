@@ -4,7 +4,7 @@ use iced::{Command, Element};
 
 use super::{cmd::list_vaults, State};
 
-use crate::daemon::{client::Client, model::VaultStatus};
+use crate::daemon::model::VaultStatus;
 
 use crate::app::{
     context::Context,
@@ -47,8 +47,8 @@ impl EmergencyState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for EmergencyState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Vaults(res) => match self {
                 Self::Loading { fail, .. } => match res {
@@ -64,7 +64,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                                 vaults_number: vaults.len(),
                                 funds_amount: vaults
                                     .into_iter()
-                                    .fold(0, |acc, vault| acc + vault.amount),
+                                    .fold(0, |acc, vault| acc + vault.amount.as_sat()),
                             };
                         } else {
                             *self = Self::Loaded {
@@ -72,7 +72,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                                 vaults_number: vaults.len(),
                                 funds_amount: vaults
                                     .into_iter()
-                                    .fold(0, |acc, vault| acc + vault.amount),
+                                    .fold(0, |acc, vault| acc + vault.amount.as_sat()),
                                 warning: None,
                                 processing: false,
                             };
@@ -88,7 +88,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
                 } => match res {
                     Ok(vaults) => {
                         *vaults_number = vaults.len();
-                        *funds_amount = vaults.into_iter().fold(0, |acc, vault| acc + vault.amount);
+                        *funds_amount = vaults
+                            .into_iter()
+                            .fold(0, |acc, vault| acc + vault.amount.as_sat());
                         *warning = None;
                     }
                     Err(e) => *warning = Error::from(e).into(),
@@ -136,7 +138,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
             Self::Loaded {
@@ -160,7 +162,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(
                 ctx.revaultd.clone(),
@@ -182,8 +184,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for EmergencyState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<EmergencyState> for Box<dyn State<C>> {
-    fn from(s: EmergencyState) -> Box<dyn State<C>> {
+impl From<EmergencyState> for Box<dyn State> {
+    fn from(s: EmergencyState) -> Box<dyn State> {
         Box::new(s)
     }
 }

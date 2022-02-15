@@ -1,22 +1,14 @@
 use async_recursion::async_recursion;
-use std::marker::PhantomData;
 
-use revault_gui::{
-    app::{context::Context, message::Message, state::State},
-    daemon::client::Client,
-};
+use revault_gui::app::{context::Context, message::Message, state::State};
 
-pub struct Sandbox<C: Client + Send + Sync + 'static, S: State<C>> {
+pub struct Sandbox<S: State> {
     state: S,
-    marker: PhantomData<C>,
 }
 
-impl<C: Client + Send + Sync + 'static, S: State<C> + Send + 'static> Sandbox<C, S> {
+impl<S: State + Send + 'static> Sandbox<S> {
     pub fn new(state: S) -> Self {
-        return Self {
-            state,
-            marker: PhantomData,
-        };
+        return Self { state };
     }
 
     pub fn state(&self) -> &S {
@@ -24,7 +16,7 @@ impl<C: Client + Send + Sync + 'static, S: State<C> + Send + 'static> Sandbox<C,
     }
 
     #[async_recursion]
-    pub async fn update(mut self, ctx: &Context<C>, message: Message) -> Self {
+    pub async fn update(mut self, ctx: &Context, message: Message) -> Self {
         let cmd = self.state.update(ctx, message);
         for f in cmd.futures() {
             let msg = f.await;
@@ -35,7 +27,7 @@ impl<C: Client + Send + Sync + 'static, S: State<C> + Send + 'static> Sandbox<C,
     }
 
     #[async_recursion]
-    pub async fn load(mut self, ctx: &Context<C>) -> Self {
+    pub async fn load(mut self, ctx: &Context) -> Self {
         let cmd = self.state.load(ctx);
         for f in cmd.futures() {
             let msg = f.await;

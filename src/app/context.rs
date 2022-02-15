@@ -1,9 +1,6 @@
 use super::menu::Menu;
-use crate::{
-    app::config, conversion::Converter, daemon::client::Client, daemon::client::RevaultD,
-    revault::Role,
-};
-use revaultd::common::config::Config as DaemonConfig;
+use crate::{app::config, conversion::Converter, daemon::Daemon, revault::Role};
+use revaultd::config::Config as DaemonConfig;
 use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
@@ -16,26 +13,24 @@ pub type HardwareWallet =
 
 /// Context is an object passing general information
 /// and service clients through the application components.
-pub struct Context<C: Client> {
+pub struct Context {
     pub config: ConfigContext,
-    pub blockheight: u64,
-    pub revaultd: Arc<RevaultD<C>>,
+    pub blockheight: i32,
+    pub revaultd: Arc<dyn Daemon + Sync + Send>,
     pub converter: Converter,
     pub menu: Menu,
     pub role: Role,
     pub managers_threshold: usize,
-    pub internal_daemon: bool,
     pub hardware_wallet: Box<dyn Fn() -> Pin<HardwareWallet> + Send + Sync>,
 }
 
-impl<C: Client> Context<C> {
+impl Context {
     pub fn new(
         config: ConfigContext,
-        revaultd: Arc<RevaultD<C>>,
+        revaultd: Arc<dyn Daemon + Sync + Send>,
         converter: Converter,
         role: Role,
         menu: Menu,
-        internal_daemon: bool,
         hardware_wallet: Box<dyn Fn() -> Pin<HardwareWallet> + Send + Sync>,
     ) -> Self {
         Self {
@@ -46,7 +41,6 @@ impl<C: Client> Context<C> {
             role,
             menu,
             managers_threshold: 0,
-            internal_daemon,
             hardware_wallet,
         }
     }

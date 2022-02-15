@@ -4,11 +4,8 @@ use iced::{Command, Element};
 
 use super::{cmd::get_deposit_address, State};
 
-use crate::{
-    app::{
-        context::Context, error::Error, message::Message, view::DepositView, view::LoadingDashboard,
-    },
-    daemon::client::Client,
+use crate::app::{
+    context::Context, error::Error, message::Message, view::DepositView, view::LoadingDashboard,
 };
 
 /// DepositState handles the deposit process.
@@ -39,8 +36,8 @@ impl DepositState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for DepositState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for DepositState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::DepositAddress(res) = message {
@@ -82,7 +79,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for DepositState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -93,16 +90,14 @@ impl<C: Client + Send + Sync + 'static> State<C> for DepositState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
-        Command::perform(
-            get_deposit_address(ctx.revaultd.clone()),
-            Message::DepositAddress,
-        )
+    fn load(&self, ctx: &Context) -> Command<Message> {
+        let revaultd = ctx.revaultd.clone();
+        Command::perform(get_deposit_address(revaultd), Message::DepositAddress)
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<DepositState> for Box<dyn State<C>> {
-    fn from(s: DepositState) -> Box<dyn State<C>> {
+impl From<DepositState> for Box<dyn State> {
+    fn from(s: DepositState) -> Box<dyn State> {
         Box::new(s)
     }
 }

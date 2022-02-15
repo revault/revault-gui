@@ -9,11 +9,8 @@ use revault_ui::{
     },
 };
 
+use crate::app::{context::Context, menu::Menu, message::Message};
 use crate::revault::Role;
-use crate::{
-    app::{context::Context, menu::Menu, message::Message},
-    daemon::client::Client,
-};
 
 #[derive(Debug, Clone)]
 pub struct Sidebar {
@@ -45,7 +42,7 @@ impl Sidebar {
         }
     }
 
-    pub fn view<C: Client>(&mut self, context: &Context<C>) -> Container<Message> {
+    pub fn view(&mut self, context: &Context) -> Container<Message> {
         let role = if context.role_editable() {
             Container::new(
                 pick_list::PickList::new(

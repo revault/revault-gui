@@ -1,10 +1,10 @@
 use iced::{Column, Element};
 
-use revaultd::common::config::Config;
+use revaultd::config::Config;
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::{client::Client, model::ServersStatuses},
+    daemon::model::ServersStatuses,
     revault::Role,
 };
 
@@ -23,9 +23,9 @@ impl SettingsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         config: &Config,
         server_status: Option<ServersStatuses>,
@@ -37,8 +37,8 @@ impl SettingsView {
         )
     }
 
-    pub fn display_boxes<'a, C: Client>(
-        ctx: &Context<C>,
+    pub fn display_boxes<'a>(
+        ctx: &Context,
         server_status: Option<ServersStatuses>,
         config: &Config,
     ) -> Column<'a, Message> {

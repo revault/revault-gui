@@ -1,4 +1,4 @@
-use revaultd::common::config::Config as DaemonConfig;
+use revaultd::config::Config as DaemonConfig;
 
 pub fn random_daemon_config() -> DaemonConfig {
     toml::from_str(

@@ -4,9 +4,10 @@ use bitcoin::util::{
 };
 use std::convert::From;
 
+use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 use revault_ui::component::form;
-use revaultd::revault_tx::miniscript::DescriptorPublicKey;
+use revaultd::revault_tx::{miniscript::DescriptorPublicKey, transactions::RevaultTransaction};
 
 use crate::{
     app::{
@@ -26,7 +27,7 @@ use crate::{
             SpendTransactionView,
         },
     },
-    daemon::{client::Client, model},
+    daemon::model::{self, outpoint},
 };
 
 #[derive(Debug)]
@@ -35,7 +36,7 @@ pub struct SpendTransactionState {
     cpfp_index: usize,
     change_index: Option<usize>,
 
-    deposit_outpoints: Vec<String>,
+    deposit_outpoints: Vec<OutPoint>,
     deposits: Vec<model::Vault>,
     warning: Option<Error>,
 
@@ -45,7 +46,7 @@ pub struct SpendTransactionState {
 }
 
 impl SpendTransactionState {
-    pub fn new<C: Client + Send + Sync + 'static>(ctx: &Context<C>, psbt: Psbt) -> Self {
+    pub fn new(ctx: &Context, psbt: Psbt) -> Self {
         Self {
             cpfp_index: 0,
             change_index: None,
@@ -80,30 +81,26 @@ impl SpendTransactionState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for SpendTransactionState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Inputs(res)) => match res {
                 Ok(vaults) => {
-                    self.deposits = Vec::new();
-                    // we keep the order of the deposit_outpoints.
-                    for deposit in vaults.into_iter() {
-                        for outpoint in &self.deposit_outpoints {
-                            if deposit.outpoint() == *outpoint {
-                                self.deposits.push(deposit.clone());
-                            }
-                        }
-                    }
+                    self.deposits = vaults
+                        .into_iter()
+                        .filter(|vlt| self.deposit_outpoints.contains(&outpoint(vlt)))
+                        .collect();
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },
             Message::SpendTx(SpendTxMessage::SpendTransactions(res)) => match res {
                 Ok(txs) => {
                     for tx in txs {
-                        if tx.psbt.global.unsigned_tx.txid() == self.psbt.global.unsigned_tx.txid()
+                        if tx.psbt.psbt().global.unsigned_tx.txid()
+                            == self.psbt.global.unsigned_tx.txid()
                         {
                             self.deposit_outpoints = tx.deposit_outpoints;
-                            self.psbt = tx.psbt;
+                            self.psbt = tx.psbt.psbt().clone();
                             self.cpfp_index = tx.cpfp_index;
                             self.change_index = tx.change_index;
                             return Command::perform(
@@ -134,7 +131,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
         self.sub()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
         self.view.view(
             ctx,
@@ -148,7 +145,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for SpendTransactionState {
         )
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::perform(list_spend_txs(ctx.revaultd.clone(), None), |res| {
             Message::SpendTx(SpendTxMessage::SpendTransactions(res))
         })
@@ -236,9 +233,9 @@ impl SpendTransactionAction {
             view: SpendTransactionSharePsbtView::new(),
         }
     }
-    fn update<C: Client + Send + Sync + 'static>(
+    fn update(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         psbt: &mut Psbt,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
@@ -247,10 +244,7 @@ impl SpendTransactionAction {
                 if let Self::Delete { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        delete_spend_tx(
-                            ctx.revaultd.clone(),
-                            psbt.global.unsigned_tx.txid().to_string(),
-                        ),
+                        delete_spend_tx(ctx.revaultd.clone(), psbt.global.unsigned_tx.txid()),
                         SpendTxMessage::Deleted,
                     );
                 }
@@ -343,10 +337,7 @@ impl SpendTransactionAction {
                 if let Self::Broadcast { processing, .. } = self {
                     *processing = true;
                     return Command::perform(
-                        broadcast_spend_tx(
-                            ctx.revaultd.clone(),
-                            psbt.global.unsigned_tx.txid().to_string(),
-                        ),
+                        broadcast_spend_tx(ctx.revaultd.clone(), psbt.global.unsigned_tx.txid()),
                         SpendTxMessage::Broadcasted,
                     );
                 }
@@ -485,11 +476,7 @@ impl SpendTransactionAction {
         Command::none()
     }
 
-    fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        psbt: &Psbt,
-    ) -> Element<Message> {
+    fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
             Self::Sign {
                 signer,
@@ -554,6 +541,7 @@ impl SpendTransactionListItem {
     pub fn new(tx: model::SpendTx, vaults_amount: u64) -> Self {
         let spend_amount = tx
             .psbt
+            .psbt()
             .global
             .unsigned_tx
             .output
@@ -562,7 +550,7 @@ impl SpendTransactionListItem {
             .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
             .fold(0, |acc, (_, output)| acc + output.value);
         let change_amount = if let Some(i) = tx.change_index {
-            tx.psbt.global.unsigned_tx.output[i].value
+            tx.psbt.psbt().global.unsigned_tx.output[i].value
         } else {
             0
         };
@@ -581,10 +569,7 @@ impl SpendTransactionListItem {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-    ) -> Element<SpendTxMessage> {
+    pub fn view(&mut self, ctx: &Context) -> Element<SpendTxMessage> {
         self.view.view(ctx, &self.tx, self.spend_amount, self.fees)
     }
 }

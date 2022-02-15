@@ -1,4 +1,4 @@
-use std::convert::From;
+use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use iced::{Command, Element};
@@ -13,10 +13,7 @@ use crate::{
         view::LoadingDashboard,
         view::{HistoryEventListItemView, HistoryEventView, HistoryView},
     },
-    daemon::{
-        client::Client,
-        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
-    },
+    daemon::model::{HistoryEvent, HistoryEventKind, VaultTransactions, ALL_HISTORY_EVENTS},
 };
 
 pub const HISTORY_EVENT_PAGE_SIZE: u64 = 20;
@@ -49,8 +46,8 @@ impl HistoryState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for HistoryState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::HistoryEvents(res) = message {
@@ -107,10 +104,12 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                 Message::FilterHistoryEvents(filter) => {
                     *events = Vec::new();
                     *event_kind_filter = filter;
-                    let t1 = SystemTime::now()
+                    let t1: u32 = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .unwrap()
-                        .as_secs();
+                        .as_secs()
+                        .try_into()
+                        .unwrap();
                     let kind = event_kind_filter
                         .as_ref()
                         .map(|filter| vec![filter.clone()])
@@ -121,18 +120,14 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                         ]);
                     let revaultd = ctx.revaultd.clone();
                     return Command::perform(
-                        async move {
-                            revaultd
-                                .get_history(kind.as_slice(), 0, t1, u32::MAX.into())
-                                .map(|res| res.events)
-                        },
+                        async move { revaultd.get_history(kind.as_slice(), 0, t1, u32::MAX.into()) },
                         Message::HistoryEvents,
                     );
                 }
                 Message::Next => {
                     if let Some(last) = events.last() {
                         let revaultd = ctx.revaultd.clone();
-                        let last_event_date = last.event.date as u64;
+                        let last_event_date = last.event.date as u32;
                         let kind = event_kind_filter
                             .as_ref()
                             .map(|filter| vec![filter.clone()])
@@ -144,9 +139,12 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                         return Command::perform(
                             async move {
                                 let mut limit = HISTORY_EVENT_PAGE_SIZE;
-                                let mut events = revaultd
-                                    .get_history(kind.as_slice(), 0, last_event_date, limit)
-                                    .map(|res| res.events)?;
+                                let mut events = revaultd.get_history(
+                                    kind.as_slice(),
+                                    0 as u32,
+                                    last_event_date,
+                                    limit,
+                                )?;
 
                                 // because gethistory cursor is inclusive and use blocktime
                                 // multiple events can occur in the same block.
@@ -168,9 +166,12 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                                 {
                                     // increments of the equivalent of one page more.
                                     limit += HISTORY_EVENT_PAGE_SIZE;
-                                    events = revaultd
-                                        .get_history(kind.as_slice(), 0, last_event_date, limit)
-                                        .map(|res| res.events)?;
+                                    events = revaultd.get_history(
+                                        kind.as_slice(),
+                                        0,
+                                        last_event_date,
+                                        limit,
+                                    )?;
                                 }
                                 Ok(events)
                             },
@@ -189,7 +190,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
                         let mut new_events: Vec<HistoryEventListItemState> = evts
                             .into_iter()
                             .filter_map(|evt| {
-                                if !events.iter().any(|state| state.event == evt) {
+                                if !events.iter().any(|state| {
+                                    state.event.txid == evt.txid && state.event.vaults == evt.vaults
+                                }) {
                                     Some(HistoryEventListItemState::new(evt))
                                 } else {
                                     None
@@ -206,7 +209,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -237,25 +240,23 @@ impl<C: Client + Send + Sync + 'static> State<C> for HistoryState {
     }
 
     // We retrieve the full history
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
-        let t1 = SystemTime::now()
+    fn load(&self, ctx: &Context) -> Command<Message> {
+        let t1: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_secs()
+            .try_into()
+            .unwrap();
         let revaultd = ctx.revaultd.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, t1, HISTORY_EVENT_PAGE_SIZE)
-                    .map(|res| res.events)
-            },
+            async move { revaultd.get_history(&ALL_HISTORY_EVENTS, 0, t1, HISTORY_EVENT_PAGE_SIZE) },
             Message::HistoryEvents,
         )
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<HistoryState> for Box<dyn State<C>> {
-    fn from(s: HistoryState) -> Box<dyn State<C>> {
+impl From<HistoryState> for Box<dyn State> {
+    fn from(s: HistoryState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -274,11 +275,7 @@ impl HistoryEventListItemState {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        index: usize,
-    ) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context, index: usize) -> Element<Message> {
         self.view.view(ctx, &self.event, index)
     }
 }
@@ -309,23 +306,16 @@ impl HistoryEventState {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-    ) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view
             .view(ctx, &self.event, &self.txs, self.loading_fail.as_ref())
     }
 
-    pub fn load<C: Client + Send + Sync + 'static>(&self, ctx: &Context<C>) -> Command<Message> {
+    pub fn load(&self, ctx: &Context) -> Command<Message> {
         let revaultd = ctx.revaultd.clone();
         let vaults = self.event.vaults.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .list_onchain_transactions(Some(vaults))
-                    .map(|res| res.onchain_transactions)
-            },
+            async move { revaultd.list_onchain_transactions(vaults.as_ref()) },
             |msg| Message::HistoryEvent(HistoryEventMessage::OnChainTransactions(msg)),
         )
     }

@@ -1,4 +1,4 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -6,11 +6,11 @@ use tokio::sync::Mutex;
 use crate::{
     app::{error::Error, menu::Menu},
     daemon::{
-        client::RevaultDError,
         model::{
-            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTransaction, SpendTx, Vault,
-            VaultStatus, VaultTransactions,
+            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, Vault, VaultStatus,
+            VaultTransactions,
         },
+        RevaultDError,
     },
     revault::Role,
 };
@@ -19,20 +19,19 @@ use crate::{
 pub enum Message {
     Reload,
     Tick,
-    StoppingDaemon(Result<(), RevaultDError>),
     Event(iced_native::Event),
     Clipboard(String),
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),
-    SelectVault(String),
+    SelectVault(OutPoint),
     SelectHistoryEvent(usize),
-    DelegateVault(String),
+    DelegateVault(OutPoint),
     Sign(SignMessage),
-    DepositsSecured(Result<Vec<String>, Error>),
-    VaultsDelegated(Result<Vec<String>, Error>),
+    DepositsSecured(Result<Vec<OutPoint>, Error>),
+    VaultsDelegated(Result<Vec<OutPoint>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
-    BlockHeight(Result<u64, RevaultDError>),
+    BlockHeight(Result<i32, RevaultDError>),
     ServerStatus(Result<ServersStatuses, RevaultDError>),
     HistoryEvents(Result<Vec<HistoryEvent>, RevaultDError>),
     HistoryEvent(HistoryEventMessage),
@@ -44,7 +43,7 @@ pub enum Message {
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
-    SpendTransaction(Result<SpendTransaction, RevaultDError>),
+    SpendTransaction(Result<(Psbt, u64), RevaultDError>),
     SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
     SpendTx(SpendTxMessage),
     Emergency,

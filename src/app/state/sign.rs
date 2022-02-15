@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use bitcoin::{
     blockdata::transaction::OutPoint,
@@ -16,7 +16,7 @@ use revault_hwi::{app::revault::RevaultHWI, HWIError};
 
 use crate::{
     app::{context::Context, error::Error, message::SignMessage, view::sign::SignerView},
-    daemon::{client::Client, model::Vault},
+    daemon::model::{outpoint, Vault},
 };
 
 #[derive(Debug)]
@@ -78,7 +78,7 @@ impl<T> Signer<T> {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<SignMessage> {
+    pub fn view(&mut self, ctx: &Context) -> Element<SignMessage> {
         self.view.view(
             ctx,
             self.device.is_connected(),
@@ -89,11 +89,7 @@ impl<T> Signer<T> {
 }
 
 impl Signer<SpendTransactionTarget> {
-    pub fn update<C: Client>(
-        &mut self,
-        ctx: &Context<C>,
-        message: SignMessage,
-    ) -> Command<SignMessage> {
+    pub fn update(&mut self, ctx: &Context, message: SignMessage) -> Command<SignMessage> {
         match message {
             SignMessage::SelectSign => {
                 self.processing = true;
@@ -158,11 +154,7 @@ impl Device {
         self.channel.is_some()
     }
 
-    pub fn update<C: Client>(
-        &mut self,
-        ctx: &Context<C>,
-        message: SignMessage,
-    ) -> Command<SignMessage> {
+    pub fn update(&mut self, ctx: &Context, message: SignMessage) -> Command<SignMessage> {
         match message {
             SignMessage::Ping(res) => {
                 if res.is_err() {
@@ -235,10 +227,9 @@ impl Device {
                 .iter()
                 .map(|deposit| {
                     (
-                        OutPoint::from_str(&deposit.outpoint())
-                            .expect("OutPoint has the good format"),
-                        Amount::from_sat(deposit.amount),
-                        deposit.derivation_index,
+                        outpoint(deposit),
+                        deposit.amount,
+                        deposit.derivation_index.into(),
                     )
                 })
                 .collect();
@@ -252,14 +243,7 @@ impl Device {
         if let Some(channel) = self.channel {
             let utxos: Vec<(OutPoint, Amount, u32)> = vaults
                 .iter()
-                .map(|vault| {
-                    (
-                        OutPoint::from_str(&vault.outpoint())
-                            .expect("OutPoint has the good format"),
-                        Amount::from_sat(vault.amount),
-                        vault.derivation_index,
-                    )
-                })
+                .map(|vault| (outpoint(vault), vault.amount, vault.derivation_index.into()))
                 .collect();
             channel.lock().await.delegate_vaults(&utxos).await
         } else {

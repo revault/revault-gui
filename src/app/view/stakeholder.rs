@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use iced::{Align, Column, Container, Element, Length, ProgressBar, Row};
 
 use revault_ui::{
@@ -13,10 +14,7 @@ use crate::{
         message::{Message, SignMessage},
         view::layout,
     },
-    daemon::{
-        client::Client,
-        model::{Vault, VaultStatus},
-    },
+    daemon::model::{Vault, VaultStatus},
 };
 
 #[derive(Debug)]
@@ -33,9 +31,9 @@ impl StakeholderCreateVaultsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         deposits: &Vec<Vault>,
         processing: bool,
         hw_connected: bool,
@@ -60,7 +58,10 @@ impl StakeholderCreateVaultsView {
                             )
                         )).height(Length::Fill).align_y(Align::Center), None, Message::Menu(Menu::Home));
         }
-        let total_amount = deposits.iter().map(|deposit| deposit.amount).sum::<u64>();
+        let total_amount = deposits
+            .iter()
+            .map(|deposit| deposit.amount.as_sat())
+            .sum::<u64>();
         let mut content = Column::new()
             .max_width(1000)
             .padding(20)
@@ -71,7 +72,13 @@ impl StakeholderCreateVaultsView {
                     .spacing(5)
                     .push(Text::new(&format!("{}", deposits.len())).bold())
                     .push(Text::new("new deposits ("))
-                    .push(Text::new(&format!("{}", ctx.converter.converts(total_amount))).bold())
+                    .push(
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(total_amount))
+                        ))
+                        .bold(),
+                    )
                     .push(Text::new("BTC ) will be secured in vaults")),
             )
             .spacing(30);
@@ -135,9 +142,9 @@ impl StakeholderDelegateVaultsView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         deposits: &Vec<Vault>,
         processing: bool,
         hw_connected: bool,
@@ -161,7 +168,10 @@ impl StakeholderDelegateVaultsView {
                             )
                         )).height(Length::Fill).align_y(Align::Center), None, Message::Menu(Menu::Home));
         }
-        let total_amount = deposits.iter().map(|deposit| deposit.amount).sum::<u64>();
+        let total_amount = deposits
+            .iter()
+            .map(|deposit| deposit.amount.as_sat())
+            .sum::<u64>();
         let mut content = Column::new()
             .max_width(1000)
             .padding(20)
@@ -176,7 +186,13 @@ impl StakeholderDelegateVaultsView {
                     .spacing(5)
                     .push(Text::new(&format!("{}", deposits.len())).bold())
                     .push(Text::new("vaults ("))
-                    .push(Text::new(&format!("{}", ctx.converter.converts(total_amount))).bold())
+                    .push(
+                        Text::new(&format!(
+                            "{}",
+                            ctx.converter.converts(Amount::from_sat(total_amount))
+                        ))
+                        .bold(),
+                    )
                     .push(Text::new("BTC ) will be delegated to managers")),
             )
             .spacing(30);
@@ -240,9 +256,9 @@ impl StakeholderSelecteVaultsToDelegateView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         active_balance: &u64,
         activating_balance: &u64,
         selected: (usize, u64),
@@ -263,9 +279,13 @@ impl StakeholderSelecteVaultsToDelegateView {
                     .push(
                         Row::new()
                             .push(
-                                Text::new(&ctx.converter.converts(*active_balance).to_string())
-                                    .bold()
-                                    .size(30),
+                                Text::new(
+                                    &ctx.converter
+                                        .converts(Amount::from_sat(*active_balance))
+                                        .to_string(),
+                                )
+                                .bold()
+                                .size(30),
                             )
                             .push(Text::new(&format!(
                                 " {} are allocated to managers",
@@ -278,7 +298,8 @@ impl StakeholderSelecteVaultsToDelegateView {
                             .push(
                                 Text::new(&format!(
                                     "+ {}",
-                                    ctx.converter.converts(*activating_balance)
+                                    ctx.converter
+                                        .converts(Amount::from_sat(*activating_balance))
                                 ))
                                 .bold()
                                 .size(20),
@@ -308,7 +329,14 @@ impl StakeholderSelecteVaultsToDelegateView {
             col = col
                 .push(
                     Row::new()
-                        .push(Text::new(&ctx.converter.converts(selected.1).to_string()).bold())
+                        .push(
+                            Text::new(
+                                &ctx.converter
+                                    .converts(Amount::from_sat(selected.1))
+                                    .to_string(),
+                            )
+                            .bold(),
+                        )
                         .push(Text::new(&format!(" {} (", ctx.converter.unit)))
                         .push(Text::new(&format!("{}", selected.0)).bold())
                         .push(Text::new(" vaults)"))

@@ -1,12 +1,19 @@
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 
+use revaultd::revault_tx::transactions::RevaultTransaction;
+
 use crate::daemon::{
-    client::{Client, RevaultD},
-    model::{self, HistoryEventKind, VaultStatus},
+    model::{
+        self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
+        MOVING_VAULT_STATUSES,
+    },
+    Daemon,
 };
 
 use crate::app::{
@@ -63,15 +70,15 @@ impl StakeholderHomeState {
         let mut total_balance = HashMap::new();
         for vault in &vaults {
             if vault.status == VaultStatus::Unconfirmed
-                || VaultStatus::MOVING.contains(&vault.status)
+                || MOVING_VAULT_STATUSES.contains(&vault.status)
             {
                 continue;
             }
             if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
                 *number += 1;
-                *amount += vault.amount;
+                *amount += vault.amount.as_sat();
             } else {
-                total_balance.insert(vault.status.clone(), (1, vault.amount));
+                total_balance.insert(vault.status.clone(), (1, vault.amount.as_sat()));
             }
         }
 
@@ -112,32 +119,30 @@ impl StakeholderHomeState {
             }
         }
     }
-    fn load_history<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
-        let now = SystemTime::now()
+    fn load_history(ctx: &Context) -> Command<Message> {
+        let now: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_secs()
+            .try_into()
+            .unwrap();
         let revaultd = ctx.revaultd.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
-                    .map(|res| res.events)
-            },
+            async move { revaultd.get_history(&ALL_HISTORY_EVENTS, 0, now, 5) },
             Message::HistoryEvents,
         )
     }
 
-    fn load_vaults<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+    fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
-            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
             Message::Vaults,
         )
     }
 }
 
-impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderHomeState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -166,9 +171,9 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
-                Message::SelectVault(outpoint) => {
+                Message::SelectVault(selected_outpoint) => {
                     if let Some(selected) = selected_vault {
-                        if selected.vault.outpoint() == outpoint {
+                        if outpoint(&selected.vault) == selected_outpoint {
                             *selected_vault = None;
                             return self.load(ctx);
                         }
@@ -176,7 +181,7 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
 
                     if let Some(selected) = moving_vaults
                         .iter()
-                        .find(|vlt| vlt.vault.outpoint() == outpoint)
+                        .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
                     {
                         let vault = Vault::new(selected.vault.clone());
                         let cmd = vault.load(ctx.revaultd.clone());
@@ -224,7 +229,7 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { view, fail } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -259,13 +264,13 @@ impl<C: Client + Sync + Send + 'static> State<C> for StakeholderHomeState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Self::load_vaults(ctx)
     }
 }
 
-impl<C: Client + Sync + Send + 'static> From<StakeholderHomeState> for Box<dyn State<C>> {
-    fn from(s: StakeholderHomeState) -> Box<dyn State<C>> {
+impl From<StakeholderHomeState> for Box<dyn State> {
+    fn from(s: StakeholderHomeState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -294,8 +299,8 @@ impl StakeholderCreateVaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderCreateVaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -325,7 +330,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
                     Ok(secured_deposits_outpoints) => {
                         let mut deposits_to_secure = Vec::new();
                         for deposit in deposits.iter_mut() {
-                            if secured_deposits_outpoints.contains(&deposit.outpoint()) {
+                            if secured_deposits_outpoints.contains(&outpoint(deposit)) {
                                 deposit.status = VaultStatus::Securing;
                             } else if deposit.status != VaultStatus::Securing
                                 && deposit.status != VaultStatus::Secured
@@ -375,7 +380,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
         }
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
             Self::Loaded {
@@ -395,7 +400,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Funded]), None),
             Message::Vaults,
@@ -403,28 +408,25 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderCreateVaultsStat
     }
 }
 
-pub async fn secure_deposits<C: Client>(
-    revaultd: Arc<RevaultD<C>>,
+pub async fn secure_deposits(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     deposits: Vec<model::Vault>,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<OutPoint>, Error> {
     match device.clone().secure_batch(&deposits).await {
         Ok(revocation_txs) => {
             for (i, (emergency_tx, emergency_unvault_tx, cancel_tx)) in
                 revocation_txs.into_iter().enumerate()
             {
                 revaultd.set_revocation_txs(
-                    &deposits[i].outpoint(),
+                    &outpoint(&deposits[i]),
                     &emergency_tx,
                     &emergency_unvault_tx,
                     &cancel_tx,
                 )?;
             }
 
-            return Ok(deposits
-                .into_iter()
-                .map(|deposit| deposit.outpoint())
-                .collect());
+            return Ok(deposits.iter().map(outpoint).collect());
         }
         Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
@@ -434,14 +436,14 @@ pub async fn secure_deposits<C: Client>(
 
     // Batching is not supported, so we secure only the first one.
     if let Some(deposit) = deposits.into_iter().nth(0) {
-        let outpoint = deposit.outpoint();
+        let outpoint = outpoint(&deposit);
         let revocation_txs = revaultd.get_revocation_txs(&outpoint)?;
 
         let (emergency_tx, emergency_unvault_tx, cancel_tx) = device
             .sign_revocation_txs(
-                revocation_txs.emergency_tx.clone(),
-                revocation_txs.emergency_unvault_tx.clone(),
-                revocation_txs.cancel_tx.clone(),
+                revocation_txs.emergency_tx.into_psbt(),
+                revocation_txs.emergency_unvault_tx.into_psbt(),
+                revocation_txs.cancel_tx.into_psbt(),
             )
             .await?;
 
@@ -453,8 +455,8 @@ pub async fn secure_deposits<C: Client>(
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<StakeholderCreateVaultsState> for Box<dyn State<C>> {
-    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State<C>> {
+impl From<StakeholderCreateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderCreateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -474,7 +476,7 @@ impl DelegateVaultListItem {
         }
     }
 
-    pub fn view<C: Client>(&mut self, ctx: &Context<C>) -> Element<Message> {
+    pub fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(ctx, &self.vault, self.selected)
     }
 }
@@ -509,8 +511,8 @@ impl StakeholderDelegateVaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for StakeholderDelegateVaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -519,9 +521,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                             let (active_balance, activating_balance) =
                                 vaults.iter().fold((0, 0), |acc, vault| {
                                     if vault.status == VaultStatus::Active {
-                                        (acc.0 + vault.amount, acc.1)
+                                        (acc.0 + vault.amount.as_sat(), acc.1)
                                     } else if vault.status == VaultStatus::Activating {
-                                        (acc.0, acc.1 + vault.amount)
+                                        (acc.0, acc.1 + vault.amount.as_sat())
                                     } else {
                                         acc
                                     }
@@ -544,9 +546,9 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                 Command::none()
             }
             Self::SelectVaults { vaults, .. } => match message {
-                Message::SelectVault(outpoint) => {
+                Message::SelectVault(selected_outpoint) => {
                     for vlt in vaults.iter_mut() {
-                        if vlt.vault.outpoint() == outpoint {
+                        if outpoint(&vlt.vault) == selected_outpoint {
                             vlt.selected = !vlt.selected
                         }
                     }
@@ -579,7 +581,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                     Ok(activated_vaults_outpoints) => {
                         let mut vaults_to_delegate = Vec::new();
                         for vault in vaults.iter_mut() {
-                            if activated_vaults_outpoints.contains(&vault.outpoint()) {
+                            if activated_vaults_outpoints.contains(&outpoint(vault)) {
                                 vault.status = VaultStatus::Activating;
                             } else if vault.status != VaultStatus::Activating
                                 && vault.status != VaultStatus::Active
@@ -629,7 +631,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
         }
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref(), Menu::Home),
             Self::SelectVaults {
@@ -645,7 +647,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
                     .iter()
                     .filter(|v| v.selected)
                     .fold((0, 0), |(count, total), v| {
-                        (count + 1, total + v.vault.amount)
+                        (count + 1, total + v.vault.amount.as_sat())
                     }),
                 vaults.iter_mut().map(|v| v.view(ctx)).collect(),
             ),
@@ -666,7 +668,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(
                 ctx.revaultd.clone(),
@@ -682,18 +684,18 @@ impl<C: Client + Send + Sync + 'static> State<C> for StakeholderDelegateVaultsSt
     }
 }
 
-pub async fn delegate_vaults<C: Client>(
-    revaultd: Arc<RevaultD<C>>,
+pub async fn delegate_vaults(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
     device: Device,
     vaults: Vec<model::Vault>,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<OutPoint>, Error> {
     match device.clone().delegate_batch(&vaults).await {
         Ok(revocation_txs) => {
             for (i, unvault_tx) in revocation_txs.into_iter().enumerate() {
-                revaultd.set_unvault_tx(&vaults[i].outpoint(), &unvault_tx)?;
+                revaultd.set_unvault_tx(&outpoint(&vaults[i]), &unvault_tx)?;
             }
 
-            return Ok(vaults.into_iter().map(|vault| vault.outpoint()).collect());
+            return Ok(vaults.iter().map(outpoint).collect());
         }
         Err(revault_hwi::HWIError::UnimplementedMethod) => {
             log::info!("device does not support batching");
@@ -703,9 +705,9 @@ pub async fn delegate_vaults<C: Client>(
 
     // Batching is not supported, so we secure only the first one.
     if let Some(vault) = vaults.into_iter().nth(0) {
-        let outpoint = vault.outpoint();
+        let outpoint = outpoint(&vault);
         let res = revaultd.get_unvault_tx(&outpoint)?;
-        let unvault_tx = device.sign_unvault_tx(res.unvault_tx).await?;
+        let unvault_tx = device.sign_unvault_tx(res).await?;
         revaultd.set_unvault_tx(&outpoint, &unvault_tx)?;
 
         Ok(vec![outpoint])
@@ -714,8 +716,8 @@ pub async fn delegate_vaults<C: Client>(
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<StakeholderDelegateVaultsState> for Box<dyn State<C>> {
-    fn from(s: StakeholderDelegateVaultsState) -> Box<dyn State<C>> {
+impl From<StakeholderDelegateVaultsState> for Box<dyn State> {
+    fn from(s: StakeholderDelegateVaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

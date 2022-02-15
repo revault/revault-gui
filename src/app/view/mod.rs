@@ -28,10 +28,7 @@ pub use vaults::VaultsView;
 
 use iced::{Column, Element};
 
-use crate::{
-    app::{context::Context, error::Error, menu::Menu, message::Message},
-    daemon::client::Client,
-};
+use crate::app::{context::Context, error::Error, menu::Menu, message::Message};
 
 #[derive(Debug)]
 pub struct LoadingDashboard {
@@ -45,11 +42,7 @@ impl LoadingDashboard {
         }
     }
 
-    pub fn view<'a, C: Client>(
-        &'a mut self,
-        ctx: &Context<C>,
-        warning: Option<&Error>,
-    ) -> Element<'a, Message> {
+    pub fn view<'a>(&'a mut self, ctx: &Context, warning: Option<&Error>) -> Element<'a, Message> {
         self.dashboard.view(ctx, warning, Column::new())
     }
 }
@@ -66,9 +59,9 @@ impl LoadingModal {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         close_redirect: Menu,
     ) -> Element<'a, Message> {

@@ -11,7 +11,7 @@ use revault_hwi::{
     HWIError,
 };
 
-use revaultd::common::config::Config as DaemonConfig;
+use revaultd::config::Config as DaemonConfig;
 
 use revault_gui::{
     app::{
@@ -22,7 +22,6 @@ use revault_gui::{
         App,
     },
     conversion::Converter,
-    daemon,
     installer::{self, Installer},
     loader::{self, Loader},
     revault::Role,
@@ -75,14 +74,13 @@ fn log_level_from_config(config: &app::Config) -> Result<log::LevelFilter, Box<d
 }
 
 pub struct GUI {
-    daemon_running: bool,
     state: State,
 }
 
 enum State {
     Installer(Installer),
     Loader(Loader),
-    App(App<daemon::client::jsonrpc::JsonRPCClient>),
+    App(App),
 }
 
 #[derive(Debug)]
@@ -91,16 +89,6 @@ pub enum Message {
     Install(installer::Message),
     Load(loader::Message),
     Run(app::Message),
-}
-
-impl GUI {
-    fn exit_requested(&self) -> bool {
-        match &self.state {
-            State::Installer(v) => v.should_exit(),
-            State::Loader(v) => v.should_exit(),
-            State::App(v) => v.should_exit(),
-        }
-    }
 }
 
 async fn ctrl_c() -> Result<(), ()> {
@@ -131,7 +119,6 @@ impl Application for GUI {
                 (
                     Self {
                         state: State::Installer(install),
-                        daemon_running: false,
                     },
                     Command::batch(vec![
                         command.map(Message::Install),
@@ -140,11 +127,12 @@ impl Application for GUI {
                 )
             }
             Config::Run(cfg) => {
-                let (loader, command) = Loader::new(cfg);
+                let daemon_cfg =
+                    DaemonConfig::from_file(Some(cfg.revaultd_config_path.clone())).unwrap();
+                let (loader, command) = Loader::new(cfg, daemon_cfg);
                 (
                     Self {
                         state: State::Loader(loader),
-                        daemon_running: false,
                     },
                     Command::batch(vec![
                         command.map(Message::Load),
@@ -161,48 +149,27 @@ impl Application for GUI {
         clipboard: &mut Clipboard,
     ) -> Command<Self::Message> {
         if matches!(message, Message::CtrlC) {
-            return match &mut self.state {
-                State::Installer(v) => v.stop().map(Message::Install),
-                State::Loader(v) => v.stop().map(Message::Load),
-                State::App(v) => v.stop().map(Message::Run),
+            match &mut self.state {
+                State::Installer(v) => v.stop(),
+                State::Loader(v) => v.stop(),
+                State::App(v) => v.stop(),
             };
+            return Command::none();
         }
         if let Message::Install(installer::Message::Exit(path)) = message {
             let cfg = app::Config::from_file(&path).unwrap();
-            let (loader, command) = Loader::new(cfg);
+            let daemon_cfg =
+                DaemonConfig::from_file(Some(cfg.revaultd_config_path.clone())).unwrap();
+            let (loader, command) = Loader::new(cfg, daemon_cfg);
             self.state = State::Loader(loader);
             return command.map(Message::Load);
         }
 
-        if let Message::Load(loader::Message::DaemonStopped) = message {
-            log::info!("daemon stopped");
-            self.daemon_running = false;
-            return Command::none();
-        }
-
-        if let Message::Load(loader::Message::Failure(e)) = &message {
-            log::info!("daemon panic {}", e);
-            self.daemon_running = false;
-        }
-
-        if let Message::Load(loader::Message::StoppingDaemon(res)) = message {
-            log::info!("stopping daemon {:?}", res);
-            return Command::none();
-        }
-
-        if let Message::Run(app::Message::StoppingDaemon(res)) = message {
-            log::info!("stopping daemon {:?}", res);
-            return Command::none();
-        }
-
         if let Message::Load(loader::Message::Synced(info, revaultd)) = message {
             if let State::Loader(loader) = &mut self.state {
-                let daemon_config =
-                    DaemonConfig::from_file(Some(loader.gui_config.revaultd_config_path.clone()))
-                        .unwrap();
                 let config = ConfigContext {
                     gui: loader.gui_config.clone(),
-                    daemon: daemon_config,
+                    daemon: loader.daemon_config.clone(),
                 };
 
                 let role = if config.daemon.stakeholder_config.is_some() {
@@ -219,7 +186,6 @@ impl Application for GUI {
                     converter,
                     role,
                     Menu::Home,
-                    self.daemon_running,
                     Box::new(|| Box::pin(connect_hardware_wallet())),
                 );
 
@@ -237,20 +203,18 @@ impl Application for GUI {
             (State::Installer(i), Message::Install(msg)) => {
                 i.update(msg, clipboard).map(Message::Install)
             }
-            (State::Loader(loader), Message::Load(msg)) => {
-                let cmd = loader.update(msg).map(Message::Load);
-                if loader.daemon_started {
-                    self.daemon_running = true;
-                }
-                cmd
-            }
+            (State::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
             (State::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
             _ => Command::none(),
         }
     }
 
     fn should_exit(&self) -> bool {
-        self.exit_requested() && !self.daemon_running
+        match &self.state {
+            State::Installer(v) => v.should_exit(),
+            State::Loader(v) => v.should_exit(),
+            State::App(v) => v.should_exit(),
+        }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {

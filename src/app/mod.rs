@@ -7,6 +7,7 @@ pub mod state;
 mod error;
 mod view;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use iced::{time, Clipboard, Command, Element, Subscription};
@@ -22,16 +23,16 @@ use state::{
     VaultsState,
 };
 
-use crate::{app::context::Context, daemon::client::Client, revault::Role};
+use crate::{app::context::Context, revault::Role};
 
-pub struct App<C: Client + Send + Sync + 'static> {
+pub struct App {
     should_exit: bool,
-    state: Box<dyn State<C>>,
-    context: Context<C>,
+    state: Box<dyn State>,
+    context: Context,
 }
 
 #[allow(unreachable_patterns)]
-pub fn new_state<C: Client + Send + Sync + 'static>(context: &Context<C>) -> Box<dyn State<C>> {
+pub fn new_state(context: &Context) -> Box<dyn State> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
@@ -50,8 +51,8 @@ pub fn new_state<C: Client + Send + Sync + 'static>(context: &Context<C>) -> Box
     }
 }
 
-impl<C: Client + Send + Sync + 'static> App<C> {
-    pub fn new(context: Context<C>) -> (App<C>, Command<Message>) {
+impl App {
+    pub fn new(context: Context) -> (App, Command<Message>) {
         let state = new_state(&context);
         let cmd = state.load(&context);
         (
@@ -76,15 +77,18 @@ impl<C: Client + Send + Sync + 'static> App<C> {
         self.should_exit
     }
 
-    pub fn stop(&mut self) -> Command<Message> {
-        self.should_exit = true;
-        if self.context.internal_daemon {
-            return Command::perform(
-                state::cmd::stop(self.context.revaultd.clone()),
-                Message::StoppingDaemon,
-            );
+    pub fn stop(&mut self) {
+        log::info!("Close requested");
+        if !self.context.revaultd.is_external() {
+            log::info!("Stopping internal daemon...");
+            if let Some(d) = Arc::get_mut(&mut self.context.revaultd) {
+                d.stop().expect("Daemon is internal");
+                log::info!("Internal daemon stopped");
+                self.should_exit = true;
+            }
+        } else {
+            self.should_exit = true;
         }
-        Command::none()
     }
 
     pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
@@ -116,7 +120,10 @@ impl<C: Client + Send + Sync + 'static> App<C> {
                 clipboard.write(text);
                 Command::none()
             }
-            Message::Event(Event::Window(window::Event::CloseRequested)) => self.stop(),
+            Message::Event(Event::Window(window::Event::CloseRequested)) => {
+                self.stop();
+                Command::none()
+            }
             _ => self.state.update(&self.context, message),
         }
     }

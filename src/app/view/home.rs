@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use std::collections::HashMap;
 
 use iced::{
@@ -12,7 +13,7 @@ use revault_ui::{
 
 use crate::{
     app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
-    daemon::{client::Client, model::VaultStatus},
+    daemon::model::VaultStatus,
 };
 
 #[derive(Debug)]
@@ -29,9 +30,9 @@ impl ManagerHomeView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
@@ -90,8 +91,8 @@ impl ManagerHomeView {
     }
 }
 
-fn manager_overview<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn manager_overview<'a, T: 'a>(
+    ctx: &Context,
     active_funds: u64,
     inactive_funds: u64,
 ) -> Container<'a, T> {
@@ -102,9 +103,13 @@ fn manager_overview<'a, T: 'a, C: Client>(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
                         .push(
-                            Text::new(&ctx.converter.converts(active_funds).to_string())
-                                .bold()
-                                .size(50),
+                            Text::new(
+                                &ctx.converter
+                                    .converts(Amount::from_sat(active_funds))
+                                    .to_string(),
+                            )
+                            .bold()
+                            .size(50),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
@@ -113,7 +118,14 @@ fn manager_overview<'a, T: 'a, C: Client>(
                 .push(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
-                        .push(Text::new(&ctx.converter.converts(inactive_funds).to_string()).bold())
+                        .push(
+                            Text::new(
+                                &ctx.converter
+                                    .converts(Amount::from_sat(inactive_funds))
+                                    .to_string(),
+                            )
+                            .bold(),
+                        )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
                 )
@@ -147,9 +159,9 @@ impl StakeholderHomeView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         moving_vaults: Vec<Element<'a, Message>>,
         latest_events: Vec<Element<'a, Message>>,
@@ -222,9 +234,9 @@ impl StakeholderOverview {
         }
     }
 
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         overview: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<Message> {
         let (nb_total_vaults, total_amount) =
@@ -248,7 +260,8 @@ impl StakeholderOverview {
                                     .push(
                                         Text::new(&format!(
                                             "{}",
-                                            ctx.converter.converts(*funded_amount),
+                                            ctx.converter
+                                                .converts(Amount::from_sat(*funded_amount)),
                                         ))
                                         .bold(),
                                     )
@@ -294,9 +307,13 @@ impl StakeholderOverview {
                             Row::new()
                                 .push(Column::new().width(Length::Fill))
                                 .push(
-                                    Text::new(&ctx.converter.converts(total_amount).to_string())
-                                        .bold()
-                                        .size(50),
+                                    Text::new(
+                                        &ctx.converter
+                                            .converts(Amount::from_sat(total_amount))
+                                            .to_string(),
+                                    )
+                                    .bold()
+                                    .size(50),
                                 )
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)))
                                 .align_items(Align::Center),
@@ -335,8 +352,8 @@ impl StakeholderOverview {
     }
 }
 
-fn active_funds_overview_card<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn active_funds_overview_card<'a, T: 'a>(
+    ctx: &Context,
     active: Option<&(u64, u64)>,
     activating: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
@@ -372,7 +389,7 @@ fn active_funds_overview_card<'a, T: 'a, C: Client>(
                         Row::new()
                             .push(
                                 Text::new(
-                                    &ctx.converter.converts(*active_amount).to_string(),
+                                    &ctx.converter.converts(Amount::from_sat(*active_amount)).to_string(),
                                 ).bold()
                             )
                             .push(Text::new(&format!(
@@ -402,9 +419,13 @@ fn active_funds_overview_card<'a, T: 'a, C: Client>(
                     .push(Column::new().width(Length::Fill))
                     .push(Text::new("+ ").small().bold())
                     .push(
-                        Text::new(&ctx.converter.converts(*activating_amount).to_string())
-                            .bold()
-                            .small(),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(*activating_amount))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small(),
                     )
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_activating_vaults.to_string()).small().bold())
@@ -426,8 +447,8 @@ fn active_funds_overview_card<'a, T: 'a, C: Client>(
     card::white(Container::new(col.spacing(20)))
 }
 
-fn secured_funds_overview_card<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn secured_funds_overview_card<'a, T: 'a>(
+    ctx: &Context,
     secure: Option<&(u64, u64)>,
     securing: Option<&(u64, u64)>,
 ) -> Container<'a, T> {
@@ -462,8 +483,12 @@ fn secured_funds_overview_card<'a, T: 'a, C: Client>(
                     Container::new(
                         Row::new()
                             .push(
-                                Text::new(&ctx.converter.converts(*secured_amount).to_string())
-                                    .bold(),
+                                Text::new(
+                                    &ctx.converter
+                                        .converts(Amount::from_sat(*secured_amount))
+                                        .to_string(),
+                                )
+                                .bold(),
                             )
                             .push(Text::new(&format!(
                                 " {:<6}",
@@ -492,9 +517,13 @@ fn secured_funds_overview_card<'a, T: 'a, C: Client>(
                     .push(Column::new().width(Length::Fill))
                     .push(Text::new("+ ").small().bold())
                     .push(
-                        Text::new(&ctx.converter.converts(*securing_amount).to_string())
-                            .bold()
-                            .small(),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(*securing_amount))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small(),
                     )
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_securing_vaults.to_string()).small().bold())

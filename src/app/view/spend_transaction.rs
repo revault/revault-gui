@@ -1,6 +1,8 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{scrollable, Align, Column, Container, Element, Length, Row};
+
+use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use revault_ui::{
     color,
@@ -16,7 +18,7 @@ use crate::{
         message::{Message, SpendTxMessage},
         view::{manager::spend_tx_with_feerate_view, warning::warn},
     },
-    daemon::{client::Client, model},
+    daemon::model,
 };
 
 #[derive(Debug)]
@@ -35,9 +37,9 @@ impl SpendTransactionView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         psbt: &Psbt,
         cpfp_index: usize,
         change_index: Option<usize>,
@@ -88,7 +90,9 @@ impl SpendTransactionView {
             .map(|i| psbt.global.unsigned_tx.output[i].value)
             .unwrap_or(0);
 
-        let vaults_amount = spent_vaults.iter().fold(0, |acc, v| acc + v.amount);
+        let vaults_amount = spent_vaults
+            .iter()
+            .fold(0, |acc, v| acc + v.amount.as_sat());
         let fees = if vaults_amount == 0 {
             // Vaults are still loading
             0
@@ -152,7 +156,9 @@ impl SpendTransactionView {
                                                 .push(
                                                     Text::new(&format!(
                                                         "{}",
-                                                        ctx.converter.converts(spend_amount),
+                                                        ctx.converter.converts(Amount::from_sat(
+                                                            spend_amount
+                                                        )),
                                                     ))
                                                     .bold(),
                                                 )
@@ -167,7 +173,8 @@ impl SpendTransactionView {
                                                 .push(
                                                     Text::new(&format!(
                                                         "Fees: {}",
-                                                        ctx.converter.converts(fees),
+                                                        ctx.converter
+                                                            .converts(Amount::from_sat(fees)),
                                                     ))
                                                     .small(),
                                                 )
@@ -473,27 +480,28 @@ impl SpendTransactionListItemView {
         }
     }
 
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         tx: &model::SpendTx,
         spend_amount: u64,
         fees: u64,
     ) -> Element<SpendTxMessage> {
+        let psbt = tx.psbt.psbt();
         let mut col = Column::new().push(
             Text::new(&format!(
                 "txid: {}",
-                tx.psbt.global.unsigned_tx.txid().to_string()
+                psbt.global.unsigned_tx.txid().to_string()
             ))
             .small()
             .bold(),
         );
-        if tx.psbt.inputs.len() > 0 {
+        if psbt.inputs.len() > 0 {
             col = col.push(
                 Row::new()
                     .push(Text::new(&format!(
                         "{} / {}",
-                        tx.psbt.inputs[0].partial_sigs.len(),
+                        tx.psbt.psbt().inputs[0].partial_sigs.len(),
                         ctx.managers_threshold
                     )))
                     .push(icon::key_icon())
@@ -522,7 +530,8 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "{}",
-                                                ctx.converter.converts(spend_amount),
+                                                ctx.converter
+                                                    .converts(Amount::from_sat(spend_amount)),
                                             ))
                                             .bold(),
                                         )
@@ -536,7 +545,7 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "Fees: {}",
-                                                ctx.converter.converts(fees),
+                                                ctx.converter.converts(Amount::from_sat(fees)),
                                             ))
                                             .small(),
                                         )
@@ -553,7 +562,7 @@ impl SpendTransactionListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(SpendTxMessage::Select(tx.psbt.clone()))
+        .on_press(SpendTxMessage::Select(tx.psbt.psbt().clone()))
         .width(Length::Fill)
         .into()
     }

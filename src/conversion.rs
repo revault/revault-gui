@@ -18,8 +18,8 @@ impl Converter {
     }
 
     /// converts amount in satoshis to BTC float.
-    pub fn converts(&self, amount: u64) -> String {
-        format!("{:.8}", bitcoin::Amount::from_sat(amount).as_btc())
+    pub fn converts(&self, amount: bitcoin::Amount) -> String {
+        format!("{:.8}", amount.as_btc())
     }
 }
 

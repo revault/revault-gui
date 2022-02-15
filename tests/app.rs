@@ -5,14 +5,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use utils::{
-    fixtures::random_daemon_config,
-    mock::{Daemon, DaemonClient},
-    no_hardware_wallet,
-    sandbox::Sandbox,
-};
+use utils::{fixtures::random_daemon_config, mock::Daemon, no_hardware_wallet, sandbox::Sandbox};
 
-use bitcoin::hashes::hex::FromHex;
+use bitcoin::{util::bip32, Address, Amount, OutPoint};
 
 use revault_gui::{
     app::{
@@ -28,12 +23,12 @@ use revault_gui::{
     conversion::Converter,
     daemon::{
         client::{
-            GetHistoryResponse, GetInfoResponse, ListOnchainTransactionsResponse,
+            DepositAddress, GetHistoryResponse, ListOnchainTransactionsResponse,
             ListVaultsResponse, Request, RevaultD,
         },
         model::{
-            BroadcastedTransaction, DepositAddress, HistoryEvent, HistoryEventKind, Vault,
-            VaultStatus, VaultTransactions,
+            HistoryEvent, HistoryEventKind, Vault, VaultStatus, VaultTransactions,
+            WalletTransaction, ALL_HISTORY_EVENTS,
         },
     },
     revault::Role,
@@ -41,30 +36,16 @@ use revault_gui::{
 
 #[tokio::test]
 async fn test_deposit_state() {
-    let addr = bitcoin::Address::from_str(
-        "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj",
-    )
-    .unwrap();
-    let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
-            Some(json!({"method": "getdepositaddress", "params": Option::<Request>::None})),
-            Ok(json!(DepositAddress {
-                address: addr.clone()
-            })),
-        ),
-    ]);
+    let addr = Address::from_str("tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj")
+        .unwrap();
+    let daemon = Daemon::new(vec![(
+        Some(json!({"method": "getdepositaddress", "params": Option::<Request>::None})),
+        Ok(json!(DepositAddress {
+            address: addr.clone()
+        })),
+    )]);
 
-    let sandbox: Sandbox<DaemonClient, DepositState> = Sandbox::new(DepositState::new());
+    let sandbox: Sandbox<DepositState> = Sandbox::new(DepositState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -72,11 +53,10 @@ async fn test_deposit_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -95,50 +75,56 @@ async fn test_deposit_state() {
 async fn test_emergency_state() {
     let daemon = Daemon::new(vec![
         (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
             Some(json!({"method": "listvaults", "params": Some(&[[
-                VaultStatus::Secured,
-                VaultStatus::Active,
-                VaultStatus::Activating,
-                VaultStatus::Unvaulting,
-                VaultStatus::Unvaulted,
-                VaultStatus::EmergencyVaulting,
-                VaultStatus::EmergencyVaulted,
-                VaultStatus::UnvaultEmergencyVaulting,
-                VaultStatus::UnvaultEmergencyVaulted,
+                VaultStatus::Secured.to_string(),
+                VaultStatus::Active.to_string(),
+                VaultStatus::Activating.to_string(),
+                VaultStatus::Unvaulting.to_string(),
+                VaultStatus::Unvaulted.to_string(),
+                VaultStatus::EmergencyVaulting.to_string(),
+                VaultStatus::EmergencyVaulted.to_string(),
+                VaultStatus::UnvaultEmergencyVaulting.to_string(),
+                VaultStatus::UnvaultEmergencyVaulted.to_string(),
             ]])})),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
                     Vault {
-                        address: "".to_string(),
-                        amount: 500,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(500),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     },
                     Vault {
-                        address: "".to_string(),
-                        amount: 700,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(700),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     }
                 ]
             })),
@@ -149,7 +135,7 @@ async fn test_emergency_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, EmergencyState> = Sandbox::new(EmergencyState::new());
+    let sandbox: Sandbox<EmergencyState> = Sandbox::new(EmergencyState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -157,11 +143,10 @@ async fn test_emergency_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -186,51 +171,57 @@ async fn test_emergency_state() {
 async fn test_vaults_state() {
     let daemon = Daemon::new(vec![
         (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
-        (
             Some(json!({"method": "listvaults", "params": Some(&[[
-                VaultStatus::Securing,
-                VaultStatus::Secured,
-                VaultStatus::Activating,
-                VaultStatus::Active,
-                VaultStatus::Unvaulting,
-                VaultStatus::Unvaulted,
-                VaultStatus::Canceling,
-                VaultStatus::EmergencyVaulting,
-                VaultStatus::UnvaultEmergencyVaulting,
-                VaultStatus::Spending,
+                VaultStatus::Securing.to_string(),
+                VaultStatus::Secured.to_string(),
+                VaultStatus::Activating.to_string(),
+                VaultStatus::Active.to_string(),
+                VaultStatus::Unvaulting.to_string(),
+                VaultStatus::Unvaulted.to_string(),
+                VaultStatus::Canceling.to_string(),
+                VaultStatus::EmergencyVaulting.to_string(),
+                VaultStatus::UnvaultEmergencyVaulting.to_string(),
+                VaultStatus::Spending.to_string(),
             ]])})),
             Ok(json!(ListVaultsResponse {
                 vaults: vec![
                     Vault {
-                        address: "".to_string(),
-                        amount: 500,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(500),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 0,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     },
                     Vault {
-                        address: "".to_string(),
-                        amount: 700,
-                        derivation_index: 0,
+                        address: Address::from_str(
+                            "tb1qkldgvljmjpxrjq2ev5qxe8dvhn0dph9q85pwtfkjeanmwdue2akqj4twxj"
+                        )
+                        .unwrap(),
+                        amount: Amount::from_sat(700),
+                        derivation_index: bip32::ChildNumber::from_normal_idx(0).unwrap(),
                         status: VaultStatus::Secured,
                         txid: bitcoin::Txid::from_str(
                             "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"
                         )
                         .unwrap(),
                         vout: 1,
+                        blockheight: 1,
+                        delegated_at: None,
+                        secured_at: Some(1),
+                        funded_at: Some(1),
+                        moved_at: None
                     }
                 ]
             })),
@@ -243,13 +234,14 @@ async fn test_vaults_state() {
             ),
             Ok(json!(ListOnchainTransactionsResponse {
                 onchain_transactions: vec![VaultTransactions {
-                    vault_outpoint:
+                    vault_outpoint: OutPoint::from_str(
                         "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:1"
-                            .to_string(),
-                    deposit: BroadcastedTransaction {
+                            ).unwrap(),
+                    deposit: WalletTransaction {
                         blockheight: Some(1),
-                        tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),
-                        received_at: 1,
+                        hex: "0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000".to_string(),
+                        received_time: 1,
+                        blocktime: Some(1)
                     },
                     unvault: None,
                     spend: None,
@@ -261,7 +253,7 @@ async fn test_vaults_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, VaultsState> = Sandbox::new(VaultsState::new());
+    let sandbox: Sandbox<VaultsState> = Sandbox::new(VaultsState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -269,11 +261,10 @@ async fn test_vaults_state() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -293,16 +284,13 @@ async fn test_vaults_state() {
     let sandbox = sandbox
         .update(
             &ctx,
-            Message::SelectVault(
-                bitcoin::OutPoint {
-                    txid: bitcoin::Txid::from_str(
-                        "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
-                    )
-                    .unwrap(),
-                    vout: 1,
-                }
-                .to_string(),
-            ),
+            Message::SelectVault(bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: 1,
+            }),
         )
         .await;
     assert!(matches!(sandbox.state(), VaultsState::Loaded { .. }));
@@ -324,16 +312,6 @@ async fn test_vaults_state() {
 #[tokio::test]
 async fn test_history_state_filter() {
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             None,
             Ok(json!(GetHistoryResponse {
@@ -384,7 +362,7 @@ async fn test_history_state_filter() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -392,11 +370,10 @@ async fn test_history_state_filter() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -438,7 +415,7 @@ async fn test_history_state_pagination() {
     for i in 0..25 {
         events.push(HistoryEvent {
             blockheight: i,
-            date: i as i64,
+            date: i as u32,
             txid: bitcoin::Txid::from_str(
                 "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
             )
@@ -446,20 +423,16 @@ async fn test_history_state_pagination() {
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
             fee: None,
-            vaults: Vec::new(),
+            vaults: vec![bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: i,
+            }],
         });
     }
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             // SystemTime::now() is used, so we cannot check the request correctness for the
             // moment.
@@ -470,7 +443,7 @@ async fn test_history_state_pagination() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(19 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..25].to_vec()
@@ -494,7 +467,7 @@ async fn test_history_state_pagination() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -502,11 +475,10 @@ async fn test_history_state_pagination() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -584,20 +556,16 @@ async fn test_history_state_pagination_batching() {
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
             fee: None,
-            vaults: vec![(i as u8).to_string()],
+            vaults: vec![bitcoin::OutPoint {
+                txid: bitcoin::Txid::from_str(
+                    "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                )
+                .unwrap(),
+                vout: i,
+            }],
         });
     }
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             None,
             Ok(json!(GetHistoryResponse {
@@ -606,7 +574,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..40].to_vec()
@@ -614,7 +582,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*2)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..60].to_vec()
@@ -622,7 +590,7 @@ async fn test_history_state_pagination_batching() {
         ),
         (
             Some(
-                json!({"method": "gethistory", "params": Some(&[json!(&HistoryEventKind::ALL), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
+                json!({"method": "gethistory", "params": Some(&[json!(&ALL_HISTORY_EVENTS), json!(0 as u32), json!(1 as u32), json!(HISTORY_EVENT_PAGE_SIZE*3)])}),
             ),
             Ok(json!(GetHistoryResponse {
                 events: events[20..65].to_vec()
@@ -630,7 +598,7 @@ async fn test_history_state_pagination_batching() {
         ),
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -638,11 +606,10 @@ async fn test_history_state_pagination_batching() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -677,19 +644,8 @@ async fn test_history_state_select_event() {
         )
         .unwrap(),
         vout: 1,
-    }
-    .to_string();
+    };
     let daemon = Daemon::new(vec![
-        (
-            Some(json!({"method": "getinfo", "params": Option::<Request>::None})),
-            Ok(json!(GetInfoResponse {
-                blockheight: 0,
-                network: "testnet".to_string(),
-                sync: 1.0,
-                version: "0.1".to_string(),
-                managers_threshold: 3
-            })),
-        ),
         (
             None,
             Ok(json!(GetHistoryResponse {
@@ -710,8 +666,7 @@ async fn test_history_state_select_event() {
                             )
                             .unwrap(),
                             vout: 0,
-                        }
-                        .to_string())
+                        })
                     },
                     HistoryEvent {
                         blockheight: 0,
@@ -733,10 +688,11 @@ async fn test_history_state_select_event() {
             Ok(json!(ListOnchainTransactionsResponse {
                 onchain_transactions: vec![VaultTransactions {
                     vault_outpoint: oupoint,
-                    deposit: BroadcastedTransaction {
+                    deposit: WalletTransaction {
                         blockheight: Some(1),
-                        tx: bitcoin::consensus::encode::deserialize(&Vec::from_hex("0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000").unwrap()).unwrap(),
-                        received_at: 1,
+                        hex: "0200000001b4243a48b54cc360e754e0175a985a49b67cf4615d8523ec5aa46d42421cdf7d0000000000504200000280b2010000000000220020b9be8f8574f8da64bb1cb6668f6134bc4706df7936eeab8411f9d82de20a895b08280954020000000000000000".to_string(),
+                        received_time: 1,
+                        blocktime: Some(1),
                     },
                     unvault: None,
                     spend: None,
@@ -748,7 +704,7 @@ async fn test_history_state_select_event() {
         )
     ]);
 
-    let sandbox: Sandbox<DaemonClient, HistoryState> = Sandbox::new(HistoryState::new());
+    let sandbox: Sandbox<HistoryState> = Sandbox::new(HistoryState::new());
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -756,11 +712,10 @@ async fn test_history_state_select_event() {
             daemon: random_daemon_config(),
             gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
         },
-        Arc::new(RevaultD::new(client).unwrap()),
+        Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
         Menu::Vaults,
-        false,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 

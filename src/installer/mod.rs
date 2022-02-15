@@ -118,9 +118,8 @@ impl Installer {
         self.should_exit
     }
 
-    pub fn stop(&mut self) -> Command<Message> {
+    pub fn stop(&mut self) {
         self.should_exit = true;
-        Command::none()
     }
 
     pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
@@ -170,7 +169,10 @@ impl Installer {
                     Message::Installed,
                 );
             }
-            Message::Event(Event::Window(window::Event::CloseRequested)) => return self.stop(),
+            Message::Event(Event::Window(window::Event::CloseRequested)) => {
+                self.stop();
+                return Command::none();
+            }
             _ => {
                 self.current_step().update(message);
             }

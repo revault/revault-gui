@@ -1,9 +1,10 @@
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::From;
+use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use iced::{Command, Element, Subscription};
 
 use super::{
@@ -12,12 +13,12 @@ use super::{
     State,
 };
 
-use crate::daemon::{
-    client::Client,
-    model::{self, HistoryEventKind, VaultStatus},
+use crate::daemon::model::{
+    self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
 };
 
 use revault_ui::component::form;
+use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use crate::app::{
     context::Context,
@@ -88,7 +89,7 @@ impl ManagerHomeState {
                 .filter(|tx| {
                     tx.deposit_outpoints
                         .iter()
-                        .all(|outpoint| spendable_outpoints.get(outpoint).is_some())
+                        .all(|outpoint| spendable_outpoints.get(&outpoint.to_string()).is_some())
                 })
                 .collect();
             *spend_txs_item = spend_txs
@@ -97,7 +98,9 @@ impl ManagerHomeState {
                 .map(|s| {
                     (
                         s.deposit_outpoints.iter().fold(0, |acc, x| {
-                            acc + *spendable_outpoints.get(x).expect("Must be spendable")
+                            acc + *spendable_outpoints
+                                .get(&x.to_string())
+                                .expect("Must be spendable")
                         }),
                         s,
                     )
@@ -107,11 +110,7 @@ impl ManagerHomeState {
         };
     }
 
-    pub fn on_spend_tx_select<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-        psbt: Psbt,
-    ) -> Command<Message> {
+    pub fn on_spend_tx_select(&mut self, ctx: &Context, psbt: Psbt) -> Command<Message> {
         if let Self::Loaded {
             spend_txs,
             selected_spend_tx,
@@ -125,10 +124,9 @@ impl ManagerHomeState {
                 }
             }
 
-            if spend_txs
-                .iter()
-                .any(|item| item.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid())
-            {
+            if spend_txs.iter().any(|item| {
+                item.psbt.psbt().global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid()
+            }) {
                 let spend_tx = SpendTransactionState::new(ctx, psbt);
                 let cmd = spend_tx.load(ctx);
                 *selected_spend_tx = Some(spend_tx);
@@ -141,9 +139,9 @@ impl ManagerHomeState {
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         let (act_funds, inact_funds) =
             vaults.iter().fold((0, 0), |acc, vault| match vault.status {
-                VaultStatus::Active => (acc.0 + vault.amount, acc.1),
+                VaultStatus::Active => (acc.0 + vault.amount.as_sat(), acc.1),
                 VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
-                    (acc.0, acc.1 + vault.amount)
+                    (acc.0, acc.1 + vault.amount.as_sat())
                 }
                 _ => (acc.0, acc.1),
             });
@@ -152,7 +150,7 @@ impl ManagerHomeState {
             .iter()
             .filter_map(|vlt| {
                 if vlt.status == VaultStatus::Active {
-                    Some((vlt.outpoint(), vlt.amount))
+                    Some((outpoint(vlt).to_string(), vlt.amount.as_sat()))
                 } else {
                     None
                 }
@@ -206,10 +204,10 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+    pub fn on_vault_select(
         &mut self,
-        ctx: &Context<C>,
-        outpoint: String,
+        ctx: &Context,
+        selected_outpoint: OutPoint,
     ) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
@@ -218,7 +216,7 @@ impl ManagerHomeState {
         } = self
         {
             if let Some(selected) = selected_vault {
-                if selected.vault.outpoint() == outpoint {
+                if outpoint(&selected.vault) == selected_outpoint {
                     *selected_vault = None;
                     return self.load(ctx);
                 }
@@ -226,7 +224,7 @@ impl ManagerHomeState {
 
             if let Some(selected) = moving_vaults
                 .iter()
-                .find(|vlt| vlt.vault.outpoint() == outpoint)
+                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
             {
                 let vault = Vault::new(selected.vault.clone());
                 let cmd = vault.load(ctx.revaultd.clone());
@@ -237,23 +235,21 @@ impl ManagerHomeState {
         Command::none()
     }
 
-    fn load_history<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
-        let now = SystemTime::now()
+    fn load_history(ctx: &Context) -> Command<Message> {
+        let now: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_secs()
+            .try_into()
+            .unwrap();
         let revaultd = ctx.revaultd.clone();
         Command::perform(
-            async move {
-                revaultd
-                    .get_history(&HistoryEventKind::ALL, 0, now, 5)
-                    .map(|res| res.events)
-            },
+            async move { revaultd.get_history(&ALL_HISTORY_EVENTS, 0, now, 5) },
             Message::HistoryEvents,
         )
     }
 
-    fn load_spend_txs<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+    fn load_spend_txs(ctx: &Context) -> Command<Message> {
         Command::perform(
             list_spend_txs(
                 ctx.revaultd.clone(),
@@ -263,16 +259,16 @@ impl ManagerHomeState {
         )
     }
 
-    fn load_vaults<C: Client + Send + Sync + 'static>(ctx: &Context<C>) -> Command<Message> {
+    fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
-            list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+            list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
             Message::Vaults,
         )
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for ManagerHomeState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
                 if let Message::Vaults(res) = message {
@@ -374,7 +370,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
         Subscription::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -422,13 +418,13 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerHomeState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Self::load_vaults(ctx)
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<ManagerHomeState> for Box<dyn State<C>> {
-    fn from(s: ManagerHomeState) -> Box<dyn State<C>> {
+impl From<ManagerHomeState> for Box<dyn State> {
+    fn from(s: ManagerHomeState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -445,8 +441,8 @@ impl ManagerSendState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for ManagerSendState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::CreateSendTransaction(state) => match message {
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
@@ -484,7 +480,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
         }
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::CreateSendTransaction(state) => state.view(ctx),
             Self::ImportSendTransaction(state) => state.view(ctx),
@@ -492,7 +488,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerSendState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
             Self::CreateSendTransaction(state) => state.load(ctx),
             Self::ImportSendTransaction(state) => state.load(ctx),
@@ -527,8 +523,8 @@ impl ManagerImportSendTransactionState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for ManagerImportSendTransactionState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for ManagerImportSendTransactionState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTx(SpendTxMessage::Updated(res)) => match res {
                 Ok(()) => self.psbt_imported = self.parse_pbst(),
@@ -557,7 +553,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerImportSendTransactio
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         self.view.view(
             ctx,
             &self.psbt_input,
@@ -566,7 +562,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerImportSendTransactio
         )
     }
 
-    fn load(&self, _ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, _ctx: &Context) -> Command<Message> {
         Command::none()
     }
 }
@@ -590,8 +586,8 @@ pub struct ManagerCreateSendTransactionState {
 
     vaults: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
-    feerate: Option<u32>,
-    psbt: Option<(Psbt, u32)>,
+    feerate: Option<u64>,
+    psbt: Option<(Psbt, u64)>,
     cpfp_index: usize,
     change_index: Option<usize>,
     processing: bool,
@@ -626,7 +622,7 @@ impl ManagerCreateSendTransactionState {
         let mut input_amount = 0;
         for input in &self.vaults {
             if input.selected {
-                input_amount += input.vault.amount;
+                input_amount += input.vault.amount.as_sat();
             }
         }
         input_amount
@@ -668,14 +664,14 @@ impl ManagerCreateSendTransactionState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactionState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for ManagerCreateSendTransactionState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::SpendTransaction(res) => {
                 self.processing = false;
                 match res {
-                    Ok(tx) => {
-                        self.psbt = Some((tx.spend_tx, tx.feerate));
+                    Ok(spend) => {
+                        self.psbt = Some(spend);
                     }
                     Err(e) => self.warning = Some(Error::RevaultDError(e)),
                 }
@@ -684,16 +680,17 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
             Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
                 self.warning = None;
-                let inputs = self
-                    .selected_inputs()
-                    .into_iter()
-                    .map(|input| input.outpoint())
-                    .collect();
+                let inputs = self.selected_inputs().iter().map(outpoint).collect();
 
-                let outputs: HashMap<String, u64> = self
+                let outputs: BTreeMap<bitcoin::Address, u64> = self
                     .outputs
                     .iter()
-                    .map(|output| (output.address.value.clone(), output.amount().unwrap()))
+                    .map(|output| {
+                        (
+                            bitcoin::Address::from_str(&output.address.value).unwrap(),
+                            output.amount().unwrap(),
+                        )
+                    })
                     .collect();
 
                 return Command::perform(
@@ -702,7 +699,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
                 );
             }
             Message::SpendTx(SpendTxMessage::FeerateEdited(feerate)) => {
-                if let Ok(f) = feerate.parse::<u32>() {
+                if let Ok(f) = feerate.parse::<u64>() {
                     self.feerate = Some(f);
                     self.valid_feerate = true;
                 } else if feerate.is_empty() {
@@ -812,7 +809,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
         self.sub()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         let selected_inputs = self.selected_inputs();
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
@@ -883,7 +880,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         Command::batch(vec![Command::perform(
             list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Active]), None),
             Message::Vaults,
@@ -891,8 +888,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for ManagerCreateSendTransactio
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<ManagerSendState> for Box<dyn State<C>> {
-    fn from(s: ManagerSendState) -> Box<dyn State<C>> {
+impl From<ManagerSendState> for Box<dyn State> {
+    fn from(s: ManagerSendState) -> Box<dyn State> {
         Box::new(s)
     }
 }
@@ -997,14 +994,11 @@ impl ManagerSendInput {
         }
     }
 
-    pub fn view<C: Client + Send + Sync + 'static>(
-        &mut self,
-        ctx: &Context<C>,
-    ) -> Element<InputMessage> {
+    pub fn view(&mut self, ctx: &Context) -> Element<InputMessage> {
         manager_send_input_view(
             ctx,
-            &self.vault.outpoint(),
-            &self.vault.amount,
+            &outpoint(&self.vault).to_string(),
+            &self.vault.amount.as_sat(),
             self.selected,
         )
     }

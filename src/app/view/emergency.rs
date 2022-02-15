@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use iced::{Align, Column, Container, Element, Length, Row};
 
 use revault_ui::{
@@ -6,10 +7,7 @@ use revault_ui::{
     icon::warning_icon,
 };
 
-use crate::{
-    app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
-    daemon::client::Client,
-};
+use crate::app::{context::Context, error::Error, menu::Menu, message::Message, view::layout};
 
 #[derive(Debug)]
 pub struct EmergencyView {
@@ -25,9 +23,9 @@ impl EmergencyView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vaults_number: usize,
         funds_amount: u64,
         warning: Option<&Error>,
@@ -53,7 +51,7 @@ impl EmergencyView {
                                 .push(
                                     Text::new(&format!(
                                         " {} ",
-                                        ctx.converter.converts(funds_amount)
+                                        ctx.converter.converts(Amount::from_sat(funds_amount))
                                     ))
                                     .bold(),
                                 )
@@ -101,9 +99,9 @@ impl EmergencyTriggeredView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vaults_number: usize,
         funds_amount: u64,
     ) -> Element<'a, Message> {
@@ -121,7 +119,7 @@ impl EmergencyTriggeredView {
                                     .push(
                                         Text::new(&format!(
                                             " {} ",
-                                            ctx.converter.converts(funds_amount)
+                                            ctx.converter.converts(Amount::from_sat(funds_amount))
                                         ))
                                         .bold(),
                                     )

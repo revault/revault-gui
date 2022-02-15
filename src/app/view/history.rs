@@ -1,3 +1,4 @@
+use bitcoin::Amount;
 use chrono::NaiveDateTime;
 use iced::{pick_list, Align, Column, Container, Element, Length, Row};
 
@@ -8,10 +9,7 @@ use revault_ui::{
 
 use crate::{
     app::{context::Context, error::Error, message::Message, view::layout},
-    daemon::{
-        client::Client,
-        model::{HistoryEvent, HistoryEventKind, VaultTransactions},
-    },
+    daemon::model::{transaction_from_hex, HistoryEvent, HistoryEventKind, VaultTransactions},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,9 +70,9 @@ impl HistoryView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         warning: Option<&Error>,
         events: Vec<Element<'a, Message>>,
         event_kind_filter: &Option<HistoryEventKind>,
@@ -138,13 +136,13 @@ impl HistoryEventListItemView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         event: &HistoryEvent,
         index: usize,
     ) -> Element<'a, Message> {
-        let date = NaiveDateTime::from_timestamp(event.date, 0);
+        let date = NaiveDateTime::from_timestamp(event.date.into(), 0);
         let mut row = Row::new()
             .push(event_badge(event))
             .push(
@@ -163,7 +161,11 @@ impl HistoryEventListItemView {
         if let Some(fee) = event.fee {
             row = row.push(
                 Container::new(
-                    Text::new(&format!("fee: -{}", ctx.converter.converts(fee))).small(),
+                    Text::new(&format!(
+                        "fee: -{}",
+                        ctx.converter.converts(Amount::from_sat(fee))
+                    ))
+                    .small(),
                 )
                 .width(Length::FillPortion(1))
                 .align_x(Align::End),
@@ -185,7 +187,7 @@ impl HistoryEventListItemView {
                 Container::new(Text::new(&format!(
                     "{}{} {}",
                     sign,
-                    ctx.converter.converts(amount),
+                    ctx.converter.converts(Amount::from_sat(amount)),
                     ctx.converter.unit,
                 )))
                 .width(Length::FillPortion(1))
@@ -226,9 +228,9 @@ impl HistoryEventView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         event: &HistoryEvent,
         txs: &Vec<VaultTransactions>,
         warning: Option<&Error>,
@@ -273,7 +275,7 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
                                 .push(Text::new("Date:").bold())
                                 .push(Text::new(&format!(
                                     "{}",
-                                    NaiveDateTime::from_timestamp(event.date, 0)
+                                    NaiveDateTime::from_timestamp(event.date.into(), 0)
                                 ))),
                         )
                         .align_items(Align::Center)
@@ -303,7 +305,7 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
     )
 }
 
-fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -316,8 +318,9 @@ fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Elem
             Container::new(
                 Text::new(&format!(
                     "+ {} {}",
-                    ctx.converter
-                        .converts(event.amount.expect("This is a deposit event")),
+                    ctx.converter.converts(Amount::from_sat(
+                        event.amount.expect("This is a deposit event")
+                    )),
                     ctx.converter.unit,
                 ))
                 .bold()
@@ -341,7 +344,7 @@ fn deposit<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Elem
         .into()
 }
 
-fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Element<'a, T> {
+fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -352,7 +355,8 @@ fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Eleme
         )
         .push(Container::new(Text::new(&format!(
             "Fee: {} {}",
-            ctx.converter.converts(event.fee.unwrap_or(0)),
+            ctx.converter
+                .converts(Amount::from_sat(event.fee.unwrap_or(0))),
             ctx.converter.unit,
         ))))
         .push(card::white(
@@ -376,12 +380,12 @@ fn cancel<'a, T: 'a, C: Client>(ctx: &Context<C>, event: &HistoryEvent) -> Eleme
         .into()
 }
 
-fn spend<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn spend<'a, T: 'a>(
+    ctx: &Context,
     event: &HistoryEvent,
     txs: &Vec<VaultTransactions>,
 ) -> Element<'a, T> {
-    let tx = &txs.first().as_ref().unwrap().spend.as_ref().unwrap().tx;
+    let tx = transaction_from_hex(&txs.first().as_ref().unwrap().spend.as_ref().unwrap().hex);
     let mut col_recipients = Column::new()
         .push(Text::new("Recipients:").bold())
         .spacing(10);
@@ -401,10 +405,14 @@ fn spend<'a, T: 'a, C: Client>(
             .push(
                 card::simple(Container::new(
                     row.push(
-                        Text::new(&ctx.converter.converts(output.value).to_string())
-                            .bold()
-                            .small()
-                            .width(Length::Shrink),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(output.value))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small()
+                        .width(Length::Shrink),
                     ),
                 ))
                 .width(Length::Fill),
@@ -425,7 +433,8 @@ fn spend<'a, T: 'a, C: Client>(
                 .push(
                     Text::new(&format!(
                         "- {} {}",
-                        ctx.converter.converts(event.amount.unwrap_or(0)),
+                        ctx.converter
+                            .converts(Amount::from_sat(event.amount.unwrap_or(0))),
                         ctx.converter.unit,
                     ))
                     .bold()
@@ -433,7 +442,8 @@ fn spend<'a, T: 'a, C: Client>(
                 )
                 .push(Container::new(Text::new(&format!(
                     "Fee: {} {}",
-                    ctx.converter.converts(event.fee.unwrap_or(0)),
+                    ctx.converter
+                        .converts(Amount::from_sat(event.fee.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
                 .align_items(Align::Center),

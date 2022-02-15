@@ -1,83 +1,278 @@
-use std::path::PathBuf;
-use std::thread::{Builder, JoinHandle};
+use std::collections::BTreeMap;
+use std::sync::Mutex;
 
-use log::{debug, info};
+use bitcoin::{consensus::encode, util::psbt::PartiallySignedTransaction as Psbt, OutPoint, Txid};
 
+use super::{model::*, Daemon, RevaultDError};
 use revaultd::{
-    common::config::Config,
-    daemon::{daemon_main, RevaultD},
-    revault_net::sodiumoxide,
-    revault_tx::bitcoin::hashes::hex::ToHex,
+    config::Config,
+    revault_tx::transactions::{
+        CancelTransaction, EmergencyTransaction, RevaultTransaction, SpendTransaction,
+        UnvaultEmergencyTransaction, UnvaultTransaction,
+    },
+    DaemonHandle,
 };
 
-#[derive(Debug)]
-pub enum DaemonError {
-    StartError(String),
-    PanicError(String),
+pub struct EmbeddedDaemon {
+    handle: Option<Mutex<DaemonHandle>>,
 }
 
-impl std::fmt::Display for DaemonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::StartError(e) => write!(f, "daemon error while starting: {}", e),
-            Self::PanicError(e) => write!(f, "daemon had a panic: {}", e),
-        }
+impl EmbeddedDaemon {
+    pub fn new() -> Self {
+        Self { handle: None }
+    }
+
+    pub fn start(&mut self, config: Config) -> Result<(), RevaultDError> {
+        let handle =
+            DaemonHandle::start(config).map_err(|e| RevaultDError::Start(e.to_string()))?;
+        self.handle = Some(Mutex::new(handle));
+        Ok(())
     }
 }
 
-// RevaultD can start only if a config path is given.
-pub async fn start_daemon(config_path: PathBuf) -> Result<(), DaemonError> {
-    debug!("starting revaultd daemon");
+impl std::fmt::Debug for EmbeddedDaemon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DaemonHandle").finish()
+    }
+}
 
-    sodiumoxide::init().map_err(|_| DaemonError::StartError("sodiumoxide::init".to_string()))?;
+impl Daemon for EmbeddedDaemon {
+    fn is_external(&self) -> bool {
+        false
+    }
 
-    let config = Config::from_file(Some(config_path))
-        .map_err(|e| DaemonError::StartError(format!("Error parsing config: {}", e)))?;
+    fn stop(&mut self) -> Result<(), RevaultDError> {
+        if let Some(h) = self.handle.take() {
+            let handle = h.into_inner().unwrap();
+            handle.shutdown();
+        }
+        Ok(())
+    }
 
-    let revaultd = RevaultD::from_config(config)
-        .map_err(|e| DaemonError::StartError(format!("Error creating global state: {}", e)))?;
+    fn get_deposit_address(&self) -> Result<bitcoin::Address, RevaultDError> {
+        Ok(self
+            .handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_deposit_address())
+    }
 
-    info!(
-        "Using Noise static public key: '{}'",
-        revaultd.noise_pubkey().0.to_hex()
-    );
-    debug!(
-        "Coordinator static public key: '{}'",
-        revaultd.coordinator_noisekey.0.to_hex()
-    );
+    fn get_info(&self) -> Result<GetInfoResult, RevaultDError> {
+        Ok(self
+            .handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_info())
+    }
 
-    let handle: JoinHandle<_> = Builder::new()
-        .spawn(|| {
-            std::panic::set_hook(Box::new(move |panic_info| {
-                let file = panic_info
-                    .location()
-                    .map(|l| l.file())
-                    .unwrap_or_else(|| "'unknown'");
-                let line = panic_info
-                    .location()
-                    .map(|l| l.line().to_string())
-                    .unwrap_or_else(|| "'unknown'".to_string());
+    fn list_vaults(
+        &self,
+        statuses: Option<&[VaultStatus]>,
+        outpoints: Option<&[OutPoint]>,
+    ) -> Result<Vec<Vault>, RevaultDError> {
+        Ok(self
+            .handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .list_vaults(statuses, outpoints))
+    }
 
-                let bt = backtrace::Backtrace::new();
-                if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-                    log::error!(
-                        "panic occurred at line {} of file {}: {:?}\n{:?}",
-                        line,
-                        file,
-                        s,
-                        bt
-                    );
-                } else {
-                    log::error!("panic occurred at line {} of file {}\n{:?}", line, file, bt);
-                }
-            }));
+    fn list_onchain_transactions(
+        &self,
+        outpoints: &[OutPoint],
+    ) -> Result<Vec<VaultTransactions>, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .list_onchain_txs(outpoints)
+            .map_err(|e| e.into())
+    }
 
-            daemon_main(revaultd);
-        })
-        .map_err(|e| DaemonError::StartError(format!("{}", e)))?;
+    fn get_revocation_txs(
+        &self,
+        outpoint: &OutPoint,
+    ) -> Result<RevocationTransactions, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_revocation_txs(*outpoint)
+            .map_err(|e| e.into())
+    }
 
-    handle
-        .join()
-        .map_err(|e| DaemonError::PanicError(format!("{:?}", e)))?;
-    Ok(())
+    fn set_revocation_txs(
+        &self,
+        outpoint: &OutPoint,
+        emergency_tx: &Psbt,
+        emergency_unvault_tx: &Psbt,
+        cancel_tx: &Psbt,
+    ) -> Result<(), RevaultDError> {
+        let cancel = CancelTransaction::from_raw_psbt(&encode::serialize(cancel_tx)).unwrap();
+        let emergency =
+            EmergencyTransaction::from_raw_psbt(&encode::serialize(emergency_tx)).unwrap();
+        let unvault_emergency =
+            UnvaultEmergencyTransaction::from_raw_psbt(&encode::serialize(emergency_unvault_tx))
+                .unwrap();
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .set_revocation_txs(*outpoint, cancel, emergency, unvault_emergency)
+            .map_err(|e| e.into())
+    }
+
+    fn get_unvault_tx(&self, outpoint: &OutPoint) -> Result<Psbt, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_unvault_tx(*outpoint)
+            .map(|tx| tx.into_psbt())
+            .map_err(|e| e.into())
+    }
+
+    fn set_unvault_tx(&self, outpoint: &OutPoint, unvault_tx: &Psbt) -> Result<(), RevaultDError> {
+        let unvault = UnvaultTransaction::from_raw_psbt(&encode::serialize(unvault_tx)).unwrap();
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .set_unvault_tx(*outpoint, unvault)
+            .map_err(|e| e.into())
+    }
+
+    fn get_spend_tx(
+        &self,
+        inputs: &[OutPoint],
+        outputs: &BTreeMap<bitcoin::Address, u64>,
+        feerate: u64,
+    ) -> Result<Psbt, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_spend_tx(inputs, outputs, feerate)
+            .map(|tx| tx.into_psbt())
+            .map_err(|e| e.into())
+    }
+
+    fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
+        let spend = SpendTransaction::from_raw_psbt(&encode::serialize(psbt)).unwrap();
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .update_spend_tx(spend)
+            .map_err(|e| e.into())
+    }
+
+    fn list_spend_txs(
+        &self,
+        statuses: Option<&[SpendTxStatus]>,
+    ) -> Result<Vec<SpendTx>, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .list_spend_txs(statuses)
+            .map_err(|e| e.into())
+    }
+
+    fn delete_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .del_spend_tx(txid)
+            .map_err(|e| e.into())
+    }
+
+    fn broadcast_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .set_spend_tx(txid, false)
+            .map_err(|e| e.into())
+    }
+
+    fn revault(&self, outpoint: &OutPoint) -> Result<(), RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .revault(outpoint)
+            .map_err(|e| e.into())
+    }
+
+    fn emergency(&self) -> Result<(), RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .emergency()
+            .map_err(|e| e.into())
+    }
+
+    fn get_server_status(&self) -> Result<ServersStatuses, RevaultDError> {
+        Ok(self
+            .handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_servers_statuses())
+    }
+
+    fn get_history(
+        &self,
+        kind: &[HistoryEventKind],
+        start: u32,
+        end: u32,
+        limit: u64,
+    ) -> Result<Vec<HistoryEvent>, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .get_history(start, end, limit, kind)
+            .map_err(|e| e.into())
+    }
 }

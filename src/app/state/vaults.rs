@@ -1,5 +1,6 @@
 use std::convert::From;
 
+use bitcoin::OutPoint;
 use iced::{Command, Element};
 
 use super::{
@@ -8,7 +9,10 @@ use super::{
     State,
 };
 
-use crate::daemon::{client::Client, model, model::VaultStatus};
+use crate::daemon::{
+    model,
+    model::{outpoint, VaultStatus, CURRENT_VAULT_STATUSES},
+};
 
 use crate::app::{
     context::Context,
@@ -47,7 +51,7 @@ impl VaultsState {
                 let vaults = vlts.into_iter().map(VaultListItem::new).collect();
                 *self = Self::Loaded {
                     view: VaultsView::new(),
-                    vault_status_filter: &VaultStatus::CURRENT,
+                    vault_status_filter: &CURRENT_VAULT_STATUSES,
                     vaults,
                     selected_vault: None,
                     warning: None,
@@ -73,10 +77,10 @@ impl VaultsState {
         }
     }
 
-    pub fn on_vault_select<C: Client + Send + Sync + 'static>(
+    pub fn on_vault_select(
         &mut self,
-        ctx: &Context<C>,
-        outpoint: String,
+        ctx: &Context,
+        selected_outpoint: OutPoint,
     ) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
@@ -85,13 +89,16 @@ impl VaultsState {
         } = self
         {
             if let Some(selected) = selected_vault {
-                if selected.vault.outpoint() == outpoint {
+                if outpoint(&selected.vault) == selected_outpoint {
                     *selected_vault = None;
                     return Command::none();
                 }
             }
 
-            if let Some(selected) = vaults.iter().find(|vlt| vlt.vault.outpoint() == outpoint) {
+            if let Some(selected) = vaults
+                .iter()
+                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
+            {
                 let vault = Vault::new(selected.vault.clone());
                 let cmd = vault.load(ctx.revaultd.clone());
                 *selected_vault = Some(vault);
@@ -102,8 +109,8 @@ impl VaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message> {
+impl State for VaultsState {
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match message {
             Message::Reload => return self.load(ctx),
             Message::Vaults(res) => match res {
@@ -136,7 +143,7 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
         Command::none()
     }
 
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message> {
+    fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
@@ -160,10 +167,10 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
         }
     }
 
-    fn load(&self, ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
             Self::Loading { .. } => Command::batch(vec![Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(&VaultStatus::CURRENT), None),
+                list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
                 Message::Vaults,
             )]),
             Self::Loaded {
@@ -177,8 +184,8 @@ impl<C: Client + Send + Sync + 'static> State<C> for VaultsState {
     }
 }
 
-impl<C: Client + Send + Sync + 'static> From<VaultsState> for Box<dyn State<C>> {
-    fn from(s: VaultsState) -> Box<dyn State<C>> {
+impl From<VaultsState> for Box<dyn State> {
+    fn from(s: VaultsState) -> Box<dyn State> {
         Box::new(s)
     }
 }

@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use iced::{Align, Column, Container, Element, Length, Row};
 
+use bitcoin::Amount;
 use revault_ui::component::{badge, button, card, separation, text::Text};
 
 use crate::app::{
@@ -11,9 +12,8 @@ use crate::app::{
 };
 
 use crate::{
-    daemon::{
-        client::Client,
-        model::{BroadcastedTransaction, Vault, VaultStatus, VaultTransactions},
+    daemon::model::{
+        outpoint, transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
     },
     revault::Role,
 };
@@ -32,9 +32,9 @@ impl VaultModal {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vlt: &Vault,
         warning: Option<&Error>,
         panel_title: &str,
@@ -58,13 +58,13 @@ impl VaultModal {
             .width(Length::Fill)
             .align_x(Align::Center),
             None,
-            Message::SelectVault(vlt.outpoint()),
+            Message::SelectVault(outpoint(vlt)),
         )
     }
 }
 
-fn vault<'a, C: Client>(
-    ctx: &Context<C>,
+fn vault<'a>(
+    ctx: &Context,
     copy_button: &'a mut iced::button::State,
     vlt: &Vault,
 ) -> Container<'a, Message> {
@@ -131,9 +131,9 @@ impl VaultOnChainTransactionsPanel {
             action_button: iced::button::State::new(),
         }
     }
-    pub fn view<C: Client>(
+    pub fn view(
         &mut self,
-        ctx: &Context<C>,
+        ctx: &Context,
         vault: &Vault,
         txs: &VaultTransactions,
     ) -> Element<Message> {
@@ -207,11 +207,12 @@ impl VaultOnChainTransactionsPanel {
     }
 }
 
-fn transaction<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
+fn transaction<'a, T: 'a>(
+    ctx: &Context,
     title: &str,
-    transaction: &BroadcastedTransaction,
+    transaction: &WalletTransaction,
 ) -> Container<'a, T> {
+    let tx = transaction_from_hex(&transaction.hex);
     Container::new(
         Column::new()
             .push(separation().width(Length::Fill))
@@ -221,16 +222,14 @@ fn transaction<'a, T: 'a, C: Client>(
                         Row::new()
                             .push(Container::new(Text::new(title).bold()).width(Length::Fill))
                             .push(
-                                Container::new(
-                                    Text::new(&transaction.tx.txid().to_string()).bold().small(),
-                                )
-                                .width(Length::Shrink),
+                                Container::new(Text::new(&tx.txid().to_string()).bold().small())
+                                    .width(Length::Shrink),
                             ),
                     )
                     .push(
                         Text::new(&format!(
                             "Received at {}",
-                            NaiveDateTime::from_timestamp(transaction.received_at, 0)
+                            NaiveDateTime::from_timestamp(transaction.received_time.into(), 0)
                         ))
                         .small(),
                     )
@@ -252,12 +251,13 @@ fn transaction<'a, T: 'a, C: Client>(
     )
 }
 
-fn input_and_outputs<'a, T: 'a, C: Client>(
-    ctx: &Context<C>,
-    broadcasted: &BroadcastedTransaction,
+fn input_and_outputs<'a, T: 'a>(
+    ctx: &Context,
+    broadcasted: &WalletTransaction,
 ) -> Container<'a, T> {
     let mut col_input = Column::new().push(Text::new("Inputs").bold()).spacing(10);
-    for input in &broadcasted.tx.input {
+    let tx = transaction_from_hex(&broadcasted.hex);
+    for input in &tx.input {
         col_input = col_input
             .push(
                 card::simple(Container::new(
@@ -268,7 +268,7 @@ fn input_and_outputs<'a, T: 'a, C: Client>(
             .width(Length::FillPortion(1));
     }
     let mut col_output = Column::new().push(Text::new("Outputs").bold()).spacing(10);
-    for output in &broadcasted.tx.output {
+    for output in &tx.output {
         let addr = bitcoin::Address::from_script(&output.script_pubkey, ctx.network());
         let mut col = Column::new();
         if let Some(a) = addr {
@@ -280,9 +280,13 @@ fn input_and_outputs<'a, T: 'a, C: Client>(
             .push(
                 card::simple(Container::new(
                     col.push(
-                        Text::new(&ctx.converter.converts(output.value).to_string())
-                            .bold()
-                            .small(),
+                        Text::new(
+                            &ctx.converter
+                                .converts(Amount::from_sat(output.value))
+                                .to_string(),
+                        )
+                        .bold()
+                        .small(),
                     ),
                 ))
                 .width(Length::Fill),
@@ -315,7 +319,7 @@ fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
 
 pub trait VaultView {
     fn new() -> Self;
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> Element<Message>;
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> Element<Message>;
 }
 
 #[derive(Debug, Clone)]
@@ -330,7 +334,7 @@ impl VaultView for VaultListItemView {
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         button::white_card_button(
             &mut self.state,
             Container::new(
@@ -341,7 +345,9 @@ impl VaultView for VaultListItemView {
                                 .push(vault_badge(&vault))
                                 .push(
                                     Column::new()
-                                        .push(Text::new(&vault.outpoint()).bold().small())
+                                        .push(
+                                            Text::new(&outpoint(vault).to_string()).bold().small(),
+                                        )
                                         .push(Text::new(&format!("{}", &vault.status,)).small()),
                                 )
                                 .spacing(20),
@@ -366,7 +372,7 @@ impl VaultView for VaultListItemView {
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::SelectVault(vault.outpoint()))
+        .on_press(Message::SelectVault(outpoint(vault)))
         .width(Length::Fill)
         .into()
     }
@@ -384,7 +390,7 @@ impl VaultView for SecureVaultListItemView {
         }
     }
 
-    fn view<C: Client>(&mut self, ctx: &Context<C>, vault: &Vault) -> iced::Element<Message> {
+    fn view(&mut self, ctx: &Context, vault: &Vault) -> iced::Element<Message> {
         if vault.status == VaultStatus::Funded || vault.status == VaultStatus::Unconfirmed {
             vault_ack_pending(&mut self.select_button, ctx, vault)
         } else {
@@ -393,7 +399,7 @@ impl VaultView for SecureVaultListItemView {
     }
 }
 
-fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> Element<'a, T> {
+fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T> {
     card::white(Container::new(
         Row::new()
             .push(
@@ -401,8 +407,13 @@ fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> 
                     Row::new()
                         .push(badge::shield_success())
                         .push(
-                            Container::new(Text::new(&deposit.address).small().bold().success())
-                                .align_y(Align::Center),
+                            Container::new(
+                                Text::new(&deposit.address.to_string())
+                                    .small()
+                                    .bold()
+                                    .success(),
+                            )
+                            .align_y(Align::Center),
                         )
                         .spacing(20)
                         .align_items(Align::Center),
@@ -428,9 +439,9 @@ fn vault_ack_signed<'a, T: 'a, C: Client>(ctx: &Context<C>, deposit: &Vault) -> 
     .into()
 }
 
-fn vault_ack_pending<'a, C: Client>(
+fn vault_ack_pending<'a>(
     state: &'a mut iced::button::State,
-    ctx: &Context<C>,
+    ctx: &Context,
     deposit: &Vault,
 ) -> Element<'a, Message> {
     Container::new(
@@ -443,8 +454,10 @@ fn vault_ack_pending<'a, C: Client>(
                             Row::new()
                                 .push(badge::shield_notif())
                                 .push(
-                                    Container::new(Text::new(&deposit.address).small().bold())
-                                        .align_y(Align::Center),
+                                    Container::new(
+                                        Text::new(&deposit.address.to_string()).small().bold(),
+                                    )
+                                    .align_y(Align::Center),
                                 )
                                 .spacing(20)
                                 .align_items(Align::Center),
@@ -470,7 +483,7 @@ fn vault_ack_pending<'a, C: Client>(
                     .align_items(Align::Center),
             ),
         )
-        .on_press(Message::SelectVault(deposit.outpoint())),
+        .on_press(Message::SelectVault(outpoint(deposit))),
     )
     .into()
 }
@@ -487,12 +500,7 @@ impl DelegateVaultListItemView {
         }
     }
 
-    pub fn view<C: Client>(
-        &mut self,
-        ctx: &Context<C>,
-        vault: &Vault,
-        selected: bool,
-    ) -> iced::Element<Message> {
+    pub fn view(&mut self, ctx: &Context, vault: &Vault, selected: bool) -> iced::Element<Message> {
         Container::new(
             button::white_card_button(
                 &mut self.select_button,
@@ -508,9 +516,12 @@ impl DelegateVaultListItemView {
                                     })
                                     .push(
                                         Container::new(if selected {
-                                            Text::new(&vault.outpoint()).small().bold().success()
+                                            Text::new(&outpoint(vault).to_string())
+                                                .small()
+                                                .bold()
+                                                .success()
                                         } else {
-                                            Text::new(&vault.outpoint()).small().bold()
+                                            Text::new(&outpoint(vault).to_string()).small().bold()
                                         })
                                         .align_y(Align::Center),
                                     )
@@ -554,7 +565,7 @@ impl DelegateVaultListItemView {
                         .align_items(Align::Center),
                 ),
             )
-            .on_press(Message::SelectVault(vault.outpoint())),
+            .on_press(Message::SelectVault(outpoint(vault))),
         )
         .into()
     }
@@ -577,9 +588,9 @@ impl RevaultVaultView {
         }
     }
 
-    pub fn view<'a, C: Client>(
+    pub fn view<'a>(
         &'a mut self,
-        _ctx: &Context<C>,
+        _ctx: &Context,
         _vault: &Vault,
         processing: &bool,
         success: &bool,

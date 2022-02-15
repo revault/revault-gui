@@ -24,15 +24,14 @@ pub use stakeholder::{
 pub use vaults::VaultsState;
 
 use super::{context::Context, message::Message};
-use crate::daemon::client::Client;
 
-pub trait State<C: Client> {
-    fn view(&mut self, ctx: &Context<C>) -> Element<Message>;
-    fn update(&mut self, ctx: &Context<C>, message: Message) -> Command<Message>;
+pub trait State {
+    fn view(&mut self, ctx: &Context) -> Element<Message>;
+    fn update(&mut self, ctx: &Context, message: Message) -> Command<Message>;
     fn subscription(&self) -> Subscription<Message> {
         Subscription::none()
     }
-    fn load(&self, _ctx: &Context<C>) -> Command<Message> {
+    fn load(&self, _ctx: &Context) -> Command<Message> {
         Command::none()
     }
 }
