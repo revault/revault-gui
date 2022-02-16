@@ -137,6 +137,10 @@ pub fn cross_icon() -> Text {
     icon('\u{F62A}')
 }
 
+pub fn pencil_icon() -> Text {
+    icon('\u{F4CB}')
+}
+
 #[allow(dead_code)]
 pub fn stakeholder_icon() -> Text {
     icon('\u{F4AE}')

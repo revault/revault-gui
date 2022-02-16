@@ -5,7 +5,7 @@ mod home;
 mod layout;
 pub mod manager;
 mod revault;
-mod settings;
+pub mod settings;
 mod sidebar;
 pub mod sign;
 pub mod spend_transaction;

@@ -14,7 +14,7 @@ use iced::{time, Clipboard, Command, Element, Subscription};
 use iced_native::{window, Event};
 
 pub use config::Config;
-pub use message::Message;
+pub use message::{Message, SettingsMessage};
 
 use menu::Menu;
 use state::{
@@ -31,14 +31,13 @@ pub struct App {
     context: Context,
 }
 
-#[allow(unreachable_patterns)]
 pub fn new_state(context: &Context) -> Box<dyn State> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
         (_, Menu::Vaults(menu)) => VaultsState::new(menu).into(),
         (_, Menu::RevaultVaults) => RevaultVaultsState::default().into(),
-        (_, Menu::Settings) => SettingsState::new(context.config.gui.clone()).into(),
+        (_, Menu::Settings) => SettingsState::new(context).into(),
         (Role::Stakeholder, Menu::Home) => StakeholderHomeState::new().into(),
         (Role::Stakeholder, Menu::CreateVaults) => StakeholderCreateVaultsState::new().into(),
         (Role::Stakeholder, Menu::DelegateFunds) => StakeholderDelegateVaultsState::new().into(),
@@ -106,6 +105,10 @@ impl App {
                     self.context.blockheight = blockheight;
                 }
                 Command::none()
+            }
+            Message::LoadDaemonConfig(cfg) => {
+                let res = self.context.load_daemon_config(cfg);
+                self.update(Message::DaemonConfigLoaded(res), clipboard)
             }
             Message::ChangeRole(role) => {
                 self.context.role = role;
