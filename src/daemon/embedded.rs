@@ -100,6 +100,20 @@ impl Daemon for EmbeddedDaemon {
             .map_err(|e| e.into())
     }
 
+    fn list_presigned_transactions(
+        &self,
+        outpoints: &[OutPoint],
+    ) -> Result<Vec<VaultPresignedTransactions>, RevaultDError> {
+        self.handle
+            .as_ref()
+            .ok_or(RevaultDError::NoAnswer)?
+            .lock()
+            .unwrap()
+            .control
+            .list_presigned_txs(outpoints)
+            .map_err(|e| e.into())
+    }
+
     fn get_revocation_txs(
         &self,
         outpoint: &OutPoint,

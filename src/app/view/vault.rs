@@ -1,8 +1,12 @@
 use chrono::NaiveDateTime;
-use iced::{Align, Column, Container, Element, Length, Row};
+use iced::{tooltip, Align, Column, Container, Element, Length, Row, Tooltip};
 
-use bitcoin::Amount;
-use revault_ui::component::{badge, button, card, separation, text::Text};
+use bitcoin::{util::bip32::Fingerprint, Amount};
+use revault_ui::{
+    color,
+    component::{badge, button, card, separation, text::Text, TooltipStyle},
+    icon,
+};
 
 use crate::app::{
     context::Context,
@@ -500,74 +504,101 @@ impl DelegateVaultListItemView {
         }
     }
 
-    pub fn view(&mut self, ctx: &Context, vault: &Vault, selected: bool) -> iced::Element<Message> {
-        Container::new(
-            button::white_card_button(
-                &mut self.select_button,
-                Container::new(
-                    Row::new()
-                        .push(
-                            Container::new(
-                                Row::new()
-                                    .push(if selected {
-                                        badge::person_check_success()
-                                    } else {
-                                        badge::person_check()
-                                    })
-                                    .push(
-                                        Container::new(if selected {
-                                            Text::new(&outpoint(vault).to_string())
-                                                .small()
-                                                .bold()
-                                                .success()
-                                        } else {
-                                            Text::new(&outpoint(vault).to_string()).small().bold()
-                                        })
-                                        .align_y(Align::Center),
+    pub fn view(
+        &mut self,
+        ctx: &Context,
+        vault: &Vault,
+        sigs: &Vec<Fingerprint>,
+        selected: bool,
+    ) -> iced::Element<Message> {
+        let mut sigs_row = Row::new().align_items(Align::Center);
+        for fingerprint in sigs {
+            sigs_row = sigs_row.push(
+                Tooltip::new(
+                    icon::person_icon().color(color::SUCCESS),
+                    fingerprint.to_string(),
+                    tooltip::Position::Top,
+                )
+                .gap(5)
+                .size(20)
+                .padding(10)
+                .style(TooltipStyle),
+            );
+        }
+        for _i in 0..(ctx.stakeholders_xpubs().len() - sigs.len()) {
+            if vault.status == VaultStatus::Activating {
+                sigs_row = sigs_row.push(icon::person_icon().color(color::DARK_GREY));
+            } else {
+                sigs_row = sigs_row.push(icon::person_icon());
+            }
+        }
+        let content = Container::new(
+            Row::new()
+                .push(
+                    Container::new(
+                        Row::new()
+                            .push(if vault.status == VaultStatus::Activating {
+                                Container::new(
+                                    Tooltip::new(
+                                        badge::circle_check_success(),
+                                        "You signed",
+                                        tooltip::Position::Right,
                                     )
-                                    .spacing(20)
-                                    .align_items(Align::Center),
-                            )
-                            .width(Length::Fill),
-                        )
-                        .push(
-                            Container::new(if selected {
-                                Row::new()
-                                    .push(
-                                        Text::new(&format!(
-                                            "{}",
-                                            ctx.converter.converts(vault.amount),
-                                        ))
-                                        .bold()
-                                        .success(),
-                                    )
-                                    .push(
-                                        Text::new(&format!(" {}", ctx.converter.unit))
-                                            .small()
-                                            .success(),
-                                    )
-                                    .align_items(Align::Center)
+                                    .gap(5)
+                                    .size(20)
+                                    .style(TooltipStyle),
+                                )
+                            } else if selected {
+                                badge::circle_dot()
                             } else {
-                                Row::new()
-                                    .push(
-                                        Text::new(&format!(
-                                            "{}",
-                                            ctx.converter.converts(vault.amount),
-                                        ))
-                                        .bold(),
-                                    )
-                                    .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                    .align_items(Align::Center)
+                                badge::circle()
                             })
-                            .width(Length::Shrink),
-                        )
-                        .spacing(20)
-                        .align_items(Align::Center),
-                ),
-            )
-            .on_press(Message::SelectVault(outpoint(vault))),
-        )
-        .into()
+                            .push(sigs_row)
+                            .spacing(20)
+                            .align_items(Align::Center),
+                    )
+                    .width(Length::Fill),
+                )
+                .push(
+                    Container::new(if selected {
+                        Row::new()
+                            .push(
+                                Text::new(&format!("{}", ctx.converter.converts(vault.amount),))
+                                    .bold()
+                                    .color(color::PRIMARY),
+                            )
+                            .push(
+                                Text::new(&format!(" {}", ctx.converter.unit))
+                                    .small()
+                                    .color(color::PRIMARY),
+                            )
+                            .align_items(Align::Center)
+                    } else {
+                        Row::new()
+                            .push(if vault.status == VaultStatus::Activating {
+                                Text::new(&format!("{}", ctx.converter.converts(vault.amount)))
+                                    .bold()
+                                    .color(color::DARK_GREY)
+                            } else {
+                                Text::new(&format!("{}", ctx.converter.converts(vault.amount)))
+                                    .bold()
+                            })
+                            .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
+                            .align_items(Align::Center)
+                    })
+                    .width(Length::Shrink),
+                )
+                .spacing(20)
+                .align_items(Align::Center),
+        );
+
+        if vault.status == VaultStatus::Secured {
+            button::white_card_button(&mut self.select_button, content)
+                .on_press(Message::SelectVault(outpoint(vault)))
+                .into()
+        } else {
+            card::white(content).padding(15).into()
+        }
     }
 }
 

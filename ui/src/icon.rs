@@ -61,6 +61,18 @@ pub fn block_icon() -> Text {
     icon('\u{F1C8}')
 }
 
+pub fn circle_icon() -> Text {
+    icon('\u{F51A}')
+}
+
+pub fn circle_dot_icon() -> Text {
+    icon('\u{F51C}')
+}
+
+pub fn circle_check_icon() -> Text {
+    icon('\u{F26B}')
+}
+
 pub fn network_icon() -> Text {
     icon('\u{F40D}')
 }
@@ -87,6 +99,10 @@ pub fn shield_check_icon() -> Text {
 
 pub fn person_check_icon() -> Text {
     icon('\u{F4D6}')
+}
+
+pub fn person_icon() -> Text {
+    icon('\u{F4DA}')
 }
 
 pub fn tooltip_icon() -> Text {

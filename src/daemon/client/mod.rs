@@ -92,6 +92,18 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         Ok(response.onchain_transactions)
     }
 
+    fn list_presigned_transactions(
+        &self,
+        outpoints: &[OutPoint],
+    ) -> Result<Vec<VaultPresignedTransactions>, RevaultDError> {
+        let outpoints: Vec<String> = outpoints.iter().map(|o| o.to_string()).collect();
+        let response: ListPresignedTransactionsResponse = self.call(
+            "listpresignedtransactions",
+            Some(vec![ListTransactionsRequest(outpoints)]),
+        )?;
+        Ok(response.presigned_transactions)
+    }
+
     fn get_revocation_txs(
         &self,
         outpoint: &OutPoint,
@@ -231,6 +243,12 @@ pub struct GetHistoryResponse {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListOnchainTransactionsResponse {
     pub onchain_transactions: Vec<VaultTransactions>,
+}
+
+/// listtransactions response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ListPresignedTransactionsResponse {
+    pub presigned_transactions: Vec<VaultPresignedTransactions>,
 }
 
 /// list_spend_txs

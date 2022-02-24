@@ -7,8 +7,8 @@ use crate::{
     app::{error::Error, menu::Menu},
     daemon::{
         model::{
-            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, Vault, VaultStatus,
-            VaultTransactions,
+            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, Vault,
+            VaultPresignedTransactions, VaultStatus, VaultTransactions,
         },
         RevaultDError,
     },
@@ -23,6 +23,7 @@ pub enum Message {
     Clipboard(String),
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),
+    VaultsWithPresignedTxs(Result<Vec<(Vault, VaultPresignedTransactions)>, RevaultDError>),
     SelectVault(OutPoint),
     SelectHistoryEvent(usize),
     DelegateVault(OutPoint),

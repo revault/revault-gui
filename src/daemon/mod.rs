@@ -64,6 +64,11 @@ pub trait Daemon: Debug {
         outpoints: &[OutPoint],
     ) -> Result<Vec<VaultTransactions>, RevaultDError>;
 
+    fn list_presigned_transactions(
+        &self,
+        outpoints: &[OutPoint],
+    ) -> Result<Vec<VaultPresignedTransactions>, RevaultDError>;
+
     fn get_revocation_txs(
         &self,
         outpoint: &OutPoint,

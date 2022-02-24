@@ -1,9 +1,10 @@
 use bitcoin::Amount;
-use iced::{Align, Column, Container, Element, Length, ProgressBar, Row};
+use iced::{pick_list, Align, Column, Container, Element, Length, ProgressBar, Row};
 
 use revault_ui::{
-    component::{button, card, text::Text},
+    component::{button, card, text::Text, ContainerForegroundStyle, TransparentPickListStyle},
     icon,
+    util::Collection,
 };
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
         context::Context,
         error::Error,
         menu::Menu,
-        message::{Message, SignMessage},
+        message::{Message, SignMessage, VaultFilterMessage},
         view::layout,
     },
     daemon::model::{Vault, VaultStatus},
@@ -246,6 +247,7 @@ impl StakeholderDelegateVaultsView {
 pub struct StakeholderSelecteVaultsToDelegateView {
     modal: layout::Modal,
     next_button: iced::button::State,
+    pick_filter: pick_list::State<DelegateVaultsFilter>,
 }
 
 impl StakeholderSelecteVaultsToDelegateView {
@@ -253,6 +255,7 @@ impl StakeholderSelecteVaultsToDelegateView {
         StakeholderSelecteVaultsToDelegateView {
             modal: layout::Modal::new(),
             next_button: iced::button::State::new(),
+            pick_filter: pick_list::State::default(),
         }
     }
 
@@ -261,10 +264,11 @@ impl StakeholderSelecteVaultsToDelegateView {
         ctx: &Context,
         active_balance: &u64,
         activating_balance: &u64,
+        vault_status_filter: &'static [VaultStatus],
         selected: (usize, u64),
         vaults: Vec<Element<'a, Message>>,
     ) -> Element<'a, Message> {
-        let mut col = Column::new()
+        let col = Column::new()
             .push(
                 Column::new()
                     .push(
@@ -293,75 +297,153 @@ impl StakeholderSelecteVaultsToDelegateView {
                             )))
                             .align_items(Align::Center),
                     )
+                    .push_maybe(if *activating_balance != 0 {
+                        Some(
+                            Row::new()
+                                .push(Text::new("You signed to allocate "))
+                                .push(
+                                    Text::new(&format!(
+                                        "+ {}",
+                                        ctx.converter
+                                            .converts(Amount::from_sat(*activating_balance))
+                                    ))
+                                    .bold()
+                                    .size(20),
+                                )
+                                .push(Text::new(&format!(" {} more.", ctx.converter.unit)))
+                                .align_items(Align::Center),
+                        )
+                    } else {
+                        None
+                    }),
+            )
+            .push(
+                Column::new()
                     .push(
                         Row::new()
+                            .align_items(Align::Center)
+                            .push(if vaults.is_empty() {
+                                Text::new("No vaults are available").width(Length::Fill)
+                            } else {
+                                Text::new("Select vaults to delegate:").width(Length::Fill)
+                            })
                             .push(
-                                Text::new(&format!(
-                                    "+ {}",
-                                    ctx.converter
-                                        .converts(Amount::from_sat(*activating_balance))
-                                ))
-                                .bold()
-                                .size(20),
-                            )
-                            .push(Text::new(&format!(
-                                " {} are waiting for other stakeholders' approval",
-                                ctx.converter.unit
-                            )))
-                            .align_items(Align::Center),
-                    ),
+                                pick_list::PickList::new(
+                                    &mut self.pick_filter,
+                                    &DelegateVaultsFilter::ALL_FILTERS[..],
+                                    Some(DelegateVaultsFilter::new(vault_status_filter)),
+                                    |filter| {
+                                        Message::FilterVaults(VaultFilterMessage::Status(
+                                            filter.statuses(),
+                                        ))
+                                    },
+                                )
+                                .text_size(20)
+                                .padding(10)
+                                .width(Length::Units(200))
+                                .style(TransparentPickListStyle),
+                            ),
+                    )
+                    .push(Column::with_children(vaults).spacing(5))
+                    .width(Length::Fill)
+                    .spacing(20),
             );
 
-        if !vaults.is_empty() {
-            col = col.push(
-                Column::new()
-                    .push(Text::new("Select vaults to delegate:").width(Length::Fill))
-                    .push(Column::with_children(vaults).spacing(5))
-                    .spacing(20),
-            )
-        } else {
-            col = col.push(
-                Container::new(Text::new("No more funds can be delegated to managers")).padding(5),
-            )
-        }
-
-        if selected.0 > 0 {
-            col = col
-                .push(
-                    Row::new()
-                        .push(
-                            Text::new(
-                                &ctx.converter
-                                    .converts(Amount::from_sat(selected.1))
-                                    .to_string(),
-                            )
-                            .bold(),
-                        )
-                        .push(Text::new(&format!(" {} (", ctx.converter.unit)))
-                        .push(Text::new(&format!("{}", selected.0)).bold())
-                        .push(Text::new(" vaults)"))
-                        .width(Length::Shrink),
-                )
-                .push(
-                    Container::new(
-                        button::primary(
-                            &mut self.next_button,
-                            button::button_content(None, "Next"),
-                        )
-                        .on_press(Message::Next)
-                        .width(Length::Units(200)),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-                )
-        }
-
-        self.modal.view(
+        let mut col = Column::new().push(self.modal.view(
             ctx,
             None,
-            col.spacing(30).padding(20),
+            col.spacing(30).padding(20).max_width(1000),
             Some("By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction."),
             Message::Menu(Menu::Home),
-        )
+        ));
+
+        if selected.0 > 0 {
+            col = col.push(
+                Container::new(
+                    Row::new()
+                        .push(
+                            Row::new()
+                                .push(
+                                    Text::new(
+                                        &ctx.converter
+                                            .converts(Amount::from_sat(selected.1))
+                                            .to_string(),
+                                    )
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {} (", ctx.converter.unit)))
+                                .push(Text::new(&format!("{}", selected.0)).bold())
+                                .push(Text::new(" vaults)"))
+                                .width(Length::Fill),
+                        )
+                        .push(
+                            Container::new(
+                                button::primary(
+                                    &mut self.next_button,
+                                    button::button_content(None, "Next"),
+                                )
+                                .on_press(Message::Next)
+                                .width(Length::Units(200)),
+                            )
+                            .width(Length::Shrink),
+                        )
+                        .align_items(Align::Center)
+                        .max_width(1000),
+                )
+                .padding(30)
+                .width(Length::Fill)
+                .align_x(Align::Center)
+                .style(ContainerForegroundStyle),
+            )
+        }
+
+        col.into()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DelegateVaultsFilter {
+    All,
+    Approved,
+    Unapproved,
+}
+
+impl DelegateVaultsFilter {
+    pub const ALL: [VaultStatus; 2] = [VaultStatus::Secured, VaultStatus::Activating];
+    pub const APPROVED: [VaultStatus; 1] = [VaultStatus::Activating];
+    pub const UNAPPROVED: [VaultStatus; 1] = [VaultStatus::Secured];
+
+    pub const ALL_FILTERS: [DelegateVaultsFilter; 3] = [
+        DelegateVaultsFilter::All,
+        DelegateVaultsFilter::Approved,
+        DelegateVaultsFilter::Unapproved,
+    ];
+
+    pub fn new(statuses: &[VaultStatus]) -> DelegateVaultsFilter {
+        if statuses == Self::ALL {
+            DelegateVaultsFilter::All
+        } else if statuses == Self::APPROVED {
+            DelegateVaultsFilter::Approved
+        } else {
+            DelegateVaultsFilter::Unapproved
+        }
+    }
+
+    pub fn statuses(&self) -> &'static [VaultStatus] {
+        match self {
+            Self::All => &Self::ALL,
+            Self::Approved => &Self::APPROVED,
+            Self::Unapproved => &Self::UNAPPROVED,
+        }
+    }
+}
+
+impl std::fmt::Display for DelegateVaultsFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::All => write!(f, "All"),
+            Self::Approved => write!(f, "Approved"),
+            Self::Unapproved => write!(f, "Unapproved"),
+        }
     }
 }
