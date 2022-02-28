@@ -71,6 +71,7 @@ pub enum SpendTxMessage {
     Broadcasted(Result<(), RevaultDError>),
     Update,
     Updated(Result<(), RevaultDError>),
+    WithPriority(bool),
 }
 
 #[derive(Debug, Clone)]

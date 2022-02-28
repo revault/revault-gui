@@ -215,14 +215,14 @@ impl Daemon for EmbeddedDaemon {
             .map_err(|e| e.into())
     }
 
-    fn broadcast_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
+    fn broadcast_spend_tx(&self, txid: &Txid, priority: bool) -> Result<(), RevaultDError> {
         self.handle
             .as_ref()
             .ok_or(RevaultDError::NoAnswer)?
             .lock()
             .unwrap()
             .control
-            .set_spend_tx(txid, false)
+            .set_spend_tx(txid, priority)
             .map_err(|e| e.into())
     }
 

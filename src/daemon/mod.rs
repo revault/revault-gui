@@ -97,7 +97,7 @@ pub trait Daemon: Debug {
 
     fn delete_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError>;
 
-    fn broadcast_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError>;
+    fn broadcast_spend_tx(&self, txid: &Txid, priority: bool) -> Result<(), RevaultDError>;
 
     fn revault(&self, outpoint: &OutPoint) -> Result<(), RevaultDError>;
 

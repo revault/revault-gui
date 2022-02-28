@@ -167,8 +167,9 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         Ok(())
     }
 
-    fn broadcast_spend_tx(&self, txid: &Txid) -> Result<(), RevaultDError> {
-        let _res: serde_json::value::Value = self.call("setspendtx", Some(vec![txid]))?;
+    fn broadcast_spend_tx(&self, txid: &Txid, priority: bool) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value =
+            self.call("setspendtx", Some(vec![json!(txid), json!(priority)]))?;
         Ok(())
     }
 
