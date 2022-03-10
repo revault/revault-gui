@@ -9,10 +9,7 @@ use iced::{Command, Element, Subscription};
 use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use crate::daemon::{
-    model::{
-        self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
-        MOVING_VAULT_STATUSES,
-    },
+    model::{self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES},
     Daemon,
 };
 
@@ -70,9 +67,7 @@ impl StakeholderHomeState {
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         let mut total_balance = HashMap::new();
         for vault in &vaults {
-            if vault.status == VaultStatus::Unconfirmed
-                || MOVING_VAULT_STATUSES.contains(&vault.status)
-            {
+            if vault.status == VaultStatus::Unconfirmed {
                 continue;
             }
             if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
@@ -86,11 +81,7 @@ impl StakeholderHomeState {
         let moving_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling
-                    || vlt.status == VaultStatus::Spending
-                    || vlt.status == VaultStatus::Unvaulting
-                    || vlt.status == VaultStatus::Unvaulted
-                {
+                if vlt.status == VaultStatus::Canceling || vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -107,7 +98,7 @@ impl StakeholderHomeState {
                     selected_vault: None,
                     selected_event: None,
                     latest_events: Vec::new(),
-                    view: StakeholderHomeView::new(),
+                    view: StakeholderHomeView::default(),
                 };
             }
             Self::Loaded {
@@ -548,7 +539,7 @@ impl State for StakeholderDelegateVaultsState {
                                                 .filter_map(|key| {
                                                     unvault.inputs[0]
                                                         .bip32_derivation
-                                                        .get(&key)
+                                                        .get(key)
                                                         .map(|(fingerprint, _)| *fingerprint)
                                                 })
                                                 .collect(),
@@ -734,8 +725,7 @@ impl State for StakeholderDelegateVaultsState {
                     ]),
                     None,
                 )?;
-                let outpoints: Vec<OutPoint> =
-                    vaults.iter().map(|vault| model::outpoint(vault)).collect();
+                let outpoints: Vec<OutPoint> = vaults.iter().map(model::outpoint).collect();
                 let vaults_txs = revaultd.list_presigned_transactions(outpoints.as_slice())?;
 
                 let res: Vec<(model::Vault, model::VaultPresignedTransactions)> = vaults

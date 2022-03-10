@@ -12,7 +12,7 @@ use revault_ui::{
 use crate::app::{context::Context, menu::Menu, message::Message};
 use crate::revault::Role;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Sidebar {
     pick_role: pick_list::State<Role>,
     deposit_menu_button: iced::button::State,
@@ -27,21 +27,6 @@ pub struct Sidebar {
 }
 
 impl Sidebar {
-    pub fn new() -> Self {
-        Sidebar {
-            deposit_menu_button: iced::button::State::new(),
-            create_vault_button: iced::button::State::new(),
-            delegate_menu_button: iced::button::State::new(),
-            home_menu_button: iced::button::State::new(),
-            history_menu_button: iced::button::State::new(),
-            emergency_menu_button: iced::button::State::new(),
-            vaults_menu_button: iced::button::State::new(),
-            spend_menu_button: iced::button::State::new(),
-            settings_menu_button: iced::button::State::new(),
-            pick_role: pick_list::State::default(),
-        }
-    }
-
     pub fn view(&mut self, context: &Context) -> Container<Message> {
         let role = if context.role_editable() {
             Container::new(

@@ -51,8 +51,7 @@ pub enum ManagerHomeState {
     Loaded {
         view: ManagerHomeView,
 
-        active_funds: u64,
-        inactive_funds: u64,
+        balance: HashMap<VaultStatus, (u64, u64)>,
         warning: Option<Error>,
 
         moving_vaults: Vec<VaultListItem<VaultListItemView>>,
@@ -137,14 +136,18 @@ impl ManagerHomeState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        let (act_funds, inact_funds) =
-            vaults.iter().fold((0, 0), |acc, vault| match vault.status {
-                VaultStatus::Active => (acc.0 + vault.amount.as_sat(), acc.1),
-                VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
-                    (acc.0, acc.1 + vault.amount.as_sat())
-                }
-                _ => (acc.0, acc.1),
-            });
+        let mut total_balance = HashMap::new();
+        for vault in &vaults {
+            if vault.status == VaultStatus::Unconfirmed {
+                continue;
+            }
+            if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
+                *number += 1;
+                *amount += vault.amount.as_sat();
+            } else {
+                total_balance.insert(vault.status.clone(), (1, vault.amount.as_sat()));
+            }
+        }
 
         let spendable_vlts = vaults
             .iter()
@@ -160,11 +163,7 @@ impl ManagerHomeState {
         let moving_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling
-                    || vlt.status == VaultStatus::Spending
-                    || vlt.status == VaultStatus::Unvaulting
-                    || vlt.status == VaultStatus::Unvaulted
-                {
+                if vlt.status == VaultStatus::Canceling || vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -176,8 +175,7 @@ impl ManagerHomeState {
             Self::Loading { .. } => {
                 *self = Self::Loaded {
                     warning: None,
-                    active_funds: act_funds,
-                    inactive_funds: inact_funds,
+                    balance: total_balance,
                     spendable_outpoints: spendable_vlts,
                     moving_vaults: moving_vlts,
                     latest_events: Vec::new(),
@@ -186,18 +184,16 @@ impl ManagerHomeState {
                     selected_vault: None,
                     selected_event: None,
                     selected_spend_tx: None,
-                    view: ManagerHomeView::new(),
+                    view: ManagerHomeView::default(),
                 }
             }
             Self::Loaded {
-                active_funds,
-                inactive_funds,
+                balance,
                 spendable_outpoints,
                 moving_vaults,
                 ..
             } => {
-                *active_funds = act_funds;
-                *inactive_funds = inact_funds;
+                *balance = total_balance;
                 *spendable_outpoints = spendable_vlts;
                 *moving_vaults = moving_vlts;
             }
@@ -381,8 +377,7 @@ impl State for ManagerHomeState {
                 spend_txs_item,
                 moving_vaults,
                 latest_events,
-                active_funds,
-                inactive_funds,
+                balance,
                 view,
                 ..
             } => {
@@ -411,8 +406,7 @@ impl State for ManagerHomeState {
                         .enumerate()
                         .map(|(i, evt)| evt.view(ctx, i))
                         .collect(),
-                    *active_funds,
-                    *inactive_funds,
+                    balance,
                 )
             }
         }

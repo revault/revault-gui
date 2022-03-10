@@ -6,6 +6,7 @@ pub enum Menu {
     Home,
     Send,
     CreateVaults,
+    RevaultVaults,
     DelegateFunds,
     Settings,
     Vaults,

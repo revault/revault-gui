@@ -50,6 +50,8 @@ pub enum Message {
     Emergency,
     EmergencyBroadcasted(Result<(), RevaultDError>),
     Close,
+    Revault,
+    Revaulted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

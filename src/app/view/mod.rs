@@ -4,6 +4,7 @@ mod history;
 mod home;
 mod layout;
 pub mod manager;
+mod revault;
 mod settings;
 mod sidebar;
 pub mod sign;
@@ -17,6 +18,7 @@ pub use deposit::DepositView;
 pub use emergency::{EmergencyTriggeredView, EmergencyView};
 pub use history::{HistoryEventListItemView, HistoryEventView, HistoryView};
 pub use home::{ManagerHomeView, StakeholderHomeView};
+pub use revault::{RevaultSelectVaultsView, RevaultSuccessView, RevaultVaultListItemView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
 pub use stakeholder::{
@@ -47,7 +49,7 @@ impl LoadingDashboard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LoadingModal {
     modal: layout::Modal,
 }

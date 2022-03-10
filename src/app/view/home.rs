@@ -7,8 +7,12 @@ use iced::{
 };
 
 use revault_ui::{
-    component::{button, card, text::Text, TooltipStyle},
-    icon::{history_icon, person_check_icon, shield_check_icon, tooltip_icon},
+    color,
+    component::{badge, button, card, text::Text, TooltipStyle},
+    icon::{
+        history_icon, person_check_icon, shield_check_icon, tooltip_icon, warning_octagon_icon,
+    },
+    util::Collection,
 };
 
 use crate::{
@@ -16,20 +20,14 @@ use crate::{
     daemon::model::VaultStatus,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ManagerHomeView {
     dashboard: layout::Dashboard,
     history_button: iced::button::State,
+    moving_vaults_section: MovingVaultsSection,
 }
 
 impl ManagerHomeView {
-    pub fn new() -> Self {
-        ManagerHomeView {
-            dashboard: layout::Dashboard::new(),
-            history_button: iced::button::State::default(),
-        }
-    }
-
     pub fn view<'a>(
         &'a mut self,
         ctx: &Context,
@@ -37,14 +35,13 @@ impl ManagerHomeView {
         spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
         latest_events: Vec<Element<'a, Message>>,
-        active_funds: u64,
-        inactive_funds: u64,
+        balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<'a, Message> {
-        let mut content = Column::new().push(manager_overview(ctx, active_funds, inactive_funds));
-
-        if !spend_txs.is_empty() {
-            content = content.push(
-                Column::new()
+        let content =
+            Column::new()
+                .push(manager_overview(ctx, balance))
+                .push_maybe(if !spend_txs.is_empty() {
+                    Some(Column::new()
                     .push(
                         Column::new()
                             .push(Text::new("Pending spend transactions").bold())
@@ -55,37 +52,39 @@ impl ManagerHomeView {
                     )
                     .push(Column::with_children(spend_txs).spacing(10))
                     .spacing(20),
-            )
-        }
-
-        if !moving_vaults.is_empty() {
-            content = content
-                .push(Text::new("Funds are moving:"))
-                .push(Column::with_children(moving_vaults).spacing(10))
-        };
-
-        if !latest_events.is_empty() {
-            let length = latest_events.len();
-            content = content
-                .push(Text::new("Latest events:").small().bold())
-                .push(Column::with_children(latest_events).spacing(5));
-
-            if length >= 5 {
-                content = content.push(
-                    Container::new(
-                        button::transparent(
-                            &mut self.history_button,
-                            Container::new(Text::new("See more").small())
-                                .width(iced::Length::Fill)
-                                .align_x(iced::Align::Center),
-                        )
-                        .on_press(Message::Menu(Menu::History)),
                     )
-                    .align_x(Align::Center)
-                    .width(Length::Fill),
-                )
-            }
-        }
+                } else {
+                    None
+                })
+                .push_maybe(self.moving_vaults_section.view(ctx, moving_vaults, balance))
+                .push_maybe(if !latest_events.is_empty() {
+                    let length = latest_events.len();
+                    Some(
+                        Column::new()
+                            .spacing(10)
+                            .push(Text::new("Latest events:").small().bold())
+                            .push(Column::with_children(latest_events).spacing(5))
+                            .push_maybe(if length >= 5 {
+                                Some(
+                                    Container::new(
+                                        button::transparent(
+                                            &mut self.history_button,
+                                            Container::new(Text::new("See more").small())
+                                                .width(iced::Length::Fill)
+                                                .align_x(iced::Align::Center),
+                                        )
+                                        .on_press(Message::Menu(Menu::History)),
+                                    )
+                                    .align_x(Align::Center)
+                                    .width(Length::Fill),
+                                )
+                            } else {
+                                None
+                            }),
+                    )
+                } else {
+                    None
+                });
 
         self.dashboard.view(ctx, warning, content.spacing(20))
     }
@@ -93,9 +92,12 @@ impl ManagerHomeView {
 
 fn manager_overview<'a, T: 'a>(
     ctx: &Context,
-    active_funds: u64,
-    inactive_funds: u64,
+    balance: &HashMap<VaultStatus, (u64, u64)>,
 ) -> Container<'a, T> {
+    let active_funds = balance.get(&VaultStatus::Active).unwrap_or(&(0, 0)).1;
+    let inactive_funds = balance.get(&VaultStatus::Funded).unwrap_or(&(0, 0)).1
+        + balance.get(&VaultStatus::Secured).unwrap_or(&(0, 0)).1
+        + balance.get(&VaultStatus::Securing).unwrap_or(&(0, 0)).1;
     Container::new(
         Column::new().push(
             Column::new()
@@ -103,13 +105,9 @@ fn manager_overview<'a, T: 'a>(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
                         .push(
-                            Text::new(
-                                &ctx.converter
-                                    .converts(Amount::from_sat(active_funds))
-                                    .to_string(),
-                            )
-                            .bold()
-                            .size(50),
+                            Text::new(&ctx.converter.converts(Amount::from_sat(active_funds)))
+                                .bold()
+                                .size(50),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
@@ -119,12 +117,8 @@ fn manager_overview<'a, T: 'a>(
                     Row::new()
                         .push(Column::new().width(Length::Fill))
                         .push(
-                            Text::new(
-                                &ctx.converter
-                                    .converts(Amount::from_sat(inactive_funds))
-                                    .to_string(),
-                            )
-                            .bold(),
+                            Text::new(&ctx.converter.converts(Amount::from_sat(inactive_funds)))
+                                .bold(),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
                         .align_items(Align::Center),
@@ -141,24 +135,16 @@ fn manager_overview<'a, T: 'a>(
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct StakeholderHomeView {
     dashboard: layout::Dashboard,
     overview: StakeholderOverview,
+    moving_vaults_section: MovingVaultsSection,
     history_button: iced::button::State,
     deposit_button: iced::button::State,
 }
 
 impl StakeholderHomeView {
-    pub fn new() -> Self {
-        StakeholderHomeView {
-            dashboard: layout::Dashboard::new(),
-            overview: StakeholderOverview::new(),
-            history_button: iced::button::State::default(),
-            deposit_button: iced::button::State::default(),
-        }
-    }
-
     pub fn view<'a>(
         &'a mut self,
         ctx: &Context,
@@ -167,73 +153,168 @@ impl StakeholderHomeView {
         latest_events: Vec<Element<'a, Message>>,
         balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<'a, Message> {
-        let mut col_body = Column::new().push(self.overview.view(ctx, balance));
-        if balance.is_empty() && latest_events.is_empty() {
-            col_body = col_body.push(card::simple(Container::new(
-                Row::new()
-                    .push(
-                        Container::new(Text::new(
-                            "No vaults yet, start using Revault by making a deposit",
-                        ))
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        button::primary(
-                            &mut self.deposit_button,
-                            button::button_content(None, "Deposit"),
+        let col_body = Column::new()
+            .spacing(20)
+            .push(self.overview.view(ctx, balance))
+            .push_maybe(if balance.is_empty() && latest_events.is_empty() {
+                Some(card::simple(Container::new(
+                    Row::new()
+                        .push(
+                            Container::new(Text::new(
+                                "No vaults yet, start using Revault by making a deposit",
+                            ))
+                            .width(Length::Fill),
                         )
-                        .on_press(Message::Menu(Menu::Deposit)),
-                    )
-                    .align_items(iced::Align::Center),
-            )))
-        }
-
-        if !moving_vaults.is_empty() {
-            col_body = col_body
-                .push(Text::new("Funds are moving:").bold())
-                .push(Column::with_children(moving_vaults).spacing(10))
-                .spacing(20)
-        };
-
-        if !latest_events.is_empty() {
-            let length = latest_events.len();
-            col_body = col_body
-                .push(Text::new("Latest events:").small().bold())
-                .push(Column::with_children(latest_events).spacing(5));
-
-            if length >= 5 {
-                col_body = col_body.push(
-                    Container::new(
-                        button::transparent(
-                            &mut self.history_button,
-                            Container::new(Text::new("See more").small())
-                                .width(iced::Length::Fill)
-                                .align_x(iced::Align::Center),
+                        .push(
+                            button::primary(
+                                &mut self.deposit_button,
+                                button::button_content(None, "Deposit"),
+                            )
+                            .on_press(Message::Menu(Menu::Deposit)),
                         )
-                        .on_press(Message::Menu(Menu::History)),
-                    )
-                    .align_x(Align::Center)
-                    .width(Length::Fill),
+                        .align_items(iced::Align::Center),
+                )))
+            } else {
+                None
+            })
+            .push_maybe(self.moving_vaults_section.view(ctx, moving_vaults, balance))
+            .push_maybe(if !latest_events.is_empty() {
+                let length = latest_events.len();
+                Some(
+                    Column::new()
+                        .spacing(10)
+                        .push(Text::new("Latest events:").small().bold())
+                        .push(Column::with_children(latest_events).spacing(5))
+                        .push_maybe(if length >= 5 {
+                            Some(
+                                Container::new(
+                                    button::transparent(
+                                        &mut self.history_button,
+                                        Container::new(Text::new("See more").small())
+                                            .width(iced::Length::Fill)
+                                            .align_x(iced::Align::Center),
+                                    )
+                                    .on_press(Message::Menu(Menu::History)),
+                                )
+                                .align_x(Align::Center)
+                                .width(Length::Fill),
+                            )
+                        } else {
+                            None
+                        }),
                 )
-            }
-        }
+            } else {
+                None
+            });
 
         self.dashboard.view(ctx, warning, col_body.spacing(20))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
+struct MovingVaultsSection {
+    revault_button: iced::button::State,
+}
+
+impl MovingVaultsSection {
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        moving_vaults: Vec<Element<'a, Message>>,
+        balance: &HashMap<VaultStatus, (u64, u64)>,
+    ) -> Option<Element<'a, Message>> {
+        if !moving_vaults.is_empty()
+            || balance.get(&VaultStatus::Unvaulting).is_some()
+            || balance.get(&VaultStatus::Unvaulted).is_some()
+        {
+            let mut col_body = Column::new()
+                .spacing(10)
+                .push(Text::new("Funds are moving:").small().bold());
+
+            let (nb, amount) = match (
+                balance.get(&VaultStatus::Unvaulting),
+                balance.get(&VaultStatus::Unvaulted),
+            ) {
+                (None, None) => (0_u64, 0_u64),
+                (Some((n, a)), None) => (*n, *a),
+                (None, Some((n, a))) => (*n, *a),
+                (Some((n1, a1)), Some((n2, a2))) => (*n1 + *n2, *a1 + *a2),
+            };
+            if nb != 0 {
+                col_body = col_body.push(
+                    button::white_card_button(
+                        &mut self.revault_button,
+                        Container::new(
+                            Column::new().push(
+                                Row::new()
+                                    .spacing(20)
+                                    .align_items(Align::Center)
+                                    .push(badge::unlock())
+                                    .push(
+                                        Row::new()
+                                            .align_items(Align::Center)
+                                            .push(Text::new(&format!("{}", nb)).bold())
+                                            .push(if nb != 1 {
+                                                Text::new(" vaults ( ")
+                                            } else {
+                                                Text::new(" vault ( ")
+                                            })
+                                            .push(
+                                                Text::new(&format!(
+                                                    "{} ",
+                                                    Amount::from_sat(amount).as_btc()
+                                                ))
+                                                .bold(),
+                                            )
+                                            .push(
+                                                Text::new(&ctx.converter.unit.to_string()).small(),
+                                            )
+                                            .push(if nb != 1 {
+                                                Text::new(" ) are unvaulting")
+                                            } else {
+                                                Text::new(" ) is unvaulting")
+                                            }),
+                                    )
+                                    .push(
+                                        Container::new(
+                                            Tooltip::new(
+                                                warning_octagon_icon().color(color::ALERT).size(20),
+                                                "Something is wrong ? Click to intervene",
+                                                tooltip::Position::Left,
+                                            )
+                                            .gap(5)
+                                            .size(20)
+                                            .padding(10)
+                                            .style(TooltipStyle),
+                                        )
+                                        .align_x(Align::End)
+                                        .width(Length::Fill),
+                                    ),
+                            ),
+                        ),
+                    )
+                    .on_press(Message::Menu(Menu::RevaultVaults))
+                    .width(Length::Fill),
+                );
+            }
+
+            if !moving_vaults.is_empty() {
+                col_body = col_body.push(Column::with_children(moving_vaults).spacing(10));
+            }
+
+            Some(col_body.into())
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 struct StakeholderOverview {
     ack_fund_button: iced::button::State,
 }
 
 impl StakeholderOverview {
-    pub fn new() -> Self {
-        Self {
-            ack_fund_button: iced::button::State::new(),
-        }
-    }
-
     pub fn view(
         &mut self,
         ctx: &Context,
@@ -308,9 +389,7 @@ impl StakeholderOverview {
                                 .push(Column::new().width(Length::Fill))
                                 .push(
                                     Text::new(
-                                        &ctx.converter
-                                            .converts(Amount::from_sat(total_amount))
-                                            .to_string(),
+                                        &ctx.converter.converts(Amount::from_sat(total_amount)),
                                     )
                                     .bold()
                                     .size(50),
@@ -389,7 +468,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                         Row::new()
                             .push(
                                 Text::new(
-                                    &ctx.converter.converts(Amount::from_sat(*active_amount)).to_string(),
+                                    &ctx.converter.converts(Amount::from_sat(*active_amount))
                                 ).bold()
                             )
                             .push(Text::new(&format!(
@@ -419,13 +498,9 @@ fn active_funds_overview_card<'a, T: 'a>(
                     .push(Column::new().width(Length::Fill))
                     .push(Text::new("+ ").small().bold())
                     .push(
-                        Text::new(
-                            &ctx.converter
-                                .converts(Amount::from_sat(*activating_amount))
-                                .to_string(),
-                        )
-                        .bold()
-                        .small(),
+                        Text::new(&ctx.converter.converts(Amount::from_sat(*activating_amount)))
+                            .bold()
+                            .small(),
                     )
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_activating_vaults.to_string()).small().bold())
@@ -484,9 +559,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                         Row::new()
                             .push(
                                 Text::new(
-                                    &ctx.converter
-                                        .converts(Amount::from_sat(*secured_amount))
-                                        .to_string(),
+                                    &ctx.converter.converts(Amount::from_sat(*secured_amount)),
                                 )
                                 .bold(),
                             )
@@ -517,13 +590,9 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     .push(Column::new().width(Length::Fill))
                     .push(Text::new("+ ").small().bold())
                     .push(
-                        Text::new(
-                            &ctx.converter
-                                .converts(Amount::from_sat(*securing_amount))
-                                .to_string(),
-                        )
-                        .bold()
-                        .small(),
+                        Text::new(&ctx.converter.converts(Amount::from_sat(*securing_amount)))
+                            .bold()
+                            .small(),
                     )
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_securing_vaults.to_string()).small().bold())
