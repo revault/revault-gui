@@ -144,18 +144,21 @@ impl HistoryEventListItemView {
     ) -> Element<'a, Message> {
         let date = NaiveDateTime::from_timestamp(event.date.into(), 0);
         let mut row = Row::new()
-            .push(event_badge(event))
             .push(
                 Container::new(
                     Row::new()
+                        .push(event_badge(event))
+                        .push(
+                            Text::new(&format!("{:7}", event.kind.to_string()))
+                                .small()
+                                .bold(),
+                        )
                         .push(Text::new(&format!("{}", date)).small())
-                        .push(Text::new(&format!("{}", event.kind)).small().bold())
                         .align_items(Align::Center)
-                        .spacing(5),
+                        .spacing(10),
                 )
                 .width(Length::FillPortion(2)),
             )
-            .spacing(10)
             .align_items(Align::Center);
 
         if let Some(fee) = event.fee {
@@ -177,6 +180,7 @@ impl HistoryEventListItemView {
                     .align_x(Align::End),
             );
         }
+
         if let Some(amount) = event.amount {
             let sign = match event.kind {
                 HistoryEventKind::Deposit => "+",
@@ -184,14 +188,22 @@ impl HistoryEventListItemView {
                 HistoryEventKind::Spend => "-",
             };
             row = row.push(
-                Container::new(Text::new(&format!(
-                    "{}{} {}",
-                    sign,
-                    ctx.converter.converts(Amount::from_sat(amount)),
-                    ctx.converter.unit,
-                )))
-                .width(Length::FillPortion(1))
-                .align_x(Align::End),
+                Container::new(
+                    Row::new()
+                        .push(
+                            Text::new(&format!(
+                                "{}{}",
+                                sign,
+                                ctx.converter.converts(Amount::from_sat(amount)),
+                            ))
+                            .bold(),
+                        )
+                        .push(Text::new(&format!("{}", ctx.converter.unit)).small())
+                        .spacing(5)
+                        .align_items(Align::Center),
+                )
+                .align_x(Align::End)
+                .width(Length::FillPortion(1)),
             );
         } else {
             row = row.push(
