@@ -72,6 +72,16 @@ impl container::StyleSheet for SepStyle {
     }
 }
 
+pub struct ContainerForegroundStyle;
+impl container::StyleSheet for ContainerForegroundStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: color::FOREGROUND.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
 pub struct ContainerBackgroundStyle;
 impl container::StyleSheet for ContainerBackgroundStyle {
     fn style(&self) -> container::Style {

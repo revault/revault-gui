@@ -1,11 +1,11 @@
 use bitcoin::{consensus::encode, hashes::hex::FromHex, OutPoint, Transaction};
 
-use revaultd::commands::ListVaultsEntry;
 pub use revaultd::commands::{
     GetInfoResult, HistoryEvent, HistoryEventKind, ListOnchainTxEntry, ListSpendEntry,
     ListSpendStatus, RevocationTransactions, ServerStatus, ServersStatuses, VaultStatus,
     WalletTransaction,
 };
+use revaultd::commands::{ListPresignedTxEntry, ListVaultsEntry};
 
 pub type Vault = ListVaultsEntry;
 
@@ -68,6 +68,7 @@ pub const MOVED_VAULT_STATUSES: [VaultStatus; 4] = [
 pub type SpendTxStatus = ListSpendStatus;
 
 pub type VaultTransactions = ListOnchainTxEntry;
+pub type VaultPresignedTransactions = ListPresignedTxEntry;
 
 pub fn transaction_from_hex(hex: &str) -> Transaction {
     let bytes = Vec::from_hex(&hex).unwrap();

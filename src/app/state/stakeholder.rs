@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::OutPoint;
+use bitcoin::{util::bip32::Fingerprint, OutPoint};
 use iced::{Command, Element, Subscription};
 
 use revaultd::revault_tx::transactions::RevaultTransaction;
@@ -20,7 +20,7 @@ use crate::app::{
     context::Context,
     error::Error,
     menu::Menu,
-    message::{Message, SignMessage},
+    message::{Message, SignMessage, VaultFilterMessage},
     state::{
         cmd::list_vaults,
         history::{HistoryEventListItemState, HistoryEventState},
@@ -29,6 +29,7 @@ use crate::app::{
         State,
     },
     view::{
+        stakeholder::DelegateVaultsFilter,
         vault::{DelegateVaultListItemView, VaultListItemView},
         LoadingDashboard, LoadingModal, StakeholderCreateVaultsView, StakeholderDelegateVaultsView,
         StakeholderHomeView, StakeholderSelecteVaultsToDelegateView,
@@ -463,21 +464,23 @@ impl From<StakeholderCreateVaultsState> for Box<dyn State> {
 #[derive(Debug)]
 pub struct DelegateVaultListItem {
     vault: model::Vault,
+    sigs: Vec<Fingerprint>,
     selected: bool,
     view: DelegateVaultListItemView,
 }
 
 impl DelegateVaultListItem {
-    pub fn new(vault: model::Vault) -> Self {
+    pub fn new(vault: model::Vault, sigs: Vec<Fingerprint>) -> Self {
         Self {
             vault,
+            sigs,
             selected: false,
             view: DelegateVaultListItemView::new(),
         }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<Message> {
-        self.view.view(ctx, &self.vault, self.selected)
+        self.view.view(ctx, &self.vault, &self.sigs, self.selected)
     }
 }
 
@@ -490,6 +493,7 @@ pub enum StakeholderDelegateVaultsState {
     SelectVaults {
         active_balance: u64,
         activating_balance: u64,
+        vault_status_filter: &'static [VaultStatus],
         vaults: Vec<DelegateVaultListItem>,
         view: StakeholderSelecteVaultsToDelegateView,
     },
@@ -515,11 +519,11 @@ impl State for StakeholderDelegateVaultsState {
     fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
             Self::Loading { fail, .. } => {
-                if let Message::Vaults(res) = message {
+                if let Message::VaultsWithPresignedTxs(res) = message {
                     match res {
                         Ok(vaults) => {
                             let (active_balance, activating_balance) =
-                                vaults.iter().fold((0, 0), |acc, vault| {
+                                vaults.iter().fold((0, 0), |acc, (vault, _)| {
                                     if vault.status == VaultStatus::Active {
                                         (acc.0 + vault.amount.as_sat(), acc.1)
                                     } else if vault.status == VaultStatus::Activating {
@@ -529,14 +533,45 @@ impl State for StakeholderDelegateVaultsState {
                                     }
                                 });
 
+                            let mut vaults: Vec<DelegateVaultListItem> = vaults
+                                .into_iter()
+                                .filter_map(|(vault, txs)| {
+                                    if vault.status == VaultStatus::Secured
+                                        || vault.status == VaultStatus::Activating
+                                    {
+                                        let unvault = txs.unvault.psbt.into_psbt();
+                                        Some(DelegateVaultListItem::new(
+                                            vault,
+                                            unvault.inputs[0]
+                                                .partial_sigs
+                                                .keys()
+                                                .filter_map(|key| {
+                                                    unvault.inputs[0]
+                                                        .bip32_derivation
+                                                        .get(&key)
+                                                        .map(|(fingerprint, _)| *fingerprint)
+                                                })
+                                                .collect(),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            vaults.sort_by(|a, b| {
+                                if a.sigs.len() == b.sigs.len() {
+                                    b.vault.amount.cmp(&a.vault.amount)
+                                } else {
+                                    b.sigs.cmp(&a.sigs)
+                                }
+                            });
+
                             *self = Self::SelectVaults {
                                 active_balance,
                                 activating_balance,
-                                vaults: vaults
-                                    .into_iter()
-                                    .filter(|vlt| vlt.status == VaultStatus::Secured)
-                                    .map(DelegateVaultListItem::new)
-                                    .collect(),
+                                vault_status_filter: &DelegateVaultsFilter::ALL,
+                                vaults,
                                 view: StakeholderSelecteVaultsToDelegateView::new(),
                             };
                         }
@@ -545,7 +580,15 @@ impl State for StakeholderDelegateVaultsState {
                 }
                 Command::none()
             }
-            Self::SelectVaults { vaults, .. } => match message {
+            Self::SelectVaults {
+                vaults,
+                vault_status_filter,
+                ..
+            } => match message {
+                Message::FilterVaults(VaultFilterMessage::Status(filter)) => {
+                    *vault_status_filter = filter;
+                    Command::none()
+                }
                 Message::SelectVault(selected_outpoint) => {
                     for vlt in vaults.iter_mut() {
                         if outpoint(&vlt.vault) == selected_outpoint {
@@ -638,18 +681,29 @@ impl State for StakeholderDelegateVaultsState {
                 view,
                 active_balance,
                 activating_balance,
+                vault_status_filter,
                 vaults,
             } => view.view(
                 ctx,
                 active_balance,
                 activating_balance,
+                vault_status_filter,
                 vaults
                     .iter()
                     .filter(|v| v.selected)
                     .fold((0, 0), |(count, total), v| {
                         (count + 1, total + v.vault.amount.as_sat())
                     }),
-                vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                vaults
+                    .iter_mut()
+                    .filter_map(|v| {
+                        if vault_status_filter.contains(&v.vault.status) {
+                            Some(v.view(ctx))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
             ),
             Self::Signing {
                 view,
@@ -669,18 +723,36 @@ impl State for StakeholderDelegateVaultsState {
     }
 
     fn load(&self, ctx: &Context) -> Command<Message> {
-        Command::batch(vec![Command::perform(
-            list_vaults(
-                ctx.revaultd.clone(),
-                Some(&[
-                    VaultStatus::Secured,
-                    VaultStatus::Activating,
-                    VaultStatus::Active,
-                ]),
-                None,
-            ),
-            Message::Vaults,
-        )])
+        let revaultd = ctx.revaultd.clone();
+        Command::perform(
+            async move {
+                let vaults = revaultd.list_vaults(
+                    Some(&[
+                        VaultStatus::Secured,
+                        VaultStatus::Activating,
+                        VaultStatus::Active,
+                    ]),
+                    None,
+                )?;
+                let outpoints: Vec<OutPoint> =
+                    vaults.iter().map(|vault| model::outpoint(vault)).collect();
+                let vaults_txs = revaultd.list_presigned_transactions(outpoints.as_slice())?;
+
+                let res: Vec<(model::Vault, model::VaultPresignedTransactions)> = vaults
+                    .into_iter()
+                    .map(|vault| {
+                        let outpoint = model::outpoint(&vault);
+                        let txs = vaults_txs
+                            .iter()
+                            .find(|vault_txs| vault_txs.vault_outpoint == outpoint)
+                            .unwrap();
+                        (vault, txs.clone())
+                    })
+                    .collect();
+                Ok(res)
+            },
+            Message::VaultsWithPresignedTxs,
+        )
     }
 }
 
