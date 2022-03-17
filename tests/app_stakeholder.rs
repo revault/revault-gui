@@ -195,7 +195,7 @@ async fn test_stakeholder_delegate_state() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::DelegateFunds,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 

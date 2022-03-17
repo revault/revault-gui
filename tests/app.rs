@@ -13,7 +13,7 @@ use revault_gui::{
     app::{
         config::Config as GUIConfig,
         context::{ConfigContext, Context},
-        menu::Menu,
+        menu::{Menu, VaultsMenu},
         message::Message,
         state::{
             history::HISTORY_EVENT_PAGE_SIZE, DepositState, EmergencyState, HistoryState,
@@ -56,7 +56,7 @@ async fn test_deposit_state() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::Deposit,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -146,7 +146,7 @@ async fn test_emergency_state() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::Emergency,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -253,7 +253,7 @@ async fn test_vaults_state() {
         ),
     ]);
 
-    let sandbox: Sandbox<VaultsState> = Sandbox::new(VaultsState::new());
+    let sandbox: Sandbox<VaultsState> = Sandbox::new(VaultsState::new(&VaultsMenu::Current));
 
     let client = daemon.run();
     let ctx = Context::new(
@@ -264,7 +264,7 @@ async fn test_vaults_state() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::Vaults(VaultsMenu::Current),
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -373,7 +373,7 @@ async fn test_history_state_filter() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::History,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -478,7 +478,7 @@ async fn test_history_state_pagination() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::History,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -609,7 +609,7 @@ async fn test_history_state_pagination_batching() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::History,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 
@@ -715,7 +715,7 @@ async fn test_history_state_select_event() {
         Arc::new(RevaultD::new(client)),
         Converter::new(bitcoin::Network::Bitcoin),
         Role::Stakeholder,
-        Menu::Vaults,
+        Menu::History,
         Box::new(|| Box::pin(no_hardware_wallet())),
     );
 

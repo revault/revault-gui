@@ -16,7 +16,13 @@ use revault_ui::{
 };
 
 use crate::{
-    app::{context::Context, error::Error, menu::Menu, message::Message, view::layout},
+    app::{
+        context::Context,
+        error::Error,
+        menu::{Menu, VaultsMenu},
+        message::Message,
+        view::layout,
+    },
     daemon::model::VaultStatus,
 };
 
@@ -214,18 +220,20 @@ impl StakeholderHomeView {
 #[derive(Debug, Default)]
 struct MovingVaultsSection {
     revault_button: iced::button::State,
+    canceling_vaults_button: iced::button::State,
 }
 
 impl MovingVaultsSection {
     pub fn view<'a>(
         &'a mut self,
         ctx: &Context,
-        moving_vaults: Vec<Element<'a, Message>>,
+        spending_vaults: Vec<Element<'a, Message>>,
         balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Option<Element<'a, Message>> {
-        if !moving_vaults.is_empty()
+        if !spending_vaults.is_empty()
             || balance.get(&VaultStatus::Unvaulting).is_some()
             || balance.get(&VaultStatus::Unvaulted).is_some()
+            || balance.get(&VaultStatus::Canceling).is_some()
         {
             let mut col_body = Column::new()
                 .spacing(10)
@@ -298,8 +306,51 @@ impl MovingVaultsSection {
                 );
             }
 
-            if !moving_vaults.is_empty() {
-                col_body = col_body.push(Column::with_children(moving_vaults).spacing(10));
+            if let Some((nb, amount)) = balance.get(&VaultStatus::Canceling) {
+                col_body = col_body.push(
+                    button::white_card_button(
+                        &mut self.canceling_vaults_button,
+                        Container::new(
+                            Column::new().push(
+                                Row::new()
+                                    .spacing(20)
+                                    .align_items(Align::Center)
+                                    .push(badge::vault_canceling())
+                                    .push(
+                                        Row::new()
+                                            .align_items(Align::Center)
+                                            .push(Text::new(&format!("{}", nb)).bold())
+                                            .push(if *nb != 1 {
+                                                Text::new(" vaults ( ")
+                                            } else {
+                                                Text::new(" vault ( ")
+                                            })
+                                            .push(
+                                                Text::new(&format!(
+                                                    "{} ",
+                                                    Amount::from_sat(*amount).as_btc()
+                                                ))
+                                                .bold(),
+                                            )
+                                            .push(
+                                                Text::new(&ctx.converter.unit.to_string()).small(),
+                                            )
+                                            .push(if *nb != 1 {
+                                                Text::new(" ) are revaulting")
+                                            } else {
+                                                Text::new(" ) is revaulting")
+                                            }),
+                                    ),
+                            ),
+                        ),
+                    )
+                    .on_press(Message::Menu(Menu::Vaults(VaultsMenu::Moving)))
+                    .width(Length::Fill),
+                );
+            }
+
+            if !spending_vaults.is_empty() {
+                col_body = col_body.push(Column::with_children(spending_vaults).spacing(10));
             }
 
             Some(col_body.into())

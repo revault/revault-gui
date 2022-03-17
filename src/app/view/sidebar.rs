@@ -9,7 +9,11 @@ use revault_ui::{
     },
 };
 
-use crate::app::{context::Context, menu::Menu, message::Message};
+use crate::app::{
+    context::Context,
+    menu::{Menu, VaultsMenu},
+    message::Message,
+};
 use crate::revault::Role;
 
 #[derive(Debug, Clone, Default)]
@@ -71,7 +75,7 @@ impl Sidebar {
             )
             .on_press(Message::Menu(Menu::History))
         };
-        let vaults_button = if context.menu == Menu::Vaults {
+        let vaults_button = if let Menu::Vaults(_) = context.menu {
             button::primary(
                 &mut self.vaults_menu_button,
                 button::button_content(Some(vaults_icon()), "Vaults"),
@@ -83,7 +87,7 @@ impl Sidebar {
                 &mut self.vaults_menu_button,
                 button::button_content(Some(vaults_icon()), "Vaults"),
             )
-            .on_press(Message::Menu(Menu::Vaults))
+            .on_press(Message::Menu(Menu::Vaults(VaultsMenu::Current)))
         };
 
         let settings_button = if context.menu == Menu::Settings {

@@ -36,7 +36,7 @@ pub fn new_state(context: &Context) -> Box<dyn State> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
-        (_, Menu::Vaults) => VaultsState::new().into(),
+        (_, Menu::Vaults(menu)) => VaultsState::new(menu).into(),
         (_, Menu::RevaultVaults) => RevaultVaultsState::default().into(),
         (_, Menu::Settings) => SettingsState::new(context.config.gui.clone()).into(),
         (Role::Stakeholder, Menu::Home) => StakeholderHomeState::new().into(),

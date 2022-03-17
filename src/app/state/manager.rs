@@ -54,7 +54,7 @@ pub enum ManagerHomeState {
         balance: HashMap<VaultStatus, (u64, u64)>,
         warning: Option<Error>,
 
-        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        spending_vaults: Vec<VaultListItem<VaultListItemView>>,
         spendable_outpoints: HashMap<String, u64>,
         selected_vault: Option<Vault>,
 
@@ -160,10 +160,10 @@ impl ManagerHomeState {
             })
             .collect();
 
-        let moving_vlts = vaults
+        let spending_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling || vlt.status == VaultStatus::Spending {
+                if vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -177,7 +177,7 @@ impl ManagerHomeState {
                     warning: None,
                     balance: total_balance,
                     spendable_outpoints: spendable_vlts,
-                    moving_vaults: moving_vlts,
+                    spending_vaults: spending_vlts,
                     latest_events: Vec::new(),
                     spend_txs: Vec::new(),
                     spend_txs_item: Vec::new(),
@@ -190,12 +190,12 @@ impl ManagerHomeState {
             Self::Loaded {
                 balance,
                 spendable_outpoints,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => {
                 *balance = total_balance;
                 *spendable_outpoints = spendable_vlts;
-                *moving_vaults = moving_vlts;
+                *spending_vaults = spending_vlts;
             }
         }
     }
@@ -207,7 +207,7 @@ impl ManagerHomeState {
     ) -> Command<Message> {
         if let Self::Loaded {
             selected_vault,
-            moving_vaults,
+            spending_vaults,
             ..
         } = self
         {
@@ -218,7 +218,7 @@ impl ManagerHomeState {
                 }
             }
 
-            if let Some(selected) = moving_vaults
+            if let Some(selected) = spending_vaults
                 .iter()
                 .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
             {
@@ -375,7 +375,7 @@ impl State for ManagerHomeState {
                 selected_spend_tx,
                 selected_event,
                 spend_txs_item,
-                moving_vaults,
+                spending_vaults,
                 latest_events,
                 balance,
                 view,
@@ -400,7 +400,7 @@ impl State for ManagerHomeState {
                         .iter_mut()
                         .map(|tx| tx.view(ctx).map(Message::SpendTx))
                         .collect(),
-                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    spending_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
                     latest_events
                         .iter_mut()
                         .enumerate()

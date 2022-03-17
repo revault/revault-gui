@@ -11,12 +11,15 @@ use super::{
 
 use crate::daemon::{
     model,
-    model::{outpoint, VaultStatus, CURRENT_VAULT_STATUSES},
+    model::{
+        outpoint, VaultStatus, CURRENT_VAULT_STATUSES, MOVED_VAULT_STATUSES, MOVING_VAULT_STATUSES,
+    },
 };
 
 use crate::app::{
     context::Context,
     error::Error,
+    menu::VaultsMenu,
     message::{Message, VaultFilterMessage},
     view::{vault::VaultListItemView, LoadingDashboard, VaultsView},
 };
@@ -26,6 +29,7 @@ pub enum VaultsState {
     Loading {
         fail: Option<Error>,
         view: LoadingDashboard,
+        vault_status_filter: &'static [VaultStatus],
     },
     Loaded {
         selected_vault: Option<Vault>,
@@ -38,20 +42,28 @@ pub enum VaultsState {
 }
 
 impl VaultsState {
-    pub fn new() -> Self {
+    pub fn new(menu: &VaultsMenu) -> Self {
         Self::Loading {
             view: LoadingDashboard::new(),
             fail: None,
+            vault_status_filter: match menu {
+                VaultsMenu::Current => &CURRENT_VAULT_STATUSES,
+                VaultsMenu::Moving => &MOVING_VAULT_STATUSES,
+                VaultsMenu::Moved => &MOVED_VAULT_STATUSES,
+            },
         }
     }
 
     pub fn update_vaults(&mut self, vlts: Vec<model::Vault>) {
         match self {
-            Self::Loading { .. } => {
+            Self::Loading {
+                vault_status_filter,
+                ..
+            } => {
                 let vaults = vlts.into_iter().map(VaultListItem::new).collect();
                 *self = Self::Loaded {
                     view: VaultsView::new(),
-                    vault_status_filter: &CURRENT_VAULT_STATUSES,
+                    vault_status_filter,
                     vaults,
                     selected_vault: None,
                     warning: None,
@@ -145,7 +157,7 @@ impl State for VaultsState {
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
-            Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
+            Self::Loading { fail, view, .. } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
                 selected_vault,
                 vaults,
@@ -169,8 +181,11 @@ impl State for VaultsState {
 
     fn load(&self, ctx: &Context) -> Command<Message> {
         match self {
-            Self::Loading { .. } => Command::batch(vec![Command::perform(
-                list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
+            Self::Loading {
+                vault_status_filter,
+                ..
+            } => Command::batch(vec![Command::perform(
+                list_vaults(ctx.revaultd.clone(), Some(vault_status_filter), None),
                 Message::Vaults,
             )]),
             Self::Loaded {

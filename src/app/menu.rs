@@ -9,5 +9,12 @@ pub enum Menu {
     RevaultVaults,
     DelegateFunds,
     Settings,
-    Vaults,
+    Vaults(VaultsMenu),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VaultsMenu {
+    Current,
+    Moving,
+    Moved,
 }

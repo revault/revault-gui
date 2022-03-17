@@ -46,7 +46,7 @@ pub enum StakeholderHomeState {
 
         balance: HashMap<VaultStatus, (u64, u64)>,
 
-        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        spending_vaults: Vec<VaultListItem<VaultListItemView>>,
         selected_vault: Option<Vault>,
 
         latest_events: Vec<HistoryEventListItemState>,
@@ -78,10 +78,10 @@ impl StakeholderHomeState {
             }
         }
 
-        let moving_vlts = vaults
+        let spending_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling || vlt.status == VaultStatus::Spending {
+                if vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -94,7 +94,7 @@ impl StakeholderHomeState {
                 *self = Self::Loaded {
                     balance: total_balance,
                     warning: None,
-                    moving_vaults: moving_vlts,
+                    spending_vaults: spending_vlts,
                     selected_vault: None,
                     selected_event: None,
                     latest_events: Vec::new(),
@@ -103,11 +103,11 @@ impl StakeholderHomeState {
             }
             Self::Loaded {
                 balance,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => {
                 *balance = total_balance;
-                *moving_vaults = moving_vlts;
+                *spending_vaults = spending_vlts;
             }
         }
     }
@@ -152,7 +152,7 @@ impl State for StakeholderHomeState {
                 latest_events,
                 selected_vault,
                 selected_event,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => match message {
                 Message::Reload => return self.load(ctx),
@@ -171,7 +171,7 @@ impl State for StakeholderHomeState {
                         }
                     }
 
-                    if let Some(selected) = moving_vaults
+                    if let Some(selected) = spending_vaults
                         .iter()
                         .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
                     {
@@ -227,7 +227,7 @@ impl State for StakeholderHomeState {
             Self::Loaded {
                 selected_vault,
                 selected_event,
-                moving_vaults,
+                spending_vaults,
                 latest_events,
                 balance,
                 view,
@@ -244,7 +244,7 @@ impl State for StakeholderHomeState {
                 view.view(
                     ctx,
                     warning.as_ref(),
-                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    spending_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
                     latest_events
                         .iter_mut()
                         .enumerate()
