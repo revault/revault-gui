@@ -111,13 +111,6 @@ pub async fn broadcast_spend_tx(
     revaultd.broadcast_spend_tx(&txid, with_priority)
 }
 
-pub async fn revault(
-    revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: OutPoint,
-) -> Result<(), RevaultDError> {
-    revaultd.revault(&outpoint)
-}
-
 pub async fn emergency(revaultd: Arc<dyn Daemon + Send + Sync>) -> Result<(), RevaultDError> {
     revaultd.emergency()
 }

@@ -100,13 +100,6 @@ impl VaultsState {
             ..
         } = self
         {
-            if let Some(selected) = selected_vault {
-                if outpoint(&selected.vault) == selected_outpoint {
-                    *selected_vault = None;
-                    return Command::none();
-                }
-            }
-
             if let Some(selected) = vaults
                 .iter()
                 .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
@@ -130,6 +123,13 @@ impl State for VaultsState {
                 Err(e) => self.on_error(Error::from(e)),
             },
             Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
+            Message::Close => {
+                if let Self::Loaded { selected_vault, .. } = self {
+                    if selected_vault.is_some() {
+                        *selected_vault = None;
+                    }
+                }
+            }
             Message::Vault(msg) => {
                 if let Self::Loaded { selected_vault, .. } = self {
                     if let Some(selected) = selected_vault {

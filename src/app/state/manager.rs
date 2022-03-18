@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use iced::{Command, Element, Subscription};
 
 use super::{
@@ -200,37 +200,6 @@ impl ManagerHomeState {
         }
     }
 
-    pub fn on_vault_select(
-        &mut self,
-        ctx: &Context,
-        selected_outpoint: OutPoint,
-    ) -> Command<Message> {
-        if let Self::Loaded {
-            selected_vault,
-            spending_vaults,
-            ..
-        } = self
-        {
-            if let Some(selected) = selected_vault {
-                if outpoint(&selected.vault) == selected_outpoint {
-                    *selected_vault = None;
-                    return self.load(ctx);
-                }
-            }
-
-            if let Some(selected) = spending_vaults
-                .iter()
-                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
-            {
-                let vault = Vault::new(selected.vault.clone());
-                let cmd = vault.load(ctx.revaultd.clone());
-                *selected_vault = Some(vault);
-                return cmd.map(Message::Vault);
-            }
-        };
-        Command::none()
-    }
-
     fn load_history(ctx: &Context) -> Command<Message> {
         let now: u32 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -286,6 +255,7 @@ impl State for ManagerHomeState {
                 selected_event,
                 selected_spend_tx,
                 latest_events,
+                spending_vaults,
                 ..
             } => match message {
                 Message::Reload => {
@@ -313,7 +283,17 @@ impl State for ManagerHomeState {
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
-                Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
+                Message::SelectVault(selected_outpoint) => {
+                    if let Some(selected) = spending_vaults
+                        .iter()
+                        .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
+                    {
+                        let vault = Vault::new(selected.vault.clone());
+                        let cmd = vault.load(ctx.revaultd.clone());
+                        *selected_vault = Some(vault);
+                        return cmd.map(Message::Vault);
+                    }
+                }
                 Message::Vault(msg) => {
                     if let Some(selected) = selected_vault {
                         return selected.update(ctx, msg).map(Message::Vault);
@@ -344,9 +324,13 @@ impl State for ManagerHomeState {
                     }
                 }
                 Message::Close => {
+                    if selected_vault.is_some() {
+                        *selected_vault = None;
+                    }
                     if selected_event.is_some() {
                         *selected_event = None;
                     }
+                    return self.load(ctx);
                 }
                 _ => {}
             },

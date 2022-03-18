@@ -164,13 +164,6 @@ impl State for StakeholderHomeState {
                     Err(e) => *warning = Error::from(e).into(),
                 },
                 Message::SelectVault(selected_outpoint) => {
-                    if let Some(selected) = selected_vault {
-                        if outpoint(&selected.vault) == selected_outpoint {
-                            *selected_vault = None;
-                            return self.load(ctx);
-                        }
-                    }
-
                     if let Some(selected) = spending_vaults
                         .iter()
                         .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
@@ -200,9 +193,13 @@ impl State for StakeholderHomeState {
                     }
                 }
                 Message::Close => {
+                    if selected_vault.is_some() {
+                        *selected_vault = None;
+                    }
                     if selected_event.is_some() {
                         *selected_event = None;
                     }
+                    return self.load(ctx);
                 }
                 Message::HistoryEvents(res) => match res {
                     Ok(events) => {

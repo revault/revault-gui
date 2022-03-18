@@ -299,7 +299,7 @@ async fn test_vaults_state() {
         assert!(selected_vault.is_some());
         if let Some(vault_state) = selected_vault {
             assert_eq!(
-                vault_state.vault.txid,
+                vault_state.inner().txid,
                 bitcoin::Txid::from_str(
                     "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
                 )
