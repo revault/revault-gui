@@ -15,6 +15,12 @@ use crate::{
     revault::Role,
 };
 
+impl Into<Message> for Menu {
+    fn into(self) -> Message {
+        Message::Menu(self)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     Reload,
@@ -50,6 +56,8 @@ pub enum Message {
     Emergency,
     EmergencyBroadcasted(Result<(), RevaultDError>),
     Close,
+    Revault,
+    Revaulted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]
@@ -84,9 +92,6 @@ pub enum HistoryEventMessage {
 pub enum VaultMessage {
     ListOnchainTransaction,
     OnChainTransactions(Result<VaultTransactions, RevaultDError>),
-    SelectRevault,
-    Revault,
-    Revaulted(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

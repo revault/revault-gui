@@ -3,6 +3,7 @@ mod deposit;
 mod emergency;
 pub mod history;
 pub mod manager;
+mod revault;
 mod settings;
 mod sign;
 mod spend_transaction;
@@ -16,6 +17,7 @@ pub use deposit::DepositState;
 pub use emergency::EmergencyState;
 pub use history::HistoryState;
 pub use manager::{ManagerHomeState, ManagerSendState};
+pub use revault::RevaultVaultsState;
 pub use settings::SettingsState;
 pub use spend_transaction::{SpendTransactionListItem, SpendTransactionState};
 pub use stakeholder::{

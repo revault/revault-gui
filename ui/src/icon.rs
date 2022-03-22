@@ -25,6 +25,14 @@ pub fn home_icon() -> Text {
     icon('\u{F3FC}')
 }
 
+pub fn unlock_icon() -> Text {
+    icon('\u{F600}')
+}
+
+pub fn warning_octagon_icon() -> Text {
+    icon('\u{F337}')
+}
+
 pub fn send_icon() -> Text {
     icon('\u{F144}')
 }

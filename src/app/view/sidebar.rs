@@ -9,10 +9,14 @@ use revault_ui::{
     },
 };
 
-use crate::app::{context::Context, menu::Menu, message::Message};
+use crate::app::{
+    context::Context,
+    menu::{Menu, VaultsMenu},
+    message::Message,
+};
 use crate::revault::Role;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Sidebar {
     pick_role: pick_list::State<Role>,
     deposit_menu_button: iced::button::State,
@@ -27,21 +31,6 @@ pub struct Sidebar {
 }
 
 impl Sidebar {
-    pub fn new() -> Self {
-        Sidebar {
-            deposit_menu_button: iced::button::State::new(),
-            create_vault_button: iced::button::State::new(),
-            delegate_menu_button: iced::button::State::new(),
-            home_menu_button: iced::button::State::new(),
-            history_menu_button: iced::button::State::new(),
-            emergency_menu_button: iced::button::State::new(),
-            vaults_menu_button: iced::button::State::new(),
-            spend_menu_button: iced::button::State::new(),
-            settings_menu_button: iced::button::State::new(),
-            pick_role: pick_list::State::default(),
-        }
-    }
-
     pub fn view(&mut self, context: &Context) -> Container<Message> {
         let role = if context.role_editable() {
             Container::new(
@@ -86,7 +75,7 @@ impl Sidebar {
             )
             .on_press(Message::Menu(Menu::History))
         };
-        let vaults_button = if context.menu == Menu::Vaults {
+        let vaults_button = if let Menu::Vaults(_) = context.menu {
             button::primary(
                 &mut self.vaults_menu_button,
                 button::button_content(Some(vaults_icon()), "Vaults"),
@@ -98,7 +87,7 @@ impl Sidebar {
                 &mut self.vaults_menu_button,
                 button::button_content(Some(vaults_icon()), "Vaults"),
             )
-            .on_press(Message::Menu(Menu::Vaults))
+            .on_press(Message::Menu(Menu::Vaults(VaultsMenu::Current)))
         };
 
         let settings_button = if context.menu == Menu::Settings {

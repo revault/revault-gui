@@ -9,10 +9,7 @@ use iced::{Command, Element, Subscription};
 use revaultd::revault_tx::transactions::RevaultTransaction;
 
 use crate::daemon::{
-    model::{
-        self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
-        MOVING_VAULT_STATUSES,
-    },
+    model::{self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES},
     Daemon,
 };
 
@@ -49,7 +46,7 @@ pub enum StakeholderHomeState {
 
         balance: HashMap<VaultStatus, (u64, u64)>,
 
-        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        spending_vaults: Vec<VaultListItem<VaultListItemView>>,
         selected_vault: Option<Vault>,
 
         latest_events: Vec<HistoryEventListItemState>,
@@ -70,9 +67,7 @@ impl StakeholderHomeState {
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
         let mut total_balance = HashMap::new();
         for vault in &vaults {
-            if vault.status == VaultStatus::Unconfirmed
-                || MOVING_VAULT_STATUSES.contains(&vault.status)
-            {
+            if vault.status == VaultStatus::Unconfirmed {
                 continue;
             }
             if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
@@ -83,14 +78,10 @@ impl StakeholderHomeState {
             }
         }
 
-        let moving_vlts = vaults
+        let spending_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling
-                    || vlt.status == VaultStatus::Spending
-                    || vlt.status == VaultStatus::Unvaulting
-                    || vlt.status == VaultStatus::Unvaulted
-                {
+                if vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -103,20 +94,20 @@ impl StakeholderHomeState {
                 *self = Self::Loaded {
                     balance: total_balance,
                     warning: None,
-                    moving_vaults: moving_vlts,
+                    spending_vaults: spending_vlts,
                     selected_vault: None,
                     selected_event: None,
                     latest_events: Vec::new(),
-                    view: StakeholderHomeView::new(),
+                    view: StakeholderHomeView::default(),
                 };
             }
             Self::Loaded {
                 balance,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => {
                 *balance = total_balance;
-                *moving_vaults = moving_vlts;
+                *spending_vaults = spending_vlts;
             }
         }
     }
@@ -161,7 +152,7 @@ impl State for StakeholderHomeState {
                 latest_events,
                 selected_vault,
                 selected_event,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => match message {
                 Message::Reload => return self.load(ctx),
@@ -173,14 +164,7 @@ impl State for StakeholderHomeState {
                     Err(e) => *warning = Error::from(e).into(),
                 },
                 Message::SelectVault(selected_outpoint) => {
-                    if let Some(selected) = selected_vault {
-                        if outpoint(&selected.vault) == selected_outpoint {
-                            *selected_vault = None;
-                            return self.load(ctx);
-                        }
-                    }
-
-                    if let Some(selected) = moving_vaults
+                    if let Some(selected) = spending_vaults
                         .iter()
                         .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
                     {
@@ -209,9 +193,13 @@ impl State for StakeholderHomeState {
                     }
                 }
                 Message::Close => {
+                    if selected_vault.is_some() {
+                        *selected_vault = None;
+                    }
                     if selected_event.is_some() {
                         *selected_event = None;
                     }
+                    return self.load(ctx);
                 }
                 Message::HistoryEvents(res) => match res {
                     Ok(events) => {
@@ -236,7 +224,7 @@ impl State for StakeholderHomeState {
             Self::Loaded {
                 selected_vault,
                 selected_event,
-                moving_vaults,
+                spending_vaults,
                 latest_events,
                 balance,
                 view,
@@ -253,7 +241,7 @@ impl State for StakeholderHomeState {
                 view.view(
                     ctx,
                     warning.as_ref(),
-                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    spending_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
                     latest_events
                         .iter_mut()
                         .enumerate()
@@ -548,7 +536,7 @@ impl State for StakeholderDelegateVaultsState {
                                                 .filter_map(|key| {
                                                     unvault.inputs[0]
                                                         .bip32_derivation
-                                                        .get(&key)
+                                                        .get(key)
                                                         .map(|(fingerprint, _)| *fingerprint)
                                                 })
                                                 .collect(),
@@ -734,8 +722,7 @@ impl State for StakeholderDelegateVaultsState {
                     ]),
                     None,
                 )?;
-                let outpoints: Vec<OutPoint> =
-                    vaults.iter().map(|vault| model::outpoint(vault)).collect();
+                let outpoints: Vec<OutPoint> = vaults.iter().map(model::outpoint).collect();
                 let vaults_txs = revaultd.list_presigned_transactions(outpoints.as_slice())?;
 
                 let res: Vec<(model::Vault, model::VaultPresignedTransactions)> = vaults

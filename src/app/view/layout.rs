@@ -15,7 +15,7 @@ use iced::{
     container, scrollable, tooltip, Align, Column, Container, Element, Length, Row, Tooltip,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Dashboard {
     sidebar: Sidebar,
     scroll: scrollable::State,
@@ -24,7 +24,7 @@ pub struct Dashboard {
 impl Dashboard {
     pub fn new() -> Dashboard {
         Self {
-            sidebar: Sidebar::new(),
+            sidebar: Sidebar::default(),
             scroll: scrollable::State::new(),
         }
     }
@@ -81,7 +81,7 @@ impl container::StyleSheet for MainSectionStyle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Modal {
     scroll: scrollable::State,
     close_button: iced::button::State,

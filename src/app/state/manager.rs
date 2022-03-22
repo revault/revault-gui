@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
+use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 use iced::{Command, Element, Subscription};
 
 use super::{
@@ -51,11 +51,10 @@ pub enum ManagerHomeState {
     Loaded {
         view: ManagerHomeView,
 
-        active_funds: u64,
-        inactive_funds: u64,
+        balance: HashMap<VaultStatus, (u64, u64)>,
         warning: Option<Error>,
 
-        moving_vaults: Vec<VaultListItem<VaultListItemView>>,
+        spending_vaults: Vec<VaultListItem<VaultListItemView>>,
         spendable_outpoints: HashMap<String, u64>,
         selected_vault: Option<Vault>,
 
@@ -137,14 +136,18 @@ impl ManagerHomeState {
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
-        let (act_funds, inact_funds) =
-            vaults.iter().fold((0, 0), |acc, vault| match vault.status {
-                VaultStatus::Active => (acc.0 + vault.amount.as_sat(), acc.1),
-                VaultStatus::Funded | VaultStatus::Securing | VaultStatus::Secured => {
-                    (acc.0, acc.1 + vault.amount.as_sat())
-                }
-                _ => (acc.0, acc.1),
-            });
+        let mut total_balance = HashMap::new();
+        for vault in &vaults {
+            if vault.status == VaultStatus::Unconfirmed {
+                continue;
+            }
+            if let Some((number, amount)) = total_balance.get_mut(&vault.status) {
+                *number += 1;
+                *amount += vault.amount.as_sat();
+            } else {
+                total_balance.insert(vault.status.clone(), (1, vault.amount.as_sat()));
+            }
+        }
 
         let spendable_vlts = vaults
             .iter()
@@ -157,14 +160,10 @@ impl ManagerHomeState {
             })
             .collect();
 
-        let moving_vlts = vaults
+        let spending_vlts = vaults
             .into_iter()
             .filter_map(|vlt| {
-                if vlt.status == VaultStatus::Canceling
-                    || vlt.status == VaultStatus::Spending
-                    || vlt.status == VaultStatus::Unvaulting
-                    || vlt.status == VaultStatus::Unvaulted
-                {
+                if vlt.status == VaultStatus::Spending {
                     Some(VaultListItem::new(vlt))
                 } else {
                     None
@@ -176,63 +175,29 @@ impl ManagerHomeState {
             Self::Loading { .. } => {
                 *self = Self::Loaded {
                     warning: None,
-                    active_funds: act_funds,
-                    inactive_funds: inact_funds,
+                    balance: total_balance,
                     spendable_outpoints: spendable_vlts,
-                    moving_vaults: moving_vlts,
+                    spending_vaults: spending_vlts,
                     latest_events: Vec::new(),
                     spend_txs: Vec::new(),
                     spend_txs_item: Vec::new(),
                     selected_vault: None,
                     selected_event: None,
                     selected_spend_tx: None,
-                    view: ManagerHomeView::new(),
+                    view: ManagerHomeView::default(),
                 }
             }
             Self::Loaded {
-                active_funds,
-                inactive_funds,
+                balance,
                 spendable_outpoints,
-                moving_vaults,
+                spending_vaults,
                 ..
             } => {
-                *active_funds = act_funds;
-                *inactive_funds = inact_funds;
+                *balance = total_balance;
                 *spendable_outpoints = spendable_vlts;
-                *moving_vaults = moving_vlts;
+                *spending_vaults = spending_vlts;
             }
         }
-    }
-
-    pub fn on_vault_select(
-        &mut self,
-        ctx: &Context,
-        selected_outpoint: OutPoint,
-    ) -> Command<Message> {
-        if let Self::Loaded {
-            selected_vault,
-            moving_vaults,
-            ..
-        } = self
-        {
-            if let Some(selected) = selected_vault {
-                if outpoint(&selected.vault) == selected_outpoint {
-                    *selected_vault = None;
-                    return self.load(ctx);
-                }
-            }
-
-            if let Some(selected) = moving_vaults
-                .iter()
-                .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
-            {
-                let vault = Vault::new(selected.vault.clone());
-                let cmd = vault.load(ctx.revaultd.clone());
-                *selected_vault = Some(vault);
-                return cmd.map(Message::Vault);
-            }
-        };
-        Command::none()
     }
 
     fn load_history(ctx: &Context) -> Command<Message> {
@@ -290,6 +255,7 @@ impl State for ManagerHomeState {
                 selected_event,
                 selected_spend_tx,
                 latest_events,
+                spending_vaults,
                 ..
             } => match message {
                 Message::Reload => {
@@ -317,7 +283,17 @@ impl State for ManagerHomeState {
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
-                Message::SelectVault(outpoint) => return self.on_vault_select(ctx, outpoint),
+                Message::SelectVault(selected_outpoint) => {
+                    if let Some(selected) = spending_vaults
+                        .iter()
+                        .find(|vlt| outpoint(&vlt.vault) == selected_outpoint)
+                    {
+                        let vault = Vault::new(selected.vault.clone());
+                        let cmd = vault.load(ctx.revaultd.clone());
+                        *selected_vault = Some(vault);
+                        return cmd.map(Message::Vault);
+                    }
+                }
                 Message::Vault(msg) => {
                     if let Some(selected) = selected_vault {
                         return selected.update(ctx, msg).map(Message::Vault);
@@ -348,9 +324,13 @@ impl State for ManagerHomeState {
                     }
                 }
                 Message::Close => {
+                    if selected_vault.is_some() {
+                        *selected_vault = None;
+                    }
                     if selected_event.is_some() {
                         *selected_event = None;
                     }
+                    return self.load(ctx);
                 }
                 _ => {}
             },
@@ -379,10 +359,9 @@ impl State for ManagerHomeState {
                 selected_spend_tx,
                 selected_event,
                 spend_txs_item,
-                moving_vaults,
+                spending_vaults,
                 latest_events,
-                active_funds,
-                inactive_funds,
+                balance,
                 view,
                 ..
             } => {
@@ -405,14 +384,13 @@ impl State for ManagerHomeState {
                         .iter_mut()
                         .map(|tx| tx.view(ctx).map(Message::SpendTx))
                         .collect(),
-                    moving_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
+                    spending_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
                     latest_events
                         .iter_mut()
                         .enumerate()
                         .map(|(i, evt)| evt.view(ctx, i))
                         .collect(),
-                    *active_funds,
-                    *inactive_funds,
+                    balance,
                 )
             }
         }

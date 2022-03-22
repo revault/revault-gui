@@ -4,6 +4,7 @@ mod history;
 mod home;
 mod layout;
 pub mod manager;
+mod revault;
 mod settings;
 mod sidebar;
 pub mod sign;
@@ -17,6 +18,7 @@ pub use deposit::DepositView;
 pub use emergency::{EmergencyTriggeredView, EmergencyView};
 pub use history::{HistoryEventListItemView, HistoryEventView, HistoryView};
 pub use home::{ManagerHomeView, StakeholderHomeView};
+pub use revault::{RevaultSelectVaultsView, RevaultSuccessView, RevaultVaultListItemView};
 pub use settings::SettingsView;
 pub use spend_transaction::{SpendTransactionListItemView, SpendTransactionView};
 pub use stakeholder::{
@@ -28,7 +30,7 @@ pub use vaults::VaultsView;
 
 use iced::{Column, Element};
 
-use crate::app::{context::Context, error::Error, menu::Menu, message::Message};
+use crate::app::{context::Context, error::Error, message::Message};
 
 #[derive(Debug)]
 pub struct LoadingDashboard {
@@ -47,7 +49,7 @@ impl LoadingDashboard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LoadingModal {
     modal: layout::Modal,
 }
@@ -59,18 +61,13 @@ impl LoadingModal {
         }
     }
 
-    pub fn view<'a>(
+    pub fn view<'a, T: Into<Message>>(
         &'a mut self,
         ctx: &Context,
         warning: Option<&Error>,
-        close_redirect: Menu,
+        close_redirect: T,
     ) -> Element<'a, Message> {
-        self.modal.view(
-            ctx,
-            warning,
-            Column::new(),
-            None,
-            Message::Menu(close_redirect),
-        )
+        self.modal
+            .view(ctx, warning, Column::new(), None, close_redirect.into())
     }
 }

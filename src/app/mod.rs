@@ -18,9 +18,9 @@ pub use message::Message;
 
 use menu::Menu;
 use state::{
-    DepositState, EmergencyState, HistoryState, ManagerHomeState, ManagerSendState, SettingsState,
-    StakeholderCreateVaultsState, StakeholderDelegateVaultsState, StakeholderHomeState, State,
-    VaultsState,
+    DepositState, EmergencyState, HistoryState, ManagerHomeState, ManagerSendState,
+    RevaultVaultsState, SettingsState, StakeholderCreateVaultsState,
+    StakeholderDelegateVaultsState, StakeholderHomeState, State, VaultsState,
 };
 
 use crate::{app::context::Context, revault::Role};
@@ -36,7 +36,8 @@ pub fn new_state(context: &Context) -> Box<dyn State> {
     match (context.role, &context.menu) {
         (_, Menu::Deposit) => DepositState::new().into(),
         (_, Menu::History) => HistoryState::new().into(),
-        (_, Menu::Vaults) => VaultsState::new().into(),
+        (_, Menu::Vaults(menu)) => VaultsState::new(menu).into(),
+        (_, Menu::RevaultVaults) => RevaultVaultsState::default().into(),
         (_, Menu::Settings) => SettingsState::new(context.config.gui.clone()).into(),
         (Role::Stakeholder, Menu::Home) => StakeholderHomeState::new().into(),
         (Role::Stakeholder, Menu::CreateVaults) => StakeholderCreateVaultsState::new().into(),

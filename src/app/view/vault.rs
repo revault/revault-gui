@@ -8,18 +8,10 @@ use revault_ui::{
     icon,
 };
 
-use crate::app::{
-    context::Context,
-    error::Error,
-    message::{Message, VaultMessage},
-    view::{layout, warning::warn},
-};
+use crate::app::{context::Context, message::Message, view::layout};
 
-use crate::{
-    daemon::model::{
-        outpoint, transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
-    },
-    revault::Role,
+use crate::daemon::model::{
+    outpoint, transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
 };
 
 #[derive(Debug)]
@@ -40,29 +32,41 @@ impl VaultModal {
         &'a mut self,
         ctx: &Context,
         vlt: &Vault,
-        warning: Option<&Error>,
-        panel_title: &str,
-        panel: Element<'a, Message>,
+        txs: &VaultTransactions,
     ) -> Element<'a, Message> {
+        let mut col = Column::new().spacing(20);
+        col = col.push(Container::new(Text::new("Onchain transactions:").bold()));
+        if let Some(tx) = &txs.spend {
+            col = col.push(transaction(ctx, "Spend transaction", tx));
+        }
+        if let Some(tx) = &txs.cancel {
+            col = col.push(transaction(ctx, "Cancel transaction", tx));
+        }
+        if let Some(tx) = &txs.unvault_emergency {
+            col = col.push(transaction(ctx, "Unvault Emergency transaction", tx));
+        }
+        if let Some(tx) = &txs.emergency {
+            col = col.push(transaction(ctx, "Emergency transaction", tx));
+        }
+        if let Some(tx) = &txs.unvault {
+            col = col.push(transaction(ctx, "Unvault transaction", tx));
+        }
+        col = col.push(transaction(ctx, "Deposit transaction", &txs.deposit));
+
         self.modal.view(
             ctx,
-            warning,
+            None,
             Container::new(
                 Column::new()
-                    .push(
-                        Container::new(Text::new(&panel_title))
-                            .width(Length::Fill)
-                            .align_x(Align::Center),
-                    )
                     .push(Container::new(vault(ctx, &mut self.copy_button, vlt)))
-                    .push(Container::new(panel))
+                    .push(col)
                     .max_width(1000)
                     .spacing(20),
             )
             .width(Length::Fill)
             .align_x(Align::Center),
             None,
-            Message::SelectVault(outpoint(vlt)),
+            Message::Close,
         )
     }
 }
@@ -116,101 +120,6 @@ fn vault<'a>(
     ))
 }
 
-/// This panel is the default view of a vault.
-/// It lists the onchain transactions and suggest a call to action to
-/// the user according to the vault status:
-/// - If the status is FOUNDED, the panel asks the user to acknowledge the vault.
-/// - If the status is SECURED, the panel asks the user to activate the vault.
-/// - If the status is UNVAULTING, the panel asks the user to revault the vault.
-#[derive(Debug)]
-pub struct VaultOnChainTransactionsPanel {
-    /// button used for ack fund panel or delegate vault panel or cancel spending panel
-    /// depending of vault status.
-    action_button: iced::button::State,
-}
-
-impl VaultOnChainTransactionsPanel {
-    pub fn new() -> Self {
-        VaultOnChainTransactionsPanel {
-            action_button: iced::button::State::new(),
-        }
-    }
-    pub fn view(
-        &mut self,
-        ctx: &Context,
-        vault: &Vault,
-        txs: &VaultTransactions,
-    ) -> Element<Message> {
-        let mut col = Column::new().spacing(20);
-        if ctx.role == Role::Stakeholder {
-            match vault.status {
-                VaultStatus::Unvaulted | VaultStatus::Unvaulting => {
-                    col = col.push(card::white(Container::new(
-                        Row::new()
-                            .push(
-                                Container::new(Text::new(
-                                    "Funds are moving, do you want to revault them?",
-                                ))
-                                .width(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    button::primary(
-                                        &mut self.action_button,
-                                        button::button_content(None, "Revault"),
-                                    )
-                                    .on_press(Message::Vault(VaultMessage::SelectRevault)),
-                                )
-                                .width(Length::Shrink),
-                            )
-                            .align_items(Align::Center),
-                    )))
-                }
-                _ => {}
-            };
-        } else if vault.status == VaultStatus::Unvaulted || vault.status == VaultStatus::Unvaulting
-        {
-            col = col.push(card::white(Container::new(
-                Row::new()
-                    .push(
-                        Container::new(Text::new("Funds are moving, do you want to revault them?"))
-                            .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            button::primary(
-                                &mut self.action_button,
-                                button::button_content(None, "Revault"),
-                            )
-                            .on_press(Message::Vault(VaultMessage::SelectRevault)),
-                        )
-                        .width(Length::Shrink),
-                    )
-                    .align_items(Align::Center),
-            )))
-        }
-
-        col = col.push(Container::new(Text::new("Onchain transactions:").bold()));
-        if let Some(tx) = &txs.spend {
-            col = col.push(transaction(ctx, "Spend transaction", &tx));
-        }
-        if let Some(tx) = &txs.cancel {
-            col = col.push(transaction(ctx, "Cancel transaction", &tx));
-        }
-        if let Some(tx) = &txs.unvault_emergency {
-            col = col.push(transaction(ctx, "Unvault Emergency transaction", &tx));
-        }
-        if let Some(tx) = &txs.emergency {
-            col = col.push(transaction(ctx, "Emergency transaction", &tx));
-        }
-        if let Some(tx) = &txs.unvault {
-            col = col.push(transaction(ctx, "Unvault transaction", &tx));
-        }
-        col = col.push(transaction(ctx, "Deposit transaction", &txs.deposit));
-        Container::new(Column::new().push(col)).into()
-    }
-}
-
 fn transaction<'a, T: 'a>(
     ctx: &Context,
     title: &str,
@@ -247,7 +156,7 @@ fn transaction<'a, T: 'a>(
                     ),
             )
             .push(
-                Container::new(input_and_outputs(ctx, &transaction))
+                Container::new(input_and_outputs(ctx, transaction))
                     .width(Length::Fill)
                     .align_x(Align::Center),
             )
@@ -361,12 +270,7 @@ impl VaultView for VaultListItemView {
                     .push(
                         Container::new(
                             Row::new()
-                                .push(
-                                    Text::new(
-                                        &format!("{}", ctx.converter.converts(vault.amount),),
-                                    )
-                                    .bold(),
-                                )
+                                .push(Text::new(&ctx.converter.converts(vault.amount)).bold())
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
@@ -428,7 +332,7 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
                 Container::new(
                     Row::new()
                         .push(
-                            Text::new(&format!("{}", ctx.converter.converts(deposit.amount)))
+                            Text::new(&ctx.converter.converts(deposit.amount))
                                 .success()
                                 .bold(),
                         )
@@ -471,13 +375,7 @@ fn vault_ack_pending<'a>(
                     .push(
                         Container::new(
                             Row::new()
-                                .push(
-                                    Text::new(&format!(
-                                        "{}",
-                                        ctx.converter.converts(deposit.amount),
-                                    ))
-                                    .bold(),
-                                )
+                                .push(Text::new(&ctx.converter.converts(deposit.amount)).bold())
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                                 .align_items(Align::Center),
                         )
@@ -563,7 +461,7 @@ impl DelegateVaultListItemView {
                     Container::new(if selected {
                         Row::new()
                             .push(
-                                Text::new(&format!("{}", ctx.converter.converts(vault.amount),))
+                                Text::new(&ctx.converter.converts(vault.amount))
                                     .bold()
                                     .color(color::PRIMARY),
                             )
@@ -576,12 +474,11 @@ impl DelegateVaultListItemView {
                     } else {
                         Row::new()
                             .push(if vault.status == VaultStatus::Activating {
-                                Text::new(&format!("{}", ctx.converter.converts(vault.amount)))
+                                Text::new(&ctx.converter.converts(vault.amount))
                                     .bold()
                                     .color(color::DARK_GREY)
                             } else {
-                                Text::new(&format!("{}", ctx.converter.converts(vault.amount)))
-                                    .bold()
+                                Text::new(&ctx.converter.converts(vault.amount)).bold()
                             })
                             .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
                             .align_items(Align::Center)
@@ -599,74 +496,5 @@ impl DelegateVaultListItemView {
         } else {
             card::white(content).padding(15).into()
         }
-    }
-}
-
-/// RevaultVaultView displays a section with a button asking if the user wants to revault the
-/// unvaulting vault. The view displays the sucess message or the failure after the processing
-/// state.
-#[derive(Debug, Clone)]
-pub struct RevaultVaultView {
-    back_button: iced::button::State,
-    broadcast_button: iced::button::State,
-}
-
-impl RevaultVaultView {
-    pub fn new() -> Self {
-        Self {
-            back_button: iced::button::State::new(),
-            broadcast_button: iced::button::State::new(),
-        }
-    }
-
-    pub fn view<'a>(
-        &'a mut self,
-        _ctx: &Context,
-        _vault: &Vault,
-        processing: &bool,
-        success: &bool,
-        warning: Option<&Error>,
-    ) -> Element<'a, Message> {
-        let mut col = Column::new().push(warn(warning));
-        if *processing {
-            col = col.push(button::primary(
-                &mut self.broadcast_button,
-                button::button_content(None, "Broadcasting"),
-            ));
-        } else if *success {
-            col = col.push(
-                card::success(Text::new("The cancel transaction is broadcasted"))
-                    .padding(20)
-                    .width(Length::Fill)
-                    .align_x(Align::Center),
-            );
-        } else {
-            col = col
-                .push(Text::new("The cancel transaction will be broadcast"))
-                .push(Text::new("Are you sure to revault?"))
-                .push(
-                    button::primary(
-                        &mut self.broadcast_button,
-                        button::button_content(None, "Yes, Revault"),
-                    )
-                    .on_press(Message::Vault(VaultMessage::Revault)),
-                );
-        }
-
-        Column::new()
-            .push(
-                button::transparent(
-                    &mut self.back_button,
-                    Container::new(Text::new("< vault transactions").small()),
-                )
-                .on_press(Message::Vault(VaultMessage::ListOnchainTransaction)),
-            )
-            .push(
-                card::white(Container::new(col.spacing(20).align_items(Align::Center)))
-                    .width(Length::Fill)
-                    .align_x(Align::Center)
-                    .padding(20),
-            )
-            .into()
     }
 }

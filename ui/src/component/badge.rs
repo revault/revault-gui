@@ -3,7 +3,7 @@ use crate::{
     icon::{
         bitcoin_icon, block_icon, circle_check_icon, circle_dot_icon, circle_icon, deposit_icon,
         network_icon, person_check_icon, send_icon, shield_check_icon, shield_icon,
-        shield_notif_icon, turnback_icon,
+        shield_notif_icon, turnback_icon, unlock_icon,
     },
 };
 
@@ -140,6 +140,28 @@ impl container::StyleSheet for BlockBadgeStyle {
             border_radius: 40.0,
             background: color::PRIMARY_LIGHT.into(),
             text_color: color::PRIMARY.into(),
+            ..container::Style::default()
+        }
+    }
+}
+
+pub fn unlock<'a, T: 'a>() -> Container<'a, T> {
+    let icon = unlock_icon().width(Length::Units(20));
+    Container::new(icon)
+        .width(Length::Units(40))
+        .height(Length::Units(40))
+        .style(UnlockBadgeStyle)
+        .align_x(iced::Align::Center)
+        .align_y(iced::Align::Center)
+}
+
+struct UnlockBadgeStyle;
+impl container::StyleSheet for UnlockBadgeStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            border_radius: 40.0,
+            background: color::ALERT_LIGHT.into(),
+            text_color: color::ALERT.into(),
             ..container::Style::default()
         }
     }
