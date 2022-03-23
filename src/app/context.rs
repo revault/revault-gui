@@ -14,7 +14,7 @@ use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use crate::{
     app::{config, error::Error, menu::Menu},
     conversion::Converter,
-    daemon::{embedded::EmbeddedDaemon, Daemon},
+    daemon::Daemon,
     revault::Role,
 };
 
@@ -122,13 +122,12 @@ impl Context {
     }
 
     pub fn load_daemon_config(&mut self, cfg: DaemonConfig) -> Result<(), Error> {
-        let mut daemon = EmbeddedDaemon::new();
-        daemon.start(cfg.clone())?;
-
-        let mut old_daemon = self.revaultd.clone();
-        self.revaultd = Arc::new(daemon);
-
-        self.config.daemon = cfg;
+        loop {
+            if let Some(daemon) = Arc::get_mut(&mut self.revaultd) {
+                daemon.load_config(cfg.clone())?;
+                break;
+            }
+        }
 
         let mut daemon_config_file = OpenOptions::new()
             .write(true)
@@ -144,16 +143,6 @@ impl Context {
                 log::warn!("failed to write to file: {:?}", e);
                 Error::ConfigError(e.to_string())
             })?;
-
-        loop {
-            match Arc::get_mut(&mut old_daemon) {
-                None => {}
-                Some(old) => {
-                    old.stop()?;
-                    break;
-                }
-            }
-        }
 
         Ok(())
     }
