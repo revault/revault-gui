@@ -1,15 +1,17 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
-    alignment::Horizontal, scrollable, text_input, Alignment, Checkbox, Column, Container, Element,
-    Length, Row, Space, TextInput,
+    alignment, scrollable, text_input, tooltip, Alignment, Column, Container, Element, Length, Row,
+    Space, TextInput, Tooltip,
 };
 
 use revault_ui::{
+    color,
     component::{
-        button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle, ProgressBar,
+        badge, button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle,
+        ContainerForegroundStyle, ProgressBar, TooltipStyle,
     },
-    icon::trash_icon,
+    icon::{tooltip_icon, trash_icon},
 };
 
 use crate::{
@@ -339,7 +341,7 @@ impl ManagerSendOutputView {
                         .on_press(RecipientMessage::Delete),
                 )
                 .width(Length::Shrink)
-                .align_x(Horizontal::Right),
+                .align_x(alignment::Horizontal::Right),
             )
             .spacing(20)
             .into()
@@ -411,49 +413,83 @@ impl ManagerSelectInputsView {
                 Text::new(&error.to_string()).small(),
             )));
         }
-        if input_amount < output_amount {
-            footer = footer.push(Container::new(button::primary_disable(
-                &mut self.next_button,
-                Container::new(Text::new(&format!(
-                    "Missing {} {}",
-                    &ctx.converter
-                        .converts(Amount::from_sat(output_amount - input_amount)),
-                    ctx.converter.unit
-                )))
-                .width(Length::Units(200))
-                .center_x()
-                .padding(10),
-            )));
-        } else {
-            footer = footer.push(Container::new(
-                button::primary(
-                    &mut self.next_button,
-                    Container::new(Text::new("Continue"))
-                        .padding(10)
-                        .width(Length::Units(200))
-                        .center_x(),
+        if input_amount != 0 {
+            footer = footer.push(
+                Container::new(
+                    Row::new()
+                        .push(
+                            Row::new()
+                                .push(
+                                    Text::new(
+                                        &ctx.converter
+                                            .converts(Amount::from_sat(input_amount))
+                                            .to_string(),
+                                    )
+                                    .bold(),
+                                )
+                                .push(Text::new(&format!(" {}", ctx.converter.unit)))
+                                .width(Length::Fill),
+                        )
+                        .push(
+                            Container::new(if input_amount > output_amount {
+                                button::primary(
+                                    &mut self.next_button,
+                                    button::button_content(None, "Next"),
+                                )
+                                .on_press(Message::SpendTx(SpendTxMessage::Generate))
+                                .width(Length::Units(200))
+                            } else {
+                                button::primary(
+                                    &mut self.next_button,
+                                    button::button_content(None, "Next"),
+                                )
+                                .width(Length::Units(200))
+                            })
+                            .width(Length::Shrink),
+                        )
+                        .align_items(Alignment::Center)
+                        .max_width(1000),
                 )
-                .on_press(Message::SpendTx(SpendTxMessage::Generate)),
-            ));
+                .padding(30)
+                .width(Length::Fill)
+                .center_x()
+                .style(ContainerForegroundStyle),
+            )
         }
 
         Container::new(
             Column::new()
-                .push(header)
+                .push(header.padding(20))
                 .push(
                     Column::new()
                         .push(
                             Container::new(
-                                Text::new(&format!(
-                                    "Select coins worth at least {} {}",
-                                    &ctx.converter.converts(Amount::from_sat(output_amount)),
-                                    ctx.converter.unit
-                                ))
-                                .bold(),
+                                Row::new()
+                                    .push(
+                                        Text::new(&format!(
+                                            "Select coins worth at least {} {}",
+                                            &ctx.converter
+                                                .converts(Amount::from_sat(output_amount)),
+                                            ctx.converter.unit
+                                        ))
+                                        .bold(),
+                                    )
+                                    .push(
+                                        Tooltip::new(
+                                            tooltip_icon().size(15),
+                                            "The amounts are the vaults amounts less the miner fees \nand the cpfp outputs of the unvault transaction",
+                                            tooltip::Position::Right,
+                                        )
+                                        .gap(5)
+                                        .size(20)
+                                        .padding(10)
+                                        .style(TooltipStyle),
+                                    )
+                                    .spacing(10),
                             )
                             .padding(20)
                             .width(Length::Fill)
-                            .center_x(),
+                            .center_x()
                         )
                         .push(scroll(
                             &mut self.scroll,
@@ -462,13 +498,13 @@ impl ManagerSelectInputsView {
                                     .push(
                                         Container::new(
                                             Column::with_children(inputs)
-                                                .spacing(20)
+                                                .spacing(5)
                                                 .max_width(1000)
                                                 .width(Length::Fill)
                                                 .align_items(Alignment::Center),
                                         )
                                         .width(Length::Fill)
-                                        .center_x(),
+                                        .center_x()
                                     )
                                     .align_items(Alignment::Center)
                                     .spacing(20),
@@ -482,49 +518,65 @@ impl ManagerSelectInputsView {
                         .width(Length::Fill)
                         .align_items(Alignment::Center),
                 )
-                .height(Length::Fill)
-                .spacing(30),
+                .height(Length::Fill),
         )
         .style(ContainerBackgroundStyle)
-        .padding(20)
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
     }
 }
 
-pub fn manager_send_input_view<'a>(
-    ctx: &Context,
-    outpoint: &str,
-    amount: &u64,
-    selected: bool,
-) -> Element<'a, InputMessage> {
-    let checkbox = Checkbox::new(selected, "", InputMessage::Selected).text_size(10);
-    let row = Row::new()
-        .push(checkbox)
-        .push(
-            Container::new(
-                Row::new()
-                    .push(
-                        Text::new(&format!(
-                            "{}",
-                            ctx.converter.converts(Amount::from_sat(*amount))
-                        ))
-                        .bold(),
-                    )
-                    .push(Text::new(&ctx.converter.unit.to_string()).small())
-                    .align_items(Alignment::Center),
+#[derive(Debug, Clone, Default)]
+pub struct ManagerSendInputView {
+    select_button: iced::button::State,
+}
+
+impl ManagerSendInputView {
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        amount: &bitcoin::Amount,
+        selected: bool,
+    ) -> Element<'a, InputMessage> {
+        let row = Row::new()
+            .push(
+                Container::new(if selected {
+                    badge::circle_dot()
+                } else {
+                    badge::circle()
+                })
+                .width(Length::Fill),
             )
-            .width(Length::Fill),
-        )
-        .push(
-            Column::new()
-                .push(Text::new(outpoint).bold().small())
+            .push(
+                Container::new(if selected {
+                    Row::new()
+                        .push(
+                            Text::new(&ctx.converter.converts(*amount))
+                                .bold()
+                                .color(color::PRIMARY),
+                        )
+                        .push(
+                            Text::new(&format!(" {}", ctx.converter.unit))
+                                .small()
+                                .color(color::PRIMARY),
+                        )
+                        .align_items(Alignment::Center)
+                } else {
+                    Row::new()
+                        .push(Text::new(&ctx.converter.converts(*amount)).bold())
+                        .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
+                        .align_items(Alignment::Center)
+                })
                 .width(Length::Shrink),
-        )
-        .align_items(Alignment::Center)
-        .spacing(20);
-    card::white(Container::new(row)).width(Length::Fill).into()
+            )
+            .align_items(Alignment::Center)
+            .spacing(20);
+        button::white_card_button(&mut self.select_button, Container::new(row))
+            .on_press(InputMessage::Select)
+            .width(Length::Fill)
+            .into()
+    }
 }
 
 #[derive(Debug)]

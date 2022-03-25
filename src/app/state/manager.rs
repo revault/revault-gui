@@ -31,8 +31,8 @@ use crate::app::{
     },
     view::{
         manager::{
-            manager_send_input_view, ManagerImportTransactionView, ManagerSelectFeeView,
-            ManagerSelectInputsView, ManagerSelectOutputsView, ManagerSendOutputView,
+            ManagerImportTransactionView, ManagerSelectFeeView, ManagerSelectInputsView,
+            ManagerSelectOutputsView, ManagerSendInputView, ManagerSendOutputView,
             ManagerSendWelcomeView, ManagerSpendTransactionCreatedView, ManagerStepSignView,
         },
         vault::VaultListItemView,
@@ -562,7 +562,7 @@ enum ManagerSendStep {
 pub struct ManagerCreateSendTransactionState {
     warning: Option<Error>,
 
-    vaults: Vec<ManagerSendInput>,
+    inputs: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
     feerate: Option<u64>,
     psbt: Option<(Psbt, u64)>,
@@ -579,7 +579,7 @@ impl ManagerCreateSendTransactionState {
         Self {
             step: ManagerSendStep::WelcomeUser(ManagerSendWelcomeView::new()),
             warning: None,
-            vaults: Vec::new(),
+            inputs: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
             feerate: None,
             psbt: None,
@@ -590,17 +590,20 @@ impl ManagerCreateSendTransactionState {
         }
     }
 
-    pub fn update_vaults(&mut self, mut vaults: Vec<model::Vault>) {
+    pub fn update_inputs(&mut self, mut inputs: Vec<(model::Vault, Psbt)>) {
         // Ordering the vaults, the biggest amounts first
-        vaults.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap());
-        self.vaults = vaults.into_iter().map(ManagerSendInput::new).collect();
+        inputs.sort_by(|a, b| b.0.amount.partial_cmp(&a.0.amount).unwrap());
+        self.inputs = inputs
+            .into_iter()
+            .map(|(vault, unvault_tx)| ManagerSendInput::new(vault, unvault_tx))
+            .collect();
     }
 
     pub fn input_amount(&self) -> u64 {
         let mut input_amount = 0;
-        for input in &self.vaults {
+        for input in &self.inputs {
             if input.selected {
-                input_amount += input.vault.amount.as_sat();
+                input_amount += input.unvault_output_amount.as_sat();
             }
         }
         input_amount
@@ -617,7 +620,7 @@ impl ManagerCreateSendTransactionState {
     }
 
     pub fn selected_inputs(&self) -> Vec<model::Vault> {
-        self.vaults
+        self.inputs
             .iter()
             .cloned()
             .filter_map(|input| {
@@ -685,8 +688,8 @@ impl State for ManagerCreateSendTransactionState {
                     self.valid_feerate = false;
                 }
             }
-            Message::Vaults(res) => match res {
-                Ok(vlts) => self.update_vaults(vlts),
+            Message::VaultsWithUnvaultTx(res) => match res {
+                Ok(vaults_txs) => self.update_inputs(vaults_txs),
                 Err(e) => self.warning = Some(Error::RevaultDError(e)),
             },
             Message::SpendTx(SpendTxMessage::Signed(res)) => match res {
@@ -768,7 +771,7 @@ impl State for ManagerCreateSendTransactionState {
             }
             Message::Input(i, msg) => {
                 self.psbt = None;
-                if let Some(input) = self.vaults.get_mut(i) {
+                if let Some(input) = self.inputs.get_mut(i) {
                     input.update(msg);
                 }
             }
@@ -817,7 +820,7 @@ impl State for ManagerCreateSendTransactionState {
             }
             ManagerSendStep::SelectInputs(v) => v.view(
                 ctx,
-                self.vaults
+                self.inputs
                     .iter_mut()
                     .enumerate()
                     .map(|(i, v)| v.view(ctx).map(move |msg| Message::Input(i, msg)))
@@ -859,9 +862,18 @@ impl State for ManagerCreateSendTransactionState {
     }
 
     fn load(&self, ctx: &Context) -> Command<Message> {
+        let revaultd = ctx.revaultd.clone();
         Command::batch(vec![Command::perform(
-            list_vaults(ctx.revaultd.clone(), Some(&[VaultStatus::Active]), None),
-            Message::Vaults,
+            async move {
+                let vaults = revaultd.list_vaults(Some(&[VaultStatus::Active]), None)?;
+                let mut vaults_with_txs = Vec::new();
+                for vault in vaults.into_iter() {
+                    let tx = revaultd.get_unvault_tx(&outpoint(&vault))?;
+                    vaults_with_txs.push((vault, tx));
+                }
+                Ok(vaults_with_txs)
+            },
+            Message::VaultsWithUnvaultTx,
         )])
     }
 }
@@ -961,29 +973,40 @@ impl ManagerSendOutput {
 #[derive(Debug, Clone)]
 struct ManagerSendInput {
     vault: model::Vault,
+    unvault_output_amount: bitcoin::Amount,
     selected: bool,
+    view: ManagerSendInputView,
 }
 
 impl ManagerSendInput {
-    fn new(vault: model::Vault) -> Self {
+    fn new(vault: model::Vault, unvault_tx: Psbt) -> Self {
+        let tx = unvault_tx.global.unsigned_tx;
+        // The output with less value is considered as the cpfp output.
+        let unvault_output_amount = if tx.output.len() == 2 {
+            if tx.output[0].value > tx.output[1].value {
+                bitcoin::Amount::from_sat(tx.output[0].value)
+            } else {
+                bitcoin::Amount::from_sat(tx.output[1].value)
+            }
+        } else {
+            bitcoin::Amount::from_sat(tx.output[0].value)
+        };
         Self {
             vault,
             selected: false,
+            unvault_output_amount,
+            view: ManagerSendInputView::default(),
         }
     }
 
     pub fn view(&mut self, ctx: &Context) -> Element<InputMessage> {
-        manager_send_input_view(
-            ctx,
-            &outpoint(&self.vault).to_string(),
-            &self.vault.amount.as_sat(),
-            self.selected,
-        )
+        self.view
+            .view(ctx, &self.unvault_output_amount, self.selected)
     }
 
     pub fn update(&mut self, msg: InputMessage) {
         match msg {
-            InputMessage::Selected(selected) => self.selected = selected,
+            InputMessage::Select => self.selected = !self.selected,
         }
     }
 }
