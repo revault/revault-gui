@@ -61,7 +61,7 @@ async fn test_stakeholder_delegate_state() {
                         )
                         .unwrap(),
                         vout: 0,
-                        blockheight: 1,
+                        blockheight: Some(1),
                         delegated_at: None,
                         secured_at: Some(1),
                         funded_at: Some(1),
@@ -80,7 +80,7 @@ async fn test_stakeholder_delegate_state() {
                         )
                         .unwrap(),
                         vout: 1,
-                        blockheight: 1,
+                        blockheight: Some(1),
                         delegated_at: None,
                         secured_at: Some(1),
                         funded_at: Some(1),
@@ -99,7 +99,7 @@ async fn test_stakeholder_delegate_state() {
                         )
                         .unwrap(),
                         vout: 2,
-                        blockheight: 1,
+                        blockheight: Some(1),
                         delegated_at: None,
                         secured_at: Some(1),
                         funded_at: Some(1),
@@ -118,7 +118,7 @@ async fn test_stakeholder_delegate_state() {
                         )
                         .unwrap(),
                         vout: 3,
-                        blockheight: 1,
+                        blockheight: Some(1),
                         delegated_at: None,
                         secured_at: Some(1),
                         funded_at: Some(1),

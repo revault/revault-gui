@@ -2596,7 +2596,7 @@ dependencies = [
 [[package]]
 name = "revaultd"
 version = "0.3.1"
-source = "git+https://github.com/revault/revaultd?branch=master#843e513e13c8fe4f6d90fa735e7c92f51315f1b4"
+source = "git+https://github.com/revault/revaultd?branch=master#b08ee27076e2dfdb355bbf03934b6910909317af"
 dependencies = [
  "backtrace",
  "base64",

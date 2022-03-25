@@ -3,12 +3,11 @@ pub mod embedded;
 pub mod model;
 
 use std::collections::BTreeMap;
-use std::convert::From;
 use std::fmt::Debug;
 use std::io::ErrorKind;
 
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint, Txid};
-use revaultd::commands::CommandError;
+use revaultd::config::Config;
 
 use model::*;
 
@@ -38,14 +37,12 @@ impl std::fmt::Display for RevaultDError {
     }
 }
 
-impl From<CommandError> for RevaultDError {
-    fn from(error: CommandError) -> Self {
-        RevaultDError::Rpc(error.code() as i32, error.to_string())
-    }
-}
-
 pub trait Daemon: Debug {
     fn is_external(&self) -> bool;
+
+    fn load_config(&mut self, _cfg: Config) -> Result<(), RevaultDError> {
+        return Ok(());
+    }
 
     fn stop(&mut self) -> Result<(), RevaultDError>;
 

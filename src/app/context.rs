@@ -1,15 +1,22 @@
+use std::fs::OpenOptions;
 use std::future::Future;
+use std::io::Write;
 use std::pin::Pin;
 use std::sync::Arc;
 
 use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
 
-use super::menu::Menu;
-use crate::{app::config, conversion::Converter, daemon::Daemon, revault::Role};
 use revaultd::config::Config as DaemonConfig;
 use revaultd::revault_tx::miniscript::DescriptorPublicKey;
 
 use revault_hwi::{app::revault::RevaultHWI, HWIError};
+
+use crate::{
+    app::{config, error::Error, menu::Menu},
+    conversion::Converter,
+    daemon::Daemon,
+    revault::Role,
+};
 
 pub type HardwareWallet =
     Box<dyn Future<Output = Result<Box<dyn RevaultHWI + Send>, HWIError>> + Send + Sync>;
@@ -112,6 +119,32 @@ impl Context {
         } else {
             false
         }
+    }
+
+    pub fn load_daemon_config(&mut self, cfg: DaemonConfig) -> Result<(), Error> {
+        loop {
+            if let Some(daemon) = Arc::get_mut(&mut self.revaultd) {
+                daemon.load_config(cfg.clone())?;
+                break;
+            }
+        }
+
+        let mut daemon_config_file = OpenOptions::new()
+            .write(true)
+            .open(&self.config.gui.revaultd_config_path)
+            .map_err(|e| Error::ConfigError(e.to_string()))?;
+
+        let content =
+            toml::to_string(&self.config.daemon).map_err(|e| Error::ConfigError(e.to_string()))?;
+
+        daemon_config_file
+            .write_all(content.as_bytes())
+            .map_err(|e| {
+                log::warn!("failed to write to file: {:?}", e);
+                Error::ConfigError(e.to_string())
+            })?;
+
+        Ok(())
     }
 }
 

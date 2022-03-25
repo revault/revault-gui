@@ -1,7 +1,10 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
-use revault_hwi::{app::revault::RevaultHWI, HWIError};
 use std::sync::Arc;
+
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use tokio::sync::Mutex;
+
+use revault_hwi::{app::revault::RevaultHWI, HWIError};
+use revaultd::config::Config as DaemonConfig;
 
 use crate::{
     app::{error::Error, menu::Menu},
@@ -58,6 +61,19 @@ pub enum Message {
     Close,
     Revault,
     Revaulted(Result<(), RevaultDError>),
+    Settings(usize, SettingsMessage),
+    AddWatchtower,
+    LoadDaemonConfig(DaemonConfig),
+    DaemonConfigLoaded(Result<(), Error>),
+}
+
+#[derive(Debug, Clone)]
+pub enum SettingsMessage {
+    Remove,
+    Edit,
+    FieldEdited(&'static str, String),
+    CancelEdit,
+    ConfirmEdit,
 }
 
 #[derive(Debug, Clone)]

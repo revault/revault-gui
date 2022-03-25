@@ -5,6 +5,7 @@ use bitcoin::{consensus::encode, util::psbt::PartiallySignedTransaction as Psbt,
 
 use super::{model::*, Daemon, RevaultDError};
 use revaultd::{
+    commands::CommandError,
     config::Config,
     revault_tx::transactions::{
         CancelTransaction, EmergencyTransaction, RevaultTransaction, SpendTransaction,
@@ -12,6 +13,12 @@ use revaultd::{
     },
     DaemonHandle,
 };
+
+impl From<CommandError> for RevaultDError {
+    fn from(error: CommandError) -> Self {
+        RevaultDError::Rpc(error.code() as i32, error.to_string())
+    }
+}
 
 pub struct EmbeddedDaemon {
     handle: Option<Mutex<DaemonHandle>>,
@@ -39,6 +46,17 @@ impl std::fmt::Debug for EmbeddedDaemon {
 impl Daemon for EmbeddedDaemon {
     fn is_external(&self) -> bool {
         false
+    }
+
+    fn load_config(&mut self, cfg: Config) -> Result<(), RevaultDError> {
+        if self.handle.is_none() {
+            return Ok(());
+        }
+
+        let next = DaemonHandle::start(cfg).map_err(|e| RevaultDError::Start(e.to_string()))?;
+        self.handle.take().unwrap().into_inner().unwrap().shutdown();
+        self.handle = Some(Mutex::new(next));
+        Ok(())
     }
 
     fn stop(&mut self) -> Result<(), RevaultDError> {
