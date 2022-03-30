@@ -33,6 +33,7 @@ pub enum Message {
     ChangeRole(Role),
     Vaults(Result<Vec<Vault>, RevaultDError>),
     VaultsWithPresignedTxs(Result<Vec<(Vault, VaultPresignedTransactions)>, RevaultDError>),
+    VaultsWithUnvaultTx(Result<Vec<(Vault, Psbt)>, RevaultDError>),
     SelectVault(OutPoint),
     SelectHistoryEvent(usize),
     DelegateVault(OutPoint),
@@ -127,7 +128,7 @@ pub enum SignMessage {
 
 #[derive(Debug, Clone)]
 pub enum InputMessage {
-    Selected(bool),
+    Select,
 }
 
 #[derive(Debug, Clone)]
