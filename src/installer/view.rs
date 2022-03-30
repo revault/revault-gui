@@ -1,6 +1,6 @@
 use iced::{
-    button::State as Button, pick_list, scrollable, text_input, Align, Checkbox, Column, Container,
-    Element, Length, Row,
+    button::State as Button, pick_list, scrollable, text_input, Alignment, Checkbox, Column,
+    Container, Element, Length, Row,
 };
 
 use revault_ui::{
@@ -65,7 +65,7 @@ impl Welcome {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         ))
         .center_y()
         .center_x()
@@ -127,7 +127,7 @@ impl DefineRole {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -159,7 +159,7 @@ pub fn participant_xpub<'a>(
                             .on_press(message::ParticipantXpub::Delete),
                     )
                     .spacing(5)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .spacing(10),
     )
@@ -200,7 +200,7 @@ pub fn cosigner_key<'a>(
                             .render(),
                     )
                     .spacing(5)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .spacing(10),
     )
@@ -248,7 +248,7 @@ impl DefinePrivateNoiseKey {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -329,7 +329,7 @@ impl DefineStakeholderXpubsAsStakeholder {
                         .on_press(Message::Next)
                         .min_width(200),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20),
             );
 
@@ -345,7 +345,7 @@ impl DefineStakeholderXpubsAsStakeholder {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -359,7 +359,7 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
     save_button: &'a mut Button,
     warning: Option<&String>,
 ) -> Element<'a, Message> {
-    let mut row = Row::new().align_items(Align::Center).spacing(20);
+    let mut row = Row::new().align_items(Alignment::Center).spacing(20);
     if stakeholder_xpubs.is_empty() {
         row = row.push(
             button::primary(save_button, button::button_content(None, "Next")).min_width(200),
@@ -404,7 +404,7 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
             .height(Length::Fill)
             .padding(100)
             .spacing(50)
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .into(),
     )
 }
@@ -456,12 +456,12 @@ impl ManagersThreshold {
                                     ),
                                 ),
                             )
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20),
             )
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .spacing(10);
 
         if !managers_threshold.valid {
@@ -520,12 +520,12 @@ impl SpendingDelay {
                                     ),
                                 ),
                             )
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20),
             )
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .spacing(10);
         if !spending_delay.valid {
             col = col.push(card::alert_warning(Container::new(
@@ -594,12 +594,12 @@ impl DefineManagerXpubsAsManager {
                     .push(
                         Container::new(self.managers_threshold.render(managers_threshold))
                             .width(Length::FillPortion(1))
-                            .align_x(Align::Center),
+                            .center_x(),
                     )
                     .push(
                         Container::new(self.spending_delay.render(spending_delay))
                             .width(Length::FillPortion(1))
-                            .align_x(Align::Center),
+                            .center_x(),
                     )
                     .width(Length::Fill),
             )
@@ -654,7 +654,7 @@ impl DefineManagerXpubsAsManager {
                         .on_press(Message::Next)
                         .min_width(200),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20),
             );
 
@@ -670,7 +670,7 @@ impl DefineManagerXpubsAsManager {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -705,7 +705,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         cosigners_enabled: bool,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
-        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        let mut row = Row::new().align_items(Alignment::Center).spacing(20);
         if manager_xpubs.is_empty() {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
@@ -729,12 +729,12 @@ impl DefineManagerXpubsAsStakeholderOnly {
                     .push(
                         Container::new(self.managers_threshold.render(managers_threshold))
                             .width(Length::FillPortion(1))
-                            .align_x(Align::Center),
+                            .center_x(),
                     )
                     .push(
                         Container::new(self.spending_delay.render(spending_delay))
                             .width(Length::FillPortion(1))
-                            .align_x(Align::Center),
+                            .center_x(),
                     )
                     .width(Length::Fill),
             )
@@ -782,7 +782,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
             .height(Length::Fill)
             .padding(100)
             .spacing(50)
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         if let Some(error) = warning {
             content = content.push(card::alert_warning(Container::new(Text::new(error))));
@@ -816,7 +816,7 @@ impl DefineCpfpDescriptorView {
         manager_xpubs: Vec<Element<'a, Message>>,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
-        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        let mut row = Row::new().align_items(Alignment::Center).spacing(20);
         if manager_xpubs.is_empty() {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
@@ -850,7 +850,7 @@ impl DefineCpfpDescriptorView {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -930,7 +930,7 @@ impl DefineCoordinator {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -957,7 +957,7 @@ impl DefineEmergencyAddress {
         address: &form::Value<String>,
         warning: Option<&String>,
     ) -> Element<'a, Message> {
-        let mut row = Row::new().align_items(Align::Center).spacing(20);
+        let mut row = Row::new().align_items(Alignment::Center).spacing(20);
         if !address.valid {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
@@ -1001,7 +1001,7 @@ impl DefineEmergencyAddress {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -1051,7 +1051,7 @@ impl Cosigner {
                     .render(),
                 )
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )
         .into()
     }
@@ -1099,7 +1099,7 @@ impl DefineCosigners {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -1177,7 +1177,7 @@ impl DefineBitcoind {
                 .height(Length::Fill)
                 .padding(100)
                 .spacing(50)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .into(),
         )
     }
@@ -1209,7 +1209,7 @@ impl Final {
             .height(Length::Fill)
             .padding(100)
             .spacing(50)
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         if let Some(error) = warning {
             col = col.push(card::alert_warning(Container::new(Text::new(error))));
@@ -1236,12 +1236,12 @@ impl Final {
                             .on_press(Message::Exit(path.clone()))
                             .min_width(200),
                         ))
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .spacing(20),
                 )
                 .padding(50)
                 .width(Length::Fill)
-                .align_x(Align::Center),
+                .center_x(),
             ));
         } else {
             col = col.push(

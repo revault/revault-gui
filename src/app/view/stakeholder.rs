@@ -1,5 +1,5 @@
 use bitcoin::Amount;
-use iced::{pick_list, Align, Column, Container, Element, Length, ProgressBar, Row};
+use iced::{pick_list, Alignment, Column, Container, Element, Length, ProgressBar, Row};
 
 use revault_ui::{
     component::{button, card, text::Text, ContainerForegroundStyle, TransparentPickListStyle},
@@ -48,16 +48,16 @@ impl StakeholderCreateVaultsView {
             return self.modal.view(ctx, warning, Container::new(card::success(
                         Column::new()
                             .padding(20)
-                            .align_items(iced::Align::Center)
+                            .align_items(Alignment::Center)
                             .spacing(30)
                             .push(Text::from(icon::done_icon().size(80)).width(Length::Fill).success())
                             .push(Column::new()
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .spacing(5)
                                 .push(Text::new("You pre-signed the security transactions for all new deposits.").success())
                                 .push(Text::new("The deposits will be available as secured Vaults when all the stakeholders have completed this process.").small().success())
                             )
-                        )).height(Length::Fill).align_y(Align::Center), None, Message::Menu(Menu::Home));
+                        )).height(Length::Fill).center_y(), None, Message::Menu(Menu::Home));
         }
         let total_amount = deposits
             .iter()
@@ -66,7 +66,7 @@ impl StakeholderCreateVaultsView {
         let mut content = Column::new()
             .max_width(1000)
             .padding(20)
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .push(Text::new("Vault the new deposits").bold().size(50))
             .push(
                 Row::new()
@@ -95,7 +95,7 @@ impl StakeholderCreateVaultsView {
                     .count();
                 content = content.push(
                     Column::new()
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .push(ProgressBar::new(
                             0.0..=deposits.len() as f32,
                             total_secured as f32,
@@ -118,14 +118,14 @@ impl StakeholderCreateVaultsView {
         } else {
             content = content.push(
                 Row::new()
-                    .align_items(iced::Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20)
                     .push(icon::connect_device_icon().size(20))
                     .push(Text::new("Connect hardware wallet")),
             )
         }
 
-        self.modal.view(ctx, warning, Container::new(content).height(Length::Fill).align_y(Align::Center), Some("A vault is a deposit with revocation transactions\nsigned and shared between stakeholders"), Message::Menu(Menu::Home))
+        self.modal.view(ctx, warning, Container::new(content).height(Length::Fill).center_y(), Some("A vault is a deposit with revocation transactions\nsigned and shared between stakeholders"), Message::Menu(Menu::Home))
     }
 }
 
@@ -158,16 +158,16 @@ impl StakeholderDelegateVaultsView {
             return self.modal.view(ctx, warning, Container::new(card::success(
                         Column::new()
                             .padding(20)
-                            .align_items(iced::Align::Center)
+                            .align_items(Alignment::Center)
                             .spacing(30)
                             .push(Text::from(icon::done_icon().size(80)).width(Length::Fill).success())
                             .push(Column::new()
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .spacing(5)
                                 .push(Text::new("You pre-signed the unvault transactions for all the selected vaults.").success())
                                 .push(Text::new("The vaults will be available for the managers when all the stakeholders have completed this process.").small().success())
                             )
-                        )).height(Length::Fill).align_y(Align::Center), None, Message::Menu(Menu::Home));
+                        )).height(Length::Fill).center_y(), None, Message::Menu(Menu::Home));
         }
         let total_amount = deposits
             .iter()
@@ -176,7 +176,7 @@ impl StakeholderDelegateVaultsView {
         let mut content = Column::new()
             .max_width(1000)
             .padding(20)
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .push(
                 Text::new("Delegate vaults to your manager team")
                     .bold()
@@ -209,7 +209,7 @@ impl StakeholderDelegateVaultsView {
                     .count();
                 content = content.push(
                     Column::new()
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .push(ProgressBar::new(
                             0.0..=deposits.len() as f32,
                             total_active as f32,
@@ -232,14 +232,14 @@ impl StakeholderDelegateVaultsView {
         } else {
             content = content.push(
                 Row::new()
-                    .align_items(iced::Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20)
                     .push(icon::connect_device_icon().size(20))
                     .push(Text::new("Connect hardware wallet")),
             )
         }
 
-        self.modal.view(ctx, warning, Container::new(content).height(Length::Fill).align_y(Align::Center), Some("By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction."), Message::Menu(Menu::Home))
+        self.modal.view(ctx, warning, Container::new(content).height(Length::Fill).center_y(), Some("By delegating you allow managers to spend the funds,\n but you can still revert any undesired transaction."), Message::Menu(Menu::Home))
     }
 }
 
@@ -295,7 +295,7 @@ impl StakeholderSelecteVaultsToDelegateView {
                                 " {} are allocated to managers",
                                 ctx.converter.unit
                             )))
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .push_maybe(if *activating_balance != 0 {
                         Some(
@@ -311,7 +311,7 @@ impl StakeholderSelecteVaultsToDelegateView {
                                     .size(20),
                                 )
                                 .push(Text::new(&format!(" {} more.", ctx.converter.unit)))
-                                .align_items(Align::Center),
+                                .align_items(Alignment::Center),
                         )
                     } else {
                         None
@@ -321,7 +321,7 @@ impl StakeholderSelecteVaultsToDelegateView {
                 Column::new()
                     .push(
                         Row::new()
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                             .push(if vaults.is_empty() {
                                 Text::new("No vaults are available").width(Length::Fill)
                             } else {
@@ -387,12 +387,12 @@ impl StakeholderSelecteVaultsToDelegateView {
                             )
                             .width(Length::Shrink),
                         )
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .max_width(1000),
                 )
                 .padding(30)
                 .width(Length::Fill)
-                .align_x(Align::Center)
+                .center_x()
                 .style(ContainerForegroundStyle),
             )
         }

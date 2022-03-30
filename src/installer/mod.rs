@@ -3,7 +3,7 @@ mod message;
 mod step;
 mod view;
 
-use iced::{Clipboard, Command, Element, Subscription};
+use iced::{Command, Element, Subscription};
 use iced_native::{window, Event};
 
 use bitcoin::hashes::hex::FromHex;
@@ -122,7 +122,7 @@ impl Installer {
         self.should_exit = true;
     }
 
-    pub fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
+    pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Next => {
                 let current_step = self

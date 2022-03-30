@@ -1,4 +1,4 @@
-use iced::{text_input, Align, Column, Container, Element, Length, Row};
+use iced::{alignment, text_input, Alignment, Column, Container, Element, Length, Row};
 
 use revault_ui::{
     color,
@@ -48,7 +48,7 @@ impl SettingsView {
                     .on_press(Message::AddWatchtower),
                 )
                 .width(Length::Fill)
-                .align_x(Align::End),
+                .align_x(alignment::Horizontal::Right),
             );
         }
         self.dashboard.view(ctx, warning, col)
@@ -158,7 +158,7 @@ impl BitcoindSettingsEditView {
                         .push(Text::new("Bitcoind"))
                         .padding(10)
                         .spacing(20)
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .width(Length::Fill),
                 )
                 .push(separation().width(Length::Fill))
@@ -169,10 +169,10 @@ impl BitcoindSettingsEditView {
                             .push(cancel_button)
                             .push(confirm_button)
                             .spacing(10)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .spacing(20),
         ))
@@ -252,7 +252,7 @@ impl BitcoindSettingsView {
                                 .push(Text::new("Bitcoind"))
                                 .push(is_running_label(is_running))
                                 .spacing(20)
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .width(Length::Fill),
                         )
                         .push(if can_edit {
@@ -267,7 +267,7 @@ impl BitcoindSettingsView {
                                 Container::new(icon::pencil_icon()),
                             )
                         })
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(separation().width(Length::Fill))
                 .push(col.push(column))
@@ -345,7 +345,7 @@ impl CoordinatorSettingsEditView {
                         .push(Text::new("Coordinator"))
                         .padding(10)
                         .spacing(20)
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .width(Length::Fill),
                 )
                 .push(separation().width(Length::Fill))
@@ -356,10 +356,10 @@ impl CoordinatorSettingsEditView {
                             .push(cancel_button)
                             .push(confirm_button)
                             .spacing(10)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .spacing(20),
         ))
@@ -401,7 +401,7 @@ impl CoordinatorSettingsView {
                                 .push(Text::new("Coordinator"))
                                 .push(is_running_label(is_running))
                                 .spacing(20)
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .width(Length::Fill),
                         )
                         .push(if can_edit {
@@ -416,7 +416,7 @@ impl CoordinatorSettingsView {
                                 Container::new(icon::pencil_icon()),
                             )
                         })
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(separation().width(Length::Fill))
                 .push(column)
@@ -500,7 +500,7 @@ impl WatchtowerSettingsEditView {
                         .push(Text::new("Watchtower"))
                         .padding(10)
                         .spacing(20)
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .width(Length::Fill),
                 )
                 .push(separation().width(Length::Fill))
@@ -518,7 +518,7 @@ impl WatchtowerSettingsEditView {
                                                     .push(icon::trash_icon().color(color::ALERT))
                                                     .push(Text::new("Remove").color(color::ALERT))
                                                     .spacing(10)
-                                                    .align_items(Align::Center),
+                                                    .align_items(Alignment::Center),
                                             ),
                                         )
                                         .on_press(SettingsMessage::Remove),
@@ -529,13 +529,13 @@ impl WatchtowerSettingsEditView {
                                 Row::new()
                                     .push(cancel_button)
                                     .push(confirm_button)
-                                    .align_items(Align::Center)
+                                    .align_items(Alignment::Center)
                                     .spacing(10),
                             )
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .spacing(20),
         ))
@@ -577,7 +577,7 @@ impl WatchtowerSettingsView {
                                 .push(Text::new("Watchtower"))
                                 .push(is_running_label(is_running))
                                 .spacing(20)
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .width(Length::Fill),
                         )
                         .push(if can_edit {
@@ -592,7 +592,7 @@ impl WatchtowerSettingsView {
                                 Container::new(icon::pencil_icon()),
                             )
                         })
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(separation().width(Length::Fill))
                 .push(column)
@@ -670,7 +670,7 @@ impl CosignerSettingsEditView {
                         .push(Text::new("Cosigner"))
                         .padding(10)
                         .spacing(20)
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .width(Length::Fill),
                 )
                 .push(separation().width(Length::Fill))
@@ -680,11 +680,11 @@ impl CosignerSettingsEditView {
                         Row::new()
                             .push(cancel_button)
                             .push(confirm_button)
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                             .spacing(10),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .spacing(20),
         ))
@@ -726,7 +726,7 @@ impl CosignerSettingsView {
                                 .push(Text::new("Cosigner"))
                                 .push(is_running_label(is_running))
                                 .spacing(20)
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .width(Length::Fill),
                         )
                         .push(if can_edit {
@@ -741,7 +741,7 @@ impl CosignerSettingsView {
                                 Container::new(icon::pencil_icon()),
                             )
                         })
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(separation().width(Length::Fill))
                 .push(column)
@@ -759,14 +759,14 @@ pub fn is_running_label<'a, T: 'a>(is_running: Option<bool>) -> Container<'a, T>
                 Row::new()
                     .push(icon::dot_icon().size(5).color(color::SUCCESS))
                     .push(Text::new("Running").small().color(color::SUCCESS))
-                    .align_items(iced::Align::Center),
+                    .align_items(Alignment::Center),
             )
         } else {
             Container::new(
                 Row::new()
                     .push(icon::dot_icon().size(5).color(color::ALERT))
                     .push(Text::new("Not running").small().color(color::ALERT))
-                    .align_items(iced::Align::Center),
+                    .align_items(Alignment::Center),
             )
         }
     } else {

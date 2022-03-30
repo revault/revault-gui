@@ -10,7 +10,7 @@ mod view;
 use std::sync::Arc;
 use std::time::Duration;
 
-use iced::{time, Clipboard, Command, Element, Subscription};
+use iced::{clipboard, time, Command, Element, Subscription};
 use iced_native::{window, Event};
 
 pub use config::Config;
@@ -91,7 +91,7 @@ impl App {
         }
     }
 
-    pub fn update(&mut self, message: Message, clipboard: &mut Clipboard) -> Command<Message> {
+    pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick => {
                 let revaultd = self.context.revaultd.clone();
@@ -108,7 +108,7 @@ impl App {
             }
             Message::LoadDaemonConfig(cfg) => {
                 let res = self.context.load_daemon_config(cfg);
-                self.update(Message::DaemonConfigLoaded(res), clipboard)
+                self.update(Message::DaemonConfigLoaded(res))
             }
             Message::ChangeRole(role) => {
                 self.context.role = role;
@@ -120,10 +120,7 @@ impl App {
                 self.state = new_state(&self.context);
                 self.state.load(&self.context)
             }
-            Message::Clipboard(text) => {
-                clipboard.write(text);
-                Command::none()
-            }
+            Message::Clipboard(text) => clipboard::write(text),
             Message::Event(Event::Window(window::Event::CloseRequested)) => {
                 self.stop();
                 Command::none()

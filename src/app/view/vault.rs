@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use iced::{tooltip, Align, Column, Container, Element, Length, Row, Tooltip};
+use iced::{tooltip, Alignment, Column, Container, Element, Length, Row, Tooltip};
 
 use bitcoin::{util::bip32::Fingerprint, Amount};
 use revault_ui::{
@@ -64,7 +64,7 @@ impl VaultModal {
                     .spacing(20),
             )
             .width(Length::Fill)
-            .align_x(Align::Center),
+            .center_x(),
             None,
             Message::Close,
         )
@@ -93,11 +93,11 @@ fn vault<'a>(
                                                     copy_button,
                                                     Message::Clipboard(vlt.txid.to_string()),
                                                 ))
-                                                .align_items(Align::Center),
+                                                .align_items(Alignment::Center),
                                         )
                                         .push(Text::new(&format!("{}", &vlt.status,))),
                                 )
-                                .align_items(Align::Center)
+                                .align_items(Alignment::Center)
                                 .spacing(20),
                         )
                         .width(Length::Fill),
@@ -114,7 +114,7 @@ fn vault<'a>(
                         .width(Length::Shrink),
                     )
                     .spacing(20)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .spacing(20),
     ))
@@ -158,7 +158,7 @@ fn transaction<'a, T: 'a>(
             .push(
                 Container::new(input_and_outputs(ctx, transaction))
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .center_x(),
             )
             .spacing(20),
     )
@@ -272,12 +272,12 @@ impl VaultView for VaultListItemView {
                             Row::new()
                                 .push(Text::new(&ctx.converter.converts(vault.amount)).bold())
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                .align_items(Align::Center),
+                                .align_items(Alignment::Center),
                         )
                         .width(Length::Shrink),
                     )
                     .spacing(20)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             ),
         )
         .on_press(Message::SelectVault(outpoint(vault)))
@@ -321,10 +321,10 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
                                     .bold()
                                     .success(),
                             )
-                            .align_y(Align::Center),
+                            .center_y(),
                         )
                         .spacing(20)
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .width(Length::Fill),
             )
@@ -337,12 +337,12 @@ fn vault_ack_signed<'a, T: 'a>(ctx: &Context, deposit: &Vault) -> Element<'a, T>
                                 .bold(),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .width(Length::Shrink),
             )
             .spacing(20)
-            .align_items(Align::Center),
+            .align_items(Alignment::Center),
     ))
     .into()
 }
@@ -365,10 +365,10 @@ fn vault_ack_pending<'a>(
                                     Container::new(
                                         Text::new(&deposit.address.to_string()).small().bold(),
                                     )
-                                    .align_y(Align::Center),
+                                    .center_y(),
                                 )
                                 .spacing(20)
-                                .align_items(Align::Center),
+                                .align_items(Alignment::Center),
                         )
                         .width(Length::Fill),
                     )
@@ -377,12 +377,12 @@ fn vault_ack_pending<'a>(
                             Row::new()
                                 .push(Text::new(&ctx.converter.converts(deposit.amount)).bold())
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                                .align_items(Align::Center),
+                                .align_items(Alignment::Center),
                         )
                         .width(Length::Shrink),
                     )
                     .spacing(20)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             ),
         )
         .on_press(Message::SelectVault(outpoint(deposit))),
@@ -409,7 +409,7 @@ impl DelegateVaultListItemView {
         sigs: &Vec<Fingerprint>,
         selected: bool,
     ) -> iced::Element<Message> {
-        let mut sigs_row = Row::new().align_items(Align::Center);
+        let mut sigs_row = Row::new().align_items(Alignment::Center);
         for fingerprint in sigs {
             sigs_row = sigs_row.push(
                 Tooltip::new(
@@ -453,7 +453,7 @@ impl DelegateVaultListItemView {
                             })
                             .push(sigs_row)
                             .spacing(20)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill),
                 )
@@ -470,7 +470,7 @@ impl DelegateVaultListItemView {
                                     .small()
                                     .color(color::PRIMARY),
                             )
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                     } else {
                         Row::new()
                             .push(if vault.status == VaultStatus::Activating {
@@ -481,12 +481,12 @@ impl DelegateVaultListItemView {
                                 Text::new(&ctx.converter.converts(vault.amount)).bold()
                             })
                             .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                     })
                     .width(Length::Shrink),
                 )
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         );
 
         if vault.status == VaultStatus::Secured {

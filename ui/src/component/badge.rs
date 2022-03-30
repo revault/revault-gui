@@ -13,8 +13,8 @@ pub fn badge<'a, T: 'a>(icon: iced::Text) -> Container<'a, T> {
     Container::new(icon.width(Length::Units(20)))
         .width(Length::Units(40))
         .height(Length::Units(40))
-        .align_x(iced::Align::Center)
-        .align_y(iced::Align::Center)
+        .center_x()
+        .center_y()
 }
 
 pub fn bitcoin_core<'a, T: 'a>() -> Container<'a, T> {
@@ -151,8 +151,8 @@ pub fn unlock<'a, T: 'a>() -> Container<'a, T> {
         .width(Length::Units(40))
         .height(Length::Units(40))
         .style(UnlockBadgeStyle)
-        .align_x(iced::Align::Center)
-        .align_y(iced::Align::Center)
+        .center_x()
+        .center_y()
 }
 
 struct UnlockBadgeStyle;
@@ -193,8 +193,8 @@ pub fn vault_unvaulting<'a, T: 'a>() -> Container<'a, T> {
         .width(Length::Units(40))
         .height(Length::Units(40))
         .style(WarningBadgeStyle)
-        .align_x(iced::Align::Center)
-        .align_y(iced::Align::Center)
+        .center_y()
+        .center_x()
 }
 
 pub fn vault_canceling<'a, T: 'a>() -> Container<'a, T> {

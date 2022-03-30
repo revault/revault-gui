@@ -1,5 +1,5 @@
 use crate::{color, component::text::Text, icon::clipboard_icon, icon::cross_icon};
-use iced::{button, Color, Container, Row, Vector};
+use iced::{button, Alignment, Color, Container, Row, Vector};
 
 macro_rules! button {
     ($name:ident, $style_name:ident, $bg_color:expr, $text_color:expr) => {
@@ -51,7 +51,7 @@ pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Contai
     match icon {
         None => Container::new(Text::new(text))
             .width(iced::Length::Fill)
-            .align_x(iced::Align::Center)
+            .center_x()
             .padding(5),
         Some(i) => Container::new(
             Row::new()
@@ -59,10 +59,10 @@ pub fn button_content<'a, T: 'a>(icon: Option<iced::Text>, text: &str) -> Contai
                 .push(Text::new(text))
                 .spacing(10)
                 .width(iced::Length::Fill)
-                .align_items(iced::Align::Center),
+                .align_items(Alignment::Center),
         )
         .width(iced::Length::Fill)
-        .align_x(iced::Align::Center)
+        .center_x()
         .padding(5),
     }
 }
@@ -127,7 +127,7 @@ pub fn close_button<'a, T: 'a + Clone>(state: &'a mut button::State) -> button::
                 .spacing(5)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
-                .align_items(iced::Align::Center),
+                .align_items(Alignment::Center),
         )
         .padding(10),
     )

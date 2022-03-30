@@ -1,4 +1,4 @@
-use iced::{Align, Column, Container, Element, Length, Row};
+use iced::{Alignment, Column, Container, Element, Length, Row};
 
 use bitcoin::Amount;
 use revault_ui::{
@@ -42,7 +42,7 @@ impl RevaultSelectVaultsView {
                                 .size(30),
                         )
                         .push(Text::new(&format!(" {} are moving", ctx.converter.unit)))
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 ),
             )
             .push(
@@ -96,12 +96,12 @@ impl RevaultSelectVaultsView {
                         )
                             .width(Length::Shrink)
         )
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .max_width(1000),
         )
             .padding(30)
             .width(Length::Fill)
-            .align_x(Align::Center)
+            .center_x()
             .style(ContainerForegroundStyle),
         )
     } else {None}).into()
@@ -127,7 +127,7 @@ impl RevaultSuccessView {
                     .success()
                     .bold(),
             )
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .spacing(30)
             .padding(20)
             .max_width(1000);
@@ -160,7 +160,7 @@ impl RevaultVaultListItemView {
                                 badge::circle()
                             })
                             .spacing(20)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill),
                 )
@@ -177,17 +177,17 @@ impl RevaultVaultListItemView {
                                     .small()
                                     .color(color::PRIMARY),
                             )
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                     } else {
                         Row::new()
                             .push(Text::new(&ctx.converter.converts(vault.amount)).bold())
                             .push(Text::new(&format!(" {}", ctx.converter.unit)).small())
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                     })
                     .width(Length::Shrink),
                 )
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         );
 
         button::white_card_button(&mut self.select_button, content)

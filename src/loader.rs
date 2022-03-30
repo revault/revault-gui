@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use iced::{Column, Command, Container, Element, Length, Subscription};
+use iced::{Alignment, Column, Command, Container, Element, Length, Subscription};
 use iced_native::{window, Event};
 use log::{debug, info};
 
@@ -211,7 +211,7 @@ pub fn cover<'a, T: 'a, C: Into<Element<'a, T>>>(content: C) -> Element<'a, T> {
         .height(iced::Length::Fill)
         .padding(50)
         .spacing(50)
-        .align_items(iced::Align::Center)
+        .align_items(Alignment::Center)
         .into()
 }
 

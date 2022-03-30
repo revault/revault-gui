@@ -1,5 +1,5 @@
 use bitcoin::Amount;
-use iced::{Align, Column, Container, Element, Length, Row};
+use iced::{Alignment, Column, Container, Element, Length, Row};
 
 use revault_ui::{
     color,
@@ -61,17 +61,17 @@ impl EmergencyView {
                                 .push(Text::new("vaults")),
                         )
                         .push(Text::new("to the Emergency Deep Vault"))
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(emergency_button)
                 .spacing(30)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
         } else {
             Column::new()
                 .push(warning_icon().color(color::PRIMARY))
                 .push(Text::new("No funds to send to the Emergency Deep Vault"))
                 .spacing(30)
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
         };
 
         self.modal.view(
@@ -79,7 +79,7 @@ impl EmergencyView {
             warning,
             card::border_primary(Container::new(content))
                 .padding(20)
-                .align_x(Align::Center)
+                .center_x()
                 .width(Length::Fill),
             None,
             Message::Menu(Menu::Home),
@@ -129,13 +129,13 @@ impl EmergencyTriggeredView {
                                     .push(Text::new("vaults")),
                             )
                             .push(Text::new("to the Emergency Deep Vault"))
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .spacing(30)
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             ))
             .padding(20)
-            .align_x(Align::Center)
+            .center_x()
             .width(Length::Fill),
             None,
             Message::Menu(Menu::Home),

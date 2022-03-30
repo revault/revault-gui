@@ -1,6 +1,6 @@
 use std::{error::Error, path::PathBuf, str::FromStr};
 
-use iced::{executor, Application, Clipboard, Command, Element, Settings, Subscription};
+use iced::{executor, Application, Command, Element, Settings, Subscription};
 extern crate serde;
 extern crate serde_json;
 
@@ -143,11 +143,7 @@ impl Application for GUI {
         }
     }
 
-    fn update(
-        &mut self,
-        message: Self::Message,
-        clipboard: &mut Clipboard,
-    ) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         if matches!(message, Message::CtrlC) {
             match &mut self.state {
                 State::Installer(v) => v.stop(),
@@ -200,11 +196,9 @@ impl Application for GUI {
         }
 
         match (&mut self.state, message) {
-            (State::Installer(i), Message::Install(msg)) => {
-                i.update(msg, clipboard).map(Message::Install)
-            }
+            (State::Installer(i), Message::Install(msg)) => i.update(msg).map(Message::Install),
             (State::Loader(loader), Message::Load(msg)) => loader.update(msg).map(Message::Load),
-            (State::App(i), Message::Run(msg)) => i.update(msg, clipboard).map(Message::Run),
+            (State::App(i), Message::Run(msg)) => i.update(msg).map(Message::Run),
             _ => Command::none(),
         }
     }
@@ -316,6 +310,8 @@ pub fn setup_logger(log_level: log::LevelFilter) -> Result<(), fern::InitError> 
         })
         .level(log_level)
         .level_for("iced_wgpu", log::LevelFilter::Off)
+        .level_for("wgpu_core", log::LevelFilter::Off)
+        .level_for("wgpu_hal", log::LevelFilter::Off)
         .level_for("gfx_backend_vulkan", log::LevelFilter::Off)
         .level_for("naga", log::LevelFilter::Off)
         .level_for("mio", log::LevelFilter::Off);

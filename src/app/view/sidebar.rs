@@ -1,4 +1,4 @@
-use iced::{container, pick_list, Column, Container, Length, Row};
+use iced::{container, pick_list, Alignment, Column, Container, Length, Row};
 
 use revault_ui::{
     color,
@@ -171,7 +171,7 @@ impl Sidebar {
                                 .push(warning_icon().color(color::PRIMARY))
                                 .push(Text::new("Emergency").color(color::PRIMARY))
                                 .spacing(10)
-                                .align_items(iced::Align::Center),
+                                .align_items(Alignment::Center),
                         )
                         .padding(5),
                     )

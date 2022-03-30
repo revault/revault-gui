@@ -1,8 +1,8 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
-    scrollable, text_input, Align, Checkbox, Column, Container, Element, Length, Row, Space,
-    TextInput,
+    alignment::Horizontal, scrollable, text_input, Alignment, Checkbox, Column, Container, Element,
+    Length, Row, Space, TextInput,
 };
 
 use revault_ui::{
@@ -64,7 +64,7 @@ impl ManagerImportTransactionView {
             col = col.push(
                 card::success(Container::new(
                     Column::new()
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .push(Text::new("Transaction imported"))
                         .push(
                             button::success(
@@ -75,7 +75,7 @@ impl ManagerImportTransactionView {
                         )
                         .spacing(20),
                 ))
-                .align_x(Align::Center)
+                .center_x()
                 .width(Length::Fill),
             );
         } else {
@@ -92,7 +92,7 @@ impl ManagerImportTransactionView {
             ctx,
             warning,
             Container::new(card::white(col).max_width(1000))
-                .align_x(Align::Center)
+                .center_x()
                 .width(Length::Fill),
             None,
             Message::Menu(Menu::Home),
@@ -136,11 +136,11 @@ impl ManagerSendWelcomeView {
                         )
                         .on_press(Message::SpendTx(SpendTxMessage::Import)),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .spacing(20),
             )
             .width(Length::Fill)
-            .align_x(Align::Center),
+            .center_x(),
             None,
             Message::Menu(Menu::Home),
         )
@@ -181,21 +181,21 @@ impl ManagerSelectOutputsView {
                                 button::close_button(&mut self.cancel_button)
                                     .on_press(Message::Menu(Menu::Home)),
                             )
-                            .align_items(Align::End)
+                            .align_items(Alignment::End)
                             .width(Length::Fill),
                     )
                     .width(Length::Fill)
-                    .align_items(Align::End)
+                    .align_items(Alignment::End)
                     .padding(10)
                     .spacing(10),
             )
             .push(ProgressBar::spend_bar().draw(0))
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         let mut col_outputs = Column::new()
             .spacing(20)
             .width(Length::Fill)
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
         for (i, element) in selected_outputs.into_iter().enumerate() {
             if i > 0 {
                 col_outputs = col_outputs.push(separation().width(Length::Fill));
@@ -212,7 +212,7 @@ impl ManagerSelectOutputsView {
                     &mut self.new_output_button,
                     Container::new(Text::new("Add recipient"))
                         .width(Length::Units(200))
-                        .align_x(Align::Center)
+                        .center_x()
                         .padding(10),
                 )
                 .on_press(Message::AddRecipient),
@@ -224,7 +224,7 @@ impl ManagerSelectOutputsView {
                     &mut self.next_button,
                     Container::new(Text::new("Continue"))
                         .width(Length::Units(200))
-                        .align_x(Align::Center)
+                        .center_x()
                         .padding(10),
                 )
                 .on_press(Message::Next),
@@ -234,7 +234,7 @@ impl ManagerSelectOutputsView {
                 &mut self.next_button,
                 Container::new(Text::new("Continue"))
                     .width(Length::Units(200))
-                    .align_x(Align::Center)
+                    .center_x()
                     .padding(10),
             )))
         }
@@ -249,17 +249,13 @@ impl ManagerSelectOutputsView {
                             Container::new(Text::new("Add recipients").bold())
                                 .padding(20)
                                 .width(Length::Fill)
-                                .align_x(Align::Center),
+                                .center_x(),
                         )
                         .push(scroll(
                             &mut self.scroll,
                             Container::new(
                                 Column::new()
-                                    .push(
-                                        Container::new(element)
-                                            .width(Length::Fill)
-                                            .align_x(Align::Center),
-                                    )
+                                    .push(Container::new(element).width(Length::Fill).center_x())
                                     .spacing(20),
                             ),
                         ))
@@ -275,7 +271,7 @@ impl ManagerSelectOutputsView {
                                     "Please merge recipients with the same address",
                                 ))))
                                 .width(Length::Fill)
-                                .align_x(Align::Center),
+                                .center_x(),
                             )
                             .spacing(20)
                             .push(footer),
@@ -343,7 +339,7 @@ impl ManagerSendOutputView {
                         .on_press(RecipientMessage::Delete),
                 )
                 .width(Length::Shrink)
-                .align_x(Align::End),
+                .align_x(Horizontal::Right),
             )
             .spacing(20)
             .into()
@@ -386,7 +382,7 @@ impl ManagerSelectInputsView {
                                     &mut self.back_button,
                                     Container::new(Text::new("< Go back"))
                                         .padding(10)
-                                        .align_x(Align::Center),
+                                        .center_x(),
                                 )
                                 .on_press(Message::Previous),
                             )
@@ -398,18 +394,18 @@ impl ManagerSelectInputsView {
                                 button::close_button(&mut self.cancel_button)
                                     .on_press(Message::Menu(Menu::Home)),
                             )
-                            .align_items(Align::End)
+                            .align_items(Alignment::End)
                             .width(Length::Fill),
                     )
                     .width(Length::Fill)
-                    .align_items(Align::End)
+                    .align_items(Alignment::End)
                     .padding(10)
                     .spacing(10),
             )
             .push(ProgressBar::spend_bar().draw(2))
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
-        let mut footer = Column::new().spacing(10).align_items(Align::Center);
+        let mut footer = Column::new().spacing(10).align_items(Alignment::Center);
         if let Some(error) = warning {
             footer = footer.push(card::alert_warning(Container::new(
                 Text::new(&error.to_string()).small(),
@@ -425,7 +421,7 @@ impl ManagerSelectInputsView {
                     ctx.converter.unit
                 )))
                 .width(Length::Units(200))
-                .align_x(Align::Center)
+                .center_x()
                 .padding(10),
             )));
         } else {
@@ -435,7 +431,7 @@ impl ManagerSelectInputsView {
                     Container::new(Text::new("Continue"))
                         .padding(10)
                         .width(Length::Units(200))
-                        .align_x(Align::Center),
+                        .center_x(),
                 )
                 .on_press(Message::SpendTx(SpendTxMessage::Generate)),
             ));
@@ -457,7 +453,7 @@ impl ManagerSelectInputsView {
                             )
                             .padding(20)
                             .width(Length::Fill)
-                            .align_x(Align::Center),
+                            .center_x(),
                         )
                         .push(scroll(
                             &mut self.scroll,
@@ -469,12 +465,12 @@ impl ManagerSelectInputsView {
                                                 .spacing(20)
                                                 .max_width(1000)
                                                 .width(Length::Fill)
-                                                .align_items(Align::Center),
+                                                .align_items(Alignment::Center),
                                         )
                                         .width(Length::Fill)
-                                        .align_x(Align::Center),
+                                        .center_x(),
                                     )
-                                    .align_items(Align::Center)
+                                    .align_items(Alignment::Center)
                                     .spacing(20),
                             ),
                         ))
@@ -484,7 +480,7 @@ impl ManagerSelectInputsView {
                     Column::new()
                         .push(footer)
                         .width(Length::Fill)
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .height(Length::Fill)
                 .spacing(30),
@@ -517,7 +513,7 @@ pub fn manager_send_input_view<'a>(
                         .bold(),
                     )
                     .push(Text::new(&ctx.converter.unit.to_string()).small())
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .width(Length::Fill),
         )
@@ -526,7 +522,7 @@ pub fn manager_send_input_view<'a>(
                 .push(Text::new(outpoint).bold().small())
                 .width(Length::Shrink),
         )
-        .align_items(Align::Center)
+        .align_items(Alignment::Center)
         .spacing(20);
     card::white(Container::new(row)).width(Length::Fill).into()
 }
@@ -566,7 +562,7 @@ impl ManagerSelectFeeView {
                                     Container::new(Text::new("< Go back"))
                                         .padding(10)
                                         .width(Length::Fill)
-                                        .align_x(Align::Center),
+                                        .center_x(),
                                 )
                                 .on_press(Message::Previous),
                             )
@@ -579,7 +575,7 @@ impl ManagerSelectFeeView {
                                     .on_press(Message::Menu(Menu::Home)),
                             ))
                             .width(Length::Shrink)
-                            .align_items(Align::End),
+                            .align_items(Alignment::End),
                     )
                     .width(Length::Fill)
                     .padding(10)
@@ -588,9 +584,9 @@ impl ManagerSelectFeeView {
             .push(
                 Container::new(ProgressBar::spend_bar().draw(1))
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .center_x(),
             )
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         let fee_button = if valid_feerate {
             button::primary(
@@ -598,7 +594,7 @@ impl ManagerSelectFeeView {
                 Container::new(Text::new("Continue"))
                     .padding(10)
                     .width(Length::Units(200))
-                    .align_x(Align::Center),
+                    .center_x(),
             )
             .on_press(Message::Next)
         } else {
@@ -607,7 +603,7 @@ impl ManagerSelectFeeView {
                 Container::new(Text::new("Continue"))
                     .padding(10)
                     .width(Length::Units(200))
-                    .align_x(Align::Center),
+                    .center_x(),
             )
         };
 
@@ -618,7 +614,7 @@ impl ManagerSelectFeeView {
                         Container::new(Text::new("Select fee").bold())
                             .padding(20)
                             .width(Length::Fill)
-                            .align_x(Align::Center),
+                            .center_x(),
                     )
                     .push(
                         Row::new()
@@ -636,12 +632,12 @@ impl ManagerSelectFeeView {
                             )
                             .push(Text::new("sats/vbyte"))
                             .spacing(5)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
-                    .align_items(Align::Center),
+                    .align_items(Alignment::Center),
             )
             .height(Length::Fill)
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         if let Some(error) = warning {
             col_fee = col_fee.push(card::alert_warning(Container::new(
@@ -655,10 +651,10 @@ impl ManagerSelectFeeView {
                 Column::new()
                     .push(col_fee)
                     .push(fee_button)
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .max_width(1000),
             )
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .spacing(30);
 
         Container::new(col)
@@ -707,7 +703,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                     .width(Length::Shrink),
                 )
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )));
     }
 
@@ -763,7 +759,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                     .width(Length::Shrink),
                 )
                 .spacing(5)
-                .align_items(Align::Center),
+                .align_items(Alignment::Center),
         )));
     }
     let mut column_fee = Column::new();
@@ -802,7 +798,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                                 .width(Length::Shrink),
                             )
                             .spacing(5)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )))
                     .spacing(10),
             )
@@ -876,7 +872,7 @@ impl ManagerStepSignView {
                                     &mut self.back_button,
                                     Container::new(Text::new("< Go back"))
                                         .padding(10)
-                                        .align_x(Align::Center),
+                                        .center_x(),
                                 )
                                 .on_press(Message::Previous),
                             )
@@ -888,16 +884,16 @@ impl ManagerStepSignView {
                                 button::close_button(&mut self.cancel_button)
                                     .on_press(Message::Menu(Menu::Home)),
                             )
-                            .align_items(Align::End)
+                            .align_items(Alignment::End)
                             .width(Length::Fill),
                     )
                     .width(Length::Fill)
-                    .align_items(Align::End)
+                    .align_items(Alignment::End)
                     .padding(10)
                     .spacing(10),
             )
             .push(ProgressBar::spend_bar().draw(3))
-            .align_items(Align::Center);
+            .align_items(Alignment::Center);
 
         Container::new(
             Column::new()
@@ -910,7 +906,7 @@ impl ManagerStepSignView {
                                     .push(
                                         Container::new(Text::new("Sign transaction").bold())
                                             .width(Length::Fill)
-                                            .align_x(Align::Center)
+                                            .center_x()
                                             .padding(20),
                                     )
                                     .push(
@@ -931,18 +927,18 @@ impl ManagerStepSignView {
                                             )
                                             .push(
                                                 card::white(Container::new(signer))
-                                                    .align_x(Align::Center)
+                                                    .center_x()
                                                     .width(Length::Fill),
                                             )
                                             .spacing(20),
                                     ),
                             )
-                            .align_items(Align::Center)
+                            .align_items(Alignment::Center)
                             .max_width(1000),
                     )
-                    .align_x(Align::Center),
+                    .center_x(),
                 )
-                .align_items(Align::Center)
+                .align_items(Alignment::Center)
                 .spacing(30)
                 .padding(20),
         )
@@ -991,9 +987,9 @@ impl ManagerSpendTransactionCreatedView {
                                         .on_press(Message::Menu(Menu::Home)),
                                 )
                                 .width(Length::Fill)
-                                .align_items(Align::End),
+                                .align_items(Alignment::End),
                         )
-                        .align_items(Align::End)
+                        .align_items(Alignment::End)
                         .padding(10)
                         .spacing(10),
                 )
@@ -1014,9 +1010,9 @@ impl ManagerSpendTransactionCreatedView {
                                 .max_width(1000),
                         )
                         .width(Length::Fill)
-                        .align_x(Align::Center),
+                        .center_x(),
                     )
-                    .align_items(Align::Center)
+                    .align_items(Alignment::Center)
                     .width(Length::Fill),
                 )
                 .push(
@@ -1031,11 +1027,11 @@ impl ManagerSpendTransactionCreatedView {
                                 .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
                             )
                             .spacing(20)
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     ))
                     .padding(20)
                     .width(Length::Fill)
-                    .align_x(Align::Center),
+                    .center_x(),
                 )
                 .spacing(20),
         )

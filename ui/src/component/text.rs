@@ -1,5 +1,5 @@
 use super::{color, font};
-use iced::{Color, Element, HorizontalAlignment, Length};
+use iced::{alignment, Color, Element, Length};
 
 pub struct Text(iced::Text);
 
@@ -27,7 +27,7 @@ impl Text {
         self.0 = self.0.color(color::SUCCESS);
         self
     }
-    pub fn horizontal_alignment(mut self, alignment: HorizontalAlignment) -> Self {
+    pub fn horizontal_alignment(mut self, alignment: alignment::Horizontal) -> Self {
         self.0 = self.0.horizontal_alignment(alignment);
         self
     }

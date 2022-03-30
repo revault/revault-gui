@@ -2,8 +2,9 @@ use bitcoin::Amount;
 use std::collections::HashMap;
 
 use iced::{
+    alignment,
     tooltip::{self, Tooltip},
-    Align, Column, Container, Element, HorizontalAlignment, Length, Row,
+    Alignment, Column, Container, Element, Length, Row,
 };
 
 use revault_ui::{
@@ -77,11 +78,11 @@ impl ManagerHomeView {
                                             &mut self.history_button,
                                             Container::new(Text::new("See more").small())
                                                 .width(iced::Length::Fill)
-                                                .align_x(iced::Align::Center),
+                                                .center_x(),
                                         )
                                         .on_press(Message::Menu(Menu::History)),
                                     )
-                                    .align_x(Align::Center)
+                                    .center_x()
                                     .width(Length::Fill),
                                 )
                             } else {
@@ -116,7 +117,7 @@ fn manager_overview<'a, T: 'a>(
                                 .size(50),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(Column::new().padding(5))
                 .push(
@@ -127,12 +128,12 @@ fn manager_overview<'a, T: 'a>(
                                 .bold(),
                         )
                         .push(Text::new(&format!(" {}", ctx.converter.unit)))
-                        .align_items(Align::Center),
+                        .align_items(Alignment::Center),
                 )
                 .push(
                     Container::new(
                         Text::new("are held by stakeholders")
-                            .horizontal_alignment(HorizontalAlignment::Right)
+                            .horizontal_alignment(alignment::Horizontal::Right)
                             .width(Length::Fill),
                     )
                     .width(Length::Fill),
@@ -178,7 +179,7 @@ impl StakeholderHomeView {
                             )
                             .on_press(Message::Menu(Menu::Deposit)),
                         )
-                        .align_items(iced::Align::Center),
+                        .align_items(Alignment::Center),
                 )))
             } else {
                 None
@@ -198,11 +199,11 @@ impl StakeholderHomeView {
                                         &mut self.history_button,
                                         Container::new(Text::new("See more").small())
                                             .width(iced::Length::Fill)
-                                            .align_x(iced::Align::Center),
+                                            .center_x(),
                                     )
                                     .on_press(Message::Menu(Menu::History)),
                                 )
-                                .align_x(Align::Center)
+                                .center_x()
                                 .width(Length::Fill),
                             )
                         } else {
@@ -256,11 +257,11 @@ impl MovingVaultsSection {
                             Column::new().push(
                                 Row::new()
                                     .spacing(20)
-                                    .align_items(Align::Center)
+                                    .align_items(Alignment::Center)
                                     .push(badge::unlock())
                                     .push(
                                         Row::new()
-                                            .align_items(Align::Center)
+                                            .align_items(Alignment::Center)
                                             .push(Text::new(&format!("{}", nb)).bold())
                                             .push(if nb != 1 {
                                                 Text::new(" vaults ( ")
@@ -295,7 +296,7 @@ impl MovingVaultsSection {
                                             .padding(10)
                                             .style(TooltipStyle),
                                         )
-                                        .align_x(Align::End)
+                                        .align_x(alignment::Horizontal::Right)
                                         .width(Length::Fill),
                                     ),
                             ),
@@ -314,11 +315,11 @@ impl MovingVaultsSection {
                             Column::new().push(
                                 Row::new()
                                     .spacing(20)
-                                    .align_items(Align::Center)
+                                    .align_items(Alignment::Center)
                                     .push(badge::vault_canceling())
                                     .push(
                                         Row::new()
-                                            .align_items(Align::Center)
+                                            .align_items(Alignment::Center)
                                             .push(Text::new(&format!("{}", nb)).bold())
                                             .push(if *nb != 1 {
                                                 Text::new(" vaults ( ")
@@ -405,7 +406,7 @@ impl StakeholderOverview {
                                     .push(Text::new(" new deposits")),
                             )
                             .width(Length::Fill)
-                            .align_x(iced::Align::Center),
+                            .center_x(),
                         )
                         .push(
                             Container::new(
@@ -418,13 +419,13 @@ impl StakeholderOverview {
                                         )
                                         .on_press(Message::Menu(Menu::CreateVaults)),
                                     )
-                                    .align_items(Align::Center)
+                                    .align_items(Alignment::Center)
                                     .spacing(5),
                             )
                             .width(Length::Shrink)
-                            .align_x(Align::Center),
+                            .center_x(),
                         )
-                        .align_items(Align::Center)
+                        .align_items(Alignment::Center)
                         .spacing(10),
                 ))
                 .padding(5),
@@ -446,7 +447,7 @@ impl StakeholderOverview {
                                     .size(50),
                                 )
                                 .push(Text::new(&format!(" {}", ctx.converter.unit)))
-                                .align_items(Align::Center),
+                                .align_items(Alignment::Center),
                         )
                         .push(
                             Row::new()
@@ -496,7 +497,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                         Row::new()
                             .push(person_check_icon())
                             .push(Text::new("  Delegated funds").bold())
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill),
                 )
@@ -529,7 +530,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                             ))),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .push(
                     Container::new(
@@ -538,7 +539,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                             .push(Text::new(" vaults")),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 ),
         );
 
@@ -557,7 +558,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                     .push(Text::new(&nb_activating_vaults.to_string()).small().bold())
                     .push(Text::new(" vaults ").small())
                     .push(history_icon().size(20))
-                    .align_items(Align::End),
+                    .align_items(Alignment::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,
             )
@@ -587,7 +588,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                         Row::new()
                             .push(shield_check_icon())
                             .push(Text::new("  Secured funds").bold())
-                            .align_items(Align::Center),
+                            .align_items(Alignment::Center),
                     )
                     .width(Length::Fill),
                 )
@@ -621,7 +622,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                             ))),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 )
                 .push(
                     Container::new(
@@ -630,7 +631,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                             .push(Text::new(" vaults")),
                     )
                     .width(Length::Fill)
-                    .align_x(Align::End),
+                    .align_x(alignment::Horizontal::Right),
                 ),
         );
 
@@ -649,7 +650,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     .push(Text::new(&nb_securing_vaults.to_string()).small().bold())
                     .push(Text::new(" vaults ").small())
                     .push(history_icon().size(20))
-                    .align_items(Align::End),
+                    .align_items(Alignment::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,
             )
