@@ -206,7 +206,7 @@ pub async fn install(ctx: Context, mut cfg: DaemonConfig) -> Result<PathBuf, Err
     // create revaultd configuration file
     let mut revaultd_config_path = datadir_path.clone();
     revaultd_config_path.push(append_network_suffix(
-        crate::installer::config::DEFAULT_FILE_NAME,
+        DaemonConfig::DEFAULT_FILE_NAME,
         &cfg.bitcoind_config.network,
     ));
     let mut revaultd_config_file = std::fs::File::create(&revaultd_config_path)

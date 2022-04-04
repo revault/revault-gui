@@ -19,7 +19,6 @@ pub enum Message {
     DefineCpfpDescriptor(DefineCpfpDescriptor),
     DefineCoordinator(DefineCoordinator),
     DefineEmergencyAddress(String),
-    DefineWatchtowers(DefineWatchtowers),
     DefineCosigners(usize, DefineCosigner),
     DefineBitcoind(DefineBitcoind),
 }
@@ -34,19 +33,6 @@ pub enum DefineBitcoind {
 pub enum DefineCosigner {
     HostEdited(String),
     NoiseKeyEdited(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum DefineWatchtowers {
-    EditWatchtower(usize, DefineWatchtower),
-    AddWatchtower,
-}
-
-#[derive(Debug, Clone)]
-pub enum DefineWatchtower {
-    HostEdited(String),
-    NoiseKeyEdited(String),
-    Delete,
 }
 
 #[derive(Debug, Clone)]
