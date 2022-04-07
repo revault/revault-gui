@@ -29,10 +29,8 @@ jobs:
           override: true
           profile: minimal
       - name: Build on Rust ${{ matrix.toolchain }}
-        if: matrix.os != 'macos-latest' || matrix.toolchain != 'nightly' && matrix.toolchain != 'beta'
         run: cargo build --release --verbose --color always
       - name: Test on Rust ${{ matrix.toolchain }}
-        if: matrix.os != 'macos-latest' || matrix.toolchain != 'nightly' && matrix.toolchain != 'beta'
         run: cargo test --release --verbose --color always
 
   rustfmt_check:
