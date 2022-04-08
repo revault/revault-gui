@@ -381,7 +381,7 @@ impl CoordinatorSettingsView {
             column = column.push(
                 Row::new()
                     .push(Container::new(Text::new(k).bold().small()).width(Length::Fill))
-                    .push(Text::new(&v).small()),
+                    .push(Text::new(v).small()),
             );
         }
 
@@ -557,7 +557,7 @@ impl WatchtowerSettingsView {
             column = column.push(
                 Row::new()
                     .push(Container::new(Text::new(k).bold().small()).width(Length::Fill))
-                    .push(Text::new(&v).small()),
+                    .push(Text::new(v).small()),
             );
         }
 
@@ -706,7 +706,7 @@ impl CosignerSettingsView {
             column = column.push(
                 Row::new()
                     .push(Container::new(Text::new(k).bold().small()).width(Length::Fill))
-                    .push(Text::new(&v).small()),
+                    .push(Text::new(v).small()),
             );
         }
 

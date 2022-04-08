@@ -57,11 +57,9 @@ impl SettingsState {
                     settings.push(WatchtowerSettings::new(i).into());
                 }
             }
-        } else {
-            if let Some(cfg) = &ctx.config.daemon.manager_config {
-                for i in 0..cfg.cosigners.len() {
-                    settings.push(CosignerSettings::new(i).into());
-                }
+        } else if let Some(cfg) = &ctx.config.daemon.manager_config {
+            for i in 0..cfg.cosigners.len() {
+                settings.push(CosignerSettings::new(i).into());
             }
         }
         SettingsState {
@@ -204,10 +202,8 @@ impl Setting for BitcoindSettings {
     fn edited(&mut self, success: bool) {
         if success {
             *self = Self::default();
-        } else {
-            if let Self::Edit { processing, .. } = self {
-                *processing = false;
-            }
+        } else if let Self::Edit { processing, .. } = self {
+            *processing = false;
         }
     }
 
@@ -333,10 +329,8 @@ impl Setting for CoordinatorSettings {
     fn edited(&mut self, success: bool) {
         if success {
             *self = Self::default();
-        } else {
-            if let Self::Edit { processing, .. } = self {
-                *processing = false;
-            }
+        } else if let Self::Edit { processing, .. } = self {
+            *processing = false;
         }
     }
 
@@ -452,10 +446,8 @@ impl Setting for WatchtowerSettings {
     fn edited(&mut self, success: bool) {
         if success {
             *self = Self::new(self.index());
-        } else {
-            if let Self::Edit { processing, .. } = self {
-                *processing = false;
-            }
+        } else if let Self::Edit { processing, .. } = self {
+            *processing = false;
         }
     }
 
@@ -614,10 +606,8 @@ impl Setting for CosignerSettings {
     fn edited(&mut self, success: bool) {
         if success {
             *self = Self::new(self.index());
-        } else {
-            if let Self::Edit { processing, .. } = self {
-                *processing = false;
-            }
+        } else if let Self::Edit { processing, .. } = self {
+            *processing = false;
         }
     }
 
