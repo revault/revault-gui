@@ -5,9 +5,13 @@ use std::str::FromStr;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32::ExtendedPubKey;
 use iced::{button::State as Button, scrollable, Element};
-use revaultd::revault_tx::{
-    miniscript::DescriptorPublicKey,
-    scripts::{DepositDescriptor, UnvaultDescriptor},
+use revaultd::{
+    config::{CosignerConfig, ManagerConfig},
+    revault_net::noise::PublicKey,
+    revault_tx::{
+        miniscript::DescriptorPublicKey,
+        scripts::{DepositDescriptor, UnvaultDescriptor},
+    },
 };
 
 use revault_ui::component::form;
@@ -328,7 +332,7 @@ impl Step for DefineManagerXpubs {
         ctx.number_cosigners = self.cosigners.len();
         ctx.number_managers = managers_keys.len();
 
-        config.manager_config = Some(config::ManagerConfig {
+        config.manager_config = Some(ManagerConfig {
             xpub: ExtendedPubKey::from_str(&self.our_xpub.xpub.value).expect("already checked"),
             cosigners: Vec::new(),
         });
@@ -499,9 +503,12 @@ impl Step for DefineCosigners {
             manager_config.cosigners = self
                 .cosigners
                 .iter()
-                .map(|cosigner| config::CosignerConfig {
-                    host: cosigner.host.value.clone(),
-                    noise_key: cosigner.noise_key.value.clone(),
+                .map(|cosigner| CosignerConfig {
+                    host: SocketAddr::from_str(&cosigner.host.value).unwrap(),
+                    noise_key: PublicKey::from_slice(
+                        &Vec::from_hex(&cosigner.noise_key.value).unwrap(),
+                    )
+                    .unwrap(),
                 })
                 .collect();
         }

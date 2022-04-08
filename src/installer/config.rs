@@ -1,69 +1,18 @@
 use bitcoin::{util::bip32, Network};
-use revaultd::revault_tx::{
-    miniscript::DescriptorPublicKey,
-    scripts::{DepositDescriptor, UnvaultDescriptor},
-};
-use serde::{Deserialize, Serialize};
-use std::{
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use revaultd::config::{BitcoindConfig, ManagerConfig, WatchtowerConfig};
 
-// This file is adapted from github.com/re-vault/revaultd:
-
-/// Everything we need to know for talking to bitcoind serenely
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct BitcoindConfig {
-    /// The network we are operating on, one of "bitcoin", "testnet", "regtest"
-    pub network: Network,
-    /// Path to bitcoind's cookie file, to authenticate the RPC connection
-    pub cookie_path: PathBuf,
-    /// The IP:port bitcoind's RPC is listening on
-    pub addr: SocketAddr,
-    /// The poll interval for bitcoind
-    pub poll_interval_secs: Option<u64>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct WatchtowerConfig {
-    pub host: String,
-    pub noise_key: String,
-}
+use serde::Serialize;
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 /// If we are a stakeholder, we need to connect to our watchtower(s)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StakeholderConfig {
     pub xpub: bip32::ExtendedPubKey,
-    #[serde(default = "default_watchtowers")]
     pub watchtowers: Vec<WatchtowerConfig>,
     pub emergency_address: String,
 }
 
-fn default_watchtowers() -> Vec<WatchtowerConfig> {
-    vec![]
-}
-
-// Same fields as the WatchtowerConfig struct for now, but leave them separate.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CosignerConfig {
-    pub host: String,
-    pub noise_key: String,
-}
-
-/// If we are a manager, we need to connect to cosigning servers
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ManagerConfig {
-    pub xpub: bip32::ExtendedPubKey,
-    #[serde(default = "default_cosigners")]
-    pub cosigners: Vec<CosignerConfig>,
-}
-
-fn default_cosigners() -> Vec<CosignerConfig> {
-    vec![]
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ScriptsConfig {
     pub deposit_descriptor: String,
     pub unvault_descriptor: String,
@@ -71,7 +20,7 @@ pub struct ScriptsConfig {
 }
 
 /// Static informations we require to operate
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Config {
     /// Everything we need to know to talk to bitcoind
     pub bitcoind_config: BitcoindConfig,
@@ -95,75 +44,8 @@ pub struct Config {
     pub log_level: Option<String>,
 }
 
-pub const DEFAULT_FILE_NAME: &str = "revaultd.toml";
-
 impl Config {
-    pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
-        let config = std::fs::read(path)
-            .map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => ConfigError::NotFound,
-                _ => ConfigError::ReadingFile(format!("Reading configuration file: {}", e)),
-            })
-            .and_then(|file_content| {
-                toml::from_slice::<Config>(&file_content).map_err(|e| {
-                    ConfigError::ReadingFile(format!("Parsing configuration file: {}", e))
-                })
-            })?;
-        Ok(config)
-    }
-
-    pub fn stakeholders_xpubs(&self) -> Vec<DescriptorPublicKey> {
-        DepositDescriptor::from_str(&self.scripts_config.deposit_descriptor)
-            .expect("This a valid deposit descriptor")
-            .xpubs()
-    }
-
-    pub fn managers_xpubs(&self) -> Vec<DescriptorPublicKey> {
-        // The managers' xpubs are all the xpubs from the Unvault descriptor except the
-        // Stakehodlers' ones and the Cosigning Servers' ones.
-        let stk_xpubs = self.stakeholders_xpubs();
-        UnvaultDescriptor::from_str(&self.scripts_config.unvault_descriptor)
-            .expect("This a valid unvault descriptor")
-            .xpubs()
-            .into_iter()
-            .filter_map(|xpub| {
-                match xpub {
-                    DescriptorPublicKey::SinglePub(_) => None, // Cosig
-                    DescriptorPublicKey::XPub(_) => {
-                        if stk_xpubs.contains(&xpub) {
-                            None // Stakeholder
-                        } else {
-                            Some(xpub) // Manager
-                        }
-                    }
-                }
-            })
-            .collect()
-    }
-
-    /// default revaultd socket path is .revault/bitcoin/revaultd_rpc
-    pub fn socket_path(&self) -> Result<PathBuf, ConfigError> {
-        let mut path = if let Some(ref datadir) = self.data_dir {
-            datadir.clone()
-        } else {
-            default_datadir().map_err(|_| {
-                ConfigError::Unexpected("Could not locate the default datadir.".to_owned())
-            })?
-        };
-        path.push(&self.bitcoind_config.network.to_string());
-        path.push("revaultd_rpc");
-        Ok(path)
-    }
-
-    /// default_config_path returns the default config location of the revault deamon.
-    pub fn default_path() -> Result<PathBuf, ConfigError> {
-        let mut datadir = default_datadir().map_err(|_| {
-            ConfigError::Unexpected("Could not locate the default datadir.".to_owned())
-        })?;
-        datadir.push(DEFAULT_FILE_NAME);
-        Ok(datadir)
-    }
-
+    pub const DEFAULT_FILE_NAME: &'static str = "revaultd.toml";
     /// returns a revaultd config with empty or dummy values
     pub fn new() -> Config {
         Self {
@@ -174,7 +56,7 @@ impl Config {
                     std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
                     8080,
                 ),
-                poll_interval_secs: None,
+                poll_interval_secs: Duration::from_secs(30),
             },
             stakeholder_config: None,
             manager_config: None,
@@ -198,52 +80,3 @@ impl Default for Config {
         Self::new()
     }
 }
-
-// From github.com/revault/revaultd:
-// Get the absolute path to the revault configuration folder.
-///
-/// This a "revault" directory in the XDG standard configuration directory for all OSes but
-/// Linux-based ones, for which it's `~/.revault`.
-/// Rationale: we want to have the database, RPC socket, etc.. in the same folder as the
-/// configuration file but for Linux the XDG specify a data directory (`~/.local/share/`) different
-/// from the configuration one (`~/.config/`).
-pub fn default_datadir() -> Result<PathBuf, ()> {
-    #[cfg(target_os = "linux")]
-    let configs_dir = dirs::home_dir();
-
-    #[cfg(not(target_os = "linux"))]
-    let configs_dir = dirs::config_dir();
-
-    if let Some(mut path) = configs_dir {
-        #[cfg(target_os = "linux")]
-        path.push(".revault");
-
-        #[cfg(not(target_os = "linux"))]
-        path.push("Revault");
-
-        return Ok(path);
-    }
-
-    Err(())
-}
-
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub enum ConfigError {
-    NotFound,
-    ReadingFile(String),
-    Unexpected(String),
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::NotFound => write!(f, "Revaultd Configuration error: not found"),
-            Self::ReadingFile(e) => {
-                write!(f, "Revaultd Configuration error while reading file: {}", e)
-            }
-            Self::Unexpected(e) => write!(f, "Revaultd Configuration error unexpected: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
