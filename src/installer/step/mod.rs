@@ -412,8 +412,7 @@ impl DefineBitcoind {
 impl Step for DefineBitcoind {
     fn load_context(&mut self, ctx: &Context) {
         if self.cookie_path.value.is_empty() {
-            self.cookie_path.value =
-                bitcoind_default_cookie_path(&ctx.network).unwrap_or_else(String::new);
+            self.cookie_path.value = bitcoind_default_cookie_path(&ctx.network).unwrap_or_default()
         }
         if self.address.value.is_empty() {
             self.address.value = bitcoind_default_address(&ctx.network);

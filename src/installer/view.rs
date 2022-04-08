@@ -559,6 +559,7 @@ impl DefineManagerXpubsAsManager {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render<'a>(
         &'a mut self,
         managers_threshold: &form::Value<usize>,
