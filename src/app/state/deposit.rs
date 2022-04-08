@@ -51,7 +51,7 @@ impl State for DepositState {
                                 view,
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
             }
@@ -69,7 +69,7 @@ impl State for DepositState {
                                 view.load(&address);
                                 *address = addr;
                             }
-                            Err(e) => *warning = Some(Error::RevaultDError(e)),
+                            Err(e) => *warning = Some(e.into()),
                         }
                     }
                     _ => {}

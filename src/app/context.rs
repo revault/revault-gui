@@ -132,16 +132,16 @@ impl Context {
         let mut daemon_config_file = OpenOptions::new()
             .write(true)
             .open(&self.config.gui.revaultd_config_path)
-            .map_err(|e| Error::ConfigError(e.to_string()))?;
+            .map_err(|e| Error::Config(e.to_string()))?;
 
         let content =
-            toml::to_string(&self.config.daemon).map_err(|e| Error::ConfigError(e.to_string()))?;
+            toml::to_string(&self.config.daemon).map_err(|e| Error::Config(e.to_string()))?;
 
         daemon_config_file
             .write_all(content.as_bytes())
             .map_err(|e| {
                 log::warn!("failed to write to file: {:?}", e);
-                Error::ConfigError(e.to_string())
+                Error::Config(e.to_string())
             })?;
 
         Ok(())

@@ -303,7 +303,7 @@ impl State for StakeholderCreateVaultsState {
                                 view: StakeholderCreateVaultsView::new(),
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
                 Command::none()
@@ -563,7 +563,7 @@ impl State for StakeholderDelegateVaultsState {
                                 view: StakeholderSelecteVaultsToDelegateView::new(),
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
                 Command::none()

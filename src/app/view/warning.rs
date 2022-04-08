@@ -16,13 +16,13 @@ pub struct WarningMessage(String);
 impl From<&Error> for WarningMessage {
     fn from(error: &Error) -> WarningMessage {
         match error {
-            Error::HardwareError(e) => match e {
+            Error::Hardware(e) => match e {
                 revault_hwi::HWIError::DeviceDidNotSign => {
                     WarningMessage("Device did not sign with user key".to_string())
                 }
                 _ => WarningMessage(e.to_string()),
             },
-            Error::ConfigError(e) => WarningMessage(e.to_owned()),
+            Error::Config(e) => WarningMessage(e.to_owned()),
             // TODO: change when ConfigError is enum again.
             // Error::ConfigError(e) => match e {
             //     ConfigError::NotFound => WarningMessage("Configuration file not fund".to_string()),
@@ -31,7 +31,7 @@ impl From<&Error> for WarningMessage {
             //     }
             //     ConfigError::Unexpected(_) => WarningMessage("Unknown error".to_string()),
             // },
-            Error::RevaultDError(e) => match e {
+            Error::Daemon(e) => match e {
                 RevaultDError::Rpc(code, _) => {
                     if *code == ErrorCode::COORDINATOR_SIG_STORE_ERROR as i32 {
                         WarningMessage("Coordinator could not store the signatures".to_string())
@@ -59,7 +59,7 @@ impl From<&Error> for WarningMessage {
                     WarningMessage("Communication with Revault daemon failed".to_string())
                 }
             },
-            Error::UnexpectedError(_) => WarningMessage("Unknown error".to_string()),
+            Error::Unexpected(_) => WarningMessage("Unknown error".to_string()),
         }
     }
 }

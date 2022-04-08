@@ -59,7 +59,7 @@ impl State for RevaultVaultsState {
                                 processing: false,
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
             }

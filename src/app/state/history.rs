@@ -66,7 +66,7 @@ impl State for HistoryState {
                                 view: HistoryView::new(),
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
             }
@@ -201,7 +201,7 @@ impl State for HistoryState {
                             .collect();
                         events.append(&mut new_events);
                     }
-                    Err(e) => *warning = Some(Error::RevaultDError(e)),
+                    Err(e) => *warning = Some(e.into()),
                 },
                 _ => {}
             },
