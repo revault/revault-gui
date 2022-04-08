@@ -57,7 +57,7 @@ impl Vault {
     pub fn new(vault: model::Vault) -> Self {
         Self::Loading {
             vault,
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
             fail: None,
         }
     }

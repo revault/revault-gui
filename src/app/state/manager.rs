@@ -70,7 +70,7 @@ pub enum ManagerHomeState {
 impl ManagerHomeState {
     pub fn new() -> Self {
         ManagerHomeState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }

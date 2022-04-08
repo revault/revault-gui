@@ -65,7 +65,7 @@ impl SettingsState {
             }
         }
         SettingsState {
-            view: SettingsView::new(),
+            view: SettingsView::default(),
             warning: None,
             server_statuses: None,
             config_updated: false,

@@ -44,7 +44,7 @@ pub enum VaultsState {
 impl VaultsState {
     pub fn new(menu: &VaultsMenu) -> Self {
         Self::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
             vault_status_filter: match menu {
                 VaultsMenu::Current => &CURRENT_VAULT_STATUSES,

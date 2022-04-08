@@ -17,7 +17,7 @@ impl DepositView {
     pub fn new() -> Self {
         DepositView {
             qr_code: None,
-            dashboard: layout::Dashboard::new(),
+            dashboard: layout::Dashboard::default(),
             copy_button: iced::button::State::default(),
         }
     }

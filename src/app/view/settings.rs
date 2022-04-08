@@ -16,20 +16,13 @@ use crate::{
     revault::Role,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SettingsView {
     dashboard: layout::Dashboard,
     add_watchtower_button: iced::button::State,
 }
 
 impl SettingsView {
-    pub fn new() -> Self {
-        SettingsView {
-            dashboard: layout::Dashboard::new(),
-            add_watchtower_button: iced::button::State::default(),
-        }
-    }
-
     pub fn view<'a>(
         &'a mut self,
         ctx: &Context,

@@ -41,7 +41,7 @@ pub enum EmergencyState {
 impl EmergencyState {
     pub fn new() -> Self {
         Self::Loading {
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
             fail: None,
         }
     }

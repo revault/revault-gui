@@ -59,7 +59,7 @@ pub enum StakeholderHomeState {
 impl StakeholderHomeState {
     pub fn new() -> Self {
         StakeholderHomeState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }
@@ -283,7 +283,7 @@ impl StakeholderCreateVaultsState {
     pub fn new() -> Self {
         StakeholderCreateVaultsState::Loading {
             fail: None,
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
         }
     }
 }
@@ -498,7 +498,7 @@ impl StakeholderDelegateVaultsState {
     pub fn new() -> Self {
         StakeholderDelegateVaultsState::Loading {
             fail: None,
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
         }
     }
 }

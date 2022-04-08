@@ -30,7 +30,7 @@ pub enum DepositState {
 impl DepositState {
     pub fn new() -> Self {
         DepositState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }

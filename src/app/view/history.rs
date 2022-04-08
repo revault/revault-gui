@@ -64,7 +64,7 @@ pub struct HistoryView {
 impl HistoryView {
     pub fn new() -> Self {
         HistoryView {
-            dashboard: layout::Dashboard::new(),
+            dashboard: layout::Dashboard::default(),
             pick_filter: pick_list::State::default(),
             next_button: iced::button::State::default(),
         }
@@ -236,7 +236,7 @@ pub struct HistoryEventView {
 impl HistoryEventView {
     pub fn new() -> Self {
         Self {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
         }
     }
 

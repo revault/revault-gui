@@ -35,7 +35,7 @@ pub struct ManagerImportTransactionView {
 impl ManagerImportTransactionView {
     pub fn new() -> Self {
         ManagerImportTransactionView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             psbt_input: iced::text_input::State::new(),
             import_button: iced::button::State::new(),
         }
@@ -112,7 +112,7 @@ pub struct ManagerSendWelcomeView {
 impl ManagerSendWelcomeView {
     pub fn new() -> Self {
         ManagerSendWelcomeView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             create_transaction_button: iced::button::State::new(),
             import_transaction_button: iced::button::State::new(),
         }

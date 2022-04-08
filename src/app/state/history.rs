@@ -40,7 +40,7 @@ pub enum HistoryState {
 impl HistoryState {
     pub fn new() -> Self {
         HistoryState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }

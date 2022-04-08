@@ -27,7 +27,7 @@ pub struct StakeholderCreateVaultsView {
 impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
         StakeholderCreateVaultsView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             sign_button: iced::button::State::default(),
         }
     }
@@ -138,7 +138,7 @@ pub struct StakeholderDelegateVaultsView {
 impl StakeholderDelegateVaultsView {
     pub fn new() -> Self {
         StakeholderDelegateVaultsView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             sign_button: iced::button::State::default(),
         }
     }
@@ -253,8 +253,8 @@ pub struct StakeholderSelecteVaultsToDelegateView {
 impl StakeholderSelecteVaultsToDelegateView {
     pub fn new() -> Self {
         StakeholderSelecteVaultsToDelegateView {
-            modal: layout::Modal::new(),
-            next_button: iced::button::State::new(),
+            modal: layout::Modal::default(),
+            next_button: iced::button::State::default(),
             pick_filter: pick_list::State::default(),
         }
     }
