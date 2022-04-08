@@ -342,7 +342,7 @@ fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
         )
         .push(card::white(
             Column::new()
-                .push(date_and_blockheight(&event))
+                .push(date_and_blockheight(event))
                 .push(separation().width(Length::Fill))
                 .push(
                     Row::new()
@@ -373,7 +373,7 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
         ))))
         .push(card::white(
             Column::new()
-                .push(date_and_blockheight(&event))
+                .push(date_and_blockheight(event))
                 .push(separation().width(Length::Fill))
                 .push(
                     Row::new()
@@ -462,7 +462,7 @@ fn spend<'a, T: 'a>(
         )
         .push(card::white(
             Column::new()
-                .push(date_and_blockheight(&event))
+                .push(date_and_blockheight(event))
                 .push(separation().width(Length::Fill))
                 .push(
                     Row::new()

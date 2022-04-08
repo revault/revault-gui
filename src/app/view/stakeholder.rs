@@ -40,7 +40,7 @@ impl StakeholderCreateVaultsView {
         hw_connected: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        if deposits.len() == 0
+        if deposits.is_empty()
             || !deposits
                 .iter()
                 .any(|deposit| deposit.status == VaultStatus::Funded)
@@ -73,13 +73,7 @@ impl StakeholderCreateVaultsView {
                     .spacing(5)
                     .push(Text::new(&format!("{}", deposits.len())).bold())
                     .push(Text::new("new deposits ("))
-                    .push(
-                        Text::new(&format!(
-                            "{}",
-                            ctx.converter.converts(Amount::from_sat(total_amount))
-                        ))
-                        .bold(),
-                    )
+                    .push(Text::new(&ctx.converter.converts(Amount::from_sat(total_amount))).bold())
                     .push(Text::new("BTC ) will be secured in vaults")),
             )
             .spacing(30);
@@ -284,9 +278,7 @@ impl StakeholderSelecteVaultsToDelegateView {
                         Row::new()
                             .push(
                                 Text::new(
-                                    &ctx.converter
-                                        .converts(Amount::from_sat(*active_balance))
-                                        .to_string(),
+                                    &ctx.converter.converts(Amount::from_sat(*active_balance)),
                                 )
                                 .bold()
                                 .size(30),
