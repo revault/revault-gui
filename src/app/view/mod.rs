@@ -32,18 +32,12 @@ use iced::{Column, Element};
 
 use crate::app::{context::Context, error::Error, message::Message};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LoadingDashboard {
     dashboard: layout::Dashboard,
 }
 
 impl LoadingDashboard {
-    pub fn new() -> Self {
-        LoadingDashboard {
-            dashboard: layout::Dashboard::new(),
-        }
-    }
-
     pub fn view<'a>(&'a mut self, ctx: &Context, warning: Option<&Error>) -> Element<'a, Message> {
         self.dashboard.view(ctx, warning, Column::new())
     }
@@ -55,12 +49,6 @@ pub struct LoadingModal {
 }
 
 impl LoadingModal {
-    pub fn new() -> Self {
-        LoadingModal {
-            modal: layout::Modal::new(),
-        }
-    }
-
     pub fn view<'a, T: Into<Message>>(
         &'a mut self,
         ctx: &Context,

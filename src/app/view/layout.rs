@@ -22,13 +22,6 @@ pub struct Dashboard {
 }
 
 impl Dashboard {
-    pub fn new() -> Dashboard {
-        Self {
-            sidebar: Sidebar::default(),
-            scroll: scrollable::State::new(),
-        }
-    }
-
     pub fn view<'a, T: Into<Element<'a, Message>>>(
         &'a mut self,
         ctx: &Context,
@@ -88,13 +81,6 @@ pub struct Modal {
 }
 
 impl Modal {
-    pub fn new() -> Self {
-        Modal {
-            scroll: scrollable::State::new(),
-            close_button: iced::button::State::new(),
-        }
-    }
-
     pub fn view<'a, T: Into<Element<'a, Message>>>(
         &'a mut self,
         _ctx: &Context,

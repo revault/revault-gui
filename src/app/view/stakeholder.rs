@@ -27,7 +27,7 @@ pub struct StakeholderCreateVaultsView {
 impl StakeholderCreateVaultsView {
     pub fn new() -> Self {
         StakeholderCreateVaultsView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             sign_button: iced::button::State::default(),
         }
     }
@@ -40,7 +40,7 @@ impl StakeholderCreateVaultsView {
         hw_connected: bool,
         warning: Option<&Error>,
     ) -> Element<'a, Message> {
-        if deposits.len() == 0
+        if deposits.is_empty()
             || !deposits
                 .iter()
                 .any(|deposit| deposit.status == VaultStatus::Funded)
@@ -73,13 +73,7 @@ impl StakeholderCreateVaultsView {
                     .spacing(5)
                     .push(Text::new(&format!("{}", deposits.len())).bold())
                     .push(Text::new("new deposits ("))
-                    .push(
-                        Text::new(&format!(
-                            "{}",
-                            ctx.converter.converts(Amount::from_sat(total_amount))
-                        ))
-                        .bold(),
-                    )
+                    .push(Text::new(&ctx.converter.converts(Amount::from_sat(total_amount))).bold())
                     .push(Text::new("BTC ) will be secured in vaults")),
             )
             .spacing(30);
@@ -138,7 +132,7 @@ pub struct StakeholderDelegateVaultsView {
 impl StakeholderDelegateVaultsView {
     pub fn new() -> Self {
         StakeholderDelegateVaultsView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             sign_button: iced::button::State::default(),
         }
     }
@@ -253,8 +247,8 @@ pub struct StakeholderSelecteVaultsToDelegateView {
 impl StakeholderSelecteVaultsToDelegateView {
     pub fn new() -> Self {
         StakeholderSelecteVaultsToDelegateView {
-            modal: layout::Modal::new(),
-            next_button: iced::button::State::new(),
+            modal: layout::Modal::default(),
+            next_button: iced::button::State::default(),
             pick_filter: pick_list::State::default(),
         }
     }
@@ -284,9 +278,7 @@ impl StakeholderSelecteVaultsToDelegateView {
                         Row::new()
                             .push(
                                 Text::new(
-                                    &ctx.converter
-                                        .converts(Amount::from_sat(*active_balance))
-                                        .to_string(),
+                                    &ctx.converter.converts(Amount::from_sat(*active_balance)),
                                 )
                                 .bold()
                                 .size(30),

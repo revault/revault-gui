@@ -59,7 +59,7 @@ pub enum StakeholderHomeState {
 impl StakeholderHomeState {
     pub fn new() -> Self {
         StakeholderHomeState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }
@@ -283,7 +283,7 @@ impl StakeholderCreateVaultsState {
     pub fn new() -> Self {
         StakeholderCreateVaultsState::Loading {
             fail: None,
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
         }
     }
 }
@@ -303,7 +303,7 @@ impl State for StakeholderCreateVaultsState {
                                 view: StakeholderCreateVaultsView::new(),
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
                 Command::none()
@@ -498,7 +498,7 @@ impl StakeholderDelegateVaultsState {
     pub fn new() -> Self {
         StakeholderDelegateVaultsState::Loading {
             fail: None,
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
         }
     }
 }
@@ -563,7 +563,7 @@ impl State for StakeholderDelegateVaultsState {
                                 view: StakeholderSelecteVaultsToDelegateView::new(),
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
                 Command::none()

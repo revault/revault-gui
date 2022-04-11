@@ -5,19 +5,19 @@ use std::io::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    HardwareError(revault_hwi::HWIError),
+    Hardware(revault_hwi::HWIError),
     // TODO: add Clone to ConfigError
-    ConfigError(String),
-    RevaultDError(RevaultDError),
-    UnexpectedError(String),
+    Config(String),
+    Daemon(RevaultDError),
+    Unexpected(String),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::ConfigError(e) => write!(f, "{}", e),
-            Self::HardwareError(e) => write!(f, "{}", e),
-            Self::RevaultDError(e) => match e {
+            Self::Config(e) => write!(f, "{}", e),
+            Self::Hardware(e) => write!(f, "{}", e),
+            Self::Daemon(e) => match e {
                 RevaultDError::Unexpected(e) => write!(f, "{}", e),
                 RevaultDError::NoAnswer => write!(f, "Daemon did not answer"),
                 RevaultDError::Transport(Some(ErrorKind::ConnectionRefused), _) => {
@@ -37,25 +37,25 @@ impl std::fmt::Display for Error {
                     write!(f, "[{:?}] {}", code, e)
                 }
             },
-            Self::UnexpectedError(e) => write!(f, "Unexpected error: {}", e),
+            Self::Unexpected(e) => write!(f, "Unexpected error: {}", e),
         }
     }
 }
 
 impl From<ConfigError> for Error {
     fn from(error: ConfigError) -> Self {
-        Error::ConfigError(error.to_string())
+        Error::Config(error.to_string())
     }
 }
 
 impl From<RevaultDError> for Error {
     fn from(error: RevaultDError) -> Self {
-        Error::RevaultDError(error)
+        Error::Daemon(error)
     }
 }
 
 impl From<revault_hwi::HWIError> for Error {
     fn from(error: revault_hwi::HWIError) -> Self {
-        Error::HardwareError(error)
+        Error::Hardware(error)
     }
 }

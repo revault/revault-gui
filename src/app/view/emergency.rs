@@ -18,7 +18,7 @@ pub struct EmergencyView {
 impl EmergencyView {
     pub fn new() -> Self {
         EmergencyView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             emergency_button: iced::button::State::new(),
         }
     }
@@ -95,7 +95,7 @@ pub struct EmergencyTriggeredView {
 impl EmergencyTriggeredView {
     pub fn new() -> Self {
         EmergencyTriggeredView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
         }
     }
 

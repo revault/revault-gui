@@ -30,7 +30,7 @@ pub enum DepositState {
 impl DepositState {
     pub fn new() -> Self {
         DepositState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }
@@ -51,7 +51,7 @@ impl State for DepositState {
                                 view,
                             };
                         }
-                        Err(e) => *fail = Some(Error::RevaultDError(e)),
+                        Err(e) => *fail = Some(e.into()),
                     };
                 }
             }
@@ -69,7 +69,7 @@ impl State for DepositState {
                                 view.load(&address);
                                 *address = addr;
                             }
-                            Err(e) => *warning = Some(Error::RevaultDError(e)),
+                            Err(e) => *warning = Some(e.into()),
                         }
                     }
                     _ => {}

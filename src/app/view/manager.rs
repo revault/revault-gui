@@ -35,7 +35,7 @@ pub struct ManagerImportTransactionView {
 impl ManagerImportTransactionView {
     pub fn new() -> Self {
         ManagerImportTransactionView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             psbt_input: iced::text_input::State::new(),
             import_button: iced::button::State::new(),
         }
@@ -112,7 +112,7 @@ pub struct ManagerSendWelcomeView {
 impl ManagerSendWelcomeView {
     pub fn new() -> Self {
         ManagerSendWelcomeView {
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
             create_transaction_button: iced::button::State::new(),
             import_transaction_button: iced::button::State::new(),
         }
@@ -315,7 +315,7 @@ impl ManagerSendOutputView {
                 form::Form::new(
                     &mut self.address_input,
                     "Address",
-                    &address,
+                    address,
                     RecipientMessage::AddressEdited,
                 )
                 .warning("Please enter a valid bitcoin address")
@@ -327,7 +327,7 @@ impl ManagerSendOutputView {
                 form::Form::new(
                     &mut self.amount_input,
                     "Amount in BTC, ex: 0.123",
-                    &amount,
+                    amount,
                     RecipientMessage::AmountEdited,
                 )
                 .warning("Please enter a valid amount")
@@ -421,9 +421,7 @@ impl ManagerSelectInputsView {
                             Row::new()
                                 .push(
                                     Text::new(
-                                        &ctx.converter
-                                            .converts(Amount::from_sat(input_amount))
-                                            .to_string(),
+                                        &ctx.converter.converts(Amount::from_sat(input_amount)),
                                     )
                                     .bold(),
                                 )
@@ -748,7 +746,7 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 )
                 .push(
                     Container::new(
-                        Text::new(&format!("{}", ctx.converter.converts(input.amount)))
+                        Text::new(&ctx.converter.converts(input.amount))
                             .bold()
                             .small(),
                     )

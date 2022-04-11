@@ -70,7 +70,7 @@ pub enum ManagerHomeState {
 impl ManagerHomeState {
     pub fn new() -> Self {
         ManagerHomeState::Loading {
-            view: LoadingDashboard::new(),
+            view: LoadingDashboard::default(),
             fail: None,
         }
     }
@@ -654,7 +654,7 @@ impl State for ManagerCreateSendTransactionState {
                     Ok(spend) => {
                         self.psbt = Some(spend);
                     }
-                    Err(e) => self.warning = Some(Error::RevaultDError(e)),
+                    Err(e) => self.warning = Some(e.into()),
                 }
                 return self.update(ctx, Message::Next);
             }
@@ -690,7 +690,7 @@ impl State for ManagerCreateSendTransactionState {
             }
             Message::VaultsWithUnvaultTx(res) => match res {
                 Ok(vaults_txs) => self.update_inputs(vaults_txs),
-                Err(e) => self.warning = Some(Error::RevaultDError(e)),
+                Err(e) => self.warning = Some(e.into()),
             },
             Message::SpendTx(SpendTxMessage::Signed(res)) => match res {
                 Ok(_) => {
@@ -705,7 +705,7 @@ impl State for ManagerCreateSendTransactionState {
                             ManagerSendStep::Success(ManagerSpendTransactionCreatedView::new());
                     };
                 }
-                Err(e) => self.warning = Some(Error::RevaultDError(e)),
+                Err(e) => self.warning = Some(e.into()),
             },
             Message::SpendTx(SpendTxMessage::Sign(msg)) => {
                 if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
@@ -903,24 +903,20 @@ impl ManagerSendOutput {
 
     fn amount(&self) -> Result<u64, Error> {
         if self.amount.value.is_empty() {
-            return Err(Error::UnexpectedError(
-                "Amount should be non-zero".to_string(),
-            ));
+            return Err(Error::Unexpected("Amount should be non-zero".to_string()));
         }
 
         let amount =
             bitcoin::Amount::from_str_in(&self.amount.value, bitcoin::Denomination::Bitcoin)
-                .map_err(|_| Error::UnexpectedError("cannot parse output amount".to_string()))?;
+                .map_err(|_| Error::Unexpected("cannot parse output amount".to_string()))?;
 
         if amount.as_sat() == 0 {
-            return Err(Error::UnexpectedError(
-                "Amount should be non-zero".to_string(),
-            ));
+            return Err(Error::Unexpected("Amount should be non-zero".to_string()));
         }
 
         if let Ok(address) = bitcoin::Address::from_str(&self.address.value) {
             if amount <= address.script_pubkey().dust_value() {
-                return Err(Error::UnexpectedError(
+                return Err(Error::Unexpected(
                     "Amount must be superior to script dust value".to_string(),
                 ));
             }

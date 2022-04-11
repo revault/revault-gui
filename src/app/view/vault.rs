@@ -24,7 +24,7 @@ impl VaultModal {
     pub fn new() -> Self {
         VaultModal {
             copy_button: iced::button::State::default(),
-            modal: layout::Modal::new(),
+            modal: layout::Modal::default(),
         }
     }
 

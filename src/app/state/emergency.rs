@@ -41,7 +41,7 @@ pub enum EmergencyState {
 impl EmergencyState {
     pub fn new() -> Self {
         Self::Loading {
-            view: LoadingModal::new(),
+            view: LoadingModal::default(),
             fail: None,
         }
     }
@@ -123,7 +123,7 @@ impl State for EmergencyState {
                 {
                     *processing = false;
                     if let Err(e) = res {
-                        *warning = Some(Error::RevaultDError(e));
+                        *warning = Some(e.into());
                     } else {
                         *self = Self::Triggered {
                             view: EmergencyTriggeredView::new(),

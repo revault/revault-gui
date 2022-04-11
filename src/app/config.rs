@@ -46,7 +46,7 @@ impl Config {
 
     pub fn file_name(network: &bitcoin::Network) -> String {
         if *network == bitcoin::Network::Bitcoin {
-            return DEFAULT_FILE_NAME.to_string();
+            DEFAULT_FILE_NAME.to_string()
         } else {
             format!("revault_gui_{}.toml", network)
         }

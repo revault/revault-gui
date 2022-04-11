@@ -68,7 +68,7 @@ pub struct VaultsView {
 impl VaultsView {
     pub fn new() -> Self {
         VaultsView {
-            dashboard: layout::Dashboard::new(),
+            dashboard: layout::Dashboard::default(),
             pick_filter: pick_list::State::default(),
         }
     }

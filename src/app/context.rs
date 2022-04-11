@@ -78,17 +78,9 @@ impl Context {
             .unvault_descriptor
             .xpubs()
             .into_iter()
-            .filter_map(|xpub| {
-                match xpub {
-                    DescriptorPublicKey::SinglePub(_) => None, // Cosig
-                    DescriptorPublicKey::XPub(_) => {
-                        if stk_xpubs.contains(&xpub) {
-                            None // Stakeholder
-                        } else {
-                            Some(xpub) // Manager
-                        }
-                    }
-                }
+            .filter(|xpub| match xpub {
+                DescriptorPublicKey::SinglePub(_) => false,
+                DescriptorPublicKey::XPub(_) => !stk_xpubs.contains(&xpub),
             })
             .collect()
     }
@@ -124,7 +116,7 @@ impl Context {
     pub fn load_daemon_config(&mut self, cfg: DaemonConfig) -> Result<(), Error> {
         loop {
             if let Some(daemon) = Arc::get_mut(&mut self.revaultd) {
-                daemon.load_config(cfg.clone())?;
+                daemon.load_config(cfg)?;
                 break;
             }
         }
@@ -132,16 +124,16 @@ impl Context {
         let mut daemon_config_file = OpenOptions::new()
             .write(true)
             .open(&self.config.gui.revaultd_config_path)
-            .map_err(|e| Error::ConfigError(e.to_string()))?;
+            .map_err(|e| Error::Config(e.to_string()))?;
 
         let content =
-            toml::to_string(&self.config.daemon).map_err(|e| Error::ConfigError(e.to_string()))?;
+            toml::to_string(&self.config.daemon).map_err(|e| Error::Config(e.to_string()))?;
 
         daemon_config_file
             .write_all(content.as_bytes())
             .map_err(|e| {
                 log::warn!("failed to write to file: {:?}", e);
-                Error::ConfigError(e.to_string())
+                Error::Config(e.to_string())
             })?;
 
         Ok(())

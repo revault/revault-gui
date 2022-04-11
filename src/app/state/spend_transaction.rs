@@ -308,7 +308,7 @@ impl SpendTransactionAction {
                             );
                         }
 
-                        Err(e) => *warning = Some(Error::RevaultDError(e)),
+                        Err(e) => *warning = Some(e.into()),
                     }
                 }
             }
