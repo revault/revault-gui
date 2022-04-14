@@ -10,3 +10,4 @@ resolver = "2"
 
 [dependencies]
 iced = { version = "0.4", default-features= false, features = ["wgpu", "svg"] }
+iced_lazy = "0.1"
