@@ -124,14 +124,25 @@ impl Sidebar {
             .width(Length::Units(200))
         };
         if context.role == Role::Manager {
-            actions = actions.push(deposit_button).push(Container::new(
-                button::transparent(
-                    &mut self.spend_menu_button,
-                    button::button_content(Some(send_icon()), "Send"),
-                )
-                .on_press(Message::Menu(Menu::Send))
-                .width(iced::Length::Units(200)),
-            ));
+            if context.menu == Menu::Send {
+                actions = actions.push(deposit_button).push(Container::new(
+                    button::primary(
+                        &mut self.spend_menu_button,
+                        button::button_content(Some(send_icon()), "Send"),
+                    )
+                    .on_press(Message::Reload)
+                    .width(iced::Length::Units(200)),
+                ));
+            } else {
+                actions = actions.push(deposit_button).push(Container::new(
+                    button::transparent(
+                        &mut self.spend_menu_button,
+                        button::button_content(Some(send_icon()), "Send"),
+                    )
+                    .on_press(Message::Menu(Menu::Send))
+                    .width(iced::Length::Units(200)),
+                ));
+            }
         } else {
             let action_delegate = if context.menu == Menu::DelegateFunds {
                 Container::new(

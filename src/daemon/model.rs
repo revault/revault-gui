@@ -67,6 +67,14 @@ pub const MOVED_VAULT_STATUSES: [VaultStatus; 4] = [
 
 pub type SpendTxStatus = ListSpendStatus;
 
+pub const ALL_SPEND_TX_STATUSES: [SpendTxStatus; 5] = [
+    SpendTxStatus::NonFinal,
+    SpendTxStatus::Pending,
+    SpendTxStatus::Broadcasted,
+    SpendTxStatus::Confirmed,
+    SpendTxStatus::Deprecated,
+];
+
 pub type VaultTransactions = ListOnchainTxEntry;
 pub type VaultPresignedTransactions = ListPresignedTxEntry;
 

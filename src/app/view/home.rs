@@ -39,59 +39,41 @@ impl ManagerHomeView {
         &'a mut self,
         ctx: &Context,
         warning: Option<&Error>,
-        spend_txs: Vec<Element<'a, Message>>,
         moving_vaults: Vec<Element<'a, Message>>,
         latest_events: Vec<Element<'a, Message>>,
         balance: &HashMap<VaultStatus, (u64, u64)>,
     ) -> Element<'a, Message> {
-        let content =
-            Column::new()
-                .push(manager_overview(ctx, balance))
-                .push_maybe(if !spend_txs.is_empty() {
-                    Some(Column::new()
-                    .push(
-                        Column::new()
-                            .push(Text::new("Pending spend transactions").bold())
-                            .push(
-                                Text::new("These transactions are waiting for managers signatures")
-                                    .small(),
-                            ),
-                    )
-                    .push(Column::with_children(spend_txs).spacing(10))
-                    .spacing(20),
-                    )
-                } else {
-                    None
-                })
-                .push_maybe(self.moving_vaults_section.view(ctx, moving_vaults, balance))
-                .push_maybe(if !latest_events.is_empty() {
-                    let length = latest_events.len();
-                    Some(
-                        Column::new()
-                            .spacing(10)
-                            .push(Text::new("Latest events:").small().bold())
-                            .push(Column::with_children(latest_events).spacing(5))
-                            .push_maybe(if length >= 5 {
-                                Some(
-                                    Container::new(
-                                        button::transparent(
-                                            &mut self.history_button,
-                                            Container::new(Text::new("See more").small())
-                                                .width(iced::Length::Fill)
-                                                .center_x(),
-                                        )
-                                        .on_press(Message::Menu(Menu::History)),
+        let content = Column::new()
+            .push(manager_overview(ctx, balance))
+            .push_maybe(self.moving_vaults_section.view(ctx, moving_vaults, balance))
+            .push_maybe(if !latest_events.is_empty() {
+                let length = latest_events.len();
+                Some(
+                    Column::new()
+                        .spacing(10)
+                        .push(Text::new("Latest events:").small().bold())
+                        .push(Column::with_children(latest_events).spacing(5))
+                        .push_maybe(if length >= 5 {
+                            Some(
+                                Container::new(
+                                    button::transparent(
+                                        &mut self.history_button,
+                                        Container::new(Text::new("See more").small())
+                                            .width(iced::Length::Fill)
+                                            .center_x(),
                                     )
-                                    .center_x()
-                                    .width(Length::Fill),
+                                    .on_press(Message::Menu(Menu::History)),
                                 )
-                            } else {
-                                None
-                            }),
-                    )
-                } else {
-                    None
-                });
+                                .center_x()
+                                .width(Length::Fill),
+                            )
+                        } else {
+                            None
+                        }),
+                )
+            } else {
+                None
+            });
 
         self.dashboard.view(ctx, warning, content.spacing(20))
     }

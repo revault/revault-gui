@@ -325,7 +325,8 @@ async fn test_history_state_filter() {
                         .unwrap(),
                         kind: HistoryEventKind::Spend,
                         amount: Some(1_000_000),
-                        fee: Some(2000),
+                        miner_fee: Some(2000),
+                        cpfp_amount: Some(3000),
                         vaults: Vec::new()
                     },
                     HistoryEvent {
@@ -337,7 +338,8 @@ async fn test_history_state_filter() {
                         .unwrap(),
                         kind: HistoryEventKind::Spend,
                         amount: Some(2_000_000),
-                        fee: None,
+                        miner_fee: Some(2000),
+                        cpfp_amount: Some(3000),
                         vaults: Vec::new()
                     },
                 ]
@@ -355,7 +357,8 @@ async fn test_history_state_filter() {
                     .unwrap(),
                     kind: HistoryEventKind::Spend,
                     amount: Some(2_000_000),
-                    fee: None,
+                    miner_fee: Some(2000),
+                    cpfp_amount: Some(3000),
                     vaults: Vec::new()
                 },]
             })),
@@ -422,7 +425,8 @@ async fn test_history_state_pagination() {
             .unwrap(),
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
-            fee: None,
+            miner_fee: None,
+            cpfp_amount: None,
             vaults: vec![bitcoin::OutPoint {
                 txid: bitcoin::Txid::from_str(
                     "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
@@ -555,7 +559,8 @@ async fn test_history_state_pagination_batching() {
             .unwrap(),
             kind: HistoryEventKind::Deposit,
             amount: Some(1_000_000),
-            fee: None,
+            miner_fee: None,
+            cpfp_amount: None,
             vaults: vec![bitcoin::OutPoint {
                 txid: bitcoin::Txid::from_str(
                     "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
@@ -659,7 +664,8 @@ async fn test_history_state_select_event() {
                         .unwrap(),
                         kind: HistoryEventKind::Spend,
                         amount: Some(1_000_000),
-                        fee: Some(2000),
+                        miner_fee: Some(2000),
+                        cpfp_amount: Some(3000),
                         vaults: vec!(bitcoin::OutPoint {
                             txid: bitcoin::Txid::from_str(
                                 "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
@@ -677,7 +683,8 @@ async fn test_history_state_select_event() {
                         .unwrap(),
                         kind: HistoryEventKind::Spend,
                         amount: Some(2_000_000),
-                        fee: None,
+                        miner_fee: Some(2000),
+                        cpfp_amount: Some(3000),
                         vaults: vec!(oupoint.clone())
                     },
                 ]

@@ -5,6 +5,8 @@ pub enum Menu {
     Emergency,
     Home,
     Send,
+    CreateSpend,
+    ImportSpend,
     CreateVaults,
     RevaultVaults,
     DelegateFunds,

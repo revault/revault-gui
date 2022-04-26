@@ -10,7 +10,7 @@ use crate::{
     app::{error::Error, menu::Menu},
     daemon::{
         model::{
-            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, Vault,
+            HistoryEvent, HistoryEventKind, ServersStatuses, SpendTx, SpendTxStatus, Vault,
             VaultPresignedTransactions, VaultStatus, VaultTransactions,
         },
         RevaultDError,
@@ -42,6 +42,7 @@ pub enum Message {
     VaultsDelegated(Result<Vec<OutPoint>, Error>),
     Vault(VaultMessage),
     FilterVaults(VaultFilterMessage),
+    FilterTxs(&'static [SpendTxStatus]),
     BlockHeight(Result<i32, RevaultDError>),
     ServerStatus(Result<ServersStatuses, RevaultDError>),
     HistoryEvents(Result<Vec<HistoryEvent>, RevaultDError>),

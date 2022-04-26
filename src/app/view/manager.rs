@@ -1,15 +1,15 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
-    alignment, scrollable, text_input, tooltip, Alignment, Column, Container, Element, Length, Row,
-    Space, TextInput, Tooltip,
+    alignment, pick_list, scrollable, text_input, tooltip, Alignment, Column, Container, Element,
+    Length, Row, Space, TextInput, Tooltip,
 };
 
 use revault_ui::{
     color,
     component::{
         badge, button, card, form, scroll, separation, text::Text, ContainerBackgroundStyle,
-        ContainerForegroundStyle, ProgressBar, TooltipStyle,
+        ContainerForegroundStyle, ProgressBar, TooltipStyle, TransparentPickListStyle,
     },
     icon::{tooltip_icon, trash_icon},
 };
@@ -62,19 +62,12 @@ impl ManagerImportTransactionView {
                 .render(),
             );
 
-        if let Some(psbt) = psbt_imported {
+        if psbt_imported.is_some() {
             col = col.push(
                 card::success(Container::new(
                     Column::new()
                         .align_items(Alignment::Center)
                         .push(Text::new("Transaction imported"))
-                        .push(
-                            button::success(
-                                &mut self.import_button,
-                                button::button_content(None, "See transaction detail"),
-                            )
-                            .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
-                        )
                         .spacing(20),
                 ))
                 .center_x()
@@ -97,55 +90,142 @@ impl ManagerImportTransactionView {
                 .center_x()
                 .width(Length::Fill),
             None,
-            Message::Menu(Menu::Home),
+            Message::Menu(Menu::Send),
         )
     }
 }
 
-#[derive(Debug)]
-pub struct ManagerSendWelcomeView {
-    modal: layout::Modal,
+#[derive(Debug, Default)]
+pub struct ManagerSendView {
+    dashboard: layout::Dashboard,
     create_transaction_button: iced::button::State,
     import_transaction_button: iced::button::State,
+    pick_filter: pick_list::State<SpendTxsFilter>,
 }
 
-impl ManagerSendWelcomeView {
-    pub fn new() -> Self {
-        ManagerSendWelcomeView {
-            modal: layout::Modal::default(),
-            create_transaction_button: iced::button::State::new(),
-            import_transaction_button: iced::button::State::new(),
-        }
-    }
-
-    pub fn view(&mut self, ctx: &Context) -> Element<'_, Message> {
-        self.modal.view(
+impl ManagerSendView {
+    pub fn view<'a>(
+        &'a mut self,
+        ctx: &Context,
+        txs: Vec<Element<'a, Message>>,
+        txs_status_filter: &[model::SpendTxStatus],
+    ) -> Element<'a, Message> {
+        self.dashboard.view(
             ctx,
             None,
             Container::new(
                 Column::new()
                     .push(
-                        button::primary(
-                            &mut self.create_transaction_button,
-                            button::button_content(None, "Initiate a spending"),
-                        )
-                        .on_press(Message::Next),
+                        Row::new()
+                            .push(
+                                button::primary(
+                                    &mut self.create_transaction_button,
+                                    button::button_content(None, "Initiate a spending"),
+                                )
+                                .on_press(Message::Menu(Menu::CreateSpend)),
+                            )
+                            .push(
+                                button::primary(
+                                    &mut self.import_transaction_button,
+                                    button::button_content(None, "Take part in a spending"),
+                                )
+                                .on_press(Message::Menu(Menu::ImportSpend)),
+                            )
+                            .spacing(20),
                     )
                     .push(
-                        button::primary(
-                            &mut self.import_transaction_button,
-                            button::button_content(None, "Take part in a spending"),
-                        )
-                        .on_press(Message::SpendTx(SpendTxMessage::Import)),
+                        Row::new()
+                            .push(
+                                Container::new(
+                                    Row::new()
+                                        .push(Text::new(&format!(" {}", txs.len())).bold())
+                                        .push(Text::new(" transactions")),
+                                )
+                                .width(Length::Fill),
+                            )
+                            .push(
+                                pick_list::PickList::new(
+                                    &mut self.pick_filter,
+                                    &SpendTxsFilter::ALL[..],
+                                    Some(SpendTxsFilter::new(txs_status_filter)),
+                                    |filter| Message::FilterTxs(filter.statuses()),
+                                )
+                                .text_size(20)
+                                .padding(10)
+                                .width(Length::Units(200))
+                                .style(TransparentPickListStyle),
+                            )
+                            .align_items(Alignment::Center),
                     )
-                    .align_items(Alignment::Center)
+                    .push(Column::with_children(txs).spacing(10))
                     .spacing(20),
             )
             .width(Length::Fill)
             .center_x(),
-            None,
-            Message::Menu(Menu::Home),
         )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SpendTxsFilter {
+    All,
+    Waiting,
+    Pending,
+    Broadcasted,
+    Confirmed,
+    Deprecated,
+}
+
+impl SpendTxsFilter {
+    pub const ALL: [SpendTxsFilter; 6] = [
+        SpendTxsFilter::All,
+        SpendTxsFilter::Waiting,
+        SpendTxsFilter::Pending,
+        SpendTxsFilter::Broadcasted,
+        SpendTxsFilter::Confirmed,
+        SpendTxsFilter::Deprecated,
+    ];
+
+    pub fn new(statuses: &[model::SpendTxStatus]) -> SpendTxsFilter {
+        if statuses == model::ALL_SPEND_TX_STATUSES {
+            SpendTxsFilter::All
+        } else if statuses == [model::SpendTxStatus::NonFinal] {
+            SpendTxsFilter::Waiting
+        } else if statuses == [model::SpendTxStatus::Pending] {
+            SpendTxsFilter::Pending
+        } else if statuses == [model::SpendTxStatus::Broadcasted] {
+            SpendTxsFilter::Broadcasted
+        } else if statuses == [model::SpendTxStatus::Confirmed] {
+            SpendTxsFilter::Confirmed
+        } else if statuses == [model::SpendTxStatus::Deprecated] {
+            SpendTxsFilter::Deprecated
+        } else {
+            SpendTxsFilter::Deprecated
+        }
+    }
+
+    pub fn statuses(&self) -> &'static [model::SpendTxStatus] {
+        match self {
+            Self::All => &model::ALL_SPEND_TX_STATUSES,
+            Self::Waiting => &[model::SpendTxStatus::NonFinal],
+            Self::Pending => &[model::SpendTxStatus::Pending],
+            Self::Broadcasted => &[model::SpendTxStatus::Broadcasted],
+            Self::Confirmed => &[model::SpendTxStatus::Confirmed],
+            Self::Deprecated => &[model::SpendTxStatus::Deprecated],
+        }
+    }
+}
+
+impl std::fmt::Display for SpendTxsFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::All => write!(f, "All"),
+            Self::Waiting => write!(f, "Waiting"),
+            Self::Pending => write!(f, "Pending"),
+            Self::Broadcasted => write!(f, "Broadcasted"),
+            Self::Confirmed => write!(f, "Confirmed"),
+            Self::Deprecated => write!(f, "Deprecated"),
+        }
     }
 }
 
@@ -181,7 +261,7 @@ impl ManagerSelectOutputsView {
                         Column::new()
                             .push(
                                 button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    .on_press(Message::Menu(Menu::Send)),
                             )
                             .align_items(Alignment::End)
                             .width(Length::Fill),
@@ -394,7 +474,7 @@ impl ManagerSelectInputsView {
                         Column::new()
                             .push(
                                 button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    .on_press(Message::Menu(Menu::Send)),
                             )
                             .align_items(Alignment::End)
                             .width(Length::Fill),
@@ -622,7 +702,7 @@ impl ManagerSelectFeeView {
                         Column::new()
                             .push(Container::new(
                                 button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    .on_press(Message::Menu(Menu::Send)),
                             ))
                             .width(Length::Shrink)
                             .align_items(Alignment::End),
@@ -932,7 +1012,7 @@ impl ManagerStepSignView {
                         Column::new()
                             .push(
                                 button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    .on_press(Message::Menu(Menu::Send)),
                             )
                             .align_items(Alignment::End)
                             .width(Length::Fill),
@@ -1034,7 +1114,7 @@ impl ManagerSpendTransactionCreatedView {
                             Column::new()
                                 .push(
                                     button::close_button(&mut self.cancel_button)
-                                        .on_press(Message::Menu(Menu::Home)),
+                                        .on_press(Message::Menu(Menu::Send)),
                                 )
                                 .width(Length::Fill)
                                 .align_items(Alignment::End),
@@ -1074,7 +1154,7 @@ impl ManagerSpendTransactionCreatedView {
                                     &mut self.next_button,
                                     button::button_content(None, "Continue"),
                                 )
-                                .on_press(Message::SpendTx(SpendTxMessage::Select(psbt.clone()))),
+                                .on_press(Message::Menu(Menu::Send)),
                             )
                             .spacing(20)
                             .align_items(Alignment::Center),

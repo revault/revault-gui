@@ -1,7 +1,6 @@
 use bitcoin::util::{bip32::Fingerprint, psbt::PartiallySignedTransaction as Psbt};
 use std::convert::From;
 
-use bitcoin::OutPoint;
 use iced::{Command, Element, Subscription};
 use revault_ui::component::form;
 use revaultd::revault_tx::{miniscript::DescriptorPublicKey, transactions::RevaultTransaction};
@@ -12,9 +11,7 @@ use crate::{
         error::Error,
         message::{Message, SpendTxMessage},
         state::{
-            cmd::{
-                broadcast_spend_tx, delete_spend_tx, list_spend_txs, list_vaults, update_spend_tx,
-            },
+            cmd::{broadcast_spend_tx, delete_spend_tx, list_vaults, update_spend_tx},
             sign::{Signer, SpendTransactionTarget},
             State,
         },
@@ -29,11 +26,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct SpendTransactionState {
-    pub psbt: Psbt,
-    cpfp_index: usize,
-    change_index: Option<usize>,
-
-    deposit_outpoints: Vec<OutPoint>,
+    tx: model::SpendTx,
+    psbt: Psbt,
     deposits: Vec<model::Vault>,
     warning: Option<Error>,
 
@@ -43,21 +37,19 @@ pub struct SpendTransactionState {
 }
 
 impl SpendTransactionState {
-    pub fn new(ctx: &Context, psbt: Psbt) -> Self {
+    pub fn new(ctx: &Context, tx: model::SpendTx) -> Self {
         Self {
-            cpfp_index: 0,
-            change_index: None,
             action: SpendTransactionAction::new(
                 ctx.managers_threshold,
-                ctx.user_signed(&psbt),
+                ctx.user_signed(&tx.psbt.psbt()),
                 &ctx.managers_xpubs(),
-                &psbt,
+                &tx.psbt.psbt(),
             ),
-            psbt,
-            deposit_outpoints: Vec::new(),
+            psbt: tx.psbt.psbt().clone(),
+            tx,
             deposits: Vec::new(),
             warning: None,
-            view: SpendTransactionView::new(),
+            view: SpendTransactionView::default(),
         }
     }
 
@@ -80,31 +72,8 @@ impl State for SpendTransactionState {
                 Ok(vaults) => {
                     self.deposits = vaults
                         .into_iter()
-                        .filter(|vlt| self.deposit_outpoints.contains(&outpoint(vlt)))
+                        .filter(|vlt| self.tx.deposit_outpoints.contains(&outpoint(vlt)))
                         .collect();
-                }
-                Err(e) => self.warning = Error::from(e).into(),
-            },
-            Message::SpendTx(SpendTxMessage::SpendTransactions(res)) => match res {
-                Ok(txs) => {
-                    for tx in txs {
-                        if tx.psbt.psbt().global.unsigned_tx.txid()
-                            == self.psbt.global.unsigned_tx.txid()
-                        {
-                            self.deposit_outpoints = tx.deposit_outpoints;
-                            self.psbt = tx.psbt.psbt().clone();
-                            self.cpfp_index = tx.cpfp_index;
-                            self.change_index = tx.change_index;
-                            return Command::perform(
-                                list_vaults(
-                                    ctx.revaultd.clone(),
-                                    None,
-                                    Some(self.deposit_outpoints.clone()),
-                                ),
-                                |res| Message::SpendTx(SpendTxMessage::Inputs(res)),
-                            );
-                        }
-                    }
                 }
                 Err(e) => self.warning = Error::from(e).into(),
             },
@@ -127,9 +96,8 @@ impl State for SpendTransactionState {
         let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
         self.view.view(
             ctx,
+            &self.tx,
             &self.psbt,
-            self.cpfp_index,
-            self.change_index,
             &self.deposits,
             self.action.view(ctx, &self.psbt),
             self.warning.as_ref(),
@@ -139,9 +107,14 @@ impl State for SpendTransactionState {
     }
 
     fn load(&self, ctx: &Context) -> Command<Message> {
-        Command::perform(list_spend_txs(ctx.revaultd.clone(), None), |res| {
-            Message::SpendTx(SpendTxMessage::SpendTransactions(res))
-        })
+        return Command::perform(
+            list_vaults(
+                ctx.revaultd.clone(),
+                None,
+                Some(self.tx.deposit_outpoints.clone()),
+            ),
+            |res| Message::SpendTx(SpendTxMessage::Inputs(res)),
+        );
     }
 }
 
@@ -526,36 +499,26 @@ pub fn is_unknown_sig(fingerprints: &Vec<Fingerprint>, psbt: &Psbt) -> bool {
 pub struct SpendTransactionListItem {
     pub tx: model::SpendTx,
 
-    spend_amount: u64,
-    fees: u64,
+    spend_amount: bitcoin::Amount,
+    fees: bitcoin::Amount,
 
     view: SpendTransactionListItemView,
 }
 
 impl SpendTransactionListItem {
-    pub fn new(tx: model::SpendTx, vaults_amount: u64) -> Self {
-        let spend_amount = tx
-            .psbt
-            .psbt()
-            .global
-            .unsigned_tx
-            .output
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
-            .fold(0, |acc, (_, output)| acc + output.value);
-        let change_amount = if let Some(i) = tx.change_index {
-            tx.psbt.psbt().global.unsigned_tx.output[i].value
-        } else {
-            0
-        };
-
-        let fees = if vaults_amount == 0 {
-            // Vaults are still loading
-            0
-        } else {
-            vaults_amount - spend_amount - change_amount
-        };
+    pub fn new(tx: model::SpendTx) -> Self {
+        let spend_amount = bitcoin::Amount::from_sat(
+            tx.psbt
+                .psbt()
+                .global
+                .unsigned_tx
+                .output
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
+                .fold(0, |acc, (_, output)| acc + output.value),
+        );
+        let fees = tx.deposit_amount - spend_amount - tx.cpfp_amount;
         Self {
             tx,
             spend_amount,
