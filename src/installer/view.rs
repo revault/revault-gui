@@ -59,7 +59,7 @@ impl Welcome {
                         button::button_content(None, "Install"),
                     )
                     .on_press(Message::Next)
-                    .min_width(200),
+                    .width(Length::Units(200)),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -242,7 +242,7 @@ impl DefinePrivateNoiseKey {
                 .push(
                     button::primary(&mut self.next_button, button::button_content(None, "Next"))
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -327,7 +327,7 @@ impl DefineStakeholderXpubsAsStakeholder {
                             button::button_content(None, "Next"),
                         )
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                     )
                     .align_items(Alignment::Center)
                     .spacing(20),
@@ -362,13 +362,14 @@ pub fn define_stakeholder_xpubs_as_manager_only<'a>(
     let mut row = Row::new().align_items(Alignment::Center).spacing(20);
     if stakeholder_xpubs.is_empty() {
         row = row.push(
-            button::primary(save_button, button::button_content(None, "Next")).min_width(200),
+            button::primary(save_button, button::button_content(None, "Next"))
+                .width(Length::Units(200)),
         );
     } else {
         row = row.push(
             button::primary(save_button, button::button_content(None, "Next"))
                 .on_press(Message::Next)
-                .min_width(200),
+                .width(Length::Units(200)),
         );
     }
 
@@ -653,7 +654,7 @@ impl DefineManagerXpubsAsManager {
                             button::button_content(None, "Next"),
                         )
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                     )
                     .align_items(Alignment::Center)
                     .spacing(20),
@@ -710,7 +711,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
         if manager_xpubs.is_empty() {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
-                    .min_width(200),
+                    .width(Length::Units(200)),
             );
         } else {
             row = row.push(
@@ -719,7 +720,7 @@ impl DefineManagerXpubsAsStakeholderOnly {
                     button::button_content(None, "Next").width(Length::Fill),
                 )
                 .on_press(Message::Next)
-                .min_width(200),
+                .width(Length::Units(200)),
             );
         }
 
@@ -821,13 +822,13 @@ impl DefineCpfpDescriptorView {
         if manager_xpubs.is_empty() {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
-                    .min_width(200),
+                    .width(Length::Units(200)),
             );
         } else {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
                     .on_press(Message::Next)
-                    .min_width(200),
+                    .width(Length::Units(200)),
             );
         }
 
@@ -925,7 +926,7 @@ impl DefineCoordinator {
                 .push(
                     button::primary(&mut self.save_button, button::button_content(None, "Next"))
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -962,13 +963,13 @@ impl DefineEmergencyAddress {
         if !address.valid {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
-                    .min_width(200),
+                    .width(Length::Units(200)),
             );
         } else {
             row = row.push(
                 button::primary(&mut self.save_button, button::button_content(None, "Next"))
                     .on_press(Message::Next)
-                    .min_width(200),
+                    .width(Length::Units(200)),
             );
         }
         let mut col = Column::new()
@@ -1094,7 +1095,7 @@ impl DefineCosigners {
                 .push(
                     button::primary(&mut self.save_button, button::button_content(None, "Next"))
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -1172,7 +1173,7 @@ impl DefineBitcoind {
                 .push(
                     button::primary(&mut self.save_button, button::button_content(None, "Next"))
                         .on_press(Message::Next)
-                        .min_width(200),
+                        .width(Length::Units(200)),
                 )
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -1222,7 +1223,7 @@ impl Final {
                     &mut self.action_button,
                     button::button_content(None, "Installing ..."),
                 )
-                .min_width(200),
+                .width(Length::Units(200)),
             )
         } else if let Some(path) = config_path {
             col = col.push(card::border_success(
@@ -1235,7 +1236,7 @@ impl Final {
                                 button::button_content(None, "Start"),
                             )
                             .on_press(Message::Exit(path.clone()))
-                            .min_width(200),
+                            .width(Length::Units(200)),
                         ))
                         .align_items(Alignment::Center)
                         .spacing(20),
@@ -1251,7 +1252,7 @@ impl Final {
                     button::button_content(None, "Finalize installation"),
                 )
                 .on_press(Message::Install)
-                .min_width(200),
+                .width(Length::Units(200)),
             );
         }
 
