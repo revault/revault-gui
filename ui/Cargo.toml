@@ -9,4 +9,4 @@ edition = "2018"
 resolver = "2"
 
 [dependencies]
-iced = { git = "https://github.com/iced-rs/iced", branch = "0.4", default-features= false, features = ["wgpu", "svg"] }
+iced = { version = "0.4", default-features= false, features = ["wgpu", "svg"] }

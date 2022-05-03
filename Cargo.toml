@@ -24,8 +24,8 @@ bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
 revaultd = { git = "https://github.com/revault/revaultd", branch = "master", default-features = false}
 backtrace = "0.3"
 
-iced = { git = "https://github.com/iced-rs/iced", branch = "0.4", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
-iced_native = { git = "https://github.com/iced-rs/iced", branch = "0.4"}
+iced = { version = "0.4", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
+iced_native = "0.5"
 revault_ui = { path = "./ui" }
 revault_hwi = { path = "./hwi" }
 
