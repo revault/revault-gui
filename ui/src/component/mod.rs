@@ -25,9 +25,7 @@ pub fn scroll<'a, T: 'a>(
 }
 
 pub fn navbar<'a, T: 'a>() -> Container<'a, T> {
-    let svg = revault_colored_logo()
-        .width(Length::Units(100))
-        .height(Length::Fill);
+    let svg = revault_colored_logo().width(Length::Units(100));
     let content = Row::new()
         .push(Column::new().width(Length::Units(10)))
         .push(

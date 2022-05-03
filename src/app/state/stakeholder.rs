@@ -527,7 +527,7 @@ impl State for StakeholderDelegateVaultsState {
                                     if vault.status == VaultStatus::Secured
                                         || vault.status == VaultStatus::Activating
                                     {
-                                        let unvault = txs.unvault.psbt.into_psbt();
+                                        let unvault = txs.unvault.psbt();
                                         Some(DelegateVaultListItem::new(
                                             vault,
                                             unvault.inputs[0]
