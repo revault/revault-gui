@@ -27,8 +27,8 @@ pub struct DelegateBatch {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevocationTransactions {
-    #[serde(with = "bitcoin_psbt")]
-    pub cancel_tx: PartiallySignedTransaction,
+    #[serde(with = "bitcoin_psbt_array")]
+    pub cancel_txs: [PartiallySignedTransaction; 5],
 
     #[serde(with = "bitcoin_psbt")]
     pub emergency_tx: PartiallySignedTransaction,
@@ -119,5 +119,43 @@ mod bitcoin_psbt {
         S: Serializer,
     {
         serializer.serialize_str(&base64::encode(encode::serialize(&psbt)))
+    }
+}
+
+mod bitcoin_psbt_array {
+    use revault_tx::bitcoin::{consensus::encode, util::psbt::PartiallySignedTransaction as Psbt};
+    use serde::{self, ser::SerializeSeq, Deserialize, Deserializer, Serializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<[Psbt; 5], D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let array: [String; 5] = Deserialize::deserialize(deserializer)?;
+        let to_psbt = |s: &str| -> Result<Psbt, D::Error> {
+            let bytes: Vec<u8> = base64::decode(s).map_err(serde::de::Error::custom)?;
+            encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+        };
+        Ok([
+            to_psbt(&array[0])?,
+            to_psbt(&array[1])?,
+            to_psbt(&array[2])?,
+            to_psbt(&array[3])?,
+            to_psbt(&array[4])?,
+        ])
+    }
+
+    pub fn serialize<'se, S>(psbts: &[Psbt; 5], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let array: Vec<String> = psbts
+            .iter()
+            .map(|psbt| base64::encode(encode::serialize(&psbt)))
+            .collect();
+        let mut seq = serializer.serialize_seq(Some(array.len()))?;
+        for element in array {
+            seq.serialize_element(&element)?;
+        }
+        seq.end()
     }
 }
