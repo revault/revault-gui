@@ -2346,7 +2346,7 @@ dependencies = [
 [[package]]
 name = "revault_net"
 version = "0.2.1"
-source = "git+https://github.com/revault/revault_net#4f8a38606d93a2c8277a5ba021ea41882f0b0a16"
+source = "git+https://github.com/revault/revault_net#f84f411854525c673b27c9ff881b4f0162488a29"
 dependencies = [
  "bitcoin",
  "log",
@@ -2360,7 +2360,7 @@ dependencies = [
 [[package]]
 name = "revault_tx"
 version = "0.4.1"
-source = "git+https://github.com/revault/revault_tx#8fd1bb37bd06f7d80a4bad3ab0da9620a9e09c0a"
+source = "git+https://github.com/revault/revault_tx#23f18b66a0f165a0091e1be8feffe363f37cea97"
 dependencies = [
  "base64",
  "bitcoinconsensus",
@@ -2378,7 +2378,7 @@ dependencies = [
 [[package]]
 name = "revaultd"
 version = "0.3.1"
-source = "git+https://github.com/revault/revaultd?branch=master#697a92501cd0b981cfeadc801ad4d93253a18e42"
+source = "git+https://github.com/revault/revaultd#6cb59135052235b3f0ab36b3591c30d58ad24ef4"
 dependencies = [
  "backtrace",
  "base64",

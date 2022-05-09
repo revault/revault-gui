@@ -21,7 +21,7 @@ path = "src/main.rs"
 
 [dependencies]
 bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
-revaultd = { git = "https://github.com/revault/revaultd", branch = "master", default-features = false}
+revaultd = { git = "https://github.com/revault/revaultd", default-features = false}
 backtrace = "0.3"
 
 iced = { version = "0.4", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
