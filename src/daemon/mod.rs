@@ -76,7 +76,7 @@ pub trait Daemon: Debug {
         outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
+        cancel_tx: &[Psbt; 5],
     ) -> Result<(), RevaultDError>;
 
     fn get_unvault_tx(&self, outpoint: &OutPoint) -> Result<Psbt, RevaultDError>;

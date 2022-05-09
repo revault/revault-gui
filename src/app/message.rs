@@ -123,7 +123,6 @@ pub enum SignMessage {
     Ping(Result<(), HWIError>),
     SelectSign,
     Connected(Result<Arc<Mutex<Box<dyn RevaultHWI + Send>>>, HWIError>),
-    RevocationTxsSigned(Result<Box<Vec<(Psbt, Psbt, Psbt)>>, HWIError>),
     PsbtSigned(Result<Box<Psbt>, HWIError>),
 }
 

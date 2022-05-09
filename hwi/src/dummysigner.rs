@@ -81,19 +81,23 @@ impl DummySigner {
         &mut self,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), DummySignerError> {
+        cancel_txs: &[Psbt; 5],
+    ) -> Result<(Psbt, Psbt, [Psbt; 5]), DummySignerError> {
+        let cancel_txs: Vec<String> = cancel_txs
+            .iter()
+            .map(|tx| base64::encode(&encode::serialize(&tx)))
+            .collect();
         let res = self
             .send(json!({
                 "emergency_tx": base64::encode(&encode::serialize(&emergency_tx)),
                 "emergency_unvault_tx": base64::encode(&encode::serialize(&emergency_unvault_tx)),
-                "cancel_tx": base64::encode(&encode::serialize(&cancel_tx))
+                "cancel_txs": cancel_txs,
             }))
             .await?;
 
         let txs: RevocationTransactions =
             serde_json::from_value(res).map_err(|e| DummySignerError::Device(e.to_string()))?;
-        Ok((txs.emergency_tx, txs.emergency_unvault_tx, txs.cancel_tx))
+        Ok((txs.emergency_tx, txs.emergency_unvault_tx, txs.cancel_txs))
     }
 
     pub async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, DummySignerError> {
@@ -135,7 +139,7 @@ impl DummySigner {
     pub async fn create_vaults(
         &mut self,
         deposits: &[(OutPoint, Amount, u32)],
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, DummySignerError> {
+    ) -> Result<Vec<(Psbt, Psbt, [Psbt; 5])>, DummySignerError> {
         let utxos: Vec<Utxo> = deposits
             .iter()
             .map(|(outpoint, amount, derivation_index)| Utxo {
@@ -159,7 +163,7 @@ impl DummySigner {
                 .map_err(|e| DummySignerError::Device(e.to_string()))?;
         Ok(txs
             .into_iter()
-            .map(|txs| (txs.emergency_tx, txs.emergency_unvault_tx, txs.cancel_tx))
+            .map(|txs| (txs.emergency_tx, txs.emergency_unvault_tx, txs.cancel_txs))
             .collect())
     }
 
@@ -193,8 +197,8 @@ impl DummySigner {
 
 #[derive(Deserialize)]
 pub struct RevocationTransactions {
-    #[serde(deserialize_with = "deserialize_psbt")]
-    pub cancel_tx: Psbt,
+    #[serde(deserialize_with = "deserialize_psbt_array")]
+    pub cancel_txs: [Psbt; 5],
 
     #[serde(deserialize_with = "deserialize_psbt")]
     pub emergency_tx: Psbt,
@@ -256,6 +260,24 @@ where
     let s = String::deserialize(deserializer)?;
     let bytes: Vec<u8> = base64::decode(&s).map_err(serde::de::Error::custom)?;
     encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+}
+
+pub fn deserialize_psbt_array<'de, D>(deserializer: D) -> Result<[Psbt; 5], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let array: [String; 5] = Deserialize::deserialize(deserializer)?;
+    let to_psbt = |s: &str| -> Result<Psbt, D::Error> {
+        let bytes: Vec<u8> = base64::decode(s).map_err(serde::de::Error::custom)?;
+        encode::deserialize(&bytes).map_err(serde::de::Error::custom)
+    };
+    Ok([
+        to_psbt(&array[0])?,
+        to_psbt(&array[1])?,
+        to_psbt(&array[2])?,
+        to_psbt(&array[3])?,
+        to_psbt(&array[4])?,
+    ])
 }
 
 pub type Receiver =
@@ -324,9 +346,9 @@ mod revault {
             &mut self,
             emergency_tx: &Psbt,
             emergency_unvault_tx: &Psbt,
-            cancel_tx: &Psbt,
-        ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
-            self.sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_tx)
+            cancel_txs: &[Psbt; 5],
+        ) -> Result<(Psbt, Psbt, [Psbt; 5]), HWIError> {
+            self.sign_revocation_txs(emergency_tx, emergency_unvault_tx, cancel_txs)
                 .await
                 .map_err(|e| e.into())
         }
@@ -338,7 +360,7 @@ mod revault {
         async fn create_vaults(
             &mut self,
             deposits: &[(OutPoint, Amount, u32)],
-        ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
+        ) -> Result<Vec<(Psbt, Psbt, [Psbt; 5])>, HWIError> {
             self.create_vaults(deposits).await.map_err(|e| e.into())
         }
 

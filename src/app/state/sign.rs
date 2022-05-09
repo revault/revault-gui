@@ -188,13 +188,13 @@ impl Device {
         self,
         emergency_tx: Psbt,
         emergency_unvault_tx: Psbt,
-        cancel_tx: Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
+        cancel_txs: [Psbt; 5],
+    ) -> Result<(Psbt, Psbt, [Psbt; 5]), HWIError> {
         if let Some(channel) = self.channel {
             channel
                 .lock()
                 .await
-                .sign_revocation_txs(&emergency_tx, &emergency_unvault_tx, &cancel_tx)
+                .sign_revocation_txs(&emergency_tx, &emergency_unvault_tx, &cancel_txs)
                 .await
         } else {
             Err(HWIError::DeviceDisconnected)
@@ -221,7 +221,7 @@ impl Device {
     pub async fn secure_batch(
         self,
         deposits: &Vec<Vault>,
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
+    ) -> Result<Vec<(Psbt, Psbt, [Psbt; 5])>, HWIError> {
         if let Some(channel) = self.channel {
             let utxos: Vec<(OutPoint, Amount, u32)> = deposits
                 .iter()

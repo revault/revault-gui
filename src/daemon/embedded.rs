@@ -151,12 +151,18 @@ impl Daemon for EmbeddedDaemon {
         outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
+        cancel_txs: &[Psbt; 5],
     ) -> Result<(), RevaultDError> {
-        let cancel = CancelTransaction::from_raw_psbt(&encode::serialize(cancel_tx)).unwrap();
-        let emergency =
+        let cancel_txs: [CancelTransaction; 5] = [
+            CancelTransaction::from_raw_psbt(&encode::serialize(&cancel_txs[0])).unwrap(),
+            CancelTransaction::from_raw_psbt(&encode::serialize(&cancel_txs[1])).unwrap(),
+            CancelTransaction::from_raw_psbt(&encode::serialize(&cancel_txs[2])).unwrap(),
+            CancelTransaction::from_raw_psbt(&encode::serialize(&cancel_txs[3])).unwrap(),
+            CancelTransaction::from_raw_psbt(&encode::serialize(&cancel_txs[4])).unwrap(),
+        ];
+        let emergency_tx =
             EmergencyTransaction::from_raw_psbt(&encode::serialize(emergency_tx)).unwrap();
-        let unvault_emergency =
+        let emergency_unvault_tx =
             UnvaultEmergencyTransaction::from_raw_psbt(&encode::serialize(emergency_unvault_tx))
                 .unwrap();
         self.handle
@@ -165,7 +171,14 @@ impl Daemon for EmbeddedDaemon {
             .lock()
             .unwrap()
             .control
-            .set_revocation_txs(*outpoint, cancel, emergency, unvault_emergency)
+            .set_revocation_txs(
+                *outpoint,
+                RevocationTransactions {
+                    cancel_txs,
+                    emergency_tx,
+                    emergency_unvault_tx,
+                },
+            )
             .map_err(|e| e.into())
     }
 
@@ -265,7 +278,7 @@ impl Daemon for EmbeddedDaemon {
             .lock()
             .unwrap()
             .control
-            .revault(outpoint)
+            .revault(*outpoint)
             .map_err(|e| e.into())
     }
 

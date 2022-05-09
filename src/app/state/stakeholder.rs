@@ -404,14 +404,14 @@ pub async fn secure_deposits(
 ) -> Result<Vec<OutPoint>, Error> {
     match device.clone().secure_batch(&deposits).await {
         Ok(revocation_txs) => {
-            for (i, (emergency_tx, emergency_unvault_tx, cancel_tx)) in
+            for (i, (emergency_tx, emergency_unvault_tx, cancel_txs)) in
                 revocation_txs.into_iter().enumerate()
             {
                 revaultd.set_revocation_txs(
                     &outpoint(&deposits[i]),
                     &emergency_tx,
                     &emergency_unvault_tx,
-                    &cancel_tx,
+                    &cancel_txs,
                 )?;
             }
 
@@ -428,15 +428,26 @@ pub async fn secure_deposits(
         let outpoint = outpoint(&deposit);
         let revocation_txs = revaultd.get_revocation_txs(&outpoint)?;
 
-        let (emergency_tx, emergency_unvault_tx, cancel_tx) = device
+        let (emergency_tx, emergency_unvault_tx, cancel_txs) = device
             .sign_revocation_txs(
                 revocation_txs.emergency_tx.into_psbt(),
                 revocation_txs.emergency_unvault_tx.into_psbt(),
-                revocation_txs.cancel_tx.into_psbt(),
+                [
+                    revocation_txs.cancel_txs[0].psbt().clone(),
+                    revocation_txs.cancel_txs[1].psbt().clone(),
+                    revocation_txs.cancel_txs[2].psbt().clone(),
+                    revocation_txs.cancel_txs[3].psbt().clone(),
+                    revocation_txs.cancel_txs[4].psbt().clone(),
+                ],
             )
             .await?;
 
-        revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)?;
+        revaultd.set_revocation_txs(
+            &outpoint,
+            &emergency_tx,
+            &emergency_unvault_tx,
+            &cancel_txs,
+        )?;
 
         Ok(vec![outpoint])
     } else {
