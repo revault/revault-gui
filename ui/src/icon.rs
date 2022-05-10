@@ -69,12 +69,12 @@ pub fn block_icon() -> Text {
     icon('\u{F1C8}')
 }
 
-pub fn circle_icon() -> Text {
-    icon('\u{F51A}')
+pub fn square_icon() -> Text {
+    icon('\u{F584}')
 }
 
-pub fn circle_dot_icon() -> Text {
-    icon('\u{F51C}')
+pub fn square_check_icon() -> Text {
+    icon('\u{F26D}')
 }
 
 pub fn circle_check_icon() -> Text {

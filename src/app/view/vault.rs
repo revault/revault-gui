@@ -447,9 +447,9 @@ impl DelegateVaultListItemView {
                                     .style(TooltipStyle),
                                 )
                             } else if selected {
-                                badge::circle_dot()
+                                badge::square_check()
                             } else {
-                                badge::circle()
+                                badge::square()
                             })
                             .push(sigs_row)
                             .spacing(20)

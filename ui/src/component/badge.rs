@@ -1,9 +1,9 @@
 use crate::{
     color,
     icon::{
-        bitcoin_icon, block_icon, circle_check_icon, circle_dot_icon, circle_icon, deposit_icon,
-        network_icon, person_check_icon, send_icon, shield_check_icon, shield_icon,
-        shield_notif_icon, turnback_icon, unlock_icon,
+        bitcoin_icon, block_icon, circle_check_icon, deposit_icon, network_icon, person_check_icon,
+        send_icon, shield_check_icon, shield_icon, shield_notif_icon, square_check_icon,
+        square_icon, turnback_icon, unlock_icon,
     },
 };
 
@@ -41,12 +41,12 @@ pub fn person_check<'a, T: 'a>() -> Container<'a, T> {
     badge(person_check_icon()).style(WhiteBadgeStyle)
 }
 
-pub fn circle<'a, T: 'a>() -> Container<'a, T> {
-    badge(circle_icon()).style(WhiteBadgeStyle)
+pub fn square<'a, T: 'a>() -> Container<'a, T> {
+    badge(square_icon()).style(WhiteBadgeStyle)
 }
 
-pub fn circle_dot<'a, T: 'a>() -> Container<'a, T> {
-    badge(circle_dot_icon()).style(WhiteBadgeStyle)
+pub fn square_check<'a, T: 'a>() -> Container<'a, T> {
+    badge(square_check_icon()).style(WhiteBadgeStyle)
 }
 
 struct WhiteBadgeStyle;

@@ -540,9 +540,9 @@ impl ManagerSendInputView {
         let row = Row::new()
             .push(
                 Container::new(if selected {
-                    badge::circle_dot()
+                    badge::square_check()
                 } else {
-                    badge::circle()
+                    badge::square()
                 })
                 .width(Length::Fill),
             )
