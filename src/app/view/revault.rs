@@ -155,9 +155,9 @@ impl RevaultVaultListItemView {
                     Container::new(
                         Row::new()
                             .push(if selected {
-                                badge::circle_dot()
+                                badge::square_check()
                             } else {
-                                badge::circle()
+                                badge::square()
                             })
                             .spacing(20)
                             .align_items(Alignment::Center),
