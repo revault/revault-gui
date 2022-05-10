@@ -3,7 +3,7 @@ use crate::{
     icon::{
         bitcoin_icon, block_icon, circle_check_icon, deposit_icon, network_icon, person_check_icon,
         send_icon, shield_check_icon, shield_icon, shield_notif_icon, square_check_icon,
-        square_icon, turnback_icon, unlock_icon,
+        square_icon, turnback_icon, unlock_icon, vault_icon,
     },
 };
 
@@ -183,6 +183,14 @@ impl container::StyleSheet for TxDepositBadgeStyle {
     }
 }
 
+pub fn vault<'a, T: 'a>() -> Container<'a, T> {
+    badge(vault_icon()).style(TxDepositBadgeStyle)
+}
+
+pub fn vault_securing<'a, T: 'a>() -> Container<'a, T> {
+    badge(vault_icon()).style(WarningBadgeStyle)
+}
+
 pub fn vault_unconfirmed<'a, T: 'a>() -> Container<'a, T> {
     badge(deposit_icon()).style(WarningBadgeStyle)
 }
@@ -198,7 +206,7 @@ pub fn vault_unvaulting<'a, T: 'a>() -> Container<'a, T> {
 }
 
 pub fn vault_canceling<'a, T: 'a>() -> Container<'a, T> {
-    badge(turnback_icon()).style(WarningBadgeStyle)
+    badge(turnback_icon()).style(AlertBadgeStyle)
 }
 
 pub fn vault_spending<'a, T: 'a>() -> Container<'a, T> {
@@ -210,8 +218,8 @@ impl container::StyleSheet for WarningBadgeStyle {
     fn style(&self) -> container::Style {
         container::Style {
             border_radius: 40.0,
-            background: color::ALERT_LIGHT.into(),
-            text_color: color::ALERT.into(),
+            background: color::WARNING_LIGHT.into(),
+            text_color: color::WARNING.into(),
             ..container::Style::default()
         }
     }

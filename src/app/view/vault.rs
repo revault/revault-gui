@@ -213,11 +213,9 @@ fn input_and_outputs<'a, T: 'a>(
 fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
     match &vault.status {
         VaultStatus::Unconfirmed => badge::vault_unconfirmed(),
-        VaultStatus::Funded
-        | VaultStatus::Securing
-        | VaultStatus::Secured
-        | VaultStatus::Activating
-        | VaultStatus::Active => badge::tx_deposit(),
+        VaultStatus::Funded => badge::tx_deposit(),
+        VaultStatus::Securing => badge::vault_securing(),
+        VaultStatus::Secured | VaultStatus::Activating | VaultStatus::Active => badge::vault(),
         VaultStatus::Unvaulting | VaultStatus::Unvaulted => badge::vault_unvaulting(),
         VaultStatus::Canceling
         | VaultStatus::EmergencyVaulting
@@ -256,13 +254,18 @@ impl VaultView for VaultListItemView {
                         Container::new(
                             Row::new()
                                 .push(vault_badge(&vault))
-                                .push(
-                                    Column::new()
-                                        .push(
-                                            Text::new(&outpoint(vault).to_string()).bold().small(),
-                                        )
-                                        .push(Text::new(&format!("{}", &vault.status,)).small()),
-                                )
+                                .push(if vault.status == VaultStatus::Activating {
+                                    Text::new("Delegation approved").small()
+                                } else if vault.status == VaultStatus::Active {
+                                    Text::new("Delegated").bold().small()
+                                } else if vault.status == VaultStatus::Secured {
+                                    Text::new("").small()
+                                } else if vault.status == VaultStatus::Securing {
+                                    Text::new("Waiting other stakeholders signatures").small()
+                                } else {
+                                    Text::new(&format!("{}", &vault.status)).bold().small()
+                                })
+                                .align_items(Alignment::Center)
                                 .spacing(20),
                         )
                         .width(Length::Fill),
