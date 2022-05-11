@@ -20,35 +20,26 @@ use crate::{
     app::{
         context::Context,
         error::Error,
-        menu::Menu,
         message::{Message, SpendTxMessage},
         view::{manager::spend_tx_with_feerate_view, warning::warn},
     },
     daemon::model,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SpendTransactionView {
     scroll: scrollable::State,
     delete_button: iced::button::State,
     cancel_button: iced::button::State,
+    copy_button: iced::button::State,
 }
 
 impl SpendTransactionView {
-    pub fn new() -> Self {
-        SpendTransactionView {
-            delete_button: iced::button::State::new(),
-            cancel_button: iced::button::State::new(),
-            scroll: scrollable::State::new(),
-        }
-    }
-
     pub fn view<'a>(
         &'a mut self,
         ctx: &Context,
+        tx: &model::SpendTx,
         psbt: &Psbt,
-        cpfp_index: usize,
-        change_index: Option<usize>,
         spent_vaults: &[model::Vault],
         action: Element<'a, Message>,
         warning: Option<&Error>,
@@ -73,27 +64,19 @@ impl SpendTransactionView {
             Row::new().push(Column::new().width(Length::Fill))
         };
 
-        let spend_amount = psbt
-            .global
-            .unsigned_tx
-            .output
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| Some(i) != change_index.as_ref() && i != &cpfp_index)
-            .fold(0, |acc, (_, output)| acc + output.value);
-        let change_amount = change_index
-            .map(|i| psbt.global.unsigned_tx.output[i].value)
-            .unwrap_or(0);
+        let spend_amount = bitcoin::Amount::from_sat(
+            tx.psbt
+                .psbt()
+                .global
+                .unsigned_tx
+                .output
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
+                .fold(0, |acc, (_, output)| acc + output.value),
+        );
 
-        let vaults_amount = spent_vaults
-            .iter()
-            .fold(0, |acc, v| acc + v.amount.as_sat());
-        let fees = if vaults_amount == 0 {
-            // Vaults are still loading
-            0
-        } else {
-            vaults_amount - spend_amount - change_amount
-        };
+        let fees = tx.deposit_amount - spend_amount - tx.cpfp_amount;
 
         Container::new(scroll(
             &mut self.scroll,
@@ -104,7 +87,7 @@ impl SpendTransactionView {
                         row.push(
                             Container::new(
                                 button::close_button(&mut self.cancel_button)
-                                    .on_press(Message::Menu(Menu::Home)),
+                                    .on_press(Message::Close),
                             )
                             .width(Length::Shrink),
                         )
@@ -124,15 +107,20 @@ impl SpendTransactionView {
                                     .push(
                                         Text::new(&format!(
                                             "- {} {}",
-                                            ctx.converter.converts(Amount::from_sat(spend_amount)),
+                                            ctx.converter.converts(spend_amount),
                                             ctx.converter.unit,
                                         ))
                                         .bold()
                                         .size(50),
                                     )
                                     .push(Container::new(Text::new(&format!(
-                                        "Fee: {} {}",
-                                        ctx.converter.converts(Amount::from_sat(fees)),
+                                        "Miner Fee: {} {}",
+                                        ctx.converter.converts(fees),
+                                        ctx.converter.unit,
+                                    ))))
+                                    .push(Container::new(Text::new(&format!(
+                                        "Cpfp amount: {} {}",
+                                        ctx.converter.converts(tx.cpfp_amount),
                                         ctx.converter.unit,
                                     ))))
                                     .align_items(Alignment::Center),
@@ -203,14 +191,40 @@ impl SpendTransactionView {
                                     ))
                                     .push(separation().width(Length::Fill))
                                     .push(
-                                        Row::new()
-                                            .push(Text::new("Tx ID:").bold().width(Length::Fill))
+                                        Column::new()
                                             .push(
-                                                Text::new(&format!(
-                                                    "{}",
-                                                    psbt.global.unsigned_tx.txid()
-                                                ))
-                                                .small(),
+                                                Row::new()
+                                                    .push(
+                                                        Text::new("Tx ID:")
+                                                            .bold()
+                                                            .width(Length::Fill),
+                                                    )
+                                                    .push(
+                                                        Text::new(&format!(
+                                                            "{}",
+                                                            tx.psbt
+                                                                .psbt()
+                                                                .global
+                                                                .unsigned_tx
+                                                                .txid()
+                                                        ))
+                                                        .small(),
+                                                    )
+                                                    .align_items(Alignment::Center),
+                                            )
+                                            .push(
+                                                Row::new()
+                                                    .push(
+                                                        Text::new("Psbt:")
+                                                            .bold()
+                                                            .width(Length::Fill),
+                                                    )
+                                                    .push(Text::new("copy").small())
+                                                    .push(button::clipboard(
+                                                        &mut self.copy_button,
+                                                        Message::Clipboard(psbt.to_string()),
+                                                    ))
+                                                    .align_items(Alignment::Center),
                                             ),
                                     )
                                     .spacing(20),
@@ -219,9 +233,9 @@ impl SpendTransactionView {
                             .push(spend_tx_with_feerate_view(
                                 ctx,
                                 spent_vaults,
-                                psbt,
-                                change_index,
-                                cpfp_index,
+                                tx.psbt.psbt(),
+                                tx.change_index,
+                                tx.cpfp_index,
                                 None,
                             ))
                             .spacing(20)
@@ -512,15 +526,18 @@ impl SpendTransactionListItemView {
         &mut self,
         ctx: &Context,
         tx: &model::SpendTx,
-        spend_amount: u64,
-        fees: u64,
+        spend_amount: Amount,
+        fees: Amount,
     ) -> Element<SpendTxMessage> {
         let psbt = tx.psbt.psbt();
         let mut col = Column::new().push(
-            Text::new(&format!(
-                "txid: {}",
-                psbt.global.unsigned_tx.txid().to_string()
-            ))
+            Text::new(match tx.status {
+                model::ListSpendStatus::NonFinal => "non final",
+                model::ListSpendStatus::Pending => "pending",
+                model::ListSpendStatus::Broadcasted => "broadcasted",
+                model::ListSpendStatus::Confirmed => "confirmed",
+                model::ListSpendStatus::Deprecated => "deprecated",
+            })
             .small()
             .bold(),
         );
@@ -558,8 +575,7 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "{}",
-                                                ctx.converter
-                                                    .converts(Amount::from_sat(spend_amount)),
+                                                ctx.converter.converts(spend_amount),
                                             ))
                                             .bold(),
                                         )
@@ -573,7 +589,7 @@ impl SpendTransactionListItemView {
                                         .push(
                                             Text::new(&format!(
                                                 "Fees: {}",
-                                                ctx.converter.converts(Amount::from_sat(fees)),
+                                                ctx.converter.converts(fees),
                                             ))
                                             .small(),
                                         )

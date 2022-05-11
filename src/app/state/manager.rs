@@ -14,7 +14,8 @@ use super::{
 };
 
 use crate::daemon::model::{
-    self, outpoint, VaultStatus, ALL_HISTORY_EVENTS, CURRENT_VAULT_STATUSES,
+    self, outpoint, SpendTxStatus, VaultStatus, ALL_HISTORY_EVENTS, ALL_SPEND_TX_STATUSES,
+    CURRENT_VAULT_STATUSES,
 };
 
 use revault_ui::component::form;
@@ -32,8 +33,8 @@ use crate::app::{
     view::{
         manager::{
             ManagerImportTransactionView, ManagerSelectFeeView, ManagerSelectInputsView,
-            ManagerSelectOutputsView, ManagerSendInputView, ManagerSendOutputView,
-            ManagerSendWelcomeView, ManagerSpendTransactionCreatedView, ManagerStepSignView,
+            ManagerSelectOutputsView, ManagerSendInputView, ManagerSendOutputView, ManagerSendView,
+            ManagerSpendTransactionCreatedView, ManagerStepSignView,
         },
         vault::VaultListItemView,
         LoadingDashboard, ManagerHomeView,
@@ -58,10 +59,6 @@ pub enum ManagerHomeState {
         spendable_outpoints: HashMap<String, u64>,
         selected_vault: Option<Vault>,
 
-        spend_txs: Vec<model::SpendTx>,
-        spend_txs_item: Vec<SpendTransactionListItem>,
-        selected_spend_tx: Option<SpendTransactionState>,
-
         latest_events: Vec<HistoryEventListItemState>,
         selected_event: Option<HistoryEventState>,
     },
@@ -73,66 +70,6 @@ impl ManagerHomeState {
             view: LoadingDashboard::default(),
             fail: None,
         }
-    }
-
-    pub fn update_spend_txs(&mut self, txs: Vec<model::SpendTx>) {
-        if let Self::Loaded {
-            spend_txs,
-            spend_txs_item,
-            spendable_outpoints,
-            ..
-        } = self
-        {
-            *spend_txs = txs
-                .into_iter()
-                .filter(|tx| {
-                    tx.deposit_outpoints
-                        .iter()
-                        .all(|outpoint| spendable_outpoints.get(&outpoint.to_string()).is_some())
-                })
-                .collect();
-            *spend_txs_item = spend_txs
-                .clone()
-                .into_iter()
-                .map(|s| {
-                    (
-                        s.deposit_outpoints.iter().fold(0, |acc, x| {
-                            acc + *spendable_outpoints
-                                .get(&x.to_string())
-                                .expect("Must be spendable")
-                        }),
-                        s,
-                    )
-                })
-                .map(|(vaults_amount, s)| SpendTransactionListItem::new(s, vaults_amount))
-                .collect();
-        };
-    }
-
-    pub fn on_spend_tx_select(&mut self, ctx: &Context, psbt: Psbt) -> Command<Message> {
-        if let Self::Loaded {
-            spend_txs,
-            selected_spend_tx,
-            ..
-        } = self
-        {
-            if let Some(selected) = selected_spend_tx {
-                if selected.psbt.global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid() {
-                    *selected_spend_tx = None;
-                    return Command::none();
-                }
-            }
-
-            if spend_txs.iter().any(|item| {
-                item.psbt.psbt().global.unsigned_tx.txid() == psbt.global.unsigned_tx.txid()
-            }) {
-                let spend_tx = SpendTransactionState::new(ctx, psbt);
-                let cmd = spend_tx.load(ctx);
-                *selected_spend_tx = Some(spend_tx);
-                return cmd;
-            };
-        }
-        Command::none()
     }
 
     pub fn update_vaults(&mut self, vaults: Vec<model::Vault>) {
@@ -179,11 +116,8 @@ impl ManagerHomeState {
                     spendable_outpoints: spendable_vlts,
                     spending_vaults: spending_vlts,
                     latest_events: Vec::new(),
-                    spend_txs: Vec::new(),
-                    spend_txs_item: Vec::new(),
                     selected_vault: None,
                     selected_event: None,
-                    selected_spend_tx: None,
                     view: ManagerHomeView::default(),
                 }
             }
@@ -214,16 +148,6 @@ impl ManagerHomeState {
         )
     }
 
-    fn load_spend_txs(ctx: &Context) -> Command<Message> {
-        Command::perform(
-            list_spend_txs(
-                ctx.revaultd.clone(),
-                Some(&[model::SpendTxStatus::NonFinal]),
-            ),
-            Message::SpendTransactions,
-        )
-    }
-
     fn load_vaults(ctx: &Context) -> Command<Message> {
         Command::perform(
             list_vaults(ctx.revaultd.clone(), Some(&CURRENT_VAULT_STATUSES), None),
@@ -240,10 +164,7 @@ impl State for ManagerHomeState {
                     match res {
                         Ok(vaults) => {
                             self.update_vaults(vaults);
-                            return Command::batch(vec![
-                                Self::load_history(ctx),
-                                Self::load_spend_txs(ctx),
-                            ]);
+                            return Command::batch(vec![Self::load_history(ctx)]);
                         }
                         Err(e) => *fail = Some(e.into()),
                     }
@@ -253,7 +174,6 @@ impl State for ManagerHomeState {
                 warning,
                 selected_vault,
                 selected_event,
-                selected_spend_tx,
                 latest_events,
                 spending_vaults,
                 ..
@@ -261,25 +181,10 @@ impl State for ManagerHomeState {
                 Message::Reload => {
                     return self.load(ctx);
                 }
-                Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    return self.on_spend_tx_select(ctx, psbt);
-                }
-                Message::SpendTx(msg) => {
-                    if let Some(tx) = selected_spend_tx {
-                        return tx.update(ctx, Message::SpendTx(msg));
-                    }
-                }
-                Message::SpendTransactions(res) => match res {
-                    Ok(txs) => self.update_spend_txs(txs),
-                    Err(e) => *warning = Error::from(e).into(),
-                },
                 Message::Vaults(res) => match res {
                     Ok(vaults) => {
                         self.update_vaults(vaults);
-                        return Command::batch(vec![
-                            Self::load_history(ctx),
-                            Self::load_spend_txs(ctx),
-                        ]);
+                        return Command::batch(vec![Self::load_history(ctx)]);
                     }
                     Err(e) => *warning = Error::from(e).into(),
                 },
@@ -338,27 +243,13 @@ impl State for ManagerHomeState {
         Command::none()
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        if let Self::Loaded {
-            selected_spend_tx, ..
-        } = self
-        {
-            if let Some(v) = selected_spend_tx {
-                return v.sub();
-            }
-        }
-        Subscription::none()
-    }
-
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
             Self::Loading { fail, view } => view.view(ctx, fail.as_ref()),
             Self::Loaded {
                 warning,
                 selected_vault,
-                selected_spend_tx,
                 selected_event,
-                spend_txs_item,
                 spending_vaults,
                 latest_events,
                 balance,
@@ -369,10 +260,6 @@ impl State for ManagerHomeState {
                     return v.view(ctx);
                 }
 
-                if let Some(tx) = selected_spend_tx {
-                    return tx.view(ctx);
-                }
-
                 if let Some(v) = selected_event {
                     return v.view(ctx);
                 }
@@ -380,10 +267,6 @@ impl State for ManagerHomeState {
                 view.view(
                     ctx,
                     warning.as_ref(),
-                    spend_txs_item
-                        .iter_mut()
-                        .map(|tx| tx.view(ctx).map(Message::SpendTx))
-                        .collect(),
                     spending_vaults.iter_mut().map(|v| v.view(ctx)).collect(),
                     latest_events
                         .iter_mut()
@@ -407,71 +290,149 @@ impl From<ManagerHomeState> for Box<dyn State> {
     }
 }
 
+#[derive(Debug)]
 pub enum ManagerSendState {
-    SendTransactionDetail(SpendTransactionState),
-    ImportSendTransaction(ManagerImportSendTransactionState),
-    CreateSendTransaction(ManagerCreateSendTransactionState),
+    Loading {
+        fail: Option<Error>,
+        view: LoadingDashboard,
+    },
+    Loaded {
+        txs: Vec<SpendTransactionListItem>,
+        selected_tx: Option<SpendTransactionState>,
+        view: ManagerSendView,
+        txs_status_filter: &'static [SpendTxStatus],
+        warning: Option<Error>,
+    },
 }
 
 impl ManagerSendState {
     pub fn new() -> Self {
-        Self::CreateSendTransaction(ManagerCreateSendTransactionState::new())
+        Self::Loading {
+            fail: None,
+            view: LoadingDashboard::default(),
+        }
     }
 }
 
 impl State for ManagerSendState {
     fn update(&mut self, ctx: &Context, message: Message) -> Command<Message> {
         match self {
-            Self::CreateSendTransaction(state) => match message {
-                Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
-                        ctx, psbt,
-                    ));
-                    self.load(ctx)
+            Self::Loading { fail, .. } => {
+                if let Message::SpendTransactions(res) = message {
+                    match res {
+                        Ok(txs) => {
+                            *self = Self::Loaded {
+                                txs: txs.into_iter().map(SpendTransactionListItem::new).collect(),
+                                selected_tx: None,
+                                view: ManagerSendView::default(),
+                                txs_status_filter: &ALL_SPEND_TX_STATUSES,
+                                warning: None,
+                            }
+                        }
+                        Err(e) => *fail = Some(e.into()),
+                    }
                 }
-                Message::SpendTx(SpendTxMessage::Import) => {
-                    *self = ManagerSendState::ImportSendTransaction(
-                        ManagerImportSendTransactionState::new(),
+            }
+            Self::Loaded {
+                selected_tx,
+                txs,
+                txs_status_filter,
+                warning,
+                ..
+            } => match message {
+                Message::Close => {
+                    if selected_tx.is_some() {
+                        *selected_tx = None;
+                    }
+                    return Command::perform(
+                        list_spend_txs(ctx.revaultd.clone(), Some(txs_status_filter)),
+                        Message::SpendTransactions,
                     );
-                    self.load(ctx)
                 }
-                _ => state.update(ctx, message),
-            },
-            Self::ImportSendTransaction(state) => match message {
+                Message::SpendTransactions(res) => match res {
+                    Ok(transactions) => {
+                        *txs = transactions
+                            .into_iter()
+                            .map(SpendTransactionListItem::new)
+                            .collect();
+                    }
+                    Err(e) => *warning = Some(e.into()),
+                },
+                Message::FilterTxs(statuses) => {
+                    *txs_status_filter = statuses;
+                    return Command::perform(
+                        list_spend_txs(ctx.revaultd.clone(), Some(txs_status_filter)),
+                        Message::SpendTransactions,
+                    );
+                }
                 Message::SpendTx(SpendTxMessage::Select(psbt)) => {
-                    *self = ManagerSendState::SendTransactionDetail(SpendTransactionState::new(
-                        ctx, psbt,
-                    ));
-                    self.load(ctx)
+                    if let Some(spend) = txs
+                        .iter()
+                        .find(|spend| spend.tx.psbt.txid() == psbt.global.unsigned_tx.txid())
+                    {
+                        let spend_tx = SpendTransactionState::new(ctx, spend.tx.clone());
+                        let cmd = spend_tx.load(ctx);
+                        *selected_tx = Some(spend_tx);
+                        return cmd;
+                    }
                 }
-                _ => state.update(ctx, message),
+                Message::SpendTx(msg) => {
+                    if let Some(tx) = selected_tx {
+                        return tx.update(ctx, Message::SpendTx(msg));
+                    }
+                }
+                _ => {}
             },
-            Self::SendTransactionDetail(state) => state.update(ctx, message),
         }
+        Command::none()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        match self {
-            ManagerSendState::SendTransactionDetail(s) => s.sub(),
-            ManagerSendState::CreateSendTransaction(s) => s.sub(),
-            _ => Subscription::none(),
+        if let Self::Loaded { selected_tx, .. } = self {
+            if let Some(v) = selected_tx {
+                return v.sub();
+            }
         }
+        Subscription::none()
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
         match self {
-            Self::CreateSendTransaction(state) => state.view(ctx),
-            Self::ImportSendTransaction(state) => state.view(ctx),
-            Self::SendTransactionDetail(state) => state.view(ctx),
+            Self::Loading { view, fail } => view.view(ctx, fail.as_ref()),
+            Self::Loaded {
+                view,
+                selected_tx,
+                txs,
+                txs_status_filter,
+                ..
+            } => {
+                if let Some(tx) = selected_tx {
+                    return tx.view(ctx);
+                }
+
+                view.view(
+                    ctx,
+                    txs.iter_mut()
+                        .map(|tx| tx.view(ctx).map(Message::SpendTx))
+                        .collect(),
+                    &txs_status_filter,
+                )
+            }
         }
     }
 
     fn load(&self, ctx: &Context) -> Command<Message> {
-        match self {
-            Self::CreateSendTransaction(state) => state.load(ctx),
-            Self::ImportSendTransaction(state) => state.load(ctx),
-            Self::SendTransactionDetail(state) => state.load(ctx),
-        }
+        let revaultd = ctx.revaultd.clone();
+        Command::perform(
+            async move { revaultd.list_spend_txs(Some(&ALL_SPEND_TX_STATUSES)) },
+            Message::SpendTransactions,
+        )
+    }
+}
+
+impl From<ManagerSendState> for Box<dyn State> {
+    fn from(s: ManagerSendState) -> Box<dyn State> {
+        Box::new(s)
     }
 }
 
@@ -545,9 +506,14 @@ impl State for ManagerImportSendTransactionState {
     }
 }
 
+impl From<ManagerImportSendTransactionState> for Box<dyn State> {
+    fn from(s: ManagerImportSendTransactionState) -> Box<dyn State> {
+        Box::new(s)
+    }
+}
+
 #[derive(Debug)]
 enum ManagerSendStep {
-    WelcomeUser(ManagerSendWelcomeView),
     SelectOutputs(ManagerSelectOutputsView),
     SelectFee(ManagerSelectFeeView),
     SelectInputs(ManagerSelectInputsView),
@@ -577,7 +543,7 @@ pub struct ManagerCreateSendTransactionState {
 impl ManagerCreateSendTransactionState {
     pub fn new() -> Self {
         Self {
-            step: ManagerSendStep::WelcomeUser(ManagerSendWelcomeView::new()),
+            step: ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new()),
             warning: None,
             inputs: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
@@ -722,9 +688,6 @@ impl State for ManagerCreateSendTransactionState {
                 }
             }
             Message::Next => match self.step {
-                ManagerSendStep::WelcomeUser(_) => {
-                    self.step = ManagerSendStep::SelectOutputs(ManagerSelectOutputsView::new());
-                }
                 ManagerSendStep::SelectOutputs(_) => {
                     self.step = ManagerSendStep::SelectFee(ManagerSelectFeeView::new());
                 }
@@ -795,7 +758,6 @@ impl State for ManagerCreateSendTransactionState {
         let input_amount = self.input_amount();
         let output_amount = self.output_amount();
         match &mut self.step {
-            ManagerSendStep::WelcomeUser(v) => v.view(ctx),
             ManagerSendStep::SelectOutputs(v) => {
                 let mut valid =
                     !self.outputs.is_empty() && !self.outputs.iter().any(|o| !o.valid());
@@ -878,8 +840,8 @@ impl State for ManagerCreateSendTransactionState {
     }
 }
 
-impl From<ManagerSendState> for Box<dyn State> {
-    fn from(s: ManagerSendState) -> Box<dyn State> {
+impl From<ManagerCreateSendTransactionState> for Box<dyn State> {
+    fn from(s: ManagerCreateSendTransactionState) -> Box<dyn State> {
         Box::new(s)
     }
 }

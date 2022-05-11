@@ -161,7 +161,7 @@ impl HistoryEventListItemView {
             )
             .align_items(Alignment::Center);
 
-        if let Some(fee) = event.fee {
+        if let Some(fee) = event.miner_fee {
             row = row.push(
                 Container::new(
                     Text::new(&format!(
@@ -366,9 +366,9 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 .align_items(Alignment::Center),
         )
         .push(Container::new(Text::new(&format!(
-            "Fee: {} {}",
+            "Miner fee: {} {}",
             ctx.converter
-                .converts(Amount::from_sat(event.fee.unwrap_or(0))),
+                .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
             ctx.converter.unit,
         ))))
         .push(card::white(
@@ -453,9 +453,9 @@ fn spend<'a, T: 'a>(
                     .size(50),
                 )
                 .push(Container::new(Text::new(&format!(
-                    "Fee: {} {}",
+                    "Miner fee: {} {}",
                     ctx.converter
-                        .converts(Amount::from_sat(event.fee.unwrap_or(0))),
+                        .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
                 .align_items(Alignment::Center),

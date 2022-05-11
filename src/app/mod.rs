@@ -18,9 +18,10 @@ pub use message::{Message, SettingsMessage};
 
 use menu::Menu;
 use state::{
-    DepositState, EmergencyState, HistoryState, ManagerHomeState, ManagerSendState,
-    RevaultVaultsState, SettingsState, StakeholderCreateVaultsState,
-    StakeholderDelegateVaultsState, StakeholderHomeState, State, VaultsState,
+    DepositState, EmergencyState, HistoryState, ManagerCreateSendTransactionState,
+    ManagerHomeState, ManagerImportSendTransactionState, ManagerSendState, RevaultVaultsState,
+    SettingsState, StakeholderCreateVaultsState, StakeholderDelegateVaultsState,
+    StakeholderHomeState, State, VaultsState,
 };
 
 use crate::{app::context::Context, revault::Role};
@@ -44,6 +45,8 @@ pub fn new_state(context: &Context) -> Box<dyn State> {
         (Role::Stakeholder, Menu::Emergency) => EmergencyState::new().into(),
         (Role::Manager, Menu::Home) => ManagerHomeState::new().into(),
         (Role::Manager, Menu::Send) => ManagerSendState::new().into(),
+        (Role::Manager, Menu::CreateSpend) => ManagerCreateSendTransactionState::new().into(),
+        (Role::Manager, Menu::ImportSpend) => ManagerImportSendTransactionState::new().into(),
 
         // If menu is not available for the role, the user is redirected to Home.
         (Role::Stakeholder, _) => StakeholderHomeState::new().into(),
