@@ -507,18 +507,28 @@ pub struct SpendTransactionListItem {
 
 impl SpendTransactionListItem {
     pub fn new(tx: model::SpendTx) -> Self {
-        let spend_amount = bitcoin::Amount::from_sat(
-            tx.psbt
-                .psbt()
-                .global
-                .unsigned_tx
-                .output
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
-                .fold(0, |acc, (_, output)| acc + output.value),
-        );
-        let fees = tx.deposit_amount - spend_amount - tx.cpfp_amount;
+        let (change_amount, spend_amount) = tx
+            .psbt
+            .psbt()
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .enumerate()
+            .fold(
+                (bitcoin::Amount::from_sat(0), bitcoin::Amount::from_sat(0)),
+                |(change, spend), (i, output)| {
+                    if Some(i) == tx.change_index {
+                        (change + bitcoin::Amount::from_sat(output.value), spend)
+                    } else if i == tx.cpfp_index {
+                        (change, spend)
+                    } else {
+                        (change, spend + bitcoin::Amount::from_sat(output.value))
+                    }
+                },
+            );
+
+        let fees = tx.deposit_amount - tx.cpfp_amount - spend_amount - change_amount;
         Self {
             tx,
             spend_amount,
