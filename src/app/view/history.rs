@@ -364,12 +364,21 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Column<'a, T> {
                 .spacing(5)
                 .align_items(Alignment::Center),
         )
-        .push(Container::new(Text::new(&format!(
-            "Miner fee: {} {}",
-            ctx.converter
-                .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
-            ctx.converter.unit,
-        ))))
+        .push(
+            Column::new()
+                .push(Container::new(Text::new(&format!(
+                    "Miner fee: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
+                    ctx.converter.unit,
+                ))))
+                .push(Container::new(Text::new(&format!(
+                    "CFPF amount: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.cpfp_amount.unwrap_or(0))),
+                    ctx.converter.unit,
+                )))),
+        )
         .push(card::white(
             Column::new()
                 .push(date_and_blockheight(event))
@@ -454,6 +463,12 @@ fn spend<'a, T: 'a>(
                     "Miner fee: {} {}",
                     ctx.converter
                         .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
+                    ctx.converter.unit,
+                ))))
+                .push(Container::new(Text::new(&format!(
+                    "CFPF amount: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.cpfp_amount.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
                 .align_items(Alignment::Center),
