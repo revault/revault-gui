@@ -538,78 +538,111 @@ impl SpendTransactionListItemView {
         spend_amount: Amount,
         fees: Amount,
     ) -> Element<SpendTxMessage> {
-        let psbt = tx.psbt.psbt();
-        let mut col = Column::new().push(
-            Text::new(match tx.status {
-                model::ListSpendStatus::NonFinal => "non final",
-                model::ListSpendStatus::Pending => "pending",
-                model::ListSpendStatus::Broadcasted => "broadcasted",
-                model::ListSpendStatus::Confirmed => "confirmed",
-                model::ListSpendStatus::Deprecated => "deprecated",
+        let n_sigs = tx
+            .psbt
+            .psbt()
+            .inputs
+            .get(0)
+            .map(|output| output.partial_sigs.len())
+            .unwrap_or(0);
+
+        let row = Row::new()
+            .push(match tx.status {
+                model::ListSpendStatus::NonFinal => {
+                    badge::Badge::new(icon::send_icon()).style(badge::Style::Standard)
+                }
+                model::ListSpendStatus::Pending | model::ListSpendStatus::Broadcasted => {
+                    badge::Badge::new(icon::send_icon()).style(badge::Style::Warning)
+                }
+                model::ListSpendStatus::Confirmed => {
+                    badge::Badge::new(icon::send_icon()).style(badge::Style::Success)
+                }
+                model::ListSpendStatus::Deprecated => {
+                    badge::Badge::new(icon::cross_icon()).style(badge::Style::Standard)
+                }
             })
-            .small()
-            .bold(),
-        );
-        if psbt.inputs.len() > 0 {
-            col = col.push(
+            .push(
+                match tx.status {
+                    model::ListSpendStatus::NonFinal => {
+                        if n_sigs < ctx.managers_threshold {
+                            Text::new("non final")
+                        } else {
+                            Text::new("ready").success()
+                        }
+                    }
+                    model::ListSpendStatus::Pending => {
+                        Text::new("processing").color(color::WARNING)
+                    }
+                    model::ListSpendStatus::Broadcasted => {
+                        Text::new("processing").color(color::WARNING)
+                    }
+                    model::ListSpendStatus::Confirmed => Text::new("confirmed").success(),
+                    model::ListSpendStatus::Deprecated => Text::new("deprecated"),
+                }
+                .width(Length::Units(80))
+                .small()
+                .bold(),
+            )
+            .push(
                 Row::new()
                     .push(Text::new(&format!(
                         "{} / {}",
-                        tx.psbt.psbt().inputs[0].partial_sigs.len(),
+                        if n_sigs > ctx.managers_threshold {
+                            ctx.managers_threshold
+                        } else {
+                            n_sigs
+                        },
                         ctx.managers_threshold
                     )))
                     .push(icon::key_icon())
                     .spacing(5)
                     .align_items(Alignment::Center),
             )
-        }
+            .align_items(Alignment::Center)
+            .spacing(20);
+
         button::white_card_button(
             &mut self.select_button,
             Container::new(
                 Row::new()
+                    .push(Container::new(row).width(Length::Fill))
                     .push(
                         Container::new(
                             Row::new()
-                                .push(badge::pending_spent_tx())
-                                .push(col)
-                                .spacing(20),
-                        )
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Container::new(
-                            Column::new()
                                 .push(
-                                    Row::new()
-                                        .push(
-                                            Text::new(&format!(
-                                                "{}",
-                                                ctx.converter.converts(spend_amount),
-                                            ))
-                                            .bold(),
-                                        )
-                                        .push(
-                                            Text::new(&format!(" {}", ctx.converter.unit)).small(),
-                                        )
-                                        .align_items(Alignment::Center),
+                                    Container::new(
+                                        Text::new(&format!(
+                                            "Fees: {}",
+                                            ctx.converter.converts(fees),
+                                        ))
+                                        .small(),
+                                    )
+                                    .align_x(Horizontal::Right)
+                                    .width(Length::FillPortion(1)),
                                 )
                                 .push(
-                                    Row::new()
-                                        .push(
-                                            Text::new(&format!(
-                                                "Fees: {}",
-                                                ctx.converter.converts(fees),
-                                            ))
-                                            .small(),
-                                        )
-                                        .push(
-                                            Text::new(&format!(" {}", ctx.converter.unit)).small(),
-                                        )
-                                        .align_items(Alignment::Center),
+                                    Container::new(
+                                        Row::new()
+                                            .push(
+                                                Text::new(&format!(
+                                                    "{}",
+                                                    ctx.converter.converts(spend_amount),
+                                                ))
+                                                .bold(),
+                                            )
+                                            .push(
+                                                Text::new(&format!(" {}", ctx.converter.unit))
+                                                    .small(),
+                                            )
+                                            .align_items(Alignment::Center),
+                                    )
+                                    .align_x(Horizontal::Right)
+                                    .width(Length::FillPortion(1)),
                                 )
-                                .align_items(Alignment::End),
+                                .align_items(Alignment::Center),
                         )
-                        .width(Length::Shrink),
+                        .align_x(Horizontal::Right)
+                        .width(Length::FillPortion(2)),
                     )
                     .spacing(20)
                     .align_items(Alignment::Center),
