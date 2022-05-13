@@ -210,21 +210,25 @@ fn input_and_outputs<'a, T: 'a>(
 }
 
 /// vault_badge returns a badge headlining the vault status.
-fn vault_badge<'a, T: 'a>(vault: &Vault) -> Container<'a, T> {
+fn vault_badge<'a, T: 'a>(vault: &Vault) -> Element<'a, T> {
     match &vault.status {
-        VaultStatus::Unconfirmed => badge::vault_unconfirmed(),
-        VaultStatus::Funded => badge::tx_deposit(),
-        VaultStatus::Securing => badge::vault_securing(),
-        VaultStatus::Secured | VaultStatus::Activating | VaultStatus::Active => badge::vault(),
-        VaultStatus::Unvaulting | VaultStatus::Unvaulted => badge::vault_unvaulting(),
+        VaultStatus::Unconfirmed => badge::vault_unconfirmed().into(),
+        VaultStatus::Funded => badge::tx_deposit().into(),
+        VaultStatus::Securing => badge::vault_securing().into(),
+        VaultStatus::Secured | VaultStatus::Activating | VaultStatus::Active => {
+            badge::vault().into()
+        }
+        VaultStatus::Unvaulting | VaultStatus::Unvaulted => badge::Badge::new(icon::unlock_icon())
+            .style(badge::Style::Warning)
+            .into(),
         VaultStatus::Canceling
         | VaultStatus::EmergencyVaulting
-        | VaultStatus::UnvaultEmergencyVaulting => badge::vault_canceling(),
+        | VaultStatus::UnvaultEmergencyVaulting => badge::vault_canceling().into(),
         VaultStatus::Canceled
         | VaultStatus::EmergencyVaulted
-        | VaultStatus::UnvaultEmergencyVaulted => badge::vault_canceled(),
-        VaultStatus::Spending => badge::vault_spending(),
-        VaultStatus::Spent => badge::vault_spent(),
+        | VaultStatus::UnvaultEmergencyVaulted => badge::vault_canceled().into(),
+        VaultStatus::Spending => badge::vault_spending().into(),
+        VaultStatus::Spent => badge::vault_spent().into(),
     }
 }
 

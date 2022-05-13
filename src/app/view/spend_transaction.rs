@@ -340,6 +340,49 @@ impl SpendTransactionSharePsbtView {
     }
 }
 
+pub fn spend_tx_confirmed<'a, T: 'a>() -> Element<'a, T> {
+    card::white(
+        Row::new()
+            .push(badge::Badge::new(icon::send_icon()).style(badge::Style::Success))
+            .push(Text::new("Transaction was confirmed in the blockchain").color(color::SUCCESS))
+            .align_items(Alignment::Center)
+            .spacing(20),
+    )
+    .align_x(Horizontal::Center)
+    .width(Length::Fill)
+    .into()
+}
+
+pub fn spend_tx_processing<'a, T: 'a>() -> Element<'a, T> {
+    card::white(
+        Row::new()
+            .push(badge::Badge::new(icon::send_icon()).style(badge::Style::Warning))
+            .push(Text::new("Transaction is being processed").color(color::WARNING))
+            .align_items(Alignment::Center)
+            .spacing(20),
+    )
+    .align_x(Horizontal::Center)
+    .width(Length::Fill)
+    .into()
+}
+
+pub fn spend_tx_deprecated<'a, T: 'a>() -> Element<'a, T> {
+    card::white(
+        Row::new()
+            .push(badge::Badge::new(icon::cross_icon()))
+            .push(
+                Column::new()
+                    .push(Text::new("Transaction is deprecated").bold())
+                    .push(Text::new("One of its vaults was used by another transaction").small()),
+            )
+            .align_items(Alignment::Center)
+            .spacing(20),
+    )
+    .align_x(Horizontal::Center)
+    .width(Length::Fill)
+    .into()
+}
+
 #[derive(Debug)]
 pub struct SpendTransactionSignView {}
 
@@ -565,21 +608,17 @@ impl SpendTransactionListItemView {
                 match tx.status {
                     model::ListSpendStatus::NonFinal => {
                         if n_sigs < ctx.managers_threshold {
-                            Text::new("non final")
+                            Text::new("Non final ")
                         } else {
-                            Text::new("ready").success()
+                            Text::new("Ready    ").success()
                         }
                     }
-                    model::ListSpendStatus::Pending => {
-                        Text::new("processing").color(color::WARNING)
+                    model::ListSpendStatus::Pending | model::ListSpendStatus::Broadcasted => {
+                        Text::new("Processing").color(color::WARNING)
                     }
-                    model::ListSpendStatus::Broadcasted => {
-                        Text::new("processing").color(color::WARNING)
-                    }
-                    model::ListSpendStatus::Confirmed => Text::new("confirmed").success(),
-                    model::ListSpendStatus::Deprecated => Text::new("deprecated"),
+                    model::ListSpendStatus::Confirmed => Text::new("Confirmed ").success(),
+                    model::ListSpendStatus::Deprecated => Text::new("Deprecated"),
                 }
-                .width(Length::Units(80))
                 .small()
                 .bold(),
             )
@@ -605,14 +644,14 @@ impl SpendTransactionListItemView {
             &mut self.select_button,
             Container::new(
                 Row::new()
-                    .push(Container::new(row).width(Length::Fill))
+                    .push(Container::new(row).width(Length::FillPortion(2)))
                     .push(
                         Container::new(
                             Row::new()
                                 .push(
                                     Container::new(
                                         Text::new(&format!(
-                                            "Fees: {}",
+                                            "fee: -{}",
                                             ctx.converter.converts(fees),
                                         ))
                                         .small(),

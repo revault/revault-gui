@@ -157,7 +157,7 @@ impl ManagerSendView {
                             )
                             .align_items(Alignment::Center),
                     )
-                    .push(Column::with_children(txs).spacing(10))
+                    .push(Column::with_children(txs).spacing(5))
                     .spacing(20),
             )
             .width(Length::Fill)
