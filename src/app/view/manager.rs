@@ -157,7 +157,7 @@ impl ManagerSendView {
                             )
                             .align_items(Alignment::Center),
                     )
-                    .push(Column::with_children(txs).spacing(10))
+                    .push(Column::with_children(txs).spacing(5))
                     .spacing(20),
             )
             .width(Length::Fill)
@@ -169,19 +169,17 @@ impl ManagerSendView {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SpendTxsFilter {
     All,
-    Waiting,
-    Pending,
-    Broadcasted,
+    Current,
+    Processing,
     Confirmed,
     Deprecated,
 }
 
 impl SpendTxsFilter {
-    pub const ALL: [SpendTxsFilter; 6] = [
+    pub const ALL: [SpendTxsFilter; 5] = [
         SpendTxsFilter::All,
-        SpendTxsFilter::Waiting,
-        SpendTxsFilter::Pending,
-        SpendTxsFilter::Broadcasted,
+        SpendTxsFilter::Current,
+        SpendTxsFilter::Processing,
         SpendTxsFilter::Confirmed,
         SpendTxsFilter::Deprecated,
     ];
@@ -190,11 +188,9 @@ impl SpendTxsFilter {
         if statuses == model::ALL_SPEND_TX_STATUSES {
             SpendTxsFilter::All
         } else if statuses == [model::SpendTxStatus::NonFinal] {
-            SpendTxsFilter::Waiting
-        } else if statuses == [model::SpendTxStatus::Pending] {
-            SpendTxsFilter::Pending
-        } else if statuses == [model::SpendTxStatus::Broadcasted] {
-            SpendTxsFilter::Broadcasted
+            SpendTxsFilter::Current
+        } else if statuses == model::PROCESSING_SPEND_TX_STATUSES {
+            SpendTxsFilter::Processing
         } else if statuses == [model::SpendTxStatus::Confirmed] {
             SpendTxsFilter::Confirmed
         } else if statuses == [model::SpendTxStatus::Deprecated] {
@@ -207,9 +203,8 @@ impl SpendTxsFilter {
     pub fn statuses(&self) -> &'static [model::SpendTxStatus] {
         match self {
             Self::All => &model::ALL_SPEND_TX_STATUSES,
-            Self::Waiting => &[model::SpendTxStatus::NonFinal],
-            Self::Pending => &[model::SpendTxStatus::Pending],
-            Self::Broadcasted => &[model::SpendTxStatus::Broadcasted],
+            Self::Current => &[model::SpendTxStatus::NonFinal],
+            Self::Processing => &model::PROCESSING_SPEND_TX_STATUSES,
             Self::Confirmed => &[model::SpendTxStatus::Confirmed],
             Self::Deprecated => &[model::SpendTxStatus::Deprecated],
         }
@@ -220,9 +215,8 @@ impl std::fmt::Display for SpendTxsFilter {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::All => write!(f, "All"),
-            Self::Waiting => write!(f, "Waiting"),
-            Self::Pending => write!(f, "Pending"),
-            Self::Broadcasted => write!(f, "Broadcasted"),
+            Self::Current => write!(f, "Current"),
+            Self::Processing => write!(f, "Processing"),
             Self::Confirmed => write!(f, "Confirmed"),
             Self::Deprecated => write!(f, "Deprecated"),
         }

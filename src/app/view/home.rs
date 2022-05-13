@@ -11,7 +11,8 @@ use revault_ui::{
     color,
     component::{badge, button, card, text::Text, TooltipStyle},
     icon::{
-        history_icon, person_check_icon, shield_check_icon, tooltip_icon, warning_octagon_icon,
+        key_icon, person_check_icon, shield_check_icon, tooltip_icon, unlock_icon,
+        warning_octagon_icon,
     },
     util::Collection,
 };
@@ -240,7 +241,10 @@ impl MovingVaultsSection {
                                 Row::new()
                                     .spacing(20)
                                     .align_items(Alignment::Center)
-                                    .push(badge::unlock())
+                                    .push(
+                                        badge::Badge::new(unlock_icon())
+                                            .style(badge::Style::Warning),
+                                    )
                                     .push(
                                         Row::new()
                                             .align_items(Alignment::Center)
@@ -539,7 +543,7 @@ fn active_funds_overview_card<'a, T: 'a>(
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_activating_vaults.to_string()).small().bold())
                     .push(Text::new(" vaults ").small())
-                    .push(history_icon().size(20))
+                    .push(key_icon().size(20))
                     .align_items(Alignment::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,
@@ -631,7 +635,7 @@ fn secured_funds_overview_card<'a, T: 'a>(
                     .push(Text::new(&format!(" {}, ", ctx.converter.unit)).small())
                     .push(Text::new(&nb_securing_vaults.to_string()).small().bold())
                     .push(Text::new(" vaults ").small())
-                    .push(history_icon().size(20))
+                    .push(key_icon().size(20))
                     .align_items(Alignment::End),
                 "Waiting for other stakeholders' signatures",
                 tooltip::Position::Bottom,

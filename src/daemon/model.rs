@@ -75,6 +75,9 @@ pub const ALL_SPEND_TX_STATUSES: [SpendTxStatus; 5] = [
     SpendTxStatus::Deprecated,
 ];
 
+pub const PROCESSING_SPEND_TX_STATUSES: [SpendTxStatus; 2] =
+    [SpendTxStatus::Pending, SpendTxStatus::Broadcasted];
+
 pub type VaultTransactions = ListOnchainTxEntry;
 pub type VaultPresignedTransactions = ListPresignedTxEntry;
 

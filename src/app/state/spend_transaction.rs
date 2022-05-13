@@ -16,6 +16,7 @@ use crate::{
             State,
         },
         view::spend_transaction::{
+            spend_tx_confirmed, spend_tx_deprecated, spend_tx_processing,
             SpendTransactionBroadcastView, SpendTransactionDeleteView,
             SpendTransactionListItemView, SpendTransactionSharePsbtView, SpendTransactionSignView,
             SpendTransactionView,
@@ -44,6 +45,7 @@ impl SpendTransactionState {
                 ctx.user_signed(&tx.psbt.psbt()),
                 &ctx.managers_xpubs(),
                 &tx.psbt.psbt(),
+                &tx.status,
             ),
             psbt: tx.psbt.psbt().clone(),
             tx,
@@ -80,7 +82,7 @@ impl State for SpendTransactionState {
             Message::SpendTx(msg) => {
                 return self
                     .action
-                    .update(ctx, &mut self.psbt, msg)
+                    .update(ctx, &mut self.psbt, &self.tx.status, msg)
                     .map(Message::SpendTx);
             }
             _ => {}
@@ -93,7 +95,10 @@ impl State for SpendTransactionState {
     }
 
     fn view(&mut self, ctx: &Context) -> Element<Message> {
-        let show_delete_button = !matches!(self.action, SpendTransactionAction::Delete { .. });
+        let show_delete_button = !matches!(
+            self.action,
+            SpendTransactionAction::Delete { .. } | SpendTransactionAction::Processing
+        );
         self.view.view(
             ctx,
             &self.tx,
@@ -120,6 +125,9 @@ impl State for SpendTransactionState {
 
 #[derive(Debug)]
 pub enum SpendTransactionAction {
+    Processing,
+    Deprecated,
+    Confirmed,
     SharePsbt {
         psbt_input: form::Value<String>,
         processing: bool,
@@ -154,7 +162,17 @@ impl SpendTransactionAction {
         user_signed: bool,
         managers_xpubs: &Vec<DescriptorPublicKey>,
         psbt: &Psbt,
+        status: &model::ListSpendStatus,
     ) -> Self {
+        match status {
+            model::ListSpendStatus::Deprecated => return Self::Deprecated,
+            model::ListSpendStatus::Confirmed => return Self::Confirmed,
+            model::ListSpendStatus::Pending | model::ListSpendStatus::Broadcasted => {
+                return Self::Processing
+            }
+            _ => {}
+        };
+
         if let Some(input) = psbt.inputs.first() {
             if input.partial_sigs.len() >= managers_threshold {
                 return Self::Broadcast {
@@ -199,6 +217,7 @@ impl SpendTransactionAction {
         &mut self,
         ctx: &Context,
         psbt: &mut Psbt,
+        status: &model::SpendTxStatus,
         message: SpendTxMessage,
     ) -> Command<SpendTxMessage> {
         match message {
@@ -240,6 +259,7 @@ impl SpendTransactionAction {
                     ctx.user_signed(psbt),
                     &ctx.managers_xpubs(),
                     psbt,
+                    status,
                 );
             }
             SpendTxMessage::Sign(msg) => {
@@ -278,6 +298,7 @@ impl SpendTransactionAction {
                                 true,
                                 &ctx.managers_xpubs(),
                                 psbt,
+                                status,
                             );
                         }
 
@@ -445,6 +466,9 @@ impl SpendTransactionAction {
 
     fn view(&mut self, ctx: &Context, psbt: &Psbt) -> Element<Message> {
         match self {
+            Self::Processing => spend_tx_processing(),
+            Self::Deprecated => spend_tx_deprecated(),
+            Self::Confirmed => spend_tx_confirmed(),
             Self::Sign {
                 signer,
                 warning,
@@ -507,18 +531,28 @@ pub struct SpendTransactionListItem {
 
 impl SpendTransactionListItem {
     pub fn new(tx: model::SpendTx) -> Self {
-        let spend_amount = bitcoin::Amount::from_sat(
-            tx.psbt
-                .psbt()
-                .global
-                .unsigned_tx
-                .output
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| Some(i) != tx.change_index.as_ref() && i != &tx.cpfp_index)
-                .fold(0, |acc, (_, output)| acc + output.value),
-        );
-        let fees = tx.deposit_amount - spend_amount - tx.cpfp_amount;
+        let (change_amount, spend_amount) = tx
+            .psbt
+            .psbt()
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .enumerate()
+            .fold(
+                (bitcoin::Amount::from_sat(0), bitcoin::Amount::from_sat(0)),
+                |(change, spend), (i, output)| {
+                    if Some(i) == tx.change_index {
+                        (change + bitcoin::Amount::from_sat(output.value), spend)
+                    } else if i == tx.cpfp_index {
+                        (change, spend)
+                    } else {
+                        (change, spend + bitcoin::Amount::from_sat(output.value))
+                    }
+                },
+            );
+
+        let fees = tx.deposit_amount - tx.cpfp_amount - spend_amount - change_amount;
         Self {
             tx,
             spend_amount,
@@ -545,7 +579,13 @@ mod tests {
         let mut psbt = Psbt::from_str("cHNidP8BALQCAAAAAc1946BSKWX5trghNlBq/IIYScLPYqr9Bqs2LfqOYuqcAAAAAAAIAAAAA+BAAAAAAAAAIgAgCOQxrx6W/t0dSZikMBNYG2Yyam/3LIoVrAy6e8ZDUAyA8PoCAAAAACIAIMuwqNTx88KHHtIR0EeURzEu9pUmbnUxd22KzYKi25A2CBH6AgAAAAAiACB18mkXdMgWd4MYRrAoIgDiiLLFlxC1j3Qxg9SSVQfbxQAAAAAAAQEruFn1BQAAAAAiACBI6M9l6zams92tyCK/4gbWyNfJMJzgoOv34L0X7GTovAEDBAEAAAABBWEhAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmrFGHZHapFHKpXyKvmhuuuFL5qVJy+MIdmPJkiKxrdqkUtsmtuJyMk3Jsg+KhtdlHidd7lWGIrGyTUodnWLJoIgYCApM6sQN+rQqkp4WMbUnWcF4fs7xfZrAJGK97nwDs1SYIJR1gCQAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAA").unwrap();
         let _user_manager_xpub = ExtendedPubKey::from_str("xpub6CZFHPW1GiB8YgV7zGpeQDB6mMHZYPQyUaHrM1nMvKMgLxwok4xCtnzjuxQ3p1LHJUkz5i1Y7bRy5fmGrdg8UBVb39XdXNtWWd2wTsNd7T9").unwrap();
 
-        let action = SpendTransactionAction::new(2, false, &Vec::new(), &psbt);
+        let action = SpendTransactionAction::new(
+            2,
+            false,
+            &Vec::new(),
+            &psbt,
+            &model::ListSpendStatus::NonFinal,
+        );
         assert!(matches!(action, SpendTransactionAction::Sign { .. }));
 
         psbt.inputs[0].partial_sigs.insert(
@@ -556,13 +596,31 @@ mod tests {
             "304402202f5eec50f34929e4bd8f6b7e81426795b0cd3608a4dad53ffab3e7af38ab627a02204ff61d9df2432ff3272c17d9baee1ec6b6dcb72b198be7f4ef843d5d47010a0401".as_bytes().to_vec(),
         );
 
-        let action = SpendTransactionAction::new(2, true, &Vec::new(), &psbt);
+        let action = SpendTransactionAction::new(
+            2,
+            true,
+            &Vec::new(),
+            &psbt,
+            &model::ListSpendStatus::NonFinal,
+        );
         assert!(matches!(action, SpendTransactionAction::SharePsbt { .. }));
 
-        let action = SpendTransactionAction::new(1, true, &Vec::new(), &psbt);
+        let action = SpendTransactionAction::new(
+            1,
+            true,
+            &Vec::new(),
+            &psbt,
+            &model::ListSpendStatus::NonFinal,
+        );
         assert!(matches!(action, SpendTransactionAction::Broadcast { .. }));
 
-        let action = SpendTransactionAction::new(0, true, &Vec::new(), &psbt);
+        let action = SpendTransactionAction::new(
+            0,
+            true,
+            &Vec::new(),
+            &psbt,
+            &model::ListSpendStatus::NonFinal,
+        );
         assert!(matches!(action, SpendTransactionAction::Broadcast { .. }));
     }
 }

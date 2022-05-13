@@ -1,9 +1,11 @@
+use iced::{Element, Text};
+
 use crate::{
     color,
     icon::{
         bitcoin_icon, block_icon, circle_check_icon, deposit_icon, network_icon, person_check_icon,
         send_icon, shield_check_icon, shield_icon, shield_notif_icon, square_check_icon,
-        square_icon, turnback_icon, unlock_icon, vault_icon,
+        square_icon, turnback_icon, vault_icon,
     },
 };
 
@@ -145,28 +147,6 @@ impl container::StyleSheet for BlockBadgeStyle {
     }
 }
 
-pub fn unlock<'a, T: 'a>() -> Container<'a, T> {
-    let icon = unlock_icon().width(Length::Units(20));
-    Container::new(icon)
-        .width(Length::Units(40))
-        .height(Length::Units(40))
-        .style(UnlockBadgeStyle)
-        .center_x()
-        .center_y()
-}
-
-struct UnlockBadgeStyle;
-impl container::StyleSheet for UnlockBadgeStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            border_radius: 40.0,
-            background: color::ALERT_LIGHT.into(),
-            text_color: color::ALERT.into(),
-            ..container::Style::default()
-        }
-    }
-}
-
 pub fn tx_deposit<'a, T: 'a>() -> Container<'a, T> {
     badge(deposit_icon()).style(TxDepositBadgeStyle)
 }
@@ -269,5 +249,67 @@ impl container::StyleSheet for InactiveBadgeStyle {
             background: color::BACKGROUND.into(),
             ..container::Style::default()
         }
+    }
+}
+
+pub enum Style {
+    Standard,
+    Success,
+    Warning,
+}
+
+impl container::StyleSheet for Style {
+    fn style(&self) -> container::Style {
+        match self {
+            Self::Standard => container::Style {
+                border_radius: 40.0,
+                background: color::BACKGROUND.into(),
+                ..container::Style::default()
+            },
+            Self::Success => container::Style {
+                border_radius: 40.0,
+                background: color::SUCCESS_LIGHT.into(),
+                text_color: color::SUCCESS.into(),
+                ..container::Style::default()
+            },
+            Self::Warning => container::Style {
+                border_radius: 40.0,
+                background: color::WARNING_LIGHT.into(),
+                text_color: color::WARNING.into(),
+                ..container::Style::default()
+            },
+        }
+    }
+}
+
+pub struct Badge<S: container::StyleSheet> {
+    icon: Text,
+    style: S,
+}
+
+impl Badge<Style> {
+    pub fn new(icon: Text) -> Self {
+        Self {
+            icon,
+            style: Style::Standard,
+        }
+    }
+    pub fn style(self, style: Style) -> Self {
+        Self {
+            icon: self.icon,
+            style,
+        }
+    }
+}
+
+impl<'a, Message: 'a, S: 'a + container::StyleSheet> From<Badge<S>> for Element<'a, Message> {
+    fn from(badge: Badge<S>) -> Element<'a, Message> {
+        Container::new(badge.icon.width(Length::Units(20)))
+            .width(Length::Units(40))
+            .height(Length::Units(40))
+            .style(badge.style)
+            .center_x()
+            .center_y()
+            .into()
     }
 }
