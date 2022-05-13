@@ -257,7 +257,7 @@ impl HistoryEventView {
             );
         }
 
-        let content: Element<Message> = match event.kind {
+        let content: Column<Message> = match event.kind {
             HistoryEventKind::Deposit => deposit(ctx, event),
             HistoryEventKind::Cancel => cancel(ctx, event),
             HistoryEventKind::Spend => spend(ctx, event, txs),
@@ -266,7 +266,7 @@ impl HistoryEventView {
         self.modal.view(
             ctx,
             warning,
-            Container::new(content).padding(20).max_width(800),
+            Container::new(content.max_width(800)).padding(20),
             None,
             Message::Close,
         )
@@ -317,7 +317,7 @@ fn date_and_blockheight<'a, T: 'a>(event: &HistoryEvent) -> Container<'a, T> {
     )
 }
 
-fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
+fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Column<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -353,10 +353,9 @@ fn deposit<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
         ))
         .align_items(Alignment::Center)
         .spacing(20)
-        .into()
 }
 
-fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
+fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Column<'a, T> {
     Column::new()
         .push(
             Row::new()
@@ -365,12 +364,21 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
                 .spacing(5)
                 .align_items(Alignment::Center),
         )
-        .push(Container::new(Text::new(&format!(
-            "Miner fee: {} {}",
-            ctx.converter
-                .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
-            ctx.converter.unit,
-        ))))
+        .push(
+            Column::new()
+                .push(Container::new(Text::new(&format!(
+                    "Miner fee: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
+                    ctx.converter.unit,
+                ))))
+                .push(Container::new(Text::new(&format!(
+                    "CFPF amount: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.cpfp_amount.unwrap_or(0))),
+                    ctx.converter.unit,
+                )))),
+        )
         .push(card::white(
             Column::new()
                 .push(date_and_blockheight(event))
@@ -389,14 +397,13 @@ fn cancel<'a, T: 'a>(ctx: &Context, event: &HistoryEvent) -> Element<'a, T> {
         ))
         .align_items(Alignment::Center)
         .spacing(20)
-        .into()
 }
 
 fn spend<'a, T: 'a>(
     ctx: &Context,
     event: &HistoryEvent,
     txs: &Vec<VaultTransactions>,
-) -> Element<'a, T> {
+) -> Column<'a, T> {
     let tx = transaction_from_hex(&txs.first().as_ref().unwrap().spend.as_ref().unwrap().hex);
     let mut col_recipients = Column::new()
         .push(Text::new("Recipients:").bold())
@@ -458,6 +465,12 @@ fn spend<'a, T: 'a>(
                         .converts(Amount::from_sat(event.miner_fee.unwrap_or(0))),
                     ctx.converter.unit,
                 ))))
+                .push(Container::new(Text::new(&format!(
+                    "CFPF amount: {} {}",
+                    ctx.converter
+                        .converts(Amount::from_sat(event.cpfp_amount.unwrap_or(0))),
+                    ctx.converter.unit,
+                ))))
                 .align_items(Alignment::Center),
         )
         .push(card::white(
@@ -474,5 +487,4 @@ fn spend<'a, T: 'a>(
         .push(col_recipients)
         .align_items(Alignment::Center)
         .spacing(20)
-        .into()
 }
