@@ -898,16 +898,16 @@ impl ManagerSendOutput {
         match message {
             RecipientMessage::AddressEdited(address) => {
                 self.address.value = address;
-                if !self.address.value.is_empty()
-                    && bitcoin::Address::from_str(&self.address.value).is_ok()
-                {
+                if self.address.value.is_empty() {
+                    // Make the error disappear if we deleted the invalid address
+                    self.address.valid = true;
+                } else if bitcoin::Address::from_str(&self.address.value).is_ok() {
                     self.address.valid = true;
                     if !self.amount.value.is_empty() {
                         self.amount.valid = self.amount().is_ok();
                     }
                 } else {
-                    // Make the error disappear if we deleted the invalid address
-                    self.address.valid = true;
+                    self.address.valid = false;
                 }
             }
             RecipientMessage::AmountEdited(amount) => {
