@@ -7,12 +7,9 @@ use std::sync::Arc;
 
 use utils::{fixtures::random_daemon_config, mock::Daemon, no_hardware_wallet, sandbox::Sandbox};
 
-use bitcoin::{
-    base64,
-    consensus::encode,
-    util::{bip32, psbt::PartiallySignedTransaction as Psbt},
-    Address, Amount, OutPoint,
-};
+use bitcoin::{base64, util::bip32, Address, Amount, OutPoint};
+
+use revaultd::revault_tx::transactions::{CancelTransaction, UnvaultTransaction};
 
 use revault_gui::{
     app::{
@@ -24,15 +21,16 @@ use revault_gui::{
     },
     conversion::Converter,
     daemon::{
-        client::{ListVaultsResponse, RevaultD, UnvaultTransaction},
-        model::{Vault, VaultStatus},
+        client::{ListPresignedTransactionsResponse, ListVaultsResponse, RevaultD},
+        model::{Vault, VaultPresignedTransactions, VaultStatus},
     },
     revault::Role,
 };
 
 #[tokio::test]
 async fn test_manager_create_spend() {
-    let unvault: Psbt = encode::deserialize(&base64::decode("cHNidP8BAIkCAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////AriGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwwdQAAAAAAACIAIAjkMa8elv7dHUmYpDATWBtmMmpv9yyKFawMunvGQ1AMAAAAAAABASsADicHAAAAACIAIHXyaRd0yBZ3gxhGsCgiAOKIssWXELWPdDGD1JJVB9vFAQMEAQAAAAEFR1IhAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDIQNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDlKuIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJgglHWAJAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAA").unwrap()).unwrap();
+    let unvault = UnvaultTransaction::from_raw_psbt(&base64::decode("cHNidP8BAIkCAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////AriGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwwdQAAAAAAACIAIAjkMa8elv7dHUmYpDATWBtmMmpv9yyKFawMunvGQ1AMAAAAAAABASsADicHAAAAACIAIHXyaRd0yBZ3gxhGsCgiAOKIssWXELWPdDGD1JJVB9vFAQMEAQAAAAEFR1IhAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDIQNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDlKuIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJgglHWAJAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAA").unwrap()).unwrap();
+    let cancel = CancelTransaction::from_raw_psbt(&base64::decode("cHNidP8BAF4CAAAAATdzv51EXeeNc1fv6E852OhRxc67KNaWd+BrA3qN1a/1AAAAAAD9////ARRLJgcAAAAAIgAgdfJpF3TIFneDGEawKCIA4oiyxZcQtY90MYPUklUH28UAAAAAAAEBK7iGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwBAwSBAAAAAQVhIQICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJqxRh2R2qRRyqV8ir5obrrhS+alScvjCHZjyZIisa3apFLbJrbicjJNybIPiobXZR4nXe5VhiKxsk1KHZ1iyaCIGAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmCCUdYAkAAAAAIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACICA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAAA==").unwrap()).unwrap();
     let daemon = Daemon::new(vec![
         (
             Some(json!({"method": "listvaults", "params": Some(&[[
@@ -82,19 +80,35 @@ async fn test_manager_create_spend() {
             })),
         ),
         (
-            Some(json!({"method": "getunvaulttx", "params": Some(&[
-                    OutPoint::from_str("a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:0").unwrap(),
-            ])})),
-            Ok(json!(UnvaultTransaction {
-                unvault_tx: unvault.clone(),
-            })),
-        ),
-        (
-            Some(json!({"method": "getunvaulttx", "params": Some(&[
-                    OutPoint::from_str("a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:1").unwrap(),
-            ])})),
-            Ok(json!(UnvaultTransaction {
-                unvault_tx: unvault
+            Some(
+                json!({"method": "listpresignedtransactions", "params": Some(&[[
+                        OutPoint::from_str("a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:0").unwrap(),
+                        OutPoint::from_str("a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:1").unwrap(),
+                ]])}),
+            ),
+            Ok(json!(ListPresignedTransactionsResponse {
+                presigned_transactions: vec![
+                    VaultPresignedTransactions {
+                        vault_outpoint: OutPoint::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:0"
+                        )
+                        .unwrap(),
+                        unvault: unvault.clone(),
+                        cancel: cancel.clone(),
+                        emergency: None,
+                        unvault_emergency: None
+                    },
+                    VaultPresignedTransactions {
+                        vault_outpoint: OutPoint::from_str(
+                            "a1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d:1"
+                        )
+                        .unwrap(),
+                        unvault,
+                        cancel,
+                        emergency: None,
+                        unvault_emergency: None
+                    }
+                ]
             })),
         ),
     ]);

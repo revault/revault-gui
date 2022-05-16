@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::util::psbt::PartiallySignedTransaction as Psbt;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use iced::{Command, Element, Subscription};
 
 use super::{
@@ -828,11 +828,25 @@ impl State for ManagerCreateSendTransactionState {
         Command::batch(vec![Command::perform(
             async move {
                 let vaults = revaultd.list_vaults(Some(&[VaultStatus::Active]), None)?;
-                let mut vaults_with_txs = Vec::new();
-                for vault in vaults.into_iter() {
-                    let tx = revaultd.get_unvault_tx(&outpoint(&vault))?;
-                    vaults_with_txs.push((vault, tx));
-                }
+                let outpoints: Vec<OutPoint> =
+                    vaults.iter().map(|vault| outpoint(&vault)).collect();
+                let txs = revaultd.list_presigned_transactions(&outpoints)?;
+                let vaults_with_txs = vaults
+                    .into_iter()
+                    .map(|vault| {
+                        let tx = txs
+                            .iter()
+                            .find_map(|txs| {
+                                if txs.vault_outpoint == outpoint(&vault) {
+                                    Some(txs.unvault.clone().into_psbt())
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap();
+                        (vault, tx)
+                    })
+                    .collect();
                 Ok(vaults_with_txs)
             },
             Message::VaultsWithUnvaultTx,
