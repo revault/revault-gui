@@ -135,7 +135,7 @@ impl Signer {
             .emergency_address
             .as_ref()
             .ok_or(Error("Wallet does not have emergency_address".to_string()))?;
-        let (_, cancel_tx, emergency_tx, emergency_unvault_tx) = transaction_chain(
+        let (_, cancel_txs, emergency_tx, emergency_unvault_tx) = transaction_chain(
             outpoint,
             amount,
             &descriptors.deposit_descriptor,
@@ -143,13 +143,19 @@ impl Signer {
             &descriptors.cpfp_descriptor,
             derivation_index,
             emer_address.clone(),
-            0,
             &self.curve,
         )
         .map_err(|e| Error(e.to_string()))?;
+        let cancel_txs = cancel_txs.all_feerates();
 
         Ok(RevocationTransactions {
-            cancel_tx: cancel_tx.into_psbt(),
+            cancel_txs: [
+                cancel_txs[0].psbt().clone(),
+                cancel_txs[1].psbt().clone(),
+                cancel_txs[2].psbt().clone(),
+                cancel_txs[3].psbt().clone(),
+                cancel_txs[4].psbt().clone(),
+            ],
             emergency_tx: emergency_tx.into_psbt(),
             emergency_unvault_tx: emergency_unvault_tx.into_psbt(),
         })
@@ -179,7 +185,7 @@ impl Signer {
             .derive(derivation_index, &self.curve);
 
         let unvault_tx =
-            UnvaultTransaction::new(deposit_txin, &unvault_descriptor, &cpfp_descriptor, 0)
+            UnvaultTransaction::new(deposit_txin, &unvault_descriptor, &cpfp_descriptor)
                 .map_err(|e| Error(e.to_string()))?;
 
         Ok(unvault_tx.into_psbt())
@@ -187,7 +193,7 @@ impl Signer {
 }
 
 pub struct RevocationTransactions {
-    pub cancel_tx: PartiallySignedTransaction,
+    pub cancel_txs: [PartiallySignedTransaction; 5],
     pub emergency_tx: PartiallySignedTransaction,
     pub emergency_unvault_tx: PartiallySignedTransaction,
 }
@@ -226,16 +232,16 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            base64::encode(encode::serialize(&revocation_txs.cancel_tx)).to_string(),
-            "cHNidP8BAF4CAAAAATdzv51EXeeNc1fv6E852OhRxc67KNaWd+BrA3qN1a/1AAAAAAD9////ARRLJgcAAAAAIgAgdfJpF3TIFneDGEawKCIA4oiyxZcQtY90MYPUklUH28UAAAAAAAEBK7iGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwBAwSBAAAAAQVhIQICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJqxRh2R2qRRyqV8ir5obrrhS+alScvjCHZjyZIisa3apFLbJrbicjJNybIPiobXZR4nXe5VhiKxsk1KHZ1iyaCIGAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmCCUdYAkAAAAAIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACICA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAAA=="
+            base64::encode(encode::serialize(&revocation_txs.cancel_txs[0])).to_string(),
+            "cHNidP8BAF4CAAAAATdzv51EXeeNc1fv6E852OhRxc67KNaWd+BrA3qN1a/1AAAAAAD9////ASp5JgcAAAAAIgAgdfJpF3TIFneDGEawKCIA4oiyxZcQtY90MYPUklUH28UAAAAAAAEBK7iGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwBBWEhAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmrFGHZHapFHKpXyKvmhuuuFL5qVJy+MIdmPJkiKxrdqkUtsmtuJyMk3Jsg+KhtdlHidd7lWGIrGyTUodnWLJoIgYCApM6sQN+rQqkp4WMbUnWcF4fs7xfZrAJGK97nwDs1SYIJR1gCQAAAAAiBgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACIGA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAA"
         );
         assert_eq!(
             base64::encode(encode::serialize(&revocation_txs.emergency_tx)).to_string(),
-            "cHNidP8BAF4CAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////ATheJgcAAAAAIgAgy7Co1PHzwoce0hHQR5RHMS72lSZudTF3bYrNgqLbkDYAAAAAAAEBKwAOJwcAAAAAIgAgdfJpF3TIFneDGEawKCIA4oiyxZcQtY90MYPUklUH28UBAwSBAAAAAQVHUiECWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MhA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOUq4iBgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACIGA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAAAA="
+            "cHNidP8BAF4CAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////ARDEJAcAAAAAIgAgy7Co1PHzwoce0hHQR5RHMS72lSZudTF3bYrNgqLbkDYAAAAAAAEBKwAOJwcAAAAAIgAgdfJpF3TIFneDGEawKCIA4oiyxZcQtY90MYPUklUH28UBBUdSIQJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQyEDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ5SriIGAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgYDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAAAA=="
         );
         assert_eq!(
             base64::encode(encode::serialize(&revocation_txs.emergency_unvault_tx)).to_string(),
-            "cHNidP8BAF4CAAAAATdzv51EXeeNc1fv6E852OhRxc67KNaWd+BrA3qN1a/1AAAAAAD9////AWa7JQcAAAAAIgAgy7Co1PHzwoce0hHQR5RHMS72lSZudTF3bYrNgqLbkDYAAAAAAAEBK7iGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwBAwSBAAAAAQVhIQICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJqxRh2R2qRRyqV8ir5obrrhS+alScvjCHZjyZIisa3apFLbJrbicjJNybIPiobXZR4nXe5VhiKxsk1KHZ1iyaCIGAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmCCUdYAkAAAAAIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAA"
+            "cHNidP8BAF4CAAAAATdzv51EXeeNc1fv6E852OhRxc67KNaWd+BrA3qN1a/1AAAAAAD9////AfzgIwcAAAAAIgAgy7Co1PHzwoce0hHQR5RHMS72lSZudTF3bYrNgqLbkDYAAAAAAAEBK7iGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwBBWEhAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmrFGHZHapFHKpXyKvmhuuuFL5qVJy+MIdmPJkiKxrdqkUtsmtuJyMk3Jsg+KhtdlHidd7lWGIrGyTUodnWLJoIgYCApM6sQN+rQqkp4WMbUnWcF4fs7xfZrAJGK97nwDs1SYIJR1gCQAAAAAiBgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACIGA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAAAA="
         );
     }
 
@@ -264,7 +270,7 @@ mod tests {
 
         assert_eq!(
             base64::encode(encode::serialize(&unvault_tx)).to_string(),
-            "cHNidP8BAIkCAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////AriGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwwdQAAAAAAACIAIAjkMa8elv7dHUmYpDATWBtmMmpv9yyKFawMunvGQ1AMAAAAAAABASsADicHAAAAACIAIHXyaRd0yBZ3gxhGsCgiAOKIssWXELWPdDGD1JJVB9vFAQMEAQAAAAEFR1IhAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDIQNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDlKuIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJgglHWAJAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAA"
+            "cHNidP8BAIkCAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////AriGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwwdQAAAAAAACIAIAjkMa8elv7dHUmYpDATWBtmMmpv9yyKFawMunvGQ1AMAAAAAAABASsADicHAAAAACIAIHXyaRd0yBZ3gxhGsCgiAOKIssWXELWPdDGD1JJVB9vFAQVHUiECWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MhA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOUq4iBgJYLe2/RPRlZOXYzbBnU21g6+NM0dGAHP9Ru/nXrCibQwjWfX/pAAAAACIGA0cE3stVtaqI/9HvXQY2YkjBMU4ZZVETb/FOq4u6SkkOCHKpXyIAAAAAACICAgKTOrEDfq0KpKeFjG1J1nBeH7O8X2awCRive58A7NUmCCUdYAkAAAAAIgICWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiAgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgJQcvTgdleKXInUHXXx7VKav5LxzWq2Nrjot7sPMwJpQwj73ezNAAAAAAA="
         );
     }
 }

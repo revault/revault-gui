@@ -116,18 +116,21 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         outpoint: &OutPoint,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
+        cancel_txs: &[Psbt; 5],
     ) -> Result<(), RevaultDError> {
         let emergency = base64::encode(&consensus::serialize(emergency_tx));
         let emergency_unvault = base64::encode(&consensus::serialize(emergency_unvault_tx));
-        let cancel = base64::encode(&consensus::serialize(cancel_tx));
+        let cancel: Vec<String> = cancel_txs
+            .iter()
+            .map(|tx| base64::encode(&consensus::serialize(tx)))
+            .collect();
         let _res: serde_json::value::Value = self.call(
             "revocationtxs",
             Some(vec![
-                outpoint.to_string(),
-                cancel,
-                emergency,
-                emergency_unvault,
+                json!(outpoint.to_string()),
+                json!(cancel),
+                json!(emergency),
+                json!(emergency_unvault),
             ]),
         )?;
         Ok(())

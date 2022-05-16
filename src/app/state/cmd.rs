@@ -46,16 +46,6 @@ pub async fn get_revocation_txs(
     revaultd.get_revocation_txs(&outpoint)
 }
 
-pub async fn set_revocation_txs(
-    revaultd: Arc<dyn Daemon + Send + Sync>,
-    outpoint: OutPoint,
-    emergency_tx: Psbt,
-    emergency_unvault_tx: Psbt,
-    cancel_tx: Psbt,
-) -> Result<(), RevaultDError> {
-    revaultd.set_revocation_txs(&outpoint, &emergency_tx, &emergency_unvault_tx, &cancel_tx)
-}
-
 pub async fn get_unvault_tx(
     revaultd: Arc<dyn Daemon + Send + Sync>,
     outpoint: OutPoint,

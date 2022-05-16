@@ -19,8 +19,8 @@ pub trait RevaultHWI: HWI {
         &mut self,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), HWIError>;
+        cancel_tx: &[Psbt; 5],
+    ) -> Result<(Psbt, Psbt, [Psbt; 5]), HWIError>;
 
     /// Sign the unvault transaction required for delegation.
     async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, HWIError>;
@@ -30,7 +30,7 @@ pub trait RevaultHWI: HWI {
     async fn create_vaults(
         &mut self,
         deposits: &[(OutPoint, Amount, u32)],
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError>;
+    ) -> Result<Vec<(Psbt, Psbt, [Psbt; 5])>, HWIError>;
 
     /// Delegate a list of vaults by giving the utxos to an hardware wallet storing the
     /// descriptors and deriving itself the unvault transactions.
@@ -52,12 +52,18 @@ impl<T: HWI + NoRevaultApp + Send> RevaultHWI for T {
         &mut self,
         emergency_tx: &Psbt,
         emergency_unvault_tx: &Psbt,
-        cancel_tx: &Psbt,
-    ) -> Result<(Psbt, Psbt, Psbt), HWIError> {
+        cancel_txs: &[Psbt; 5],
+    ) -> Result<(Psbt, Psbt, [Psbt; 5]), HWIError> {
         let emergency_tx = self.sign_tx(emergency_tx).await?;
         let emergency_unvault_tx = self.sign_tx(emergency_unvault_tx).await?;
-        let cancel_tx = self.sign_tx(cancel_tx).await?;
-        Ok((emergency_tx, emergency_unvault_tx, cancel_tx))
+        let cancel_txs = [
+            self.sign_tx(&cancel_txs[0]).await?,
+            self.sign_tx(&cancel_txs[1]).await?,
+            self.sign_tx(&cancel_txs[2]).await?,
+            self.sign_tx(&cancel_txs[3]).await?,
+            self.sign_tx(&cancel_txs[4]).await?,
+        ];
+        Ok((emergency_tx, emergency_unvault_tx, cancel_txs))
     }
 
     async fn sign_unvault_tx(&mut self, unvault_tx: &Psbt) -> Result<Psbt, HWIError> {
@@ -67,7 +73,7 @@ impl<T: HWI + NoRevaultApp + Send> RevaultHWI for T {
     async fn create_vaults(
         &mut self,
         _deposits: &[(OutPoint, Amount, u32)],
-    ) -> Result<Vec<(Psbt, Psbt, Psbt)>, HWIError> {
+    ) -> Result<Vec<(Psbt, Psbt, [Psbt; 5])>, HWIError> {
         Err(HWIError::UnimplementedMethod)
     }
 

@@ -84,7 +84,7 @@ If the signature request was refused the response looks like:
 
 ```json
 {
-  "cancel_tx": "<base64 encoded psbt>",
+  "cancel_txs": ["<base64 encoded psbt>"],
   "emergency_tx": "<base64 encoded psbt>",
   "emergency_unvault_tx": "<base64 encoded psbt>"
 }
@@ -94,7 +94,7 @@ If the signature request was refused the response looks like:
 
 ```json
 {
-  "cancel_tx": "<base64 encoded psbt>",
+  "cancel_tx": ["<base64 encoded psbt>"],
   "emergency_tx": "<base64 encoded psbt>",
   "emergency_unvault_tx": "<base64 encoded psbt>"
 }
@@ -124,7 +124,7 @@ This method requires the descriptors and the emergency address.
 ```json
 [
   {
-    "cancel_tx": "<base64 encoded psbt>",
+    "cancel_txs": ["<base64 encoded psbt>"],
     "emergency_tx": "<base64 encoded psbt>",
     "emergency_unvault_tx": "<base64 encoded psbt>"
   },

@@ -187,9 +187,9 @@ impl Application for App {
                             self.signer
                                 .sign_psbt(&selected_keys, &mut target.emergency_unvault_tx)
                                 .unwrap();
-                            self.signer
-                                .sign_psbt(&selected_keys, &mut target.cancel_tx)
-                                .unwrap();
+                            for cancel_tx in &mut target.cancel_txs {
+                                self.signer.sign_psbt(&selected_keys, cancel_tx).unwrap();
+                            }
                             *signed = true;
                             return Command::perform(
                                 server::respond(writer.clone(), json!(target)),
@@ -212,9 +212,9 @@ impl Application for App {
                                     .sign_psbt(&selected_keys, &mut revocation_txs.emergency_tx)
                                     .unwrap();
 
-                                self.signer
-                                    .sign_psbt(&selected_keys, &mut revocation_txs.cancel_tx)
-                                    .unwrap();
+                                for cancel_tx in &mut revocation_txs.cancel_txs {
+                                    self.signer.sign_psbt(&selected_keys, cancel_tx).unwrap();
+                                }
 
                                 self.signer
                                     .sign_psbt(
@@ -443,7 +443,7 @@ impl Method {
                             )
                             .unwrap();
                         api::RevocationTransactions {
-                            cancel_tx: txs.cancel_tx,
+                            cancel_txs: txs.cancel_txs,
                             emergency_unvault_tx: txs.emergency_unvault_tx,
                             emergency_tx: txs.emergency_tx,
                         }
