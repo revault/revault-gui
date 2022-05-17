@@ -154,12 +154,11 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         inputs: &[OutPoint],
         outputs: &BTreeMap<bitcoin::Address, u64>,
         feerate: u64,
-    ) -> Result<Psbt, RevaultDError> {
-        let resp: SpendTransaction = self.call(
+    ) -> Result<SpendTx, RevaultDError> {
+        self.call(
             "getspendtx",
             Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
-        )?;
-        Ok(resp.spend_tx)
+        )
     }
 
     fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {

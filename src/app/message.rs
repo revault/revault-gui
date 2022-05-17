@@ -55,7 +55,7 @@ pub enum Message {
     Recipient(usize, RecipientMessage),
     Input(usize, InputMessage),
     AddRecipient,
-    SpendTransaction(Result<(Psbt, u64), RevaultDError>),
+    SpendTransaction(Result<(SpendTx, u64), RevaultDError>),
     SpendTransactions(Result<Vec<SpendTx>, RevaultDError>),
     SpendTx(SpendTxMessage),
     Emergency,

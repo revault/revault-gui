@@ -1,5 +1,4 @@
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Address, OutPoint, Txid};
-use std::collections::BTreeMap;
+use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint, Txid};
 use std::sync::Arc;
 
 use crate::daemon::{
@@ -59,17 +58,6 @@ pub async fn set_unvault_tx(
     unvault_tx: Psbt,
 ) -> Result<(), RevaultDError> {
     revaultd.set_unvault_tx(&outpoint, &unvault_tx)
-}
-
-pub async fn get_spend_tx(
-    revaultd: Arc<dyn Daemon + Send + Sync>,
-    inputs: Vec<OutPoint>,
-    outputs: BTreeMap<Address, u64>,
-    feerate: u64,
-) -> Result<(Psbt, u64), RevaultDError> {
-    revaultd
-        .get_spend_tx(&inputs, &outputs, feerate)
-        .map(|psbt| (psbt, feerate))
 }
 
 pub async fn update_spend_tx(

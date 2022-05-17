@@ -88,7 +88,7 @@ pub trait Daemon: Debug {
         inputs: &[OutPoint],
         outputs: &BTreeMap<bitcoin::Address, u64>,
         feerate: u64,
-    ) -> Result<Psbt, RevaultDError>;
+    ) -> Result<SpendTx, RevaultDError>;
 
     fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError>;
 

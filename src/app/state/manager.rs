@@ -4,22 +4,22 @@ use std::convert::TryInto;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
+use bitcoin::{consensus::encode, util::psbt::PartiallySignedTransaction as Psbt, OutPoint};
 use iced::{Command, Element, Subscription};
 
 use super::{
-    cmd::{get_spend_tx, list_spend_txs, list_vaults, update_spend_tx},
+    cmd::{list_spend_txs, list_vaults, update_spend_tx},
     vault::{Vault, VaultListItem},
     State,
 };
 
 use crate::daemon::model::{
-    self, outpoint, SpendTxStatus, VaultStatus, ALL_HISTORY_EVENTS, ALL_SPEND_TX_STATUSES,
+    self, outpoint, SpendTx, SpendTxStatus, VaultStatus, ALL_HISTORY_EVENTS, ALL_SPEND_TX_STATUSES,
     CURRENT_VAULT_STATUSES,
 };
 
 use revault_ui::component::form;
-use revaultd::revault_tx::transactions::RevaultTransaction;
+use revaultd::revault_tx::transactions::{RevaultTransaction, SpendTransaction};
 
 use crate::app::{
     context::Context,
@@ -531,11 +531,10 @@ pub struct ManagerCreateSendTransactionState {
     inputs: Vec<ManagerSendInput>,
     outputs: Vec<ManagerSendOutput>,
     feerate: Option<u64>,
-    psbt: Option<(Psbt, u64)>,
-    cpfp_index: usize,
-    change_index: Option<usize>,
     processing: bool,
     valid_feerate: bool,
+
+    tx: Option<(SpendTx, u64)>,
 
     step: ManagerSendStep,
 }
@@ -548,9 +547,7 @@ impl ManagerCreateSendTransactionState {
             inputs: Vec::new(),
             outputs: vec![ManagerSendOutput::new()],
             feerate: None,
-            psbt: None,
-            cpfp_index: 0,
-            change_index: None,
+            tx: None,
             processing: false,
             valid_feerate: false,
         }
@@ -618,7 +615,7 @@ impl State for ManagerCreateSendTransactionState {
                 self.processing = false;
                 match res {
                     Ok(spend) => {
-                        self.psbt = Some(spend);
+                        self.tx = Some(spend);
                     }
                     Err(e) => self.warning = Some(e.into()),
                 }
@@ -627,7 +624,7 @@ impl State for ManagerCreateSendTransactionState {
             Message::SpendTx(SpendTxMessage::Generate) => {
                 self.processing = true;
                 self.warning = None;
-                let inputs = self.selected_inputs().iter().map(outpoint).collect();
+                let inputs: Vec<OutPoint> = self.selected_inputs().iter().map(outpoint).collect();
 
                 let outputs: BTreeMap<bitcoin::Address, u64> = self
                     .outputs
@@ -640,8 +637,13 @@ impl State for ManagerCreateSendTransactionState {
                     })
                     .collect();
 
+                let revaultd = ctx.revaultd.clone();
+                let feerate = self.feerate.unwrap_or(0);
                 return Command::perform(
-                    get_spend_tx(ctx.revaultd.clone(), inputs, outputs, self.feerate.unwrap()),
+                    async move {
+                        let resp = revaultd.get_spend_tx(inputs.as_slice(), &outputs, feerate)?;
+                        Ok((resp, feerate))
+                    },
                     Message::SpendTransaction,
                 );
             }
@@ -663,10 +665,13 @@ impl State for ManagerCreateSendTransactionState {
                     if let ManagerSendStep::Sign { signer, .. } = &mut self.step {
                         // During this step state has a generated psbt
                         // and signer has a signed psbt.
-                        self.psbt = Some((
-                            signer.target.spend_tx.clone(),
-                            self.psbt.clone().expect("As the received message is a sign success, the psbt should not be None").1,
-                        ));
+                        if let Some((tx, _)) = &mut self.tx {
+                            // TODO: use a cleaner method from_psbt
+                            tx.psbt = SpendTransaction::from_raw_psbt(&encode::serialize(
+                                &signer.target.spend_tx.clone(),
+                            ))
+                            .expect("This is the same transaction");
+                        }
                         self.step =
                             ManagerSendStep::Success(ManagerSpendTransactionCreatedView::new());
                     };
@@ -692,14 +697,14 @@ impl State for ManagerCreateSendTransactionState {
                     self.step = ManagerSendStep::SelectFee(ManagerSelectFeeView::new());
                 }
                 ManagerSendStep::SelectInputs(_) => {
-                    if let Some((psbt, _)) = &self.psbt {
+                    if let Some((tx, _)) = &self.tx {
                         self.step = ManagerSendStep::Sign {
                             signer: Signer::new(SpendTransactionTarget::new(
                                 &ctx.managers_xpubs()
                                     .iter()
                                     .map(|xpub| xpub.master_fingerprint())
                                     .collect(),
-                                psbt.clone(),
+                                tx.psbt.clone().into_psbt(),
                             )),
                             view: ManagerStepSignView::new(),
                         };
@@ -733,13 +738,13 @@ impl State for ManagerCreateSendTransactionState {
                 self.outputs.remove(i);
             }
             Message::Input(i, msg) => {
-                self.psbt = None;
+                self.tx = None;
                 if let Some(input) = self.inputs.get_mut(i) {
                     input.update(msg);
                 }
             }
             Message::Recipient(i, msg) => {
-                self.psbt = None;
+                self.tx = None;
                 if let Some(output) = self.outputs.get_mut(i) {
                     output.update(msg);
                 }
@@ -795,13 +800,11 @@ impl State for ManagerCreateSendTransactionState {
                 v.view(self.feerate, self.valid_feerate, self.warning.as_ref())
             }
             ManagerSendStep::Sign { signer, view } => {
-                let (psbt, feerate) = self.psbt.as_ref().unwrap();
+                let (tx, feerate) = self.tx.as_ref().unwrap();
                 view.view(
                     ctx,
                     &selected_inputs,
-                    &psbt,
-                    self.cpfp_index,
-                    self.change_index,
+                    &tx,
                     &feerate,
                     signer.error.clone().as_ref(),
                     signer
@@ -810,15 +813,8 @@ impl State for ManagerCreateSendTransactionState {
                 )
             }
             ManagerSendStep::Success(v) => {
-                let (psbt, _) = self.psbt.as_ref().unwrap();
-                v.view(
-                    ctx,
-                    &selected_inputs,
-                    &psbt,
-                    self.cpfp_index,
-                    self.change_index,
-                    &self.feerate.unwrap(),
-                )
+                let (tx, _) = self.tx.as_ref().unwrap();
+                v.view(ctx, &selected_inputs, &tx, &self.feerate.unwrap())
             }
         }
     }
