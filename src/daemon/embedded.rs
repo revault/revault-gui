@@ -211,7 +211,7 @@ impl Daemon for EmbeddedDaemon {
         inputs: &[OutPoint],
         outputs: &BTreeMap<bitcoin::Address, u64>,
         feerate: u64,
-    ) -> Result<Psbt, RevaultDError> {
+    ) -> Result<SpendTx, RevaultDError> {
         self.handle
             .as_ref()
             .ok_or(RevaultDError::NoAnswer)?
@@ -219,7 +219,6 @@ impl Daemon for EmbeddedDaemon {
             .unwrap()
             .control
             .get_spend_tx(inputs, outputs, feerate)
-            .map(|tx| tx.into_psbt())
             .map_err(|e| e.into())
     }
 

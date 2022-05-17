@@ -5,6 +5,8 @@ use iced::{
     Length, Row, Space, TextInput, Tooltip,
 };
 
+use revaultd::revault_tx::transactions::RevaultTransaction;
+
 use revault_ui::{
     color,
     component::{
@@ -796,7 +798,6 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
     psbt: &Psbt,
     change_index: Option<usize>,
     cpfp_index: usize,
-    feerate: Option<&u64>,
 ) -> Container<'a, T> {
     let mut total_fees = 0;
     let mut col_input = Column::new()
@@ -811,7 +812,6 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
         .spacing(10);
 
     for input in inputs {
-        total_fees += input.amount.as_sat();
         col_input = col_input.push(card::simple(Container::new(
             Row::new()
                 .push(
@@ -886,14 +886,6 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
                 .align_items(Alignment::Center),
         )));
     }
-    let mut column_fee = Column::new();
-    if let Some(feerate) = feerate {
-        column_fee = column_fee.push(
-            Row::new()
-                .push(Text::new("Feerate: "))
-                .push(Text::new(&format!("{} sats/vbyte", feerate)).bold()),
-        )
-    }
 
     let right_column = if let Some(index) = change_index {
         let change_output = &psbt.global.unsigned_tx.output[index];
@@ -934,26 +926,8 @@ pub fn spend_tx_with_feerate_view<'a, T: 'a>(
 
     Container::new(
         Column::new()
-            .push(
-                column_fee.push(
-                    Row::new()
-                        .push(Text::new("Total fees: "))
-                        .push(
-                            Text::new(&format!(
-                                "{}",
-                                ctx.converter.converts(Amount::from_sat(total_fees))
-                            ))
-                            .bold(),
-                        )
-                        .push(Text::new(&format!(" {}", ctx.converter.unit))),
-                ),
-            )
-            .push(
-                Column::new()
-                    .push(col_input.width(Length::Fill))
-                    .push(right_column.width(Length::Fill))
-                    .spacing(20),
-            )
+            .push(col_input.width(Length::Fill))
+            .push(right_column.width(Length::Fill))
             .spacing(20),
     )
 }
@@ -978,9 +952,7 @@ impl ManagerStepSignView {
         &'a mut self,
         ctx: &Context,
         inputs: &[model::Vault],
-        psbt: &Psbt,
-        cpfp_index: usize,
-        change_index: Option<usize>,
+        tx: &model::SpendTx,
         feerate: &u64,
         warning: Option<&Error>,
         signer: Element<'a, Message>,
@@ -1019,6 +991,29 @@ impl ManagerStepSignView {
             .push(ProgressBar::spend_bar().draw(3))
             .align_items(Alignment::Center);
 
+        let (change_amount, spend_amount) = tx
+            .psbt
+            .psbt()
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .enumerate()
+            .fold(
+                (bitcoin::Amount::from_sat(0), bitcoin::Amount::from_sat(0)),
+                |(change, spend), (i, output)| {
+                    if Some(i) == tx.change_index {
+                        (change + bitcoin::Amount::from_sat(output.value), spend)
+                    } else if i == tx.cpfp_index {
+                        (change, spend)
+                    } else {
+                        (change, spend + bitcoin::Amount::from_sat(output.value))
+                    }
+                },
+            );
+
+        let fees = tx.deposit_amount - tx.cpfp_amount - spend_amount - change_amount;
+
         Container::new(
             Column::new()
                 .push(header)
@@ -1038,13 +1033,69 @@ impl ManagerStepSignView {
                                             .push(
                                                 scroll(
                                                     &mut self.scroll,
-                                                    spend_tx_with_feerate_view(
-                                                        ctx,
-                                                        inputs,
-                                                        psbt,
-                                                        change_index,
-                                                        cpfp_index,
-                                                        Some(feerate),
+                                                    Container::new(
+                                                        Column::new()
+                                                            .push(
+                                                                Column::new()
+                                                                    .spacing(5)
+                                                                    .push(
+                                                                        Container::new(
+                                                                            Text::new(&format!(
+                                                                                "- {} {}",
+                                                                                ctx.converter
+                                                                                    .converts(
+                                                                                    spend_amount
+                                                                                ),
+                                                                                ctx.converter.unit,
+                                                                            ))
+                                                                            .bold()
+                                                                            .size(50),
+                                                                        )
+                                                                        .padding(10),
+                                                                    )
+                                                                    .push(
+                                                                        Row::new()
+                                                                            .push(Text::new(
+                                                                                "Feerate: ",
+                                                                            ))
+                                                                            .push(
+                                                                                Text::new(
+                                                                                    &format!(
+                                                                                "{} sats/vbyte",
+                                                                                feerate
+                                                                            ),
+                                                                                )
+                                                                                .bold(),
+                                                                            ),
+                                                                    )
+                                                                    .push(Container::new(
+                                                                        Text::new(&format!(
+                                                                            "Miner Fee: {} {}",
+                                                                            ctx.converter
+                                                                                .converts(fees),
+                                                                            ctx.converter.unit,
+                                                                        )),
+                                                                    ))
+                                                                    .push(Container::new(
+                                                                        Text::new(&format!(
+                                                                            "Cpfp Amount: {} {}",
+                                                                            ctx.converter.converts(
+                                                                                tx.cpfp_amount
+                                                                            ),
+                                                                            ctx.converter.unit,
+                                                                        )),
+                                                                    ))
+                                                                    .width(Length::Fill)
+                                                                    .align_items(Alignment::Center),
+                                                            )
+                                                            .push(spend_tx_with_feerate_view(
+                                                                ctx,
+                                                                inputs,
+                                                                tx.psbt.psbt(),
+                                                                tx.change_index,
+                                                                tx.cpfp_index,
+                                                            ))
+                                                            .spacing(20),
                                                     ),
                                                 )
                                                 .height(Length::Fill),
@@ -1093,11 +1144,32 @@ impl ManagerSpendTransactionCreatedView {
         &'a mut self,
         ctx: &Context,
         inputs: &[model::Vault],
-        psbt: &Psbt,
-        cpfp_index: usize,
-        change_index: Option<usize>,
+        tx: &model::SpendTx,
         feerate: &u64,
     ) -> Element<'a, Message> {
+        let (change_amount, spend_amount) = tx
+            .psbt
+            .psbt()
+            .global
+            .unsigned_tx
+            .output
+            .iter()
+            .enumerate()
+            .fold(
+                (bitcoin::Amount::from_sat(0), bitcoin::Amount::from_sat(0)),
+                |(change, spend), (i, output)| {
+                    if Some(i) == tx.change_index {
+                        (change + bitcoin::Amount::from_sat(output.value), spend)
+                    } else if i == tx.cpfp_index {
+                        (change, spend)
+                    } else {
+                        (change, spend + bitcoin::Amount::from_sat(output.value))
+                    }
+                },
+            );
+
+        let fees = tx.deposit_amount - tx.cpfp_amount - spend_amount - change_amount;
+
         Container::new(
             Column::new()
                 .push(
@@ -1122,13 +1194,43 @@ impl ManagerSpendTransactionCreatedView {
                         &mut self.scroll,
                         Container::new(
                             Column::new()
+                                .push(
+                                    Column::new()
+                                        .spacing(5)
+                                        .push(
+                                            Container::new(
+                                                Text::new(&format!(
+                                                    "- {} {}",
+                                                    ctx.converter.converts(spend_amount),
+                                                    ctx.converter.unit,
+                                                ))
+                                                .bold()
+                                                .size(50),
+                                            )
+                                            .padding(10),
+                                        )
+                                        .push(Row::new().push(Text::new("Feerate: ")).push(
+                                            Text::new(&format!("{} sats/vbyte", feerate)).bold(),
+                                        ))
+                                        .push(Container::new(Text::new(&format!(
+                                            "Miner Fee: {} {}",
+                                            ctx.converter.converts(fees),
+                                            ctx.converter.unit,
+                                        ))))
+                                        .push(Container::new(Text::new(&format!(
+                                            "Cpfp Amount: {} {}",
+                                            ctx.converter.converts(tx.cpfp_amount),
+                                            ctx.converter.unit,
+                                        ))))
+                                        .width(Length::Fill)
+                                        .align_items(Alignment::Center),
+                                )
                                 .push(spend_tx_with_feerate_view(
                                     ctx,
                                     inputs,
-                                    psbt,
-                                    change_index,
-                                    cpfp_index,
-                                    Some(feerate),
+                                    tx.psbt.psbt(),
+                                    tx.change_index,
+                                    tx.cpfp_index,
                                 ))
                                 .spacing(20)
                                 .max_width(1000),

@@ -245,7 +245,6 @@ impl SpendTransactionView {
                                 tx.psbt.psbt(),
                                 tx.change_index,
                                 tx.cpfp_index,
-                                None,
                             ))
                             .spacing(20)
                             .max_width(800)

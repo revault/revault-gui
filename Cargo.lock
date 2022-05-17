@@ -2346,7 +2346,7 @@ dependencies = [
 [[package]]
 name = "revault_net"
 version = "0.2.1"
-source = "git+https://github.com/revault/revault_net#f84f411854525c673b27c9ff881b4f0162488a29"
+source = "git+https://github.com/revault/revault_net#50fabbb53d75ee3dc9d50e7133a35228bb34dfb6"
 dependencies = [
  "bitcoin",
  "log",
@@ -2378,7 +2378,7 @@ dependencies = [
 [[package]]
 name = "revaultd"
 version = "0.3.1"
-source = "git+https://github.com/revault/revaultd#6cb59135052235b3f0ab36b3591c30d58ad24ef4"
+source = "git+https://github.com/revault/revaultd#c928b14e79d9f2b7ff2cdea22ba2df9049890d02"
 dependencies = [
  "backtrace",
  "base64",
@@ -2951,7 +2951,7 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee73e6e4924fe940354b8d4d98cad5231175d615cd855b758adc658c0aac6a0"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "rand 0.8.4",
  "static_assertions",
 ]
