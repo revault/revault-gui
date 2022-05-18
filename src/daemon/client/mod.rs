@@ -155,10 +155,11 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         outputs: &BTreeMap<bitcoin::Address, u64>,
         feerate: u64,
     ) -> Result<SpendTx, RevaultDError> {
-        self.call(
+        let res: SpendTransactionResponse = self.call(
             "getspendtx",
             Some(vec![json!(inputs), json!(outputs), json!(feerate)]),
-        )
+        )?;
+        Ok(res.spend_tx)
     }
 
     fn update_spend_tx(&self, psbt: &Psbt) -> Result<(), RevaultDError> {
@@ -257,6 +258,12 @@ pub struct ListPresignedTransactionsResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListSpendTransactionsResponse {
     pub spend_txs: Vec<SpendTx>,
+}
+
+/// get_spend_tx
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpendTransactionResponse {
+    pub spend_tx: SpendTx,
 }
 
 /// getdepositaddress response
