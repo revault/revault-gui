@@ -2306,7 +2306,7 @@ dependencies = [
 
 [[package]]
 name = "revault-gui"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "backtrace",
  "bitcoin",
@@ -2345,8 +2345,9 @@ dependencies = [
 
 [[package]]
 name = "revault_net"
-version = "0.2.1"
-source = "git+https://github.com/revault/revault_net#50fabbb53d75ee3dc9d50e7133a35228bb34dfb6"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21cf3a2aec4c7afc9900d88eed6ef84272fcd78f2f36c69a46146cdb233d57f6"
 dependencies = [
  "bitcoin",
  "log",
@@ -2359,8 +2360,9 @@ dependencies = [
 
 [[package]]
 name = "revault_tx"
-version = "0.4.1"
-source = "git+https://github.com/revault/revault_tx#23f18b66a0f165a0091e1be8feffe363f37cea97"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "285230bfc2d0e7975ac997667505954ac39115d481c7482055d631497a1983c4"
 dependencies = [
  "base64",
  "bitcoinconsensus",
@@ -2377,8 +2379,9 @@ dependencies = [
 
 [[package]]
 name = "revaultd"
-version = "0.3.1"
-source = "git+https://github.com/revault/revaultd#c928b14e79d9f2b7ff2cdea22ba2df9049890d02"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4a2cc136cb75e9daa6d55792bad38910d30e5044e644d17e54aada69f68437a"
 dependencies = [
  "backtrace",
  "base64",
@@ -2951,7 +2954,7 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee73e6e4924fe940354b8d4d98cad5231175d615cd855b758adc658c0aac6a0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "rand 0.8.4",
  "static_assertions",
 ]
