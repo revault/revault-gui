@@ -16,8 +16,8 @@ use revault_gui::{
         config::Config as GUIConfig,
         context::{ConfigContext, Context},
         menu::Menu,
-        message::{InputMessage, Message},
-        state::manager::ManagerCreateSendTransactionState,
+        message::{InputMessage, Message, SpendTxMessage},
+        state::manager::{ManagerCreateSendTransactionState, ManagerImportSendTransactionState},
     },
     conversion::Converter,
     daemon::{
@@ -26,6 +26,7 @@ use revault_gui::{
     },
     revault::Role,
 };
+use revaultd::revault_tx::transactions::SpendTransaction;
 
 #[tokio::test]
 async fn test_manager_create_spend() {
@@ -144,4 +145,48 @@ async fn test_manager_create_spend() {
         .update(&ctx, Message::Input(1, InputMessage::Select))
         .await;
     assert_eq!(sandbox.state().input_amount(), 119965368);
+}
+
+#[tokio::test]
+async fn test_manager_import_spend() {
+    let psbt_string = "cHNidP8BAIkCAAAAAUeuD/NEqc88sk3DoBrKoVKjXbN2xW8Jr/4GO5q87JqJAQAAAAD9////AriGJgcAAAAAIgAgSOjPZes2prPdrcgiv+IG1sjXyTCc4KDr9+C9F+xk6LwwdQAAAAAAACIAIAjkMa8elv7dHUmYpDATWBtmMmpv9yyKFawMunvGQ1AMAAAAAAABASsADicHAAAAACIAIHXyaRd0yBZ3gxhGsCgiAOKIssWXELWPdDGD1JJVB9vFAQMEAQAAAAEFR1IhAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDIQNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDlKuIgYCWC3tv0T0ZWTl2M2wZ1NtYOvjTNHRgBz/Ubv516wom0MI1n1/6QAAAAAiBgNHBN7LVbWqiP/R710GNmJIwTFOGWVRE2/xTquLukpJDghyqV8iAAAAAAAiAgICkzqxA36tCqSnhYxtSdZwXh+zvF9msAkYr3ufAOzVJgglHWAJAAAAACICAlgt7b9E9GVk5djNsGdTbWDr40zR0YAc/1G7+desKJtDCNZ9f+kAAAAAIgIDRwTey1W1qoj/0e9dBjZiSMExThllURNv8U6ri7pKSQ4IcqlfIgAAAAAAIgICUHL04HZXilyJ1B118e1Smr+S8c1qtja46Le7DzMCaUMI+93szQAAAAAA";
+    let spend = SpendTransaction::from_raw_psbt(&base64::decode(psbt_string).unwrap()).unwrap();
+
+    let daemon = Daemon::new(vec![(
+        Some(json!({"method": "updatespendtx", "params":
+            Some(vec![
+                psbt_string
+            ])
+        })),
+        Ok(json!({})),
+    )]);
+
+    let sandbox: Sandbox<ManagerImportSendTransactionState> =
+        Sandbox::new(ManagerImportSendTransactionState::new());
+
+    let client = daemon.run();
+    let ctx = Context::new(
+        ConfigContext {
+            daemon: random_daemon_config(),
+            gui: GUIConfig::new(PathBuf::from_str("revault_gui.toml").unwrap()),
+        },
+        Arc::new(RevaultD::new(client)),
+        Converter::new(bitcoin::Network::Bitcoin),
+        Role::Stakeholder,
+        Menu::DelegateFunds,
+        Box::new(|| Box::pin(no_hardware_wallet())),
+    );
+    let sandbox = sandbox
+        .update(
+            &ctx,
+            Message::SpendTx(SpendTxMessage::PsbtEdited(psbt_string.to_string())),
+        )
+        .await;
+
+    let sandbox = sandbox
+        .update(&ctx, Message::SpendTx(SpendTxMessage::Import))
+        .await;
+
+    let state: &ManagerImportSendTransactionState = sandbox.state();
+    assert_eq!(state.imported_state().as_ref().unwrap(), &spend);
 }
