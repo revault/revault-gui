@@ -233,7 +233,9 @@ impl DefinePrivateNoiseKey {
                 .push(
                     Column::new().spacing(10).push(
                         form::Form::new(&mut self.key_input, "", key, Message::PrivateNoiseKey)
-                            .warning("Key must be a 64 characters hex encoded string")
+                            .warning(
+                                "Please enter a 32 bytes noise private key that is hex encoded",
+                            )
                             .size(20)
                             .padding(10)
                             .render(),
