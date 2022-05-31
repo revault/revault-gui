@@ -438,7 +438,7 @@ impl From<ManagerSendState> for Box<dyn State> {
 
 #[derive(Debug)]
 pub struct ManagerImportSendTransactionState {
-    psbt_imported: Option<Psbt>,
+    psbt_imported: Option<SpendTransaction>,
     psbt_input: form::Value<String>,
     warning: Option<Error>,
 
@@ -455,10 +455,12 @@ impl ManagerImportSendTransactionState {
         }
     }
 
-    pub fn parse_pbst(&self) -> Option<Psbt> {
-        bitcoin::base64::decode(&self.psbt_input.value)
-            .ok()
-            .and_then(|bytes| bitcoin::consensus::encode::deserialize(&bytes).ok())
+    pub fn parse_pbst(&self) -> Option<SpendTransaction> {
+        SpendTransaction::from_psbt_str(&self.psbt_input.value).ok()
+    }
+
+    pub fn imported_state(&self) -> &Option<SpendTransaction> {
+        &self.psbt_imported
     }
 }
 
@@ -475,9 +477,9 @@ impl State for ManagerImportSendTransactionState {
             }
             Message::SpendTx(SpendTxMessage::Import) => {
                 if !self.psbt_input.value.is_empty() {
-                    if let Some(psbt) = self.parse_pbst() {
+                    if let Some(spend_tx) = self.parse_pbst() {
                         return Command::perform(
-                            update_spend_tx(ctx.revaultd.clone(), psbt),
+                            update_spend_tx(ctx.revaultd.clone(), spend_tx.into_psbt()),
                             |res| Message::SpendTx(SpendTxMessage::Updated(res)),
                         );
                     } else {
@@ -496,7 +498,7 @@ impl State for ManagerImportSendTransactionState {
         self.view.view(
             ctx,
             &self.psbt_input,
-            self.psbt_imported.as_ref(),
+            self.psbt_imported.as_ref().map(|spend_tx| spend_tx.psbt()),
             self.warning.as_ref(),
         )
     }
