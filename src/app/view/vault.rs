@@ -1,10 +1,10 @@
 use chrono::NaiveDateTime;
-use iced::{tooltip, Alignment, Column, Container, Element, Length, Row, Tooltip};
+use iced::{pure::Pure, tooltip, Alignment, Column, Container, Element, Length, Row, Tooltip};
 
 use bitcoin::{util::bip32::Fingerprint, Amount};
 use revault_ui::{
     color,
-    component::{badge, button, card, separation, text::Text, TooltipStyle},
+    component::{badge, button, card, collapse::collapse, separation, text::Text, TooltipStyle},
     icon,
 };
 
@@ -14,10 +14,16 @@ use crate::daemon::model::{
     outpoint, transaction_from_hex, Vault, VaultStatus, VaultTransactions, WalletTransaction,
 };
 
-#[derive(Debug)]
 pub struct VaultModal {
     copy_button: iced::button::State,
     modal: layout::Modal,
+    state: iced::pure::State,
+}
+
+impl std::fmt::Debug for VaultModal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VaultModal").finish()
+    }
 }
 
 impl VaultModal {
@@ -25,6 +31,7 @@ impl VaultModal {
         VaultModal {
             copy_button: iced::button::State::default(),
             modal: layout::Modal::default(),
+            state: iced::pure::State::default(),
         }
     }
 
@@ -51,7 +58,12 @@ impl VaultModal {
         if let Some(tx) = &txs.unvault {
             col = col.push(transaction(ctx, "Unvault transaction", tx));
         }
-        col = col.push(transaction(ctx, "Deposit transaction", &txs.deposit));
+        col = col.push(transaction_collapse(
+            ctx,
+            "Deposit transaction",
+            &txs.deposit,
+            &mut self.state,
+        ));
 
         self.modal.view(
             ctx,
@@ -117,6 +129,32 @@ fn vault<'a>(
                     .align_items(Alignment::Center),
             )
             .spacing(20),
+    ))
+}
+
+fn transaction_collapse<'a, T: Clone + 'a>(
+    ctx: &Context,
+    title: &str,
+    transaction: &WalletTransaction,
+    state: &'a mut iced::pure::State,
+) -> Container<'a, T> {
+    let tx = transaction_from_hex(&transaction.hex);
+    Container::new(Pure::new(
+        state,
+        collapse::<_, T, _, _, _>(
+            move || {
+                iced::pure::row()
+                    .push(iced::pure::text("hello"))
+                    .push(iced::pure::text("hello-again"))
+                    .width(Length::Fill)
+                    .into()
+            },
+            move || {
+                iced::pure::column()
+                    .push(iced::pure::text(format!("{}", tx.txid())))
+                    .into()
+            },
+        ),
     ))
 }
 

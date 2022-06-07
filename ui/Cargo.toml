@@ -9,5 +9,7 @@ edition = "2018"
 resolver = "2"
 
 [dependencies]
-iced = { version = "0.4", default-features= false, features = ["wgpu", "svg"] }
-iced_lazy = "0.1"
+iced = { version = "0.4", default-features= false, features = ["wgpu", "svg", "pure"] }
+iced_lazy = { version = "0.1", features = ["pure"]}
+iced_native = "0.5"
+iced_pure = "0.2.2"
