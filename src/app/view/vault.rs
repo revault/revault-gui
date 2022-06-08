@@ -147,6 +147,7 @@ fn transaction_collapse<'a, T: Clone + 'a>(
                     .push(iced::pure::text("hello"))
                     .push(iced::pure::text("hello-again"))
                     .width(Length::Fill)
+                    .spacing(20)
                     .into()
             },
             move || {
