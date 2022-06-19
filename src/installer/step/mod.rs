@@ -339,6 +339,18 @@ impl Step for DefineCoordinator {
 
         self.host.valid = SocketAddr::from_str(&self.host.value).is_ok();
 
+        if !self.host.valid {
+            // trim spaces at the end if any.
+            let clean_value = self.host.value.trim_end();
+            let value = format!("{}:8383", clean_value).to_string();
+
+            self.host.valid = SocketAddr::from_str(&value).is_ok();
+
+            if self.host.valid {
+                self.host.value = value;
+            }
+        }
+
         if !self.host.valid || !self.noise_key.valid {
             return false;
         }
@@ -555,9 +567,10 @@ impl From<Final> for Box<dyn Step> {
 
 #[cfg(test)]
 mod tests {
+    use super::DefineCoordinator as DefineCoordinatorStep;
     use super::{DefineCpfpDescriptor as DefineCpfpDescriptorStep, *};
     use crate::installer::config::Config;
-    use crate::installer::message::{DefineCpfpDescriptor, ParticipantXpub, *};
+    use crate::installer::message::{DefineCoordinator, DefineCpfpDescriptor, ParticipantXpub, *};
 
     const STAKEHOLDERS_XPUBS: [&str; 4] = [
         "xpub6DEzq5DNPx2rPiZJ7wvFhxRKUKDoV1GwjFmFdaxFfbsw9HsHyxc9usoRUMxqJaMrwoXh4apahsGEnjAS4cVCBDgqsx5Groww22AdHbgxVDg", 
@@ -615,6 +628,60 @@ mod tests {
                 DefineManagerXpubs::CosignerKey(i, key),
             ));
             i += 1;
+        }
+    }
+
+    const HOST_NO_PORT: [&str; 3] = ["193.168.1.13", "193.168.1.13 ", "193.168.1.13    "];
+    const HOST_PORT: [&str; 1] = ["193.168.1.13:8383"];
+    const INCORRECT_HOST: [&str; 1] = ["193.168.1."];
+    const NOISE_KEYS: [&str; 1] =
+        // 64 character long string
+        ["1234678901234567890123456789012345678901234567890123456789012345"];
+
+    #[test]
+    fn define_coordinator_host() {
+        let mut ctx = Context::new(bitcoin::Network::Bitcoin);
+        let mut manager_config = Config::new();
+
+        // Valid host with port already existing.
+        for host in HOST_PORT.iter() {
+            let mut coordinator_step = DefineCoordinatorStep::new();
+            coordinator_step.update(message::Message::DefineCoordinator(
+                DefineCoordinator::NoiseKeyEdited(NOISE_KEYS[0].to_string()),
+            ));
+
+            coordinator_step.update(message::Message::DefineCoordinator(
+                DefineCoordinator::HostEdited(host.to_string()),
+            ));
+            let is_valid = coordinator_step.apply(&mut ctx, &mut manager_config);
+            assert!(is_valid);
+        }
+
+        // No port.
+        for host in HOST_NO_PORT.iter() {
+            let mut coordinator_step = DefineCoordinatorStep::new();
+            coordinator_step.update(message::Message::DefineCoordinator(
+                DefineCoordinator::NoiseKeyEdited(NOISE_KEYS[0].to_string()),
+            ));
+
+            coordinator_step.update(Message::DefineCoordinator(DefineCoordinator::HostEdited(
+                host.to_string(),
+            )));
+            let is_valid = coordinator_step.apply(&mut ctx, &mut manager_config);
+            assert!(is_valid);
+        }
+        // Incorrect host addresses for avoiding false positive.
+        for host in INCORRECT_HOST.iter() {
+            let mut coordinator_step = DefineCoordinatorStep::new();
+            coordinator_step.update(message::Message::DefineCoordinator(
+                DefineCoordinator::NoiseKeyEdited(NOISE_KEYS[0].to_string()),
+            ));
+
+            coordinator_step.update(Message::DefineCoordinator(DefineCoordinator::HostEdited(
+                host.to_string(),
+            )));
+            let is_valid = coordinator_step.apply(&mut ctx, &mut manager_config);
+            assert!(!is_valid);
         }
     }
 
