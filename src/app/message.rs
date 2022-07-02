@@ -99,6 +99,9 @@ pub enum SpendTxMessage {
     Update,
     Updated(Result<(), RevaultDError>),
     WithPriority(bool),
+    // [ZEE] Addition for CPFP
+    CPFP,
+    CPFPed(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]

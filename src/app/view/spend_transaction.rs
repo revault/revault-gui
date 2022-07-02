@@ -1,8 +1,8 @@
 use bitcoin::{util::psbt::PartiallySignedTransaction as Psbt, Amount};
 
 use iced::{
-    alignment::Horizontal, scrollable, tooltip, Alignment, Checkbox, Column, Container, Element,
-    Length, Row, Tooltip,
+    alignment::Horizontal, scrollable, text_input, tooltip, Alignment, Checkbox, Column, Container,
+    Element, Length, Row, Tooltip,
 };
 
 use revaultd::revault_tx::transactions::RevaultTransaction;
@@ -541,6 +541,7 @@ impl SpendTransactionBroadcastView {
                         )
                         .spacing(5),
                 )
+                // [ZEE] The button for broadcasting the transaction.
                 .push(
                     button::important(
                         &mut self.confirm_button,
@@ -688,6 +689,85 @@ impl SpendTransactionListItemView {
         )
         .on_press(SpendTxMessage::Select(tx.psbt.psbt().clone()))
         .width(Length::Fill)
+        .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionCPFPView {
+    cpfp_input: text_input::State,
+    confirm_button: iced::button::State,
+}
+
+impl SpendTransactionCPFPView {
+    pub fn new() -> Self {
+        Self {
+            cpfp_input: text_input::State::new(),
+            confirm_button: iced::button::State::new(),
+        }
+    }
+
+    pub fn view(
+        &mut self,
+        processing: bool,
+        success: bool,
+        feerate: &form::Value<String>,
+        warning: Option<&Error>,
+    ) -> Element<Message> {
+        let mut col_action = Column::new();
+        if let Some(error) = warning {
+            col_action = col_action.push(card::alert_warning(Container::new(
+                Text::new(&error.to_string()).small(),
+            )));
+        }
+
+        if processing {
+            col_action = col_action.push(button::important(
+                &mut self.confirm_button,
+                button::button_content(None, "CPFPing"),
+            ));
+        } else if success {
+            col_action = col_action.push(
+                card::success(Text::new("Transaction has been CPFPed"))
+                    .padding(20)
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+            );
+        } else {
+            // [ZEE] Check if the transaction has been mined or
+            // needs to be CPFPed above.
+            col_action = col_action
+                .push(Text::new("Transaction has not been mined"))
+                .push(
+                    Row::new()
+                        .push(Text::new("CPFP amount in sat/vbyte:").bold())
+                        .push(
+                            form::Form::new(&mut self.cpfp_input, "CPFP", feerate, |msg| {
+                                Message::SpendTx(SpendTxMessage::CPFP)
+                            })
+                            .warning("Feerate must be a number.")
+                            .size(20)
+                            .padding(10)
+                            .render(),
+                        ),
+                )
+                // [ZEE] The button for broadcasting the transaction.
+                .push(
+                    button::important(
+                        &mut self.confirm_button,
+                        button::button_content(None, "CPFP"),
+                    )
+                    .width(Length::Units(200))
+                    .on_press(Message::SpendTx(SpendTxMessage::CPFP)),
+                );
+        }
+
+        card::white(Container::new(
+            col_action.align_items(Alignment::Center).spacing(20),
+        ))
+        .width(Length::Fill)
+        .align_x(Horizontal::Center)
+        .padding(20)
         .into()
     }
 }

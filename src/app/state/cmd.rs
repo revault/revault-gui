@@ -89,6 +89,14 @@ pub async fn broadcast_spend_tx(
     revaultd.broadcast_spend_tx(&txid, with_priority)
 }
 
+pub async fn cpfp(
+    revaultd: Arc<dyn Daemon + Send + Sync>,
+    txids: Vec<Txid>,
+    fee_rate: f64,
+) -> Result<(), RevaultDError> {
+    revaultd.cpfp(&txids, fee_rate)
+}
+
 pub async fn emergency(revaultd: Arc<dyn Daemon + Send + Sync>) -> Result<(), RevaultDError> {
     revaultd.emergency()
 }

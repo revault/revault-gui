@@ -114,4 +114,5 @@ pub trait Daemon: Debug {
         end: u32,
         limit: u64,
     ) -> Result<Vec<HistoryEvent>, RevaultDError>;
+    fn cpfp(&self, txids: &[Txid], feerate: f64) -> Result<(), RevaultDError>;
 }

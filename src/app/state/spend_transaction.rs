@@ -11,13 +11,13 @@ use crate::{
         error::Error,
         message::{Message, SpendTxMessage},
         state::{
-            cmd::{broadcast_spend_tx, delete_spend_tx, list_vaults, update_spend_tx},
+            cmd::{broadcast_spend_tx, cpfp, delete_spend_tx, list_vaults, update_spend_tx},
             sign::{Signer, SpendTransactionTarget},
             State,
         },
         view::spend_transaction::{
             spend_tx_confirmed, spend_tx_deprecated, spend_tx_processing,
-            SpendTransactionBroadcastView, SpendTransactionDeleteView,
+            SpendTransactionBroadcastView, SpendTransactionCPFPView, SpendTransactionDeleteView,
             SpendTransactionListItemView, SpendTransactionSharePsbtView, SpendTransactionSignView,
             SpendTransactionView,
         },
@@ -153,6 +153,13 @@ pub enum SpendTransactionAction {
         success: bool,
         warning: Option<Error>,
         view: SpendTransactionDeleteView,
+    },
+    CPFP {
+        view: SpendTransactionCPFPView,
+        processing: bool,
+        success: bool,
+        warning: Option<Error>,
+        feerate: form::Value<String>,
     },
 }
 
@@ -311,6 +318,43 @@ impl SpendTransactionAction {
                     *with_priority = priority;
                 }
             }
+            // [ZEE] Receiver for the new type of message.
+            SpendTxMessage::CPFP => {
+                if let Self::CPFP {
+                    processing,
+                    feerate,
+                    ..
+                } = self
+                {
+                    *processing = true;
+                    // [ZEE] Placeholder for setting feerate.
+                    let fee_f64: f64 = 0.0;
+                    return Command::perform(
+                        cpfp(
+                            ctx.revaultd.clone(),
+                            [psbt.global.unsigned_tx.txid()].to_vec(),
+                            fee_f64,
+                        ),
+                        SpendTxMessage::CPFPed,
+                    );
+                }
+            }
+            SpendTxMessage::CPFPed(res) => {
+                if let Self::CPFP {
+                    success,
+                    processing,
+                    warning,
+                    ..
+                } = self
+                {
+                    *processing = false;
+                    match res {
+                        Ok(()) => *success = true,
+                        Err(e) => *warning = Error::from(e).into(),
+                    };
+                }
+            }
+            // [ZEE] handling the Broadcast request.
             SpendTxMessage::Broadcast => {
                 if let Self::Broadcast {
                     processing,
@@ -501,6 +545,13 @@ impl SpendTransactionAction {
                 success,
                 warning,
             } => view.view(&processing, &success, warning.as_ref()),
+            Self::CPFP {
+                view,
+                warning,
+                feerate,
+                processing,
+                success,
+            } => view.view(*processing, *success, feerate, warning.as_ref()),
         }
     }
 }

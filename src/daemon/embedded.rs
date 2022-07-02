@@ -319,4 +319,16 @@ impl Daemon for EmbeddedDaemon {
             .get_history(start, end, limit, kind)
             .map_err(|e| e.into())
     }
+    fn cpfp(&self, txids: &[Txid], feerate: f64) -> Result<(), RevaultDError> {
+        Ok(())
+        // Here we implement the call to the backend.
+        // self.handle
+        //     .as_ref()
+        //     .ok_or(RevaultDError::NoAnswer)?
+        //     .lock()
+        //     .unwrap()
+        //     .control
+        //     .cpfp(txids, feerate)
+        //     .map_err(|e| e.into())
+    }
 }
