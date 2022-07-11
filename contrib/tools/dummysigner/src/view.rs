@@ -1,5 +1,5 @@
 use iced::{
-    button, container, Align, Button, Checkbox, Color, Column, Container, Element, Length, Row,
+    alignment, button, container, Button, Checkbox, Color, Column, Container, Element, Length, Row,
     Text,
 };
 use std::net::SocketAddr;
@@ -24,8 +24,8 @@ pub fn waiting_connection<'a>() -> Element<'a, ViewMessage> {
     Container::new(Text::new("waiting"))
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
 }
 
@@ -33,8 +33,8 @@ pub fn connected<'a>(addr: &SocketAddr) -> Element<'a, ViewMessage> {
     Container::new(Text::new(&format!("Connected to {}", addr)))
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
 }
 
@@ -63,8 +63,8 @@ impl SignSpendTxView {
                 .style(SuccessPageStyle)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .align_x(Align::Center)
-                .align_y(Align::Center)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center)
                 .into();
         }
 
@@ -83,12 +83,12 @@ impl SignSpendTxView {
                     can_confirm,
                 ))
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(alignment::Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
     }
 }
@@ -118,8 +118,8 @@ impl SignUnvaultTxView {
                 .style(SuccessPageStyle)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .align_x(Align::Center)
-                .align_y(Align::Center)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center)
                 .into();
         }
 
@@ -138,12 +138,12 @@ impl SignUnvaultTxView {
                     can_confirm,
                 ))
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(alignment::Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
     }
 }
@@ -173,8 +173,8 @@ impl SignRevocationTxsView {
                 .style(SuccessPageStyle)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .align_x(Align::Center)
-                .align_y(Align::Center)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center)
                 .into();
         }
 
@@ -195,12 +195,12 @@ impl SignRevocationTxsView {
                     can_confirm,
                 ))
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(alignment::Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
     }
 }
@@ -235,8 +235,8 @@ impl SecureBatchView {
             .style(SuccessPageStyle)
             .width(Length::Fill)
             .height(Length::Fill)
-            .align_x(Align::Center)
-            .align_y(Align::Center)
+            .align_x(alignment::Horizontal::Center)
+            .align_y(alignment::Vertical::Center)
             .into();
         }
 
@@ -261,12 +261,12 @@ impl SecureBatchView {
                     can_confirm,
                 ))
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(alignment::Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
     }
 }
@@ -301,8 +301,8 @@ impl DelegateBatchView {
             .style(SuccessPageStyle)
             .width(Length::Fill)
             .height(Length::Fill)
-            .align_x(Align::Center)
-            .align_y(Align::Center)
+            .align_x(alignment::Horizontal::Center)
+            .align_y(alignment::Vertical::Center)
             .into();
         }
 
@@ -325,12 +325,12 @@ impl DelegateBatchView {
                     can_confirm,
                 ))
                 .spacing(20)
-                .align_items(Align::Center),
+                .align_items(alignment::Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .align_x(Align::Center)
-        .align_y(Align::Center)
+        .align_x(alignment::Horizontal::Center)
+        .align_y(alignment::Vertical::Center)
         .into()
     }
 }
@@ -348,7 +348,7 @@ pub fn confirmation_footer<'a>(
         confirm_button,
         Container::new(Text::new("Sign"))
             .width(Length::Units(100))
-            .align_x(Align::Center),
+            .align_x(alignment::Horizontal::Center),
     );
 
     if can_confirm {
@@ -361,7 +361,7 @@ pub fn confirmation_footer<'a>(
                 cancel_button,
                 Container::new(Text::new("Cancel"))
                     .width(Length::Units(100))
-                    .align_x(Align::Center),
+                    .align_x(alignment::Horizontal::Center),
             )
             .on_press(ViewMessage::Cancel),
         )
@@ -373,7 +373,7 @@ pub fn confirmation_footer<'a>(
 pub fn error_no_keys<'a>(cancel_button: &'a mut button::State) -> Element<'a, ViewMessage> {
     return Container::new(
         Column::new()
-            .align_items(Align::Center)
+            .align_items(alignment::Alignment::Center)
             .spacing(20)
             .push(Text::new(
                 "No keys matched the specified key fingerprints in the psbt",
@@ -383,15 +383,15 @@ pub fn error_no_keys<'a>(cancel_button: &'a mut button::State) -> Element<'a, Vi
                     cancel_button,
                     Container::new(Text::new("Cancel"))
                         .width(Length::Units(100))
-                        .align_x(Align::Center),
+                        .align_x(alignment::Horizontal::Center),
                 )
                 .on_press(ViewMessage::Cancel),
             ),
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .align_x(Align::Center)
-    .align_y(Align::Center)
+    .align_x(alignment::Horizontal::Center)
+    .align_y(alignment::Vertical::Center)
     .into();
 }
 
