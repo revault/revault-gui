@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use iced::{executor, Application, Clipboard, Command, Element, Settings};
+use iced::{executor, Application, Command, Element, Settings};
 use revault_tx::bitcoin::util::bip32::ExtendedPrivKey;
 use serde_json::json;
 
@@ -66,7 +66,7 @@ impl Application for App {
         String::from("Dummy signer - Revault")
     }
 
-    fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
+    fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Server(server::ServerMessage::NewConnection(addr, writer)) => {
                 self.status = AppStatus::Connected {
