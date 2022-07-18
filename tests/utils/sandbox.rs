@@ -5,7 +5,7 @@ pub struct Sandbox<S: State> {
     state: S,
 }
 
-impl<S: State + Send + 'static> Sandbox<S> {
+impl<S: State + 'static> Sandbox<S> {
     pub fn new(state: S) -> Self {
         return Self { state };
     }

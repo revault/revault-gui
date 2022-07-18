@@ -1,5 +1,6 @@
 pub mod badge;
 pub mod button;
+pub mod collapse;
 pub mod form;
 pub mod image;
 pub mod notification;
