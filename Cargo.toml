@@ -24,7 +24,7 @@ bitcoin = { version = "0.27", features = ["base64", "use-serde"] }
 revaultd = { version = "0.4.0", default-features = false}
 backtrace = "0.3"
 
-iced = { version = "0.4", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code"] }
+iced = { version = "0.4", default-features= false, features = ["tokio", "wgpu", "svg", "qr_code", "canvas"] }
 iced_native = "0.5"
 revault_ui = { path = "./ui" }
 revault_hwi = { path = "./hwi" }

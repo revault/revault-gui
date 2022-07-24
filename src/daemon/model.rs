@@ -93,3 +93,34 @@ pub const ALL_HISTORY_EVENTS: [HistoryEventKind; 3] = [
     HistoryEventKind::Deposit,
     HistoryEventKind::Spend,
 ];
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TransactionKind {
+    Deposit,
+    Unvault,
+    Cancel,
+    Spend,
+    UnvaultEmergency,
+    Emergency,
+}
+
+#[derive(Debug, Clone)]
+pub struct HistoryEventTransaction {
+    pub tx: Transaction,
+    pub blockheight: u32,
+    pub received_time: u32,
+    pub blocktime: u32,
+    pub kind: TransactionKind,
+}
+
+impl HistoryEventTransaction {
+    pub fn new(tx: &WalletTransaction, kind: TransactionKind) -> Self {
+        Self {
+            tx: transaction_from_hex(&tx.hex),
+            blockheight: tx.blockheight.unwrap_or(0),
+            blocktime: tx.blockheight.unwrap_or(0),
+            received_time: tx.received_time,
+            kind,
+        }
+    }
+}

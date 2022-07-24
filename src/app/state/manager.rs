@@ -225,7 +225,7 @@ impl State for ManagerHomeState {
                 }
                 Message::HistoryEvent(msg) => {
                     if let Some(event) = selected_event {
-                        event.update(msg)
+                        event.update(ctx, msg)
                     }
                 }
                 Message::Close => {

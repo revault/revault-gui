@@ -1,3 +1,4 @@
+pub mod chart;
 pub mod color;
 /// component are wrappers around iced elements;
 pub mod component;

@@ -9,4 +9,5 @@ edition = "2018"
 resolver = "2"
 
 [dependencies]
-iced = { version = "0.4", default-features= false, features = ["wgpu", "svg"] }
+iced = { version = "0.4", default-features= false, features = ["wgpu", "svg", "canvas"] }
+bitcoin = "0.27"
