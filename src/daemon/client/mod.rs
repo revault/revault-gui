@@ -221,6 +221,12 @@ impl<C: Client + Debug> Daemon for RevaultD<C> {
         )?;
         Ok(resp.events)
     }
+
+    fn cpfp(&self, txids: &[Txid], feerate: f64) -> Result<(), RevaultDError> {
+        let _res: serde_json::value::Value =
+            self.call("cpfp", Some(vec![json!(txids), json!(feerate)]))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

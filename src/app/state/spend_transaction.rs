@@ -9,15 +9,15 @@ use crate::{
     app::{
         context::Context,
         error::Error,
-        message::{Message, SpendTxMessage},
+        message::{CPFPMessage, Message, SpendTxMessage},
         state::{
-            cmd::{broadcast_spend_tx, delete_spend_tx, list_vaults, update_spend_tx},
+            cmd::{broadcast_spend_tx, cpfp, delete_spend_tx, list_vaults, update_spend_tx},
             sign::{Signer, SpendTransactionTarget},
             State,
         },
         view::spend_transaction::{
             spend_tx_confirmed, spend_tx_deprecated, spend_tx_processing,
-            SpendTransactionBroadcastView, SpendTransactionDeleteView,
+            SpendTransactionBroadcastView, SpendTransactionCPFPView, SpendTransactionDeleteView,
             SpendTransactionListItemView, SpendTransactionSharePsbtView, SpendTransactionSignView,
             SpendTransactionView,
         },
@@ -154,6 +154,102 @@ pub enum SpendTransactionAction {
         warning: Option<Error>,
         view: SpendTransactionDeleteView,
     },
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionCPFP {
+    tx: model::SpendTx,
+    view: SpendTransactionCPFPView,
+    processing: bool,
+    success: bool,
+    warning: Option<Error>,
+    feerate: form::Value<String>,
+}
+impl SpendTransactionCPFP {
+    pub fn new(tx: model::SpendTx) -> Self {
+        Self {
+            tx,
+            view: SpendTransactionCPFPView::new(),
+            processing: false,
+            success: false,
+            warning: None,
+            feerate: form::Value::default(),
+        }
+    }
+
+    fn feerate(&self) -> Result<f64, Error> {
+        if self.feerate.value.is_empty() {
+            return Err(Error::Unexpected("Amount should be non-zero".to_string()));
+        }
+
+        let feerate: f64 = self
+            .feerate
+            .value
+            .to_string()
+            .parse()
+            .unwrap_or_else(|_str| 0.0);
+
+        if feerate == 0.0 {
+            return Err(Error::Unexpected("Invalid feerate".to_string()));
+        }
+
+        Ok(feerate)
+    }
+
+    fn valid(&self) -> bool {
+        !self.feerate.value.is_empty() && self.feerate.valid
+    }
+
+    fn update(
+        &mut self,
+        ctx: &Context,
+        psbt: &mut Psbt,
+        message: CPFPMessage,
+    ) -> Command<CPFPMessage> {
+        match message {
+            CPFPMessage::CPFP(feerate) => {
+                self.feerate.value = feerate;
+                if let Ok(parsed_feerate) = self.feerate() {
+                    self.feerate.valid = true;
+                } else {
+                    self.feerate.valid = false;
+                }
+            }
+            CPFPMessage::ConfirmCPFP => {
+                if self.feerate.valid {
+                    self.processing = true;
+                    let fee_rate: f64 = self.feerate().unwrap();
+                    return Command::perform(
+                        cpfp(
+                            ctx.revaultd.clone(),
+                            [psbt.global.unsigned_tx.txid()].to_vec(),
+                            fee_rate,
+                        ),
+                        CPFPMessage::CPFPed,
+                    );
+                }
+            }
+            CPFPMessage::CPFPed(res) => {
+                self.processing = false;
+                match res {
+                    Ok(()) => self.success = true,
+                    Err(e) => self.warning = Error::from(e).into(),
+                };
+            }
+            _ => {}
+        };
+        Command::none()
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.view(
+            self.processing,
+            self.success,
+            &self.tx,
+            &self.feerate,
+            self.warning.as_ref(),
+        )
+    }
 }
 
 impl SpendTransactionAction {
@@ -311,6 +407,7 @@ impl SpendTransactionAction {
                     *with_priority = priority;
                 }
             }
+            // [ZEE] handling the Broadcast request.
             SpendTxMessage::Broadcast => {
                 if let Self::Broadcast {
                     processing,

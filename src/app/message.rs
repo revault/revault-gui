@@ -67,6 +67,15 @@ pub enum Message {
     AddWatchtower,
     LoadDaemonConfig(DaemonConfig),
     DaemonConfigLoaded(Result<(), Error>),
+    CPFP(CPFPMessage),
+}
+
+// [ZEE] Addition for CPFP
+#[derive(Debug, Clone)]
+pub enum CPFPMessage {
+    CPFP(String),
+    ConfirmCPFP,
+    CPFPed(Result<(), RevaultDError>),
 }
 
 #[derive(Debug, Clone)]
