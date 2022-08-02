@@ -9,7 +9,7 @@ use crate::{
     app::{
         context::Context,
         error::Error,
-        message::{Message, SpendTxMessage},
+        message::{CPFPMessage, Message, SpendTxMessage},
         state::{
             cmd::{broadcast_spend_tx, cpfp, delete_spend_tx, list_vaults, update_spend_tx},
             sign::{Signer, SpendTransactionTarget},
@@ -154,13 +154,102 @@ pub enum SpendTransactionAction {
         warning: Option<Error>,
         view: SpendTransactionDeleteView,
     },
-    CPFP {
-        view: SpendTransactionCPFPView,
-        processing: bool,
-        success: bool,
-        warning: Option<Error>,
-        feerate: form::Value<String>,
-    },
+}
+
+#[derive(Debug)]
+pub struct SpendTransactionCPFP {
+    tx: model::SpendTx,
+    view: SpendTransactionCPFPView,
+    processing: bool,
+    success: bool,
+    warning: Option<Error>,
+    feerate: form::Value<String>,
+}
+impl SpendTransactionCPFP {
+    pub fn new(tx: model::SpendTx) -> Self {
+        Self {
+            tx,
+            view: SpendTransactionCPFPView::new(),
+            processing: false,
+            success: false,
+            warning: None,
+            feerate: form::Value::default(),
+        }
+    }
+
+    fn feerate(&self) -> Result<f64, Error> {
+        if self.feerate.value.is_empty() {
+            return Err(Error::Unexpected("Amount should be non-zero".to_string()));
+        }
+
+        let feerate: f64 = self
+            .feerate
+            .value
+            .to_string()
+            .parse()
+            .unwrap_or_else(|_str| 0.0);
+
+        if feerate == 0.0 {
+            return Err(Error::Unexpected("Invalid feerate".to_string()));
+        }
+
+        Ok(feerate)
+    }
+
+    fn valid(&self) -> bool {
+        !self.feerate.value.is_empty() && self.feerate.valid
+    }
+
+    fn update(
+        &mut self,
+        ctx: &Context,
+        psbt: &mut Psbt,
+        message: CPFPMessage,
+    ) -> Command<CPFPMessage> {
+        match message {
+            CPFPMessage::CPFP(feerate) => {
+                self.feerate.value = feerate;
+                if let Ok(parsed_feerate) = self.feerate() {
+                    self.feerate.valid = true;
+                } else {
+                    self.feerate.valid = false;
+                }
+            }
+            CPFPMessage::ConfirmCPFP => {
+                if self.feerate.valid {
+                    self.processing = true;
+                    let fee_rate: f64 = self.feerate().unwrap();
+                    return Command::perform(
+                        cpfp(
+                            ctx.revaultd.clone(),
+                            [psbt.global.unsigned_tx.txid()].to_vec(),
+                            fee_rate,
+                        ),
+                        CPFPMessage::CPFPed,
+                    );
+                }
+            }
+            CPFPMessage::CPFPed(res) => {
+                self.processing = false;
+                match res {
+                    Ok(()) => self.success = true,
+                    Err(e) => self.warning = Error::from(e).into(),
+                };
+            }
+            _ => {}
+        };
+        Command::none()
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        self.view.view(
+            self.processing,
+            self.success,
+            &self.tx,
+            &self.feerate,
+            self.warning.as_ref(),
+        )
+    }
 }
 
 impl SpendTransactionAction {
@@ -316,42 +405,6 @@ impl SpendTransactionAction {
             SpendTxMessage::WithPriority(priority) => {
                 if let Self::Broadcast { with_priority, .. } = self {
                     *with_priority = priority;
-                }
-            }
-            // [ZEE] Receiver for the new type of message.
-            SpendTxMessage::CPFP => {
-                if let Self::CPFP {
-                    processing,
-                    feerate,
-                    ..
-                } = self
-                {
-                    *processing = true;
-                    // [ZEE] Placeholder for setting feerate.
-                    let fee_f64: f64 = 0.0;
-                    return Command::perform(
-                        cpfp(
-                            ctx.revaultd.clone(),
-                            [psbt.global.unsigned_tx.txid()].to_vec(),
-                            fee_f64,
-                        ),
-                        SpendTxMessage::CPFPed,
-                    );
-                }
-            }
-            SpendTxMessage::CPFPed(res) => {
-                if let Self::CPFP {
-                    success,
-                    processing,
-                    warning,
-                    ..
-                } = self
-                {
-                    *processing = false;
-                    match res {
-                        Ok(()) => *success = true,
-                        Err(e) => *warning = Error::from(e).into(),
-                    };
                 }
             }
             // [ZEE] handling the Broadcast request.
@@ -545,13 +598,6 @@ impl SpendTransactionAction {
                 success,
                 warning,
             } => view.view(&processing, &success, warning.as_ref()),
-            Self::CPFP {
-                view,
-                warning,
-                feerate,
-                processing,
-                success,
-            } => view.view(*processing, *success, feerate, warning.as_ref()),
         }
     }
 }

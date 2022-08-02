@@ -20,7 +20,7 @@ use crate::{
     app::{
         context::Context,
         error::Error,
-        message::{Message, SpendTxMessage},
+        message::{CPFPMessage, Message, SpendTxMessage},
         view::{manager::spend_tx_with_feerate_view, warning::warn},
     },
     daemon::model,
@@ -695,14 +695,14 @@ impl SpendTransactionListItemView {
 
 #[derive(Debug)]
 pub struct SpendTransactionCPFPView {
-    cpfp_input: text_input::State,
+    fee_input: text_input::State,
     confirm_button: iced::button::State,
 }
 
 impl SpendTransactionCPFPView {
     pub fn new() -> Self {
         Self {
-            cpfp_input: text_input::State::new(),
+            fee_input: text_input::State::new(),
             confirm_button: iced::button::State::new(),
         }
     }
@@ -711,6 +711,7 @@ impl SpendTransactionCPFPView {
         &mut self,
         processing: bool,
         success: bool,
+        tx: &model::SpendTx,
         feerate: &form::Value<String>,
         warning: Option<&Error>,
     ) -> Element<Message> {
@@ -734,32 +735,38 @@ impl SpendTransactionCPFPView {
                     .align_x(Horizontal::Center),
             );
         } else {
-            // [ZEE] Check if the transaction has been mined or
-            // needs to be CPFPed above.
             col_action = col_action
                 .push(Text::new("Transaction has not been mined"))
-                .push(
-                    Row::new()
+                .push(match tx.status {
+                    // Only `Broadcasted` can be CPFPed.
+                    model::ListSpendStatus::Broadcasted => Row::new()
                         .push(Text::new("CPFP amount in sat/vbyte:").bold())
                         .push(
-                            form::Form::new(&mut self.cpfp_input, "CPFP", feerate, |msg| {
-                                Message::SpendTx(SpendTxMessage::CPFP)
+                            form::Form::new(&mut self.fee_input, "CPFP", feerate, |msg| {
+                                Message::CPFP(CPFPMessage::CPFP(msg))
                             })
                             .warning("Feerate must be a number.")
                             .size(20)
                             .padding(10)
                             .render(),
                         ),
-                )
+                    _ => Row::new().push(Text::new("Transaction can't be CPFPed.")),
+                })
                 // [ZEE] The button for broadcasting the transaction.
-                .push(
-                    button::important(
+                .push(match tx.status {
+                    model::ListSpendStatus::Broadcasted => button::important(
                         &mut self.confirm_button,
                         button::button_content(None, "CPFP"),
                     )
                     .width(Length::Units(200))
-                    .on_press(Message::SpendTx(SpendTxMessage::CPFP)),
-                );
+                    .on_press(Message::CPFP(CPFPMessage::ConfirmCPFP)),
+
+                    _ => button::transparent(
+                        &mut self.confirm_button,
+                        button::button_content(None, "Can't CPFP"),
+                    )
+                    .width(Length::Units(200)),
+                });
         }
 
         card::white(Container::new(
